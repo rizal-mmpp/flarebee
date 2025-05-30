@@ -37,7 +37,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
     console.log(`Attempting to purchase ${template.title}`);
     // For demo, redirect to a success page or show a toast
     // For now, we'll just log. A real implementation would redirect to Stripe.
-    alert(`Purchasing ${template.title} for $${template.price}. This would normally redirect to Stripe.`);
+    console.log(`Purchasing ${template.title} for $${template.price}. This would normally redirect to Stripe.`);
   };
 
 
