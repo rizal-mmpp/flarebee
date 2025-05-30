@@ -12,14 +12,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel"
-import { AspectRatio } from "@/components/ui/aspect-ratio" // Assuming this exists or is created
-
-// Helper for AspectRatio if not from shadcn
-const AspectRatioShadcn = ({ ratio, children, className }: { ratio: number, children: React.ReactNode, className?: string }) => (
-  <div style={{ position: 'relative', width: '100%', paddingBottom: `${100 / ratio}%` }} className={className}>
-    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>{children}</div>
-  </div>
-);
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 
 export async function generateStaticParams() {
@@ -64,7 +57,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
               <CarouselContent>
                 {[template.imageUrl, ...template.screenshots].map((src, index) => (
                   <CarouselItem key={index}>
-                     <AspectRatioShadcn ratio={16 / 9} className="bg-muted rounded-lg">
+                     <AspectRatio ratio={16 / 9} className="bg-muted rounded-lg">
                        <Image
                         src={src}
                         alt={`${template.title} screenshot ${index + 1}`}
@@ -73,7 +66,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
                         className="rounded-lg"
                         data-ai-hint="template screenshot"
                       />
-                    </AspectRatioShadcn>
+                    </AspectRatio>
                   </CarouselItem>
                 ))}
               </CarouselContent>
@@ -81,7 +74,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
               <CarouselNext className="mr-12" />
             </Carousel>
           ) : (
-            <AspectRatioShadcn ratio={16 / 9} className="bg-muted rounded-lg shadow-xl overflow-hidden">
+            <AspectRatio ratio={16 / 9} className="bg-muted rounded-lg shadow-xl overflow-hidden">
               <Image
                 src={template.imageUrl}
                 alt={template.title}
@@ -90,7 +83,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
                 className="rounded-lg"
                 data-ai-hint="template image"
               />
-            </AspectRatioShadcn>
+            </AspectRatio>
           )}
         </div>
 
