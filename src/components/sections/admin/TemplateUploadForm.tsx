@@ -12,9 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CATEGORIES } from '@/lib/constants';
 import type { Category, Template } from '@/lib/types';
-import { Loader2, Wand2, UploadCloud } from 'lucide-react';
+import { Loader2, UploadCloud } from 'lucide-react'; // Removed Wand2
 import { useToast } from '@/hooks/use-toast';
-import { suggestTagsAndDescription, saveTemplate } from '@/lib/actions/template.actions';
+import { saveTemplate } from '@/lib/actions/template.actions'; // Removed suggestTagsAndDescription
 
 const templateFormSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
@@ -25,9 +25,6 @@ const templateFormSchema = z.object({
   tags: z.string().min(1, 'Tags are required (comma-separated)'),
   techStack: z.string().optional(), // Comma-separated
   previewImageUrl: z.string().url('Must be a valid URL').optional(),
-  // File inputs would need more complex handling for actual uploads
-  // For this UI demo, we'll use text inputs for URLs or skip them
-  templateContentForAI: z.string().optional(), // For AI suggestion
 });
 
 type TemplateFormValues = z.infer<typeof templateFormSchema>;
@@ -38,10 +35,9 @@ interface TemplateUploadFormProps {
 
 export function TemplateUploadForm({ onTemplateAdd }: TemplateUploadFormProps) {
   const [isPending, startTransition] = useTransition();
-  const [isSuggesting, startSuggestionTransition] = useTransition();
   const { toast } = useToast();
 
-  const { register, handleSubmit, control, setValue, getValues, formState: { errors } } = useForm<TemplateFormValues>({
+  const { register, handleSubmit, control, formState: { errors } } = useForm<TemplateFormValues>({
     resolver: zodResolver(templateFormSchema),
     defaultValues: {
       price: 0,
@@ -50,42 +46,8 @@ export function TemplateUploadForm({ onTemplateAdd }: TemplateUploadFormProps) {
     }
   });
 
-  const handleSuggest = () => {
-    const content = getValues('templateContentForAI');
-    if (!content || content.length < 50) {
-      toast({
-        title: "Content Too Short",
-        description: "Please provide at least 50 characters of template content for AI suggestions.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    startSuggestionTransition(async () => {
-      const formData = new FormData();
-      formData.append('templateContent', content);
-      const result = await suggestTagsAndDescription(formData);
-
-      if (result.error) {
-        toast({
-          title: "AI Suggestion Failed",
-          description: result.error,
-          variant: "destructive",
-        });
-      } else if (result.data) {
-        setValue('description', result.data.description);
-        setValue('tags', result.data.tags.join(', '));
-        toast({
-          title: "AI Suggestions Applied",
-          description: "Description and tags have been populated.",
-        });
-      }
-    });
-  };
-
   const onSubmit: SubmitHandler<TemplateFormValues> = (data) => {
     startTransition(async () => {
-      // Simulate form data for server action
       const formData = new FormData();
       Object.entries(data).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
@@ -93,7 +55,6 @@ export function TemplateUploadForm({ onTemplateAdd }: TemplateUploadFormProps) {
         }
       });
       
-      // Call server action to save template
       const result = await saveTemplate(formData);
 
       if (result.error) {
@@ -107,7 +68,6 @@ export function TemplateUploadForm({ onTemplateAdd }: TemplateUploadFormProps) {
           title: "Template Action",
           description: result.message || "Template action simulated.",
         });
-        // Mock adding to a list for UI update. In real app, this would come from DB.
         const newTemplate: Template = {
           id: `new-${Date.now()}`,
           title: data.title,
@@ -141,32 +101,6 @@ export function TemplateUploadForm({ onTemplateAdd }: TemplateUploadFormProps) {
             <Label htmlFor="title">Title</Label>
             <Input id="title" {...register('title')} className="mt-1" />
             {errors.title && <p className="text-sm text-destructive mt-1">{errors.title.message}</p>}
-          </div>
-
-          <div>
-            <Label htmlFor="templateContentForAI">Template Content for AI (e.g., README, key features)</Label>
-            <Textarea
-              id="templateContentForAI"
-              {...register('templateContentForAI')}
-              rows={5}
-              className="mt-1"
-              placeholder="Paste relevant content here to help AI generate description and tags..."
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleSuggest}
-              disabled={isSuggesting}
-              className="mt-2 group"
-            >
-              {isSuggesting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Wand2 className="mr-2 h-4 w-4 text-primary transition-transform duration-300 ease-in-out group-hover:scale-110" />
-              )}
-              Suggest with AI
-            </Button>
           </div>
           
           <div>
@@ -225,19 +159,7 @@ export function TemplateUploadForm({ onTemplateAdd }: TemplateUploadFormProps) {
              {errors.previewImageUrl && <p className="text-sm text-destructive mt-1">{errors.previewImageUrl.message}</p>}
           </div>
 
-          {/* Actual file inputs are more complex and would require server-side handling for storage.
-              For this demo, we might omit them or use URL inputs.
-          <div className="space-y-1">
-            <Label htmlFor="templateZip">Template ZIP File</Label>
-            <Input id="templateZip" type="file" accept=".zip" className="mt-1 file:text-primary file:font-medium"/>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="previewImages">Preview Screenshots (multiple)</Label>
-            <Input id="previewImages" type="file" accept="image/*" multiple className="mt-1 file:text-primary file:font-medium" />
-          </div>
-          */}
-
-          <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isPending || isSuggesting}>
+          <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isPending}>
             {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Add Template
           </Button>

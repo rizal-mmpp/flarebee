@@ -1,30 +1,5 @@
 'use server';
 
-import { suggestTagsAndDescription as genkitSuggestTagsAndDescription, SuggestTagsAndDescriptionInput } from '@/ai/flows/suggest-tags-and-description';
-import { z } from 'zod';
-
-const SuggestionInputSchema = z.object({
-  templateContent: z.string().min(50, "Template content must be at least 50 characters."),
-});
-
-export async function suggestTagsAndDescription(formData: FormData) {
-  try {
-    const templateContent = formData.get('templateContent') as string;
-    
-    const validation = SuggestionInputSchema.safeParse({ templateContent });
-    if (!validation.success) {
-      return { error: validation.error.flatten().fieldErrors.templateContent?.join(', ') || "Invalid input." };
-    }
-
-    const input: SuggestTagsAndDescriptionInput = { templateContent: validation.data.templateContent };
-    const result = await genkitSuggestTagsAndDescription(input);
-    return { data: result };
-  } catch (error) {
-    console.error("Error in suggestTagsAndDescription action:", error);
-    return { error: "Failed to get suggestions from AI. Please try again." };
-  }
-}
-
 // Placeholder for saving a new template
 export async function saveTemplate(formData: FormData) {
   // This is a placeholder. In a real app, you would:
