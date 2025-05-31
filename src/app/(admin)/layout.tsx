@@ -1,21 +1,16 @@
-import { Navbar } from '@/components/layout/Navbar'; // Can be a different admin-specific navbar
-import { Footer } from '@/components/layout/Footer';   // Or an admin-specific footer/none
+// This file's content has been replaced to resolve a potential layout conflict.
+// The admin dashboard layout functionality has been moved to /src/app/admin/layout.tsx.
+// This file should ideally be deleted.
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex min-h-screen flex-col">
-      {/* Consider an Admin-specific Navbar or Sidebar here if needed */}
-      <Navbar /> 
-      <main className="flex-grow bg-background">
-        <div className="container mx-auto px-4 py-8 md:py-12">
-          {children}
-        </div>
-      </main>
-      <Footer />
-    </div>
-  );
+import type { ReactNode } from 'react';
+
+export default function InactiveAdminConflictLayout({ children }: { children: ReactNode }) {
+  // This layout does nothing to avoid interfering with other routes
+  // if the (admin) route group directory still exists.
+  return <>{children}</>;
 }
+
+export const metadata = {
+  title: 'Inactive Admin Section (Conflict Resolution)',
+  description: 'This layout is intentionally minimal to resolve routing conflicts.',
+};

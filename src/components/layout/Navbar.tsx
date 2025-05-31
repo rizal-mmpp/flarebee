@@ -1,24 +1,48 @@
+
 'use client';
 import Link from 'next/link';
-import { Hexagon, Menu, Moon, Sun, X } from 'lucide-react';
+import { Hexagon, LogIn, LogOut, Menu, UserCircle, X, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
-import { cn } from '@/lib/utils';
+import { useAuth } from '@/lib/firebase/AuthContext';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
-// Placeholder for useTheme if you implement a theme toggle
-// For now, we assume a default dark theme as per globals.css
-// import { useTheme } from "next-themes"; 
-
-const navLinks = [
+const baseNavLinks = [
   { href: '/', label: 'Home' },
   { href: '/templates', label: 'Explore' },
-  { href: '/admin/dashboard', label: 'Admin' },
 ];
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  // const { theme, setTheme } = useTheme(); // Placeholder
+  const { user, role, signInWithGoogle, signOutUser, loading } = useAuth();
+
+  const navLinks = [...baseNavLinks];
+  if (user) {
+    navLinks.push({ href: '/dashboard', label: 'My Dashboard' });
+  }
+  if (user && role === 'admin') {
+    navLinks.push({ href: '/admin/dashboard', label: 'Admin Panel' });
+  }
+
+
+  const getAvatarFallback = (displayName: string | null | undefined) => {
+    if (!displayName) return <UserCircle className="h-6 w-6" />;
+    const initials = displayName
+      .split(' ')
+      .map(name => name[0])
+      .join('')
+      .toUpperCase();
+    return initials || <UserCircle className="h-6 w-6" />;
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -40,18 +64,57 @@ export function Navbar() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
-          {/* Placeholder for theme toggle if needed in future
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-            aria-label="Toggle theme"
-          >
-            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          </Button>
-          */}
+        <div className="flex items-center gap-3">
+          {loading ? (
+            <div className="h-8 w-20 animate-pulse rounded-md bg-muted"></div>
+          ) : user ? (
+             <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
+                    <AvatarFallback>{getAvatarFallback(user.displayName)}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{user.displayName || 'User'}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard" className="w-full">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    <span>My Dashboard</span>
+                  </Link>
+                </DropdownMenuItem>
+                {role === 'admin' && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin/dashboard" className="w-full">
+                        {/* Using a generic dashboard icon, or could be specific admin icon */}
+                       <UserCircle className="mr-2 h-4 w-4" /> 
+                      <span>Admin Panel</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={signOutUser}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button variant="outline" onClick={signInWithGoogle} className="group">
+              <LogIn className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
+              Login with Google
+            </Button>
+          )}
 
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild className="md:hidden">
