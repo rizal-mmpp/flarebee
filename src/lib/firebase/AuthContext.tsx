@@ -52,6 +52,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async () => {
     setLoading(true);
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+      prompt: 'select_account' // Ensures the Google account selection screen is always shown
+    });
     try {
       const result = await signInWithPopup(auth, provider);
       if (result.user) {
@@ -110,3 +113,4 @@ export function useAuth() {
   }
   return context;
 }
+
