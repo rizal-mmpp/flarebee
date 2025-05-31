@@ -1,7 +1,7 @@
 
 'use client';
 import Link from 'next/link';
-import { Hexagon, LogIn, LogOut, Menu, UserCircle, X, LayoutDashboard } from 'lucide-react';
+import { Hexagon, LogIn, LogOut, Menu, UserCircle, X, LayoutDashboard, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
@@ -77,13 +77,19 @@ export function Navbar() {
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuContent className="w-64" align="end" forceMount> {/* Increased width for role */}
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{user.displayName || 'User'}</p>
                     <p className="text-xs leading-none text-muted-foreground">
                       {user.email}
                     </p>
+                    {role && (
+                       <p className="text-xs leading-none text-muted-foreground flex items-center pt-1">
+                        <ShieldCheck className="mr-1.5 h-3.5 w-3.5 text-primary" />
+                        Role: <span className="font-medium capitalize text-foreground/90 ml-1">{role}</span>
+                      </p>
+                    )}
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -96,7 +102,6 @@ export function Navbar() {
                 {role === 'admin' && (
                   <DropdownMenuItem asChild>
                     <Link href="/admin/dashboard" className="w-full">
-                        {/* Using a generic dashboard icon, or could be specific admin icon */}
                        <UserCircle className="mr-2 h-4 w-4" /> 
                       <span>Admin Panel</span>
                     </Link>
