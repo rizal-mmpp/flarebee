@@ -1,9 +1,9 @@
 
 'use client';
 import Link from 'next/link';
-import { Hexagon, LogIn, LogOut, Menu, UserCircle, X, LayoutDashboard, ShieldCheck, LayoutGrid } from 'lucide-react';
+import { Hexagon, LogIn, LogOut, Menu, UserCircle, X, LayoutDashboard, ShieldCheck, LayoutGrid, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
 import { useAuth } from '@/lib/firebase/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Separator } from '@/components/ui/separator';
 
 const baseNavLinks = [
   { href: '/', label: 'Home' },
@@ -26,13 +27,8 @@ export function Navbar() {
   const { user, role, signInWithGoogle, signOutUser, loading } = useAuth();
 
   const navLinks = [...baseNavLinks];
-  if (user) {
-    navLinks.push({ href: '/dashboard', label: 'Dashboard' });
-  }
-  if (user && role === 'admin') {
-    navLinks.push({ href: '/admin/dashboard', label: 'Admin Panel' });
-  }
-
+  // Admin panel link is added conditionally later for desktop to control order
+  // For mobile, it's added within the SheetContent logic
 
   const getAvatarFallback = (displayName: string | null | undefined) => {
     if (!displayName) return <UserCircle className="h-6 w-6" />;
@@ -46,13 +42,13 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 max-w-screen-2xl items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 group">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
+        <Link href="/" className="flex items-center gap-2 group mr-6">
           <Hexagon className="h-8 w-8 text-primary transition-transform duration-300 ease-in-out group-hover:rotate-[30deg]" />
           <span className="text-xl font-bold text-foreground">Flarebee</span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6 text-sm">
+        <nav className="hidden md:flex items-center gap-6 text-sm ml-auto">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -62,65 +58,77 @@ export function Navbar() {
               {link.label}
             </Link>
           ))}
+          {user && role === 'admin' && (
+             <Link
+              href="/admin/dashboard"
+              className="text-foreground/80 transition-colors hover:text-foreground hover:font-medium"
+            >
+              Admin Panel
+            </Link>
+          )}
         </nav>
 
-        <div className="flex items-center gap-3">
-          {loading ? (
-            <div className="h-8 w-20 animate-pulse rounded-md bg-muted"></div>
-          ) : user ? (
-             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
-                    <AvatarFallback>{getAvatarFallback(user.displayName)}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-64" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.displayName || 'User'}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
-                    </p>
-                    {role && (
-                       <p className="text-xs leading-none text-muted-foreground flex items-center pt-1">
-                        <ShieldCheck className="mr-1.5 h-3.5 w-3.5 text-primary" />
-                        Role: <span className="font-medium capitalize text-foreground/90 ml-1">{role}</span>
+        <div className="flex items-center gap-3 pl-4">
+          {/* Desktop Auth Buttons / Profile Dropdown */}
+          <div className="hidden md:flex items-center">
+            {loading ? (
+              <div className="h-9 w-24 animate-pulse rounded-md bg-muted"></div>
+            ) : user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
+                      <AvatarFallback>{getAvatarFallback(user.displayName)}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-64" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.displayName || 'User'}</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
                       </p>
-                    )}
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard" className="w-full">
-                    <LayoutDashboard className="mr-2 h-4 w-4" />
-                    <span>Dashboard</span>
-                  </Link>
-                </DropdownMenuItem>
-                {role === 'admin' && (
+                      {role && (
+                        <p className="text-xs leading-none text-muted-foreground flex items-center pt-1">
+                          <ShieldCheck className="mr-1.5 h-3.5 w-3.5 text-primary" />
+                          Role: <span className="font-medium capitalize text-foreground/90 ml-1">{role}</span>
+                        </p>
+                      )}
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/admin/dashboard" className="w-full">
-                       <LayoutGrid className="mr-2 h-4 w-4" /> 
-                      <span>Admin Panel</span>
+                    <Link href="/dashboard" className="w-full">
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      <span>Dashboard</span>
                     </Link>
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={signOutUser}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button variant="outline" onClick={signInWithGoogle} className="group">
-              <LogIn className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
-              Login with Google
-            </Button>
-          )}
+                  {role === 'admin' && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin/dashboard" className="w-full">
+                        <LayoutGrid className="mr-2 h-4 w-4" />
+                        <span>Admin Panel</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOutUser} className="cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button variant="outline" onClick={signInWithGoogle} className="group">
+                <LogIn className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
+                Login with Google
+              </Button>
+            )}
+          </div>
 
+          {/* Mobile Menu Trigger */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild className="md:hidden">
               <Button variant="ghost" size="icon">
@@ -128,23 +136,80 @@ export function Navbar() {
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[280px] bg-background p-6">
-              <Link href="/" className="flex items-center gap-2 mb-8" onClick={() => setMobileMenuOpen(false)}>
-                <Hexagon className="h-8 w-8 text-primary" />
-                <span className="text-xl font-bold">Flarebee</span>
-              </Link>
-              <nav className="flex flex-col gap-4">
+            <SheetContent side="right" className="w-[300px] bg-card p-0 flex flex-col">
+              <SheetHeader className="p-6 pb-4 border-b border-border">
+                <SheetTitle className="flex items-center gap-2">
+                   <Hexagon className="h-7 w-7 text-primary" />
+                   <span className="text-lg font-semibold">Flarebee Menu</span>
+                </SheetTitle>
+              </SheetHeader>
+              
+              <div className="flex-grow overflow-y-auto p-6 space-y-3">
+                {user && (
+                  <div className="pb-4 mb-4 border-b border-border">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
+                        <AvatarFallback className="text-lg">{getAvatarFallback(user.displayName)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-medium leading-tight text-card-foreground">{user.displayName || 'User'}</p>
+                        <p className="text-xs leading-tight text-muted-foreground">{user.email}</p>
+                         {role && (
+                          <p className="text-xs leading-none text-muted-foreground flex items-center pt-1">
+                            <ShieldCheck className="mr-1 h-3 w-3 text-primary" />
+                            <span className="font-medium capitalize text-card-foreground/80">{role}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                     <Button variant="ghost" size="sm" asChild className="w-full justify-start text-card-foreground/90 hover:text-card-foreground">
+                        <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                          <LayoutDashboard className="mr-2 h-4 w-4" />
+                          Dashboard
+                        </Link>
+                      </Button>
+                  </div>
+                )}
+
                 {navLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className="text-lg font-medium text-foreground/80 transition-colors hover:text-foreground"
+                    className="flex items-center rounded-md p-2 text-base font-medium text-card-foreground/80 transition-colors hover:bg-muted hover:text-card-foreground"
                   >
+                    {/* Add icons if desired */}
                     {link.label}
                   </Link>
                 ))}
-              </nav>
+                {user && role === 'admin' && (
+                  <Link
+                    href="/admin/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center rounded-md p-2 text-base font-medium text-card-foreground/80 transition-colors hover:bg-muted hover:text-card-foreground"
+                  >
+                     <LayoutGrid className="mr-2 h-4 w-4" /> Admin Panel
+                  </Link>
+                )}
+              </div>
+              
+              <Separator />
+              <div className="p-6 mt-auto">
+                {loading ? (
+                  <div className="h-10 w-full animate-pulse rounded-md bg-muted"></div>
+                ) : user ? (
+                  <Button variant="outline" onClick={() => { signOutUser(); setMobileMenuOpen(false); }} className="w-full group text-destructive-foreground border-destructive hover:bg-destructive/10 hover:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </Button>
+                ) : (
+                  <Button variant="default" onClick={() => { signInWithGoogle(); setMobileMenuOpen(false); }} className="w-full group bg-primary hover:bg-primary/90 text-primary-foreground">
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Login with Google
+                  </Button>
+                )}
+              </div>
             </SheetContent>
           </Sheet>
         </div>
