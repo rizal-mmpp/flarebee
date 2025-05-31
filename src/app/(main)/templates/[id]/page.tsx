@@ -1,5 +1,6 @@
-import { getTemplateById, MOCK_TEMPLATES } from '@/lib/constants';
-import { notFound } from 'next/navigation';
+
+import { getTemplateByIdFromFirestore, getAllTemplatesFromFirestore } from '@/lib/firebase/firestoreTemplates';
+import { notFound, redirect } from 'next/navigation';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,31 +14,50 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel"
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { createCheckoutSession } from '@/lib/actions/stripe.actions'; // For actual purchase
 
+// Revalidate this page on-demand or at intervals
+export const revalidate = 60; // Revalidate every 60 seconds, or use 0 for on-demand with revalidatePath
 
 export async function generateStaticParams() {
-  return MOCK_TEMPLATES.map((template) => ({
-    id: template.id,
-  }));
+  try {
+    const templates = await getAllTemplatesFromFirestore();
+    return templates.map((template) => ({
+      id: template.id,
+    }));
+  } catch (error) {
+    console.error("Failed to generate static params for templates:", error);
+    return [];
+  }
 }
 
-export default function TemplateDetailPage({ params }: { params: { id: string } }) {
-  const template = getTemplateById(params.id);
+export default async function TemplateDetailPage({ params }: { params: { id: string } }) {
+  const template = await getTemplateByIdFromFirestore(params.id);
 
   if (!template) {
     notFound();
   }
-
-  // Placeholder for Stripe Checkout Action
+  
   const handlePurchase = async () => {
     'use server';
-    // In a real app, you'd call your Stripe checkout action here:
-    // const checkoutUrl = await createCheckoutSession(template.id, template.price);
-    // redirect(checkoutUrl);
-    console.log(`Attempting to purchase ${template.title}`);
-    // For demo, redirect to a success page or show a toast
-    // For now, we'll just log. A real implementation would redirect to Stripe.
-    console.log(`Purchasing ${template.title} for $${template.price}. This would normally redirect to Stripe.`);
+    // Convert price to cents for Stripe
+    const priceInCents = Math.round(template.price * 100);
+    const result = await createCheckoutSession({
+      templateId: template.id,
+      templateName: template.title,
+      priceInCents: priceInCents,
+      // userId: user?.id // If you have user auth and want to associate purchase
+    });
+
+    if (result?.checkoutUrl) {
+        redirect(result.checkoutUrl);
+    } else if (result?.error) {
+        // Handle error, maybe redirect back with an error message or use a toast system
+        // For now, just log it. A real app might redirect to ?error=stripe_error
+        console.error("Stripe Error:", result.error);
+        // Potentially redirect to an error page or show a message on the current page
+        // redirect(`/templates/${params.id}?error=${encodeURIComponent(result.error)}`);
+    }
   };
 
 
@@ -61,10 +81,9 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
                        <Image
                         src={src}
                         alt={`${template.title} screenshot ${index + 1}`}
-                        layout="fill"
-                        objectFit="cover"
-                        className="rounded-lg"
-                        data-ai-hint="template screenshot"
+                        fill
+                        className="rounded-lg object-cover"
+                        data-ai-hint={template.dataAiHint || "template screenshot"}
                       />
                     </AspectRatio>
                   </CarouselItem>
@@ -78,10 +97,9 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
               <Image
                 src={template.imageUrl}
                 alt={template.title}
-                layout="fill"
-                objectFit="cover"
-                className="rounded-lg"
-                data-ai-hint="template image"
+                fill
+                className="rounded-lg object-cover"
+                data-ai-hint={template.dataAiHint || "template image"}
               />
             </AspectRatio>
           )}
@@ -90,7 +108,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
         <div className="py-4">
           <Badge variant="secondary" className="mb-2">{template.category.name}</Badge>
           <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">{template.title}</h1>
-          <p className="text-4xl font-extrabold text-primary mb-6">${template.price}</p>
+          <p className="text-4xl font-extrabold text-primary mb-6">${template.price.toFixed(2)}</p>
           
           <div className="mb-6 prose prose-invert max-w-none text-muted-foreground">
              <p>{template.longDescription || template.description}</p>

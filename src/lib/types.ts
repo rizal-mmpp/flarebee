@@ -8,25 +8,26 @@ export interface Category {
 }
 
 export interface Template {
-  id: string;
+  id: string; // Firestore document ID
   title: string;
   description: string;
   longDescription?: string;
-  category: Category;
+  category: Category; // Consider storing categoryId and fetching/joining, or denormalize. For simplicity, denormalizing.
   price: number;
   tags: string[];
-  imageUrl: string;
+  imageUrl: string; // Main preview image
   dataAiHint?: string;
-  screenshots?: string[];
-  previewUrl?: string;
-  downloadUrl?: string; // This would be provided after purchase
+  screenshots?: string[]; // URLs of additional screenshots
+  previewUrl?: string; // Link to live preview
+  downloadUrl?: string; // This would be provided after purchase - managed elsewhere
   techStack?: string[];
-  files?: {
+  files?: { // Placeholder for actual template files, e.g., stored in Firebase Storage
     zipUrl?: string;
     readmeUrl?: string;
   };
-  createdAt: string; // ISO date string
-  author?: string; // Optional author name
+  createdAt: string; // ISO date string (from Firestore Timestamp)
+  updatedAt?: string; // ISO date string (from Firestore Timestamp)
+  author?: string; // Optional author name / UID
 }
 
 // Firebase related types
@@ -39,6 +40,6 @@ export interface UserProfile {
   email: string | null;
   displayName: string | null;
   role: 'admin' | 'user';
-  createdAt: Date;
+  createdAt: Date; // Stored as Firestore Timestamp, converted to Date on client
   photoURL?: string | null;
 }

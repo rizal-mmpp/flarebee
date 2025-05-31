@@ -1,22 +1,43 @@
-'use client';
 
-import { useState, useMemo } from 'react';
-import { CATEGORIES, MOCK_TEMPLATES } from '@/lib/constants';
+'use client'; // This page needs client interactivity for search and filter
+
+import { useState, useMemo, useEffect } from 'react';
+import { CATEGORIES } from '@/lib/constants';
 import { CategoryFilter } from '@/components/sections/templates/CategoryFilter';
 import { TemplateGrid } from '@/components/sections/templates/TemplateGrid';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
+import type { Template } from '@/lib/types';
+import { getAllTemplatesFromFirestore } from '@/lib/firebase/firestoreTemplates'; // Fetch from Firestore
 
 export default function TemplatesPage() {
+  const [allTemplates, setAllTemplates] = useState<Template[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    async function fetchTemplates() {
+      setIsLoading(true);
+      try {
+        const templates = await getAllTemplatesFromFirestore();
+        setAllTemplates(templates);
+      } catch (error) {
+        console.error("Failed to fetch templates for public page:", error);
+        // Optionally, set an error state and display a message
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchTemplates();
+  }, []);
 
   const handleSelectCategory = (slug: string | null) => {
     setSelectedCategory(slug);
   };
 
   const filteredTemplates = useMemo(() => {
-    return MOCK_TEMPLATES.filter((template) => {
+    return allTemplates.filter((template) => {
       const categoryMatch = selectedCategory ? template.category.slug === selectedCategory : true;
       const searchMatch = searchTerm
         ? template.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -25,7 +46,7 @@ export default function TemplatesPage() {
         : true;
       return categoryMatch && searchMatch;
     });
-  }, [selectedCategory, searchTerm]);
+  }, [selectedCategory, searchTerm, allTemplates]);
 
   return (
     <div className="container mx-auto px-4 py-12 md:py-16">
@@ -52,7 +73,13 @@ export default function TemplatesPage() {
         selectedCategory={selectedCategory}
         onSelectCategory={handleSelectCategory}
       />
-      <TemplateGrid templates={filteredTemplates} />
+      {isLoading ? (
+        <div className="flex justify-center items-center py-20">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      ) : (
+        <TemplateGrid templates={filteredTemplates} />
+      )}
     </div>
   );
 }
