@@ -18,7 +18,6 @@ export default function AdminDashboardPage() {
   };
 
   const handleDeleteTemplate = (templateId: string) => {
-    // This is a placeholder. In a real app, you'd call a server action to delete from DB.
     setTemplates(prevTemplates => prevTemplates.filter(t => t.id !== templateId));
     toast({
       title: "Template Deleted",
@@ -31,14 +30,13 @@ export default function AdminDashboardPage() {
       <header className="mb-10">
         <h1 className="text-4xl font-bold tracking-tight text-foreground mb-3 flex items-center">
           <LayoutGrid className="mr-3 h-8 w-8 text-primary" />
-          Admin Dashboard
+          Flarebee Admin Panel
         </h1>
         <p className="text-lg text-muted-foreground">
           Manage your Flarebee templates. Upload new ones, edit existing, and view stats.
         </p>
       </header>
 
-      {/* Placeholder for Stats Section */}
       <section className="mb-10">
         <h2 className="text-2xl font-semibold text-foreground mb-4 flex items-center">
           <BarChart3 className="mr-2 h-6 w-6 text-primary" />

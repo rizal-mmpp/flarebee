@@ -13,10 +13,10 @@ export default function UserDashboardPage() {
       <header className="mb-10">
         <h1 className="text-4xl font-bold tracking-tight text-foreground mb-3 flex items-center">
           <LayoutDashboard className="mr-3 h-8 w-8 text-primary" />
-          My Dashboard
+          Dashboard
         </h1>
         <p className="text-lg text-muted-foreground">
-          Welcome back, {user?.displayName || 'User'}! Here's an overview of your account.
+          Welcome back, {user?.displayName || 'User'}! This is your dashboard.
         </p>
       </header>
 

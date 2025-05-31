@@ -1,7 +1,7 @@
 
 'use client';
 import Link from 'next/link';
-import { Hexagon, LogIn, LogOut, Menu, UserCircle, X, LayoutDashboard, ShieldCheck } from 'lucide-react';
+import { Hexagon, LogIn, LogOut, Menu, UserCircle, X, LayoutDashboard, ShieldCheck, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
@@ -27,7 +27,7 @@ export function Navbar() {
 
   const navLinks = [...baseNavLinks];
   if (user) {
-    navLinks.push({ href: '/dashboard', label: 'My Dashboard' });
+    navLinks.push({ href: '/dashboard', label: 'Dashboard' });
   }
   if (user && role === 'admin') {
     navLinks.push({ href: '/admin/dashboard', label: 'Admin Panel' });
@@ -77,7 +77,7 @@ export function Navbar() {
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-64" align="end" forceMount> {/* Increased width for role */}
+              <DropdownMenuContent className="w-64" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{user.displayName || 'User'}</p>
@@ -96,13 +96,13 @@ export function Navbar() {
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard" className="w-full">
                     <LayoutDashboard className="mr-2 h-4 w-4" />
-                    <span>My Dashboard</span>
+                    <span>Dashboard</span>
                   </Link>
                 </DropdownMenuItem>
                 {role === 'admin' && (
                   <DropdownMenuItem asChild>
                     <Link href="/admin/dashboard" className="w-full">
-                       <UserCircle className="mr-2 h-4 w-4" /> 
+                       <LayoutGrid className="mr-2 h-4 w-4" /> 
                       <span>Admin Panel</span>
                     </Link>
                   </DropdownMenuItem>
