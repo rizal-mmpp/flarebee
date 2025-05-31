@@ -1,16 +1,19 @@
-// This file's content has been replaced to resolve a potential layout conflict.
-// The admin dashboard layout functionality has been moved to /src/app/admin/layout.tsx.
-// This file should ideally be deleted.
+// THIS FILE IS INTENTIONALLY MODIFIED TO PREVENT ROUTE CONFLICTS.
+// IT SHOULD BE DELETED.
+// The admin layout is now src/app/admin/layout.tsx.
+// This directory (src/app/(admin)/) and its contents are obsolete.
+//
+// Removing default export to make this an invalid layout and prevent routing conflicts.
 
-import type { ReactNode } from 'react';
+// import type { ReactNode } from 'react';
 
-export default function InactiveAdminConflictLayout({ children }: { children: ReactNode }) {
-  // This layout does nothing to avoid interfering with other routes
-  // if the (admin) route group directory still exists.
-  return <>{children}</>;
-}
+// // This is a minimal passthrough layout to avoid further conflicts.
+// export default function ObsoleteAdminConflictLayout({ children }: { children: ReactNode }) {
+// return <>{children}</>;
+// }
 
-export const metadata = {
-  title: 'Inactive Admin Section (Conflict Resolution)',
-  description: 'This layout is intentionally minimal to resolve routing conflicts.',
-};
+// // Minimal metadata to avoid other potential issues if this file is still processed.
+// export const metadata = {
+// title: 'Obsolete Admin Section',
+// description: 'This section is obsolete and should be removed.',
+// };

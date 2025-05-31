@@ -1,8 +1,9 @@
-// This file's content has been replaced to resolve a route conflict.
-// The admin dashboard functionality has been moved to /src/app/admin/dashboard/page.tsx.
-// This old path /dashboard (via the (admin) route group) conflicted with the user dashboard.
-// This file should ideally be deleted.
-
-export const message = "This old admin dashboard page (in (admin) route group) has been moved and is no longer active.";
-
-// By not exporting a default React component, Next.js should not treat this as a page.
+// THIS FILE IS INTENTIONALLY MODIFIED TO PREVENT ROUTE CONFLICTS.
+// IT SHOULD BE DELETED.
+// The route /dashboard is now served by src/app/dashboard/page.tsx.
+// The admin dashboard is at /admin/dashboard, served by src/app/admin/dashboard/page.tsx.
+//
+// DO NOT ADD ANY EXPORTS OR REACT COMPONENTS HERE.
+// This file's presence, even if not exporting a default component,
+// can conflict with other pages resolving to the same path due to route groups.
+// This file does not export a default component and should not be treated as a page.
