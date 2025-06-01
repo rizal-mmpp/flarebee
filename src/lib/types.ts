@@ -12,16 +12,16 @@ export interface Template {
   title: string;
   description: string;
   longDescription?: string;
-  category: Category; // Consider storing categoryId and fetching/joining, or denormalize. For simplicity, denormalizing.
+  category: Category; 
   price: number;
   tags: string[];
   imageUrl: string; // Main preview image
   dataAiHint?: string;
   screenshots?: string[]; // URLs of additional screenshots
   previewUrl?: string; // Link to live preview
-  downloadUrl?: string; // This would be provided after purchase - managed elsewhere
+  downloadUrl?: string; 
   techStack?: string[];
-  files?: { // Placeholder for actual template files, e.g., stored in Firebase Storage
+  files?: { 
     zipUrl?: string;
     readmeUrl?: string;
   };
@@ -42,4 +42,12 @@ export interface UserProfile {
   role: 'admin' | 'user';
   createdAt: Date; // Stored as Firestore Timestamp, converted to Date on client
   photoURL?: string | null;
+}
+
+export interface CartItem {
+  id: string; // template.id
+  title: string;
+  price: number;
+  imageUrl: string;
+  quantity: number; // Will typically be 1 for templates
 }

@@ -1,11 +1,12 @@
 
 'use client';
 import Link from 'next/link';
-import { Hexagon, LogIn, LogOut, Menu, UserCircle, X, LayoutDashboard, ShieldCheck, LayoutGrid, ExternalLink } from 'lucide-react';
+import { Hexagon, LogIn, LogOut, Menu, UserCircle, X, LayoutDashboard, ShieldCheck, LayoutGrid, ShoppingCart, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
 import { useAuth } from '@/lib/firebase/AuthContext';
+import { useCart } from '@/context/CartContext'; // Import useCart
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -16,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 
 const baseNavLinks = [
   { href: '/', label: 'Home' },
@@ -25,10 +27,9 @@ const baseNavLinks = [
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, role, signInWithGoogle, signOutUser, loading } = useAuth();
+  const { cartItems } = useCart(); // Get cart items
 
   const navLinks = [...baseNavLinks];
-  // Admin panel link is added conditionally later for desktop to control order
-  // For mobile, it's added within the SheetContent logic
 
   const getAvatarFallback = (displayName: string | null | undefined) => {
     if (!displayName) return <UserCircle className="h-6 w-6" />;
@@ -39,6 +40,8 @@ export function Navbar() {
       .toUpperCase();
     return initials || <UserCircle className="h-6 w-6" />;
   };
+
+  const cartItemCount = cartItems.reduce((count, item) => count + item.quantity, 0);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -69,6 +72,19 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-3 pl-4">
+          {/* Cart Icon */}
+          <Button variant="ghost" size="icon" asChild className="relative hidden md:inline-flex">
+            <Link href="/checkout">
+              <ShoppingCart className="h-5 w-5" />
+              {cartItemCount > 0 && (
+                <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
+                  {cartItemCount}
+                </Badge>
+              )}
+              <span className="sr-only">Shopping Cart</span>
+            </Link>
+          </Button>
+
           {/* Desktop Auth Buttons / Profile Dropdown */}
           <div className="hidden md:flex items-center">
             {loading ? (
@@ -145,6 +161,20 @@ export function Navbar() {
               </SheetHeader>
               
               <div className="flex-grow overflow-y-auto p-6 space-y-3">
+                 {/* Mobile Cart Link */}
+                <Link
+                    href="/checkout"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center rounded-md p-2 text-base font-medium text-card-foreground/80 transition-colors hover:bg-muted hover:text-card-foreground relative"
+                >
+                    <ShoppingCart className="mr-2 h-5 w-5" /> Cart
+                    {cartItemCount > 0 && (
+                        <Badge variant="destructive" className="absolute top-1 right-1 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
+                        {cartItemCount}
+                        </Badge>
+                    )}
+                </Link>
+
                 {user && (
                   <div className="pb-4 mb-4 border-b border-border">
                     <div className="flex items-center gap-3 mb-2">
@@ -179,7 +209,6 @@ export function Navbar() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="flex items-center rounded-md p-2 text-base font-medium text-card-foreground/80 transition-colors hover:bg-muted hover:text-card-foreground"
                   >
-                    {/* Add icons if desired */}
                     {link.label}
                   </Link>
                 ))}

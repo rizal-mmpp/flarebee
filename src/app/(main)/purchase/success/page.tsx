@@ -6,18 +6,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { CheckCircle, Download, Home, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useCart } from "@/context/CartContext"; // Import useCart
+import { useEffect } from "react";
 
 export default function PurchaseSuccessPage() {
   const searchParams = useSearchParams();
-  const externalId = searchParams.get('external_id');
-  const source = searchParams.get('source'); // To differentiate if you ever add more payment gateways
+  const orderId = searchParams.get('order_id') || searchParams.get('external_id'); // Support both for transition
+  const source = searchParams.get('source'); 
 
-  // In a real app, you might want to use externalId to fetch transaction details from Xendit
-  // and confirm payment, then provision access to the template.
-  // For now, we assume successful redirect means successful payment.
+  const { clearCart, cartItems } = useCart(); // Get clearCart and cartItems
 
-  const purchasedItemName = "Your Awesome Template"; // Placeholder - fetch actual template name if possible
-  const downloadLink = "#"; // Placeholder - this would be dynamically generated or fetched
+  useEffect(() => {
+    // Clear the cart only if there were items and the page loaded successfully
+    // This is an optimistic clear. A more robust solution involves webhook verification.
+    if (cartItems.length > 0) {
+        clearCart();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
+
+  // In a real app, you might use orderId to fetch transaction details 
+  // and confirm payment, then provision access.
+  
+  // For a cart, purchasedItemName and downloadLink would be more complex.
+  // We'll keep it generic for now.
+  const purchasedItemsDescription = "Your purchased items"; 
+  const downloadInfo = "Download links for your purchased items will be available in your account or sent via email.";
 
   return (
     <div className="container mx-auto px-4 py-16 md:py-24 flex justify-center items-center min-h-[calc(100vh-10rem)]">
@@ -29,18 +43,24 @@ export default function PurchaseSuccessPage() {
           <CardTitle className="text-3xl font-bold text-foreground">Payment Successful!</CardTitle>
           <CardDescription className="text-lg text-muted-foreground pt-2">
             Thank you for your purchase.
-            {externalId && <span className="block text-sm mt-1">Order ID: {externalId}</span>}
+            {orderId && <span className="block text-sm mt-1">Order ID: {orderId}</span>}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <p className="text-muted-foreground">
-            Your download link for "{purchasedItemName}" is available below. You will also receive an email receipt with download information shortly (if email was provided).
+            Your order for "{purchasedItemsDescription}" has been processed. 
+            {downloadInfo}
+            You will also receive an email receipt shortly (if an email was provided).
           </p>
+          {/* 
+            For multiple items, a single "Download Now" button might not be appropriate.
+            You might list items or direct to a "My Downloads" page.
           <Button asChild size="lg" className="w-full group bg-primary hover:bg-primary/90 text-primary-foreground">
-            <a href={downloadLink} download>
-              <Download className="mr-2 h-5 w-5" /> Download Now
+            <a href={"#"} download> // Placeholder
+              <Download className="mr-2 h-5 w-5" /> Access Purchases
             </a>
-          </Button>
+          </Button> 
+          */}
           <div className="flex flex-col sm:flex-row gap-4">
             <Button variant="outline" asChild size="lg" className="w-full group">
               <Link href="/templates">

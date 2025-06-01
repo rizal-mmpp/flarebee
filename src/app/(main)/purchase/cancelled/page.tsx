@@ -9,7 +9,8 @@ import { useSearchParams } from "next/navigation";
 
 export default function PurchaseCancelledPage() {
   const searchParams = useSearchParams();
-  const externalId = searchParams.get('external_id');
+  const orderId = searchParams.get('order_id') || searchParams.get('external_id'); // Support both
+  // const source = searchParams.get('source'); // Available if needed
 
   return (
     <div className="container mx-auto px-4 py-16 md:py-24 flex justify-center items-center min-h-[calc(100vh-10rem)]">
@@ -21,7 +22,7 @@ export default function PurchaseCancelledPage() {
           <CardTitle className="text-3xl font-bold text-foreground">Payment Cancelled</CardTitle>
           <CardDescription className="text-lg text-muted-foreground pt-2">
             Your purchase process was cancelled or failed.
-            {externalId && <span className="block text-sm mt-1">Order ID: {externalId}</span>}
+            {orderId && <span className="block text-sm mt-1">Order ID: {orderId}</span>}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -31,8 +32,8 @@ export default function PurchaseCancelledPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <Button variant="outline" asChild size="lg" className="w-full group">
-              <Link href="/templates">
-                <ShoppingBag className="mr-2 h-5 w-5" /> Continue Shopping
+              <Link href="/checkout"> {/* Link back to cart/checkout */}
+                <ShoppingBag className="mr-2 h-5 w-5" /> View Cart
               </Link>
             </Button>
             <Button asChild size="lg" className="w-full group bg-primary hover:bg-primary/90 text-primary-foreground">

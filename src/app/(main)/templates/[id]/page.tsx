@@ -1,10 +1,13 @@
 
+'use client'; // Needs to be client component for cart interaction and potential client-side error display
+
+import type { Template } from '@/lib/types';
 import { getTemplateByIdFromFirestore, getAllTemplatesFromFirestore } from '@/lib/firebase/firestoreTemplates';
-import { notFound, redirect } from 'next/navigation';
+import { notFound, useRouter, useSearchParams } from 'next/navigation'; // Import useRouter and useSearchParams
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CreditCard, Eye, Zap } from 'lucide-react';
+import { ArrowLeft, CreditCard, Eye, Zap, ShoppingCart, Loader2, ServerCrash } from 'lucide-react';
 import Link from 'next/link';
 import {
   Carousel,
@@ -14,60 +17,110 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel"
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { createXenditInvoice } from '@/lib/actions/xendit.actions'; // Use Xendit action
-import { toast } from '@/hooks/use-toast'; // For displaying errors
+import { useCart } from '@/context/CartContext'; // Import useCart
+import { useEffect, useState, useTransition } from 'react'; // Import useEffect and useState
+import { toast } from '@/hooks/use-toast';
+
+// Removed generateStaticParams as this page is now client-rendered for cart interactions and dynamic content.
+// export async function generateStaticParams() { ... }
 
 // Revalidate this page on-demand or at intervals
-export const revalidate = 60; // Revalidate every 60 seconds, or use 0 for on-demand with revalidatePath
+// export const revalidate = 60; // This is not applicable for client components in the same way. Data fetching is dynamic.
 
-export async function generateStaticParams() {
-  try {
-    const templates = await getAllTemplatesFromFirestore();
-    return templates.map((template) => ({
-      id: template.id,
-    }));
-  } catch (error) {
-    console.error("Failed to generate static params for templates:", error);
-    return [];
-  }
-}
-
-export default async function TemplateDetailPage({ params }: { params: { id: string } }) {
-  const template = await getTemplateByIdFromFirestore(params.id);
-
-  if (!template) {
-    notFound();
-  }
+export default function TemplateDetailPage({ params }: { params: { id: string } }) {
+  const [template, setTemplate] = useState<Template | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  const handlePurchase = async () => {
-    'use server';
-    
-    // Price is passed as is, Xendit handles currency format.
-    // Assuming template.price is in USD.
-    const result = await createXenditInvoice({
-      templateId: template.id,
-      templateName: template.title,
-      price: template.price, // Pass the price directly
-      currency: 'USD', // Specify currency
-      // payerEmail: user?.email // If user is logged in and you want to prefill
-      // userId: user?.id // If you have user auth and want to associate purchase
-    });
+  const { addToCart, isItemInCart } = useCart();
+  const router = useRouter();
+  const searchParams = useSearchParams(); // For reading query params like ?error=
+  const [isBuyNowPending, startBuyNowTransition] = useTransition();
 
-    if (result?.invoiceUrl) {
-        redirect(result.invoiceUrl);
-    } else if (result?.error) {
-        // Instead of redirecting with error, we should show a toast or an alert on the current page.
-        // For now, we will log and redirect back to the template page with an error query param.
-        // A better UX would be to display the error directly on this page.
-        console.error("Xendit Error:", result.error);
-        // This redirect isn't ideal as it won't show the error on THIS page.
-        // A client-side handling of this error would be better (e.g., using useTransition and showing toast).
-        // For a server action redirecting, this is a simple way to indicate an issue.
-        const errorMessage = encodeURIComponent(result.error || "Payment processing failed. Please try again.");
-        redirect(`/templates/${params.id}?error=${errorMessage}`);
+  useEffect(() => {
+    async function fetchTemplate() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const fetchedTemplate = await getTemplateByIdFromFirestore(params.id);
+        if (!fetchedTemplate) {
+          notFound(); // Will trigger the not-found mechanism
+          return;
+        }
+        setTemplate(fetchedTemplate);
+      } catch (err) {
+        console.error("Failed to fetch template:", err);
+        setError("Could not load template details. Please try again later.");
+        // notFound(); // Optionally, treat fetch errors as not found
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    if (params.id) {
+      fetchTemplate();
+    }
+
+    // Display error from query parameter (e.g., from Xendit redirect)
+    const xenditError = searchParams?.get('error');
+    if (xenditError) {
+      toast({
+        title: "Payment Error",
+        description: decodeURIComponent(xenditError),
+        variant: "destructive",
+      });
+      // Optional: remove error from URL after displaying
+      router.replace(`/templates/${params.id}`, { scroll: false });
+    }
+
+  }, [params.id, searchParams, router]);
+
+
+  const handleAddToCart = () => {
+    if (template) {
+      addToCart(template);
     }
   };
 
+  const handleBuyNow = () => {
+    if (template) {
+      startBuyNowTransition(() => {
+        addToCart(template); // Add to cart first
+        router.push('/checkout'); // Then redirect to checkout
+      });
+    }
+  };
+  
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-12 md:py-16 flex justify-center items-center min-h-[60vh]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-12 md:py-16 text-center">
+         <ServerCrash className="mx-auto h-16 w-16 text-destructive mb-4" />
+        <h2 className="text-2xl font-semibold text-destructive mb-2">Error Loading Template</h2>
+        <p className="text-muted-foreground mb-6">{error}</p>
+        <Button variant="outline" asChild className="group">
+          <Link href="/templates">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Templates
+          </Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (!template) {
+    // This case should ideally be handled by notFound() in useEffect, 
+    // but as a fallback or if notFound() is removed for custom error display.
+    return notFound(); 
+  }
+  
+  const itemAlreadyInCart = isItemInCart(template.id);
 
   return (
     <div className="container mx-auto px-4 py-12 md:py-16">
@@ -92,6 +145,7 @@ export default async function TemplateDetailPage({ params }: { params: { id: str
                         fill
                         className="rounded-lg object-cover"
                         data-ai-hint={template.dataAiHint || "template screenshot"}
+                        priority={index === 0} // Prioritize loading the first image
                       />
                     </AspectRatio>
                   </CarouselItem>
@@ -108,6 +162,7 @@ export default async function TemplateDetailPage({ params }: { params: { id: str
                 fill
                 className="rounded-lg object-cover"
                 data-ai-hint={template.dataAiHint || "template image"}
+                priority
               />
             </AspectRatio>
           )}
@@ -146,16 +201,25 @@ export default async function TemplateDetailPage({ params }: { params: { id: str
             </div>
           </div>
           
-          {/* Client-side error display (optional enhancement, not implemented here due to server action redirect) */}
-          {/* {searchParams?.error && (
-            <div className="mb-4 p-3 rounded-md bg-destructive/20 text-destructive border border-destructive">
-              <p><strong>Error:</strong> {searchParams.error}</p>
-            </div>
-          )} */}
-
-          <form action={handlePurchase} className="space-y-4">
-            <Button type="submit" size="lg" className="w-full group bg-accent hover:bg-accent/90 text-accent-foreground transition-all duration-300 ease-in-out transform hover:scale-105">
-              <CreditCard className="mr-2 h-5 w-5" /> Purchase Now
+          <div className="space-y-4">
+            <Button 
+              size="lg" 
+              className="w-full group bg-accent hover:bg-accent/90 text-accent-foreground transition-all duration-300 ease-in-out transform hover:scale-105"
+              onClick={handleBuyNow}
+              disabled={isBuyNowPending}
+            >
+              {isBuyNowPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
+              Buy Now & Checkout
+            </Button>
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="w-full group"
+              onClick={handleAddToCart}
+              disabled={itemAlreadyInCart}
+            >
+              <ShoppingCart className="mr-2 h-5 w-5" /> 
+              {itemAlreadyInCart ? 'Already in Cart' : 'Add to Cart'}
             </Button>
             {template.previewUrl && template.previewUrl !== '#' && (
                <Button variant="outline" size="lg" asChild className="w-full group border-primary text-primary hover:bg-primary/10 transition-all duration-300 ease-in-out transform hover:scale-105">
@@ -164,7 +228,7 @@ export default async function TemplateDetailPage({ params }: { params: { id: str
                 </Link>
               </Button>
             )}
-          </form>
+          </div>
         </div>
       </div>
     </div>
