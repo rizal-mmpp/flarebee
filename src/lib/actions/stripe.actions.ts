@@ -1,75 +1,47 @@
+'use client';
 
-'use server';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertTriangle, Home, ShoppingBag } from "lucide-react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
-import Stripe from 'stripe';
-import { headers } from 'next/headers';
-// Removed redirect from next/navigation as we will return URL or error
+export default function PurchaseCancelledPage() {
+  const searchParams = useSearchParams();
+  const externalId = searchParams.get('external_id');
 
-// Ensure STRIPE_SECRET_KEY is set in your .env or .env.local
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-
-if (!stripeSecretKey) {
-  console.warn("STRIPE_SECRET_KEY is not set. Stripe checkout will not function.");
-}
-
-
-interface CreateCheckoutSessionArgs {
-  templateId: string;
-  templateName: string;
-  priceInCents: number; // Stripe expects price in cents
-  userId?: string; // Optional: for associating purchase with a user
-}
-
-interface CreateCheckoutSessionResult {
-  checkoutUrl?: string | null;
-  error?: string;
-}
-
-export async function createCheckoutSession(args: CreateCheckoutSessionArgs): Promise<CreateCheckoutSessionResult> {
-  if (!stripeSecretKey) {
-    console.error('Stripe secret key is not configured. Cannot create checkout session.');
-    return { error: 'Payment system is not configured. Please contact support.' };
-  }
-  
-  const stripe = new Stripe(stripeSecretKey);
-  
-  const host = headers().get('host');
-  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
-  const appBaseUrl = `${protocol}://${host}`;
-
-  try {
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: args.templateName,
-              metadata: { templateId: args.templateId },
-              images: [], // Consider adding template.imageUrl here if available and desired
-            },
-            unit_amount: args.priceInCents,
-          },
-          quantity: 1,
-        },
-      ],
-      mode: 'payment',
-      success_url: `${appBaseUrl}/purchase/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appBaseUrl}/purchase/cancelled`,
-      metadata: {
-        templateId: args.templateId,
-        userId: args.userId || '', 
-      },
-    });
-
-    if (session.url) {
-      return { checkoutUrl: session.url };
-    } else {
-      return { error: 'Stripe session URL not found after creation.' };
-    }
-  } catch (error: any) {
-    console.error('Error creating Stripe checkout session:', error);
-    return { error: error.message || 'Could not create checkout session due to an unexpected error.' };
-  }
+  return (
+    <div className="container mx-auto px-4 py-16 md:py-24 flex justify-center items-center min-h-[calc(100vh-10rem)]">
+      <Card className="w-full max-w-lg text-center shadow-xl bg-card">
+        <CardHeader>
+          <div className="mx-auto bg-destructive/10 rounded-full p-3 w-fit mb-4">
+            <AlertTriangle className="h-12 w-12 text-destructive" />
+          </div>
+          <CardTitle className="text-3xl font-bold text-foreground">Payment Cancelled</CardTitle>
+          <CardDescription className="text-lg text-muted-foreground pt-2">
+            Your purchase process was cancelled or failed.
+            {externalId && <span className="block text-sm mt-1">Order ID: {externalId}</span>}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <p className="text-muted-foreground">
+            It seems you have cancelled the payment or something went wrong during the process. Your order has not been processed.
+            If you believe this is an error, please try again or contact support.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Button variant="outline" asChild size="lg" className="w-full group">
+              <Link href="/templates">
+                <ShoppingBag className="mr-2 h-5 w-5" /> Continue Shopping
+              </Link>
+            </Button>
+            <Button asChild size="lg" className="w-full group bg-primary hover:bg-primary/90 text-primary-foreground">
+              <Link href="/">
+                <Home className="mr-2 h-5 w-5" /> Go to Homepage
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }

@@ -4,7 +4,7 @@ import { notFound, redirect } from 'next/navigation';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CreditCard, Download, Eye, Zap } from 'lucide-react';
+import { ArrowLeft, CreditCard, Eye, Zap } from 'lucide-react';
 import Link from 'next/link';
 import {
   Carousel,
@@ -14,7 +14,8 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel"
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { createCheckoutSession } from '@/lib/actions/stripe.actions'; // For actual purchase
+import { createXenditInvoice } from '@/lib/actions/xendit.actions'; // Use Xendit action
+import { toast } from '@/hooks/use-toast'; // For displaying errors
 
 // Revalidate this page on-demand or at intervals
 export const revalidate = 60; // Revalidate every 60 seconds, or use 0 for on-demand with revalidatePath
@@ -40,23 +41,30 @@ export default async function TemplateDetailPage({ params }: { params: { id: str
   
   const handlePurchase = async () => {
     'use server';
-    // Convert price to cents for Stripe
-    const priceInCents = Math.round(template.price * 100);
-    const result = await createCheckoutSession({
+    
+    // Price is passed as is, Xendit handles currency format.
+    // Assuming template.price is in USD.
+    const result = await createXenditInvoice({
       templateId: template.id,
       templateName: template.title,
-      priceInCents: priceInCents,
+      price: template.price, // Pass the price directly
+      currency: 'USD', // Specify currency
+      // payerEmail: user?.email // If user is logged in and you want to prefill
       // userId: user?.id // If you have user auth and want to associate purchase
     });
 
-    if (result?.checkoutUrl) {
-        redirect(result.checkoutUrl);
+    if (result?.invoiceUrl) {
+        redirect(result.invoiceUrl);
     } else if (result?.error) {
-        // Handle error, maybe redirect back with an error message or use a toast system
-        // For now, just log it. A real app might redirect to ?error=stripe_error
-        console.error("Stripe Error:", result.error);
-        // Potentially redirect to an error page or show a message on the current page
-        // redirect(`/templates/${params.id}?error=${encodeURIComponent(result.error)}`);
+        // Instead of redirecting with error, we should show a toast or an alert on the current page.
+        // For now, we will log and redirect back to the template page with an error query param.
+        // A better UX would be to display the error directly on this page.
+        console.error("Xendit Error:", result.error);
+        // This redirect isn't ideal as it won't show the error on THIS page.
+        // A client-side handling of this error would be better (e.g., using useTransition and showing toast).
+        // For a server action redirecting, this is a simple way to indicate an issue.
+        const errorMessage = encodeURIComponent(result.error || "Payment processing failed. Please try again.");
+        redirect(`/templates/${params.id}?error=${errorMessage}`);
     }
   };
 
@@ -138,6 +146,13 @@ export default async function TemplateDetailPage({ params }: { params: { id: str
             </div>
           </div>
           
+          {/* Client-side error display (optional enhancement, not implemented here due to server action redirect) */}
+          {/* {searchParams?.error && (
+            <div className="mb-4 p-3 rounded-md bg-destructive/20 text-destructive border border-destructive">
+              <p><strong>Error:</strong> {searchParams.error}</p>
+            </div>
+          )} */}
+
           <form action={handlePurchase} className="space-y-4">
             <Button type="submit" size="lg" className="w-full group bg-accent hover:bg-accent/90 text-accent-foreground transition-all duration-300 ease-in-out transform hover:scale-105">
               <CreditCard className="mr-2 h-5 w-5" /> Purchase Now

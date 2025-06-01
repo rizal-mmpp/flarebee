@@ -1,9 +1,16 @@
+
+'use client';
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, Home, ShoppingBag } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 export default function PurchaseCancelledPage() {
+  const searchParams = useSearchParams();
+  const externalId = searchParams.get('external_id');
+
   return (
     <div className="container mx-auto px-4 py-16 md:py-24 flex justify-center items-center min-h-[calc(100vh-10rem)]">
       <Card className="w-full max-w-lg text-center shadow-xl bg-card">
@@ -13,12 +20,14 @@ export default function PurchaseCancelledPage() {
           </div>
           <CardTitle className="text-3xl font-bold text-foreground">Payment Cancelled</CardTitle>
           <CardDescription className="text-lg text-muted-foreground pt-2">
-            Your purchase process was cancelled.
+            Your purchase process was cancelled or failed.
+            {externalId && <span className="block text-sm mt-1">Order ID: {externalId}</span>}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <p className="text-muted-foreground">
-            It seems you have cancelled the payment or something went wrong. Your order has not been processed.
+            It seems you have cancelled the payment or something went wrong during the process. Your order has not been processed.
+            If you believe this is an error, please try again or contact support.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <Button variant="outline" asChild size="lg" className="w-full group">
