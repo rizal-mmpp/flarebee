@@ -23,6 +23,18 @@ const nextConfig: NextConfig = {
         port: '8080',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'erpnext.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'flarebee.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };
