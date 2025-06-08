@@ -7,7 +7,7 @@ import { notFound, useRouter, useSearchParams } from 'next/navigation'; // Impor
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CreditCard, Eye, Zap, ShoppingCart, Loader2, ServerCrash, LogIn } from 'lucide-react';
+import { ArrowLeft, CreditCard, Eye, Zap, ShoppingCart, Loader2, ServerCrash } from 'lucide-react'; // Removed LogIn
 import Link from 'next/link';
 import {
   Carousel,
@@ -21,15 +21,9 @@ import { useCart } from '@/context/CartContext'; // Import useCart
 import { use, useEffect, useState, useTransition } from 'react'; // Import use
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/firebase/AuthContext'; // Import useAuth
-
-// Removed generateStaticParams as this page is now client-rendered for cart interactions and dynamic content.
-// export async function generateStaticParams() { ... }
-
-// Revalidate this page on-demand or at intervals
-// export const revalidate = 60; // This is not applicable for client components in the same way. Data fetching is dynamic.
+import { LoginModal } from '@/components/shared/LoginModal'; // Import the new LoginModal
 
 export default function TemplateDetailPage({ params }: { params: { id: string } }) {
-  // Unwrap params using React.use() as suggested by the Next.js warning
   const unwrappedParams = use(params);
   const id = unwrappedParams.id;
 
@@ -38,35 +32,34 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
   const [error, setError] = useState<string | null>(null);
   
   const { addToCart, isItemInCart } = useCart();
-  const { user } = useAuth(); // Get user from AuthContext
+  const { user, signInWithGoogle } = useAuth(); // Get user and signInWithGoogle from AuthContext
   const router = useRouter();
-  const searchParams = useSearchParams(); // For reading query params like ?error=
+  const searchParams = useSearchParams();
   const [isBuyNowPending, startBuyNowTransition] = useTransition();
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   useEffect(() => {
     async function fetchTemplate() {
       setIsLoading(true);
       setError(null);
       try {
-        const fetchedTemplate = await getTemplateByIdFromFirestore(id); // Use unwrapped id
+        const fetchedTemplate = await getTemplateByIdFromFirestore(id);
         if (!fetchedTemplate) {
-          notFound(); // Will trigger the not-found mechanism
+          notFound();
           return;
         }
         setTemplate(fetchedTemplate);
       } catch (err) {
         console.error("Failed to fetch template:", err);
         setError("Could not load template details. Please try again later.");
-        // notFound(); // Optionally, treat fetch errors as not found
       } finally {
         setIsLoading(false);
       }
     }
-    if (id) { // Use unwrapped id
+    if (id) {
       fetchTemplate();
     }
 
-    // Display error from query parameter (e.g., from Xendit redirect)
     const xenditError = searchParams?.get('error');
     if (xenditError) {
       toast({
@@ -74,21 +67,15 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
         description: decodeURIComponent(xenditError),
         variant: "destructive",
       });
-      // Optional: remove error from URL after displaying
-      router.replace(`/templates/${id}`, { scroll: false }); // Use unwrapped id
+      router.replace(`/templates/${id}`, { scroll: false });
     }
 
-  }, [id, searchParams, router]); // Use unwrapped id in dependency array
+  }, [id, searchParams, router]);
 
 
   const handleAddToCart = () => {
     if (!user) {
-      toast({
-        title: "Login Required",
-        description: "Please log in to add items to your cart.",
-        variant: "destructive",
-        // action: <ToastAction altText="Login" onClick={() => router.push('/login')}>Login</ToastAction>, // Example action
-      });
+      setIsLoginModalOpen(true);
       return;
     }
     if (template) {
@@ -98,17 +85,13 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
 
   const handleBuyNow = () => {
     if (!user) {
-      toast({
-        title: "Login Required",
-        description: "Please log in to proceed to checkout.",
-        variant: "destructive",
-      });
+      setIsLoginModalOpen(true);
       return;
     }
     if (template) {
       startBuyNowTransition(() => {
-        addToCart(template); // Add to cart first
-        router.push('/checkout'); // Then redirect to checkout
+        addToCart(template);
+        router.push('/checkout');
       });
     }
   };
@@ -138,122 +121,127 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
   }
 
   if (!template) {
-    // This case should ideally be handled by notFound() in useEffect, 
-    // but as a fallback or if notFound() is removed for custom error display.
     return notFound(); 
   }
   
-  const itemAlreadyInCart = user ? isItemInCart(template.id) : false; // Check only if user is logged in
+  const itemAlreadyInCart = user ? isItemInCart(template.id) : false;
 
   return (
-    <div className="container mx-auto px-4 py-12 md:py-16">
-      <Button variant="outline" asChild className="mb-8 group">
-        <Link href="/templates">
-          <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
-          Back to Templates
-        </Link>
-      </Button>
+    <>
+      <div className="container mx-auto px-4 py-12 md:py-16">
+        <Button variant="outline" asChild className="mb-8 group">
+          <Link href="/templates">
+            <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
+            Back to Templates
+          </Link>
+        </Button>
 
-      <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-        <div>
-          {template.screenshots && template.screenshots.length > 0 ? (
-            <Carousel className="w-full rounded-lg overflow-hidden shadow-xl">
-              <CarouselContent>
-                {[template.imageUrl, ...template.screenshots].map((src, index) => (
-                  <CarouselItem key={index}>
-                     <AspectRatio ratio={16 / 9} className="bg-muted rounded-lg">
-                       <Image
-                        src={src}
-                        alt={`${template.title} screenshot ${index + 1}`}
-                        fill
-                        className="rounded-lg object-cover"
-                        data-ai-hint={template.dataAiHint || "template screenshot"}
-                        priority={index === 0} // Prioritize loading the first image
-                      />
-                    </AspectRatio>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-              <CarouselPrevious className="ml-12" />
-              <CarouselNext className="mr-12" />
-            </Carousel>
-          ) : (
-            <AspectRatio ratio={16 / 9} className="bg-muted rounded-lg shadow-xl overflow-hidden">
-              <Image
-                src={template.imageUrl}
-                alt={template.title}
-                fill
-                className="rounded-lg object-cover"
-                data-ai-hint={template.dataAiHint || "template image"}
-                priority
-              />
-            </AspectRatio>
-          )}
-        </div>
-
-        <div className="py-4">
-          <Badge variant="secondary" className="mb-2">{template.category.name}</Badge>
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">{template.title}</h1>
-          <p className="text-4xl font-extrabold text-primary mb-6">${template.price.toFixed(2)}</p>
-          
-          <div className="mb-6 prose prose-invert max-w-none text-muted-foreground">
-             <p>{template.longDescription || template.description}</p>
+        <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
+          <div>
+            {template.screenshots && template.screenshots.length > 0 ? (
+              <Carousel className="w-full rounded-lg overflow-hidden shadow-xl">
+                <CarouselContent>
+                  {[template.imageUrl, ...template.screenshots].map((src, index) => (
+                    <CarouselItem key={index}>
+                      <AspectRatio ratio={16 / 9} className="bg-muted rounded-lg">
+                        <Image
+                          src={src}
+                          alt={`${template.title} screenshot ${index + 1}`}
+                          fill
+                          className="rounded-lg object-cover"
+                          data-ai-hint={template.dataAiHint || "template screenshot"}
+                          priority={index === 0}
+                        />
+                      </AspectRatio>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <CarouselPrevious className="ml-12" />
+                <CarouselNext className="mr-12" />
+              </Carousel>
+            ) : (
+              <AspectRatio ratio={16 / 9} className="bg-muted rounded-lg shadow-xl overflow-hidden">
+                <Image
+                  src={template.imageUrl}
+                  alt={template.title}
+                  fill
+                  className="rounded-lg object-cover"
+                  data-ai-hint={template.dataAiHint || "template image"}
+                  priority
+                />
+              </AspectRatio>
+            )}
           </div>
 
-          {template.techStack && template.techStack.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-foreground mb-2 flex items-center">
-                <Zap className="h-5 w-5 mr-2 text-primary" /> Tech Stack
-              </h3>
+          <div className="py-4">
+            <Badge variant="secondary" className="mb-2">{template.category.name}</Badge>
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">{template.title}</h1>
+            <p className="text-4xl font-extrabold text-primary mb-6">${template.price.toFixed(2)}</p>
+            
+            <div className="mb-6 prose prose-invert max-w-none text-muted-foreground">
+              <p>{template.longDescription || template.description}</p>
+            </div>
+
+            {template.techStack && template.techStack.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-foreground mb-2 flex items-center">
+                  <Zap className="h-5 w-5 mr-2 text-primary" /> Tech Stack
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {template.techStack.map((tech) => (
+                    <Badge key={tech} variant="outline">{tech}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-foreground mb-2">Tags</h3>
               <div className="flex flex-wrap gap-2">
-                {template.techStack.map((tech) => (
-                  <Badge key={tech} variant="outline">{tech}</Badge>
+                {template.tags.map((tag) => (
+                  <Badge key={tag} variant="default" className="bg-primary/20 text-primary hover:bg-primary/30">
+                    {tag}
+                  </Badge>
                 ))}
               </div>
             </div>
-          )}
-          
-          <div className="mb-8">
-             <h3 className="text-lg font-semibold text-foreground mb-2">Tags</h3>
-            <div className="flex flex-wrap gap-2">
-              {template.tags.map((tag) => (
-                <Badge key={tag} variant="default" className="bg-primary/20 text-primary hover:bg-primary/30">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          </div>
-          
-          <div className="space-y-4">
-            <Button 
-              size="lg" 
-              className="w-full group bg-accent hover:bg-accent/90 text-accent-foreground transition-all duration-300 ease-in-out transform hover:scale-105"
-              onClick={handleBuyNow}
-              disabled={isBuyNowPending}
-            >
-              {isBuyNowPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : (user ? <CreditCard className="mr-2 h-5 w-5" /> : <LogIn className="mr-2 h-5 w-5" />)}
-              {user ? 'Buy Now & Checkout' : 'Login to Buy Now'}
-            </Button>
-            <Button 
-              variant="outline" 
-              size="lg" 
-              className="w-full group"
-              onClick={handleAddToCart}
-              disabled={itemAlreadyInCart && user} // Disable only if in cart AND user is logged in
-            >
-              {user ? <ShoppingCart className="mr-2 h-5 w-5" /> : <LogIn className="mr-2 h-5 w-5" />}
-              {user ? (itemAlreadyInCart ? 'Already in Cart' : 'Add to Cart') : 'Login to Add to Cart'}
-            </Button>
-            {template.previewUrl && template.previewUrl !== '#' && (
-               <Button variant="outline" size="lg" asChild className="w-full group border-primary text-primary hover:bg-primary/10 transition-all duration-300 ease-in-out transform hover:scale-105">
-                <Link href={template.previewUrl} target="_blank" rel="noopener noreferrer">
-                  <Eye className="mr-2 h-5 w-5" /> Live Preview
-                </Link>
+            
+            <div className="space-y-4">
+              <Button 
+                size="lg" 
+                className="w-full group bg-accent hover:bg-accent/90 text-accent-foreground transition-all duration-300 ease-in-out transform hover:scale-105"
+                onClick={handleBuyNow}
+                disabled={isBuyNowPending}
+              >
+                {isBuyNowPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
+                Buy Now & Checkout
               </Button>
-            )}
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="w-full group"
+                onClick={handleAddToCart}
+                disabled={itemAlreadyInCart && user}
+              >
+                <ShoppingCart className="mr-2 h-5 w-5" />
+                {itemAlreadyInCart && user ? 'Already in Cart' : 'Add to Cart'}
+              </Button>
+              {template.previewUrl && template.previewUrl !== '#' && (
+                <Button variant="outline" size="lg" asChild className="w-full group border-primary text-primary hover:bg-primary/10 transition-all duration-300 ease-in-out transform hover:scale-105">
+                  <Link href={template.previewUrl} target="_blank" rel="noopener noreferrer">
+                    <Eye className="mr-2 h-5 w-5" /> Live Preview
+                  </Link>
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+      <LoginModal 
+        isOpen={isLoginModalOpen} 
+        onOpenChange={setIsLoginModalOpen} 
+        onLogin={signInWithGoogle} 
+      />
+    </>
   );
 }
