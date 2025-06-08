@@ -16,12 +16,15 @@ import type { Template } from '@/lib/types';
 import { Loader2, UploadCloud, Edit3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { saveTemplateAction, updateTemplateAction } from '@/lib/actions/template.actions';
+import { cn } from '@/lib/utils';
 
 const templateFormSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   longDescription: z.string().optional(),
-  categoryId: z.string().min(1, 'Category is required'),
+  categoryId: z.string().min(1, 'Category is required').refine(val => CATEGORIES.some(cat => cat.id === val), {
+    message: "Invalid category selected. Please choose a valid one.",
+  }),
   price: z.coerce.number().min(0, 'Price must be a positive number'),
   tags: z.string().min(1, 'Tags are required (comma-separated)'),
   techStack: z.string().optional(), // Comma-separated
@@ -64,7 +67,9 @@ export function TemplateUploadForm({ editingTemplate, onFormSuccess, onCancelEdi
       setValue('title', editingTemplate.title);
       setValue('description', editingTemplate.description);
       setValue('longDescription', editingTemplate.longDescription || '');
-      setValue('categoryId', editingTemplate.category.id);
+      // Ensure categoryId is valid, otherwise, form will show "invalid" due to refined Zod schema
+      const isValidCategory = CATEGORIES.some(cat => cat.id === editingTemplate.category.id);
+      setValue('categoryId', isValidCategory ? editingTemplate.category.id : ''); 
       setValue('price', editingTemplate.price);
       setValue('tags', editingTemplate.tags.join(', '));
       setValue('techStack', editingTemplate.techStack?.join(', ') || '');
@@ -148,8 +153,14 @@ export function TemplateUploadForm({ editingTemplate, onFormSuccess, onCancelEdi
                 name="categoryId"
                 control={control}
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value || ''} defaultValue={field.value || ''}>
-                    <SelectTrigger id="categoryId" className="mt-1">
+                  <Select onValueChange={field.onChange} value={field.value || ''}>
+                    <SelectTrigger 
+                      id="categoryId" 
+                      className={cn(
+                        "mt-1",
+                        errors.categoryId && "border-destructive ring-1 ring-destructive focus:ring-destructive"
+                      )}
+                    >
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -212,3 +223,5 @@ export function TemplateUploadForm({ editingTemplate, onFormSuccess, onCancelEdi
     </Card>
   );
 }
+
+    
