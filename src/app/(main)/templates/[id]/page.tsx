@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/carousel"
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { useCart } from '@/context/CartContext'; // Import useCart
-import { useEffect, useState, useTransition } from 'react'; // Import useEffect and useState
+import { use, useEffect, useState, useTransition } from 'react'; // Import use
 import { toast } from '@/hooks/use-toast';
 
 // Removed generateStaticParams as this page is now client-rendered for cart interactions and dynamic content.
@@ -28,6 +28,10 @@ import { toast } from '@/hooks/use-toast';
 // export const revalidate = 60; // This is not applicable for client components in the same way. Data fetching is dynamic.
 
 export default function TemplateDetailPage({ params }: { params: { id: string } }) {
+  // Unwrap params using React.use() as suggested by the Next.js warning
+  const unwrappedParams = use(params);
+  const id = unwrappedParams.id;
+
   const [template, setTemplate] = useState<Template | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +46,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
       setIsLoading(true);
       setError(null);
       try {
-        const fetchedTemplate = await getTemplateByIdFromFirestore(params.id);
+        const fetchedTemplate = await getTemplateByIdFromFirestore(id); // Use unwrapped id
         if (!fetchedTemplate) {
           notFound(); // Will trigger the not-found mechanism
           return;
@@ -56,7 +60,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
         setIsLoading(false);
       }
     }
-    if (params.id) {
+    if (id) { // Use unwrapped id
       fetchTemplate();
     }
 
@@ -69,10 +73,10 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
         variant: "destructive",
       });
       // Optional: remove error from URL after displaying
-      router.replace(`/templates/${params.id}`, { scroll: false });
+      router.replace(`/templates/${id}`, { scroll: false }); // Use unwrapped id
     }
 
-  }, [params.id, searchParams, router]);
+  }, [id, searchParams, router]); // Use unwrapped id in dependency array
 
 
   const handleAddToCart = () => {
