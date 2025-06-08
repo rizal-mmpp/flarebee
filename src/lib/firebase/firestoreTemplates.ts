@@ -50,7 +50,7 @@ export async function addTemplateToFirestore(templateData: TemplateInputData): P
   try {
     const docRef = await addDoc(collection(db, TEMPLATES_COLLECTION), {
       ...templateData,
-      category: null, // Will be stored as categoryId
+      // categoryId is already in templateData, no need to set category to null
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -105,8 +105,7 @@ export async function updateTemplateInFirestore(id: string, data: Partial<Templa
   try {
     const docRef = doc(db, TEMPLATES_COLLECTION, id);
     await updateDoc(docRef, {
-        ...data,
-        category: null, // Ensure category object is not directly stored if data contains it
+        ...data, // data should contain categoryId if it's being updated
         updatedAt: serverTimestamp(),
     });
   } catch (error) {
