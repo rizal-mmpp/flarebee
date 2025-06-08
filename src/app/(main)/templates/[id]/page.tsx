@@ -7,7 +7,7 @@ import { notFound, useRouter, useSearchParams } from 'next/navigation'; // Impor
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CreditCard, Eye, Zap, ShoppingCart, Loader2, ServerCrash } from 'lucide-react';
+import { ArrowLeft, CreditCard, Eye, Zap, ShoppingCart, Loader2, ServerCrash, LogIn } from 'lucide-react';
 import Link from 'next/link';
 import {
   Carousel,
@@ -20,6 +20,7 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { useCart } from '@/context/CartContext'; // Import useCart
 import { use, useEffect, useState, useTransition } from 'react'; // Import use
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/lib/firebase/AuthContext'; // Import useAuth
 
 // Removed generateStaticParams as this page is now client-rendered for cart interactions and dynamic content.
 // export async function generateStaticParams() { ... }
@@ -37,6 +38,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
   const [error, setError] = useState<string | null>(null);
   
   const { addToCart, isItemInCart } = useCart();
+  const { user } = useAuth(); // Get user from AuthContext
   const router = useRouter();
   const searchParams = useSearchParams(); // For reading query params like ?error=
   const [isBuyNowPending, startBuyNowTransition] = useTransition();
@@ -80,12 +82,29 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
 
 
   const handleAddToCart = () => {
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to add items to your cart.",
+        variant: "destructive",
+        // action: <ToastAction altText="Login" onClick={() => router.push('/login')}>Login</ToastAction>, // Example action
+      });
+      return;
+    }
     if (template) {
       addToCart(template);
     }
   };
 
   const handleBuyNow = () => {
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to proceed to checkout.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (template) {
       startBuyNowTransition(() => {
         addToCart(template); // Add to cart first
@@ -124,7 +143,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
     return notFound(); 
   }
   
-  const itemAlreadyInCart = isItemInCart(template.id);
+  const itemAlreadyInCart = user ? isItemInCart(template.id) : false; // Check only if user is logged in
 
   return (
     <div className="container mx-auto px-4 py-12 md:py-16">
@@ -212,18 +231,18 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
               onClick={handleBuyNow}
               disabled={isBuyNowPending}
             >
-              {isBuyNowPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
-              Buy Now & Checkout
+              {isBuyNowPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : (user ? <CreditCard className="mr-2 h-5 w-5" /> : <LogIn className="mr-2 h-5 w-5" />)}
+              {user ? 'Buy Now & Checkout' : 'Login to Buy Now'}
             </Button>
             <Button 
               variant="outline" 
               size="lg" 
               className="w-full group"
               onClick={handleAddToCart}
-              disabled={itemAlreadyInCart}
+              disabled={itemAlreadyInCart && user} // Disable only if in cart AND user is logged in
             >
-              <ShoppingCart className="mr-2 h-5 w-5" /> 
-              {itemAlreadyInCart ? 'Already in Cart' : 'Add to Cart'}
+              {user ? <ShoppingCart className="mr-2 h-5 w-5" /> : <LogIn className="mr-2 h-5 w-5" />}
+              {user ? (itemAlreadyInCart ? 'Already in Cart' : 'Add to Cart') : 'Login to Add to Cart'}
             </Button>
             {template.previewUrl && template.previewUrl !== '#' && (
                <Button variant="outline" size="lg" asChild className="w-full group border-primary text-primary hover:bg-primary/10 transition-all duration-300 ease-in-out transform hover:scale-105">

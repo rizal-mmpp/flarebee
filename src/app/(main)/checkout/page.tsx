@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Trash2, CreditCard, ShoppingBag, ArrowLeft, Loader2 } from 'lucide-react';
+import { Trash2, CreditCard, ShoppingBag, ArrowLeft, Loader2, LogIn } from 'lucide-react';
 import { createXenditInvoice } from '@/lib/actions/xendit.actions';
 import { useAuth } from '@/lib/firebase/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useTransition } from 'react';
+import { useEffect, useTransition } from 'react';
 import { toast } from '@/hooks/use-toast';
 
 interface XenditItem {
@@ -23,13 +23,32 @@ interface XenditItem {
 
 export default function CheckoutPage() {
   const { cartItems, removeFromCart, getCartTotal, clearCart } = useCart();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth(); // Get user and auth loading state
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const totalAmount = getCartTotal();
 
+  useEffect(() => {
+    if (!authLoading && !user) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to view your cart and proceed to checkout.",
+        variant: "destructive",
+      });
+      router.replace('/'); // Redirect to homepage if not logged in
+    }
+  }, [user, authLoading, router]);
+
   const handleProceedToPayment = async () => {
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to proceed with payment.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (cartItems.length === 0) {
       toast({
         title: "Cart is Empty",
@@ -71,6 +90,34 @@ export default function CheckoutPage() {
       }
     });
   };
+
+  if (authLoading) {
+    return (
+      <div className="container mx-auto px-4 py-12 md:py-16 flex justify-center items-center min-h-[calc(100vh-10rem)]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-4 text-muted-foreground">Loading cart...</p>
+      </div>
+    );
+  }
+
+  // If user is not logged in, useEffect will redirect, but this is a fallback or initial render state
+  if (!user) {
+    return (
+       <div className="container mx-auto px-4 py-12 md:py-16 flex justify-center items-center min-h-[calc(100vh-10rem)]">
+        {/* Content for non-logged in users is minimal as redirect should occur */}
+         <Card className="shadow-lg text-center">
+          <CardContent className="p-6">
+            <LogIn className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
+            <p className="text-xl text-muted-foreground mb-6">Please log in to access your cart.</p>
+            <Button asChild>
+              <Link href="/">Go to Homepage</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
 
   return (
     <div className="container mx-auto px-4 py-12 md:py-16">
