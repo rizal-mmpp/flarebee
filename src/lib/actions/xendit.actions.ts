@@ -42,23 +42,38 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
   // --- START DUMMY IMPLEMENTATION WITH SERVER-SIDE REDIRECT ---
   console.log("SIMULATING Xendit invoice creation with dummy data and server-side redirect.");
 
-  const host = headers().get('host');
-  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
-  const appBaseUrl = `${protocol}://${host}`;
+  try {
+    const host = headers().get('host');
+    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
 
-  const uniqueOrderId = args.orderId || `flarebee-cart-dummy-${randomUUID()}`;
-  const externalId = uniqueOrderId;
+    if (!host) {
+      console.error("Error in createXenditInvoice: Host header is missing or null.");
+      // Return a plain object for the client-side catch block
+      return { error: "Failed to determine application host. Cannot proceed with payment." };
+    }
+    const appBaseUrl = `${protocol}://${host}`;
 
-  // Construct the full URL for redirection
-  const successRedirectUrl = new URL(`/purchase/success`, appBaseUrl);
-  successRedirectUrl.searchParams.append('order_id', externalId);
-  successRedirectUrl.searchParams.append('source', 'xendit_dummy');
-  
-  // Simulate a short delay as if an API call was made
-  await new Promise(resolve => setTimeout(resolve, 500));
+    const uniqueOrderId = args.orderId || `flarebee-cart-dummy-${randomUUID()}`;
+    const externalId = uniqueOrderId;
 
-  // Perform server-side redirect
-  return NextResponse.redirect(successRedirectUrl.toString(), 303); // 303 See Other is appropriate for POST -> GET redirect
+    const successRedirectUrl = new URL(`/purchase/success`, appBaseUrl);
+    successRedirectUrl.searchParams.append('order_id', externalId);
+    successRedirectUrl.searchParams.append('source', 'xendit_dummy');
+    
+    // Simulate a short delay as if an API call was made
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Perform server-side redirect
+    return NextResponse.redirect(successRedirectUrl.toString(), 303); 
+
+  } catch (internalError: any) {
+    // Catch any error during the dummy invoice creation/redirect setup
+    console.error("Internal error in createXenditInvoice (dummy implementation):", internalError);
+    // Return a plain object for the client-side catch block
+    return { 
+      error: "An internal server error occurred while preparing your payment. Please try again or contact support.",
+    };
+  }
   // --- END DUMMY IMPLEMENTATION ---
 
   /*
@@ -106,14 +121,8 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
 
     const resp = await inv.createInvoice(invoiceParams);
 
-    // With server-side redirect, we might not return this if the actual Xendit API also redirects.
-    // If Xendit returns a URL for us to redirect to, then we would use NextResponse.redirect(resp.invoiceUrl)
     if (resp.invoiceUrl) {
-       // In a real scenario where Xendit returns a URL for you to redirect the user to:
-       // return NextResponse.redirect(resp.invoiceUrl, 303);
-       // For now, this part of the original code is less relevant due to the dummy redirect above.
-       // If Xendit itself handles the redirect, the action might complete without returning anything specific to client.
-       return { invoiceUrl: resp.invoiceUrl, externalId: resp.externalId, orderId: uniqueOrderId };
+       return NextResponse.redirect(resp.invoiceUrl, 303);
     } else {
       console.error('Xendit invoice creation response did not include an invoiceUrl:', resp);
       return { error: 'Failed to get payment URL from Xendit.' };
@@ -131,4 +140,3 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
   // --- END ORIGINAL XENDIT IMPLEMENTATION ---
   */
 }
-
