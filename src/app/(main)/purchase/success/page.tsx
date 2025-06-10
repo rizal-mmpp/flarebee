@@ -19,26 +19,25 @@ export default function PurchaseSuccessPage() {
   const [hasInitiatedCartClear, setHasInitiatedCartClear] = useState(false);
 
   useEffect(() => {
-    let isMounted = true; // Flag to check if component is still mounted
+    let isMounted = true; 
 
     const performCartClear = async () => {
       // Ensure cart is not loading, clear operation hasn't been initiated, and component is mounted
       if (!cartLoading && !hasInitiatedCartClear && isMounted) {
+        // Set the flag *before* calling clearCart to break potential loops
+        setHasInitiatedCartClear(true); 
         try {
-          await clearCart(); // Await the async clearCart operation
-          if (isMounted) {
-            // Toast for cart cleared is handled within clearCart, no need to repeat unless specific to success page
-            setHasInitiatedCartClear(true);
-          }
+          await clearCart(); 
+          // Toasts for cart clearing are now handled within clearCart itself
         } catch (error) {
           console.error("Error calling clearCart on success page:", error);
           if (isMounted) {
+            // This toast is a fallback if clearCart itself throws an unhandled error
             toast({
               title: "Purchase Note",
-              description: "Your purchase was successful. There was an issue clearing your cart automatically, please check your cart.",
+              description: "Your purchase was successful. There was an issue clearing your cart automatically.",
               variant: "destructive" 
             });
-            setHasInitiatedCartClear(true); // Mark as initiated even on error to prevent loops
           }
         }
       }
@@ -46,11 +45,13 @@ export default function PurchaseSuccessPage() {
 
     performCartClear();
 
-    // Cleanup function to set isMounted to false when component unmounts
     return () => {
       isMounted = false;
     };
-  }, [cartLoading, hasInitiatedCartClear, clearCart, toast]); // Dependencies for the effect
+    // setHasInitiatedCartClear is stable, toast is stable.
+    // clearCart's identity might change if its dependencies (like cartItems) change.
+    // cartLoading changes.
+  }, [cartLoading, hasInitiatedCartClear, clearCart, toast, setHasInitiatedCartClear]);
 
 
   const purchasedItemsDescription = "Your purchased items"; 

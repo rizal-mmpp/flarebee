@@ -2,7 +2,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { createContext, useContext, useState, useEffect, useCallback, useRef } // Added useRef
+import { createContext, useContext, useState, useEffect, useCallback } // Removed useRef
   from 'react';
 import type { Template, CartItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -17,7 +17,7 @@ interface CartContextType {
   cartItems: CartItem[];
   addToCart: (template: Template) => void;
   removeFromCart: (templateId: string) => void;
-  clearCart: () => void;
+  clearCart: () => Promise<void>; // Made promise explicit
   getCartTotal: () => number;
   isItemInCart: (templateId: string) => boolean;
   cartLoading: boolean;
@@ -33,11 +33,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
 
-  const cartItemsRef = useRef(cartItems);
-  useEffect(() => {
-    cartItemsRef.current = cartItems;
-  }, [cartItems]);
-
+  // Load cart effect
   useEffect(() => {
     const loadCart = async () => {
       if (authLoading) {
@@ -72,7 +68,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             await updateUserCartInFirestore(user.uid, mergedItems);
             localStorage.removeItem(LOCAL_STORAGE_ANONYMOUS_CART_KEY);
             if (localCartItems.length > 0 && localCartItems.some(lc => !firestoreCart.some(fc => fc.id === lc.id)) ) {
-                 toast({ title: "Cart Synced", description: "Your anonymous cart items have been merged."});
+                 setTimeout(() => toast({ title: "Cart Synced", description: "Your anonymous cart items have been merged."}), 0);
             }
           } else {
             setCartItems(firestoreCart);
@@ -81,7 +77,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           setCartItems(localCartItems);
           await updateUserCartInFirestore(user.uid, localCartItems);
           localStorage.removeItem(LOCAL_STORAGE_ANONYMOUS_CART_KEY);
-           toast({ title: "Cart Synced", description: "Your previous cart items have been saved to your account."});
+           setTimeout(() => toast({ title: "Cart Synced", description: "Your previous cart items have been saved to your account."}), 0);
         } else {
           setCartItems([]);
         }
@@ -104,8 +100,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     loadCart();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, authLoading]);
+  }, [user, authLoading]); // Removed toast from here, it was used in loadCart via setTimeout
 
+  // Sync cart effect
   useEffect(() => {
     if (cartLoading || authLoading) return;
 
@@ -156,25 +153,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [toast]);
 
   const clearCart = useCallback(async () => {
-    const currentCartHadItems = cartItemsRef.current.length > 0;
-    setCartItems([]); 
+    const cartWasNotEmpty = cartItems.length > 0;
 
+    setCartItems([]); // Update local state immediately
+
+    let firestoreDeleteFailed = false;
     if (user && !authLoading) {
       try {
         await deleteUserCartFromFirestore(user.uid);
       } catch (error) {
         console.error("Failed to delete user cart from Firestore:", error);
-        setTimeout(() => { 
+        firestoreDeleteFailed = true;
+        setTimeout(() => {
           toast({
             title: "Cart Sync Issue",
-            description: "Could not clear your cart from our servers. It is cleared on this device.",
-            variant: "destructive" 
+            description: "Your purchase was successful. Could not clear your cart from our servers, but it's cleared on this device.",
+            variant: "destructive"
           });
         }, 0);
       }
     }
-    
-    if (currentCartHadItems) {
+
+    if (cartWasNotEmpty && !firestoreDeleteFailed) {
         setTimeout(() => {
         toast({
             title: 'Cart Cleared',
@@ -182,7 +182,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         });
         }, 0);
     }
-  }, [user, authLoading, toast, setCartItems]);
+  }, [user, authLoading, toast, setCartItems, cartItems]); // Added cartItems dependency
 
 
   const getCartTotal = useCallback(() => {
