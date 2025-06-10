@@ -1,24 +1,49 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useForm, type SubmitHandler } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { TemplateUploadForm } from '@/components/sections/admin/TemplateUploadForm';
+import { type TemplateFormValues, templateFormSchema } from '@/components/sections/admin/TemplateFormTypes';
 import { getTemplateByIdFromFirestore } from '@/lib/firebase/firestoreTemplates';
+import { updateTemplateAction } from '@/lib/actions/template.actions';
 import type { Template } from '@/lib/types';
-import { Loader2, ServerCrash, Edit3, ArrowLeft } from 'lucide-react';
+import { CATEGORIES } from '@/lib/constants';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { Loader2, ServerCrash, Edit3, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function EditTemplatePage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
+  const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
 
   const [template, setTemplate] = useState<Template | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { register, handleSubmit, control, formState: { errors }, reset, setValue } = useForm<TemplateFormValues>({
+    resolver: zodResolver(templateFormSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      longDescription: '',
+      categoryId: '',
+      price: 0,
+      tags: '',
+      techStack: '',
+      previewImageUrl: '',
+      dataAiHint: '',
+      previewUrl: '',
+      downloadZipUrl: '#',
+      githubUrl: '',
+    }
+  });
 
   useEffect(() => {
     if (id) {
@@ -28,6 +53,20 @@ export default function EditTemplatePage() {
         .then((fetchedTemplate) => {
           if (fetchedTemplate) {
             setTemplate(fetchedTemplate);
+            // Populate form with fetched template data
+            setValue('title', fetchedTemplate.title);
+            setValue('description', fetchedTemplate.description);
+            setValue('longDescription', fetchedTemplate.longDescription || '');
+            const isValidCategory = CATEGORIES.some(cat => cat.id === fetchedTemplate.category.id);
+            setValue('categoryId', isValidCategory ? fetchedTemplate.category.id : ''); 
+            setValue('price', fetchedTemplate.price);
+            setValue('tags', fetchedTemplate.tags.join(', '));
+            setValue('techStack', fetchedTemplate.techStack?.join(', ') || '');
+            setValue('previewImageUrl', fetchedTemplate.imageUrl);
+            setValue('dataAiHint', fetchedTemplate.dataAiHint || '');
+            setValue('previewUrl', fetchedTemplate.previewUrl || '');
+            setValue('downloadZipUrl', fetchedTemplate.downloadZipUrl || '#');
+            setValue('githubUrl', fetchedTemplate.githubUrl || '');
           } else {
             setError('Template not found.');
           }
@@ -40,13 +79,40 @@ export default function EditTemplatePage() {
           setIsLoading(false);
         });
     }
-  }, [id]);
+  }, [id, setValue]);
 
-  const handleFormSuccess = () => {
-    router.push('/admin/dashboard'); // Redirect to dashboard after update
+  const onSubmit: SubmitHandler<TemplateFormValues> = (data) => {
+    if (!template) return;
+    startTransition(async () => {
+      const formData = new FormData();
+      (Object.keys(data) as Array<keyof TemplateFormValues>).forEach(key => {
+        const value = data[key];
+         if (value !== undefined && value !== null) {
+          formData.append(key, String(value));
+        } else if (key === 'downloadZipUrl') {
+            formData.append(key, '#');
+        }
+      });
+      
+      const result = await updateTemplateAction(template.id, formData);
+
+      if (result.error) {
+         toast({
+          title: 'Error Updating Template',
+          description: result.error,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: 'Template Updated Successfully',
+          description: result.message || 'The template details have been updated.',
+        });
+        router.push('/admin/dashboard');
+      }
+    });
   };
 
-  const handleCancelEdit = () => {
+  const handleCancel = () => {
     router.push('/admin/dashboard');
   };
 
@@ -76,7 +142,7 @@ export default function EditTemplatePage() {
   }
   
   if (!template) {
-     return ( // Should be caught by error state, but as a fallback
+     return (
       <div className="container mx-auto px-4 py-12 text-center">
         <p className="text-muted-foreground mb-6">Template data could not be loaded or template does not exist.</p>
         <Button variant="outline" asChild className="group">
@@ -90,24 +156,26 @@ export default function EditTemplatePage() {
   }
 
   return (
-    <div className="space-y-8">
-       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
-          <Edit3 className="mr-3 h-8 w-8 text-primary" />
-          Edit Template
-        </h1>
-         <Button variant="outline" asChild className="group" onClick={handleCancelEdit}>
-            <Link href="/admin/dashboard"> {/* Link for SSR, onClick for CSR */}
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <div className="space-y-8">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
+            <Edit3 className="mr-3 h-8 w-8 text-primary" />
+            Edit Template
+          </h1>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" type="button" onClick={handleCancel} className="group">
                 <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
-                Back to Dashboard
-            </Link>
-        </Button>
+                Cancel & Back
+            </Button>
+            <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isPending}>
+                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Update Template
+            </Button>
+          </div>
+        </div>
+        <TemplateUploadForm control={control} register={register} errors={errors} />
       </div>
-      <TemplateUploadForm
-        editingTemplate={template}
-        onFormSuccess={handleFormSuccess}
-        onCancelEdit={handleCancelEdit}
-      />
-    </div>
+    </form>
   );
 }
