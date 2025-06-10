@@ -97,7 +97,7 @@ export default function CheckoutPage() {
         variant: "destructive",
       });
     } finally {
-      setIsProcessingPayment(false); // Clear pending state in all cases
+      setIsProcessingPayment(false); // Ensure pending state is cleared
     }
   };
 

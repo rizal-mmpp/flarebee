@@ -45,7 +45,7 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
   // --- START DUMMY IMPLEMENTATION ---
   console.log("SIMULATING Xendit invoice creation with dummy data.");
 
-  const host = headers().get('host');
+  const host = (await headers()).get('host');
   const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
   const appBaseUrl = `${protocol}://${host}`;
 

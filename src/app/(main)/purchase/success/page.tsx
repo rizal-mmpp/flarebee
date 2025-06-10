@@ -7,7 +7,7 @@ import { CheckCircle, Download, Home, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCart } from "@/context/CartContext";
-import { useEffect } from "react";
+import { useEffect, useState } from "react"; // Added useState
 
 export default function PurchaseSuccessPage() {
   const searchParams = useSearchParams();
@@ -15,16 +15,20 @@ export default function PurchaseSuccessPage() {
   // const source = searchParams.get('source'); 
 
   const { clearCart, cartItems, cartLoading } = useCart();
+  const [hasInitiatedCartClear, setHasInitiatedCartClear] = useState(false); // Flag to ensure clear is called once
 
   useEffect(() => {
-    // Clear the cart only if it's not loading and there were items
-    // This is an optimistic clear. A more robust solution involves webhook verification
-    // to confirm payment before clearing and provisioning access.
-    if (!cartLoading && cartItems.length > 0) {
+    // We want to clear the cart once when this page is visited,
+    // and the cart context is no longer loading.
+    if (!cartLoading && !hasInitiatedCartClear) {
+      if (cartItems.length > 0) { // Only clear if there are items
         clearCart();
+      }
+      setHasInitiatedCartClear(true); // Mark that we've initiated the clear
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cartLoading]); // Rerun when cartLoading becomes false. clearCart and cartItems are stable.
+  }, [cartLoading, cartItems.length, hasInitiatedCartClear]); // Dependencies for the effect
+
 
   const purchasedItemsDescription = "Your purchased items"; 
   const downloadInfo = "Download links for your purchased items will be available in your account or sent via email.";
