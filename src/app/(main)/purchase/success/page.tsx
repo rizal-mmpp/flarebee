@@ -8,32 +8,49 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { useEffect, useState } from "react";
-import { useToast } from "@/hooks/use-toast"; // Import useToast
+import { useToast } from "@/hooks/use-toast";
 
 export default function PurchaseSuccessPage() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order_id') || searchParams.get('external_id');
   
   const { clearCart, cartLoading } = useCart(); 
-  const { toast } = useToast(); // Get toast function
+  const { toast } = useToast();
   const [hasInitiatedCartClear, setHasInitiatedCartClear] = useState(false);
 
   useEffect(() => {
-    if (!cartLoading && !hasInitiatedCartClear) {
-      try {
-        clearCart();
-      } catch (error) {
-        console.error("Error calling clearCart on success page:", error);
-        // Use the toast function from useToast
-        toast({
-          title: "Purchase Note",
-          description: "Your purchase was successful. There was an issue clearing your cart automatically, please check your cart.",
-          variant: "default" 
-        });
+    let isMounted = true; // Flag to check if component is still mounted
+
+    const performCartClear = async () => {
+      // Ensure cart is not loading, clear operation hasn't been initiated, and component is mounted
+      if (!cartLoading && !hasInitiatedCartClear && isMounted) {
+        try {
+          await clearCart(); // Await the async clearCart operation
+          if (isMounted) {
+            // Toast for cart cleared is handled within clearCart, no need to repeat unless specific to success page
+            setHasInitiatedCartClear(true);
+          }
+        } catch (error) {
+          console.error("Error calling clearCart on success page:", error);
+          if (isMounted) {
+            toast({
+              title: "Purchase Note",
+              description: "Your purchase was successful. There was an issue clearing your cart automatically, please check your cart.",
+              variant: "destructive" 
+            });
+            setHasInitiatedCartClear(true); // Mark as initiated even on error to prevent loops
+          }
+        }
       }
-      setHasInitiatedCartClear(true); 
-    }
-  }, [cartLoading, hasInitiatedCartClear, clearCart, toast]); // Add toast to dependencies
+    };
+
+    performCartClear();
+
+    // Cleanup function to set isMounted to false when component unmounts
+    return () => {
+      isMounted = false;
+    };
+  }, [cartLoading, hasInitiatedCartClear, clearCart, toast]); // Dependencies for the effect
 
 
   const purchasedItemsDescription = "Your purchased items"; 
