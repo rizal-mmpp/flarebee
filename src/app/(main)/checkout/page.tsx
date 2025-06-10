@@ -3,7 +3,7 @@
 
 import { useCart } from '@/context/CartContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Trash2, CreditCard, ShoppingBag, ArrowLeft, Loader2, LogIn } from 'lucide-react';
@@ -17,25 +17,25 @@ interface XenditItem {
   name: string;
   quantity: number;
   price: number;
-  category?: string; 
+  category?: string;
 }
 
 export default function CheckoutPage() {
-  const { cartItems, removeFromCart, getCartTotal, clearCart, cartLoading } = useCart();
-  const { user, loading: authLoading } = useAuth(); 
+  const { cartItems, removeFromCart, getCartTotal, cartLoading } = useCart(); // clearCart removed as it's handled server-side now
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const totalAmount = getCartTotal();
 
   useEffect(() => {
-    if (!authLoading && !user && !cartLoading) { 
+    if (!authLoading && !user && !cartLoading) {
       toast({
         title: "Login Required",
         description: "Please log in to view your cart and proceed to checkout.",
         variant: "destructive",
       });
-      router.replace('/'); 
+      router.replace('/');
     }
   }, [user, authLoading, cartLoading, router]);
 
@@ -66,40 +66,37 @@ export default function CheckoutPage() {
     }));
 
     const description = cartItems.map(item => `${item.title} (x${item.quantity})`).join(', ');
-    
+
     try {
       const result = await createXenditInvoice({
         items: xenditItems,
         totalAmount: totalAmount,
         description: `Flarebee Order: ${description}`,
-        currency: 'USD', 
+        currency: 'USD',
         payerEmail: user?.email || undefined,
         userId: user?.uid || undefined,
       });
 
+      // If createXenditInvoice returns (i.e., doesn't redirect), it means an error occurred.
       if (result && 'error' in result && typeof result.error === 'string') {
         toast({
           title: "Payment Processing Failed",
           description: result.error,
           variant: "destructive",
         });
-        return; 
       }
+      // If 'result' is undefined, it means the server action successfully redirected,
+      // and we don't need to do anything here as the browser will navigate.
       
     } catch (error: any) {
-      // Check if the error is a Next.js redirect error
-      const NEXT_REDIRECT_ERROR_CODES = [
-        'NEXT_REDIRECT', // General redirect
-        // Add other specific redirect error codes if needed
-        // 'NEXT_ROUTER_PREFETCH_REDIRECT',
-        // 'NEXT_NOT_FOUND',
-      ];
-
-      if (NEXT_REDIRECT_ERROR_CODES.includes(error.digest) || (typeof error.message === 'string' && NEXT_REDIRECT_ERROR_CODES.some(code => error.message.includes(code)))) {
-        // This is a redirect error, Next.js is handling it. Do not treat as a payment failure.
+      // Check if the error is a Next.js redirect signal
+      if (error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+        // This is a redirect signal from the server action.
+        // Next.js will handle the redirect. Do not treat as a payment failure.
         // The 'finally' block will reset isProcessingPayment.
-        // console.log("Redirecting (caught NEXT_REDIRECT)..."); // Optional: for debugging
+        // console.log("Redirecting (caught NEXT_REDIRECT)..."); // For debugging if needed
       } else {
+        // This is an actual unexpected error during the server action call or client-side processing
         console.error("Error during payment processing (thrown):", error);
         let errorMessage = "An unexpected error occurred. Please try again or contact support.";
         if (error && typeof error.message === 'string') {
@@ -221,8 +218,8 @@ export default function CheckoutPage() {
                 <p className="text-xs text-muted-foreground text-center">
                   By proceeding, you agree to our Terms of Service and Privacy Policy.
                 </p>
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   className="w-full group bg-primary hover:bg-primary/90 text-primary-foreground"
                   onClick={handleProceedToPayment}
                   disabled={isProcessingPayment || cartItems.length === 0 || cartLoading}
