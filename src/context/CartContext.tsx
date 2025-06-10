@@ -2,7 +2,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } // Added useRef
+  from 'react';
 import type { Template, CartItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/firebase/AuthContext';
@@ -24,7 +25,7 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_ANONYMOUS_CART_KEY = 'flarebeeAnonymousCart_v1'; // Added versioning
+const LOCAL_STORAGE_ANONYMOUS_CART_KEY = 'flarebeeAnonymousCart_v1';
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -32,16 +33,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
 
+  // Ref to hold the latest cartItems for callbacks that might suffer from stale closures
+  const cartItemsRef = useRef(cartItems);
+  useEffect(() => {
+    cartItemsRef.current = cartItems;
+  }, [cartItems]);
+
   useEffect(() => {
     const loadCart = async () => {
       if (authLoading) {
-        setCartLoading(true); // Keep loading if auth is still resolving
+        setCartLoading(true);
         return;
       }
 
       setCartLoading(true);
       if (user) {
-        // User is logged in
         let firestoreCart = await getUserCartFromFirestore(user.uid);
         const localCartJson = localStorage.getItem(LOCAL_STORAGE_ANONYMOUS_CART_KEY);
         let localCartItems: CartItem[] = [];
@@ -56,7 +62,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
 
         if (firestoreCart) {
-          // Firestore cart exists. If local cart also exists, merge them (Firestore takes precedence for existing items)
           if (localCartItems.length > 0) {
             const mergedItems = [...firestoreCart];
             localCartItems.forEach(localItem => {
@@ -67,24 +72,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
             setCartItems(mergedItems);
             await updateUserCartInFirestore(user.uid, mergedItems);
             localStorage.removeItem(LOCAL_STORAGE_ANONYMOUS_CART_KEY);
-            if (localCartItems.length > 0 && localCartItems.some(lc => !firestoreCart.some(fc => fc.id === lc.id)) ) { // Only toast if new items were actually merged
+            if (localCartItems.length > 0 && localCartItems.some(lc => !firestoreCart.some(fc => fc.id === lc.id)) ) {
                  toast({ title: "Cart Synced", description: "Your anonymous cart items have been merged."});
             }
           } else {
             setCartItems(firestoreCart);
           }
         } else if (localCartItems.length > 0) {
-          // No Firestore cart, but local anonymous cart exists. Use it and save to Firestore.
           setCartItems(localCartItems);
           await updateUserCartInFirestore(user.uid, localCartItems);
           localStorage.removeItem(LOCAL_STORAGE_ANONYMOUS_CART_KEY);
            toast({ title: "Cart Synced", description: "Your previous cart items have been saved to your account."});
         } else {
-          // No Firestore cart, no local cart
           setCartItems([]);
         }
       } else {
-        // User is logged out, load from localStorage (anonymous cart)
         const localCartJson = localStorage.getItem(LOCAL_STORAGE_ANONYMOUS_CART_KEY);
         if (localCartJson) {
           try {
@@ -103,10 +105,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     loadCart();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, authLoading]); // Toast is stable, no need to add.
+  }, [user, authLoading]);
 
   useEffect(() => {
-    if (cartLoading || authLoading) return; // Don't save while loading or auth resolving
+    if (cartLoading || authLoading) return;
 
     if (user) {
       updateUserCartInFirestore(user.uid, cartItems);
@@ -155,13 +157,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [toast]);
 
   const clearCart = useCallback(async () => {
-    // Access cartItems directly from state here if needed for the toast condition,
-    // or manage currentCartHadItems differently if it's crucial before setCartItems([])
-    const currentCartHadItems = cartItems.length > 0; 
+    const currentCartHadItems = cartItemsRef.current.length > 0;
 
     setCartItems([]); // This will trigger the save useEffect
 
-    if (user && !authLoading && !cartLoading) {
+    if (user && !authLoading) { // authLoading check is good, cartLoading check removed
       await deleteUserCartFromFirestore(user.uid);
     }
     
@@ -173,8 +173,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         });
         }, 0);
     }
-  // Removed cartItems.length from deps. user, authLoading, cartLoading, toast are more stable.
-  }, [user, authLoading, cartLoading, toast]);
+  }, [user, authLoading, toast, setCartItems]); // Removed cartItems, deleteUserCartFromFirestore is stable
 
 
   const getCartTotal = useCallback(() => {

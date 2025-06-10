@@ -7,27 +7,33 @@ import { CheckCircle, Download, Home, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCart } from "@/context/CartContext";
-import { useEffect, useState } from "react"; // Added useState
+import { useEffect, useState } from "react";
 
 export default function PurchaseSuccessPage() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order_id') || searchParams.get('external_id');
-  // const source = searchParams.get('source'); 
-
-  const { clearCart, cartItems, cartLoading } = useCart();
-  const [hasInitiatedCartClear, setHasInitiatedCartClear] = useState(false); // Flag to ensure clear is called once
+  
+  const { clearCart, cartItems, cartLoading } = useCart(); // cartItems is used for the condition
+  const [hasInitiatedCartClear, setHasInitiatedCartClear] = useState(false);
 
   useEffect(() => {
     // We want to clear the cart once when this page is visited,
-    // and the cart context is no longer loading.
+    // and the cart context is no longer loading, and we haven't tried yet.
     if (!cartLoading && !hasInitiatedCartClear) {
-      if (cartItems.length > 0) { // Only clear if there are items
-        clearCart();
-      }
+      // The clearCart function can internally check if cartItems.length > 0 if needed for its own logic (e.g. for toast)
+      // Or we can keep the check here if we only want to *call* clearCart if there are items.
+      // Given clearCart now uses a ref for its internal item check, calling it is fine.
+      clearCart(); 
       setHasInitiatedCartClear(true); // Mark that we've initiated the clear
     }
-  // Added clearCart to dependency array
-  }, [cartLoading, cartItems.length, hasInitiatedCartClear, clearCart]);
+  // Dependencies:
+  // cartLoading: to wait for cart to be loaded.
+  // hasInitiatedCartClear: to ensure one-time execution.
+  // clearCart: the function to call. Its identity should be stable or correctly handled.
+  // cartItems.length is removed because the decision to call clearCart
+  // is now primarily gated by hasInitiatedCartClear and cartLoading.
+  // The clearCart function itself will use a ref to get current cartItems.
+  }, [cartLoading, hasInitiatedCartClear, clearCart]);
 
 
   const purchasedItemsDescription = "Your purchased items"; 
