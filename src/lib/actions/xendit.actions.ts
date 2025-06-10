@@ -1,16 +1,12 @@
 
 'use server';
 
-import Xendit from 'xendit-node';
+// Import redirect from next/navigation
+import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { randomUUID } from 'crypto';
-import { NextResponse } from 'next/server'; // Import NextResponse
-
-const xenditSecretKey = process.env.XENDIT_SECRET_KEY;
-
-// const xenditClient = xenditSecretKey ? new Xendit({ secretKey: xenditSecretKey }) : null;
-const xenditClient = null; 
-
+// NextResponse might still be useful if you were constructing other types of responses,
+// but for this function's successful redirect path, we'll use next/navigation's redirect.
 
 interface XenditInvoiceItem {
   name: string;
@@ -30,16 +26,14 @@ interface CreateXenditInvoiceArgs {
   orderId?: string; 
 }
 
-// The result might not be used if redirecting, but define for potential error cases
-interface CreateXenditInvoiceResult {
-  invoiceUrl?: string | null; // May not be used if server redirects
-  error?: string;
-  externalId?: string; 
-  orderId?: string; 
+// Define the result type for error cases, as redirect won't return a value.
+interface CreateXenditInvoiceErrorResult {
+  error: string;
 }
 
-export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promise<CreateXenditInvoiceResult | NextResponse> {
-  // --- START DUMMY IMPLEMENTATION WITH SERVER-SIDE REDIRECT ---
+// The function will either redirect (and thus not return a value in the traditional sense)
+// or return an error object.
+export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promise<CreateXenditInvoiceErrorResult | void> {
   console.log("SIMULATING Xendit invoice creation with dummy data and server-side redirect.");
 
   try {
@@ -48,7 +42,6 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
 
     if (!host) {
       console.error("Error in createXenditInvoice: Host header is missing or null.");
-      // Return a plain object for the client-side catch block
       return { error: "Failed to determine application host. Cannot proceed with payment." };
     }
     const appBaseUrl = `${protocol}://${host}`;
@@ -63,13 +56,20 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
     // Simulate a short delay as if an API call was made
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Perform server-side redirect
-    return NextResponse.redirect(successRedirectUrl.toString(), 303); 
+    // Perform server-side redirect using redirect from next/navigation
+    // redirect() throws an error that Next.js intercepts, so code below this won't run.
+    redirect(successRedirectUrl.toString()); 
 
   } catch (internalError: any) {
-    // Catch any error during the dummy invoice creation/redirect setup
+    // If internalError is the specific error thrown by redirect(), Next.js handles it by design.
+    // It's a special type of error with a 'NEXT_REDIRECT' digest.
+    // We must re-throw it so Next.js can process the redirect.
+    if (internalError.digest?.startsWith('NEXT_REDIRECT')) {
+      throw internalError;
+    }
+
+    // For any other unexpected errors during the try block:
     console.error("Internal error in createXenditInvoice (dummy implementation):", internalError);
-    // Return a plain object for the client-side catch block
     return { 
       error: "An internal server error occurred while preparing your payment. Please try again or contact support.",
     };
@@ -78,65 +78,26 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
 
   /*
   // --- ORIGINAL XENDIT IMPLEMENTATION (Commented out for dummy data) ---
-  if (!xenditClient) {
-    console.error('Xendit client is not initialized. XENDIT_SECRET_KEY might be missing.');
-    return { error: 'Payment system is not configured. Please contact support.' };
-  }
-
-  const host = headers().get('host');
-  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
-  const appBaseUrl = `${protocol}://${host}`;
-
-  const uniqueOrderId = args.orderId || `flarebee-cart-${randomUUID()}`;
-  const externalId = uniqueOrderId; 
-
-  const successRedirectUrl = `${appBaseUrl}/purchase/success?order_id=${externalId}&source=xendit`;
-  const failureRedirectUrl = `${appBaseUrl}/purchase/cancelled?order_id=${externalId}&source=xendit`;
-  const invoiceCurrency = args.currency || 'USD';
-
-  try {
-    const { Invoice } = xenditClient;
-    const invoiceSpecificOptions = {}; 
-    const inv = new Invoice(invoiceSpecificOptions);
-
-    const invoiceParams: any = {
-      externalID: externalId,
-      amount: args.totalAmount, 
-      payerEmail: args.payerEmail,
-      description: args.description, 
-      successRedirectURL: successRedirectUrl,
-      failureRedirectURL: failureRedirectUrl,
-      currency: invoiceCurrency,
-      items: args.items, 
-      metadata: {
-        userId: args.userId || '',
-        appName: 'Flarebee Templates',
-        cartItemsCount: args.items.length,
-      }
-    };
-    
-    if (args.userId) {
-      // invoiceParams.customer = { id: args.userId };
-    }
-
-    const resp = await inv.createInvoice(invoiceParams);
-
-    if (resp.invoiceUrl) {
-       return NextResponse.redirect(resp.invoiceUrl, 303);
-    } else {
-      console.error('Xendit invoice creation response did not include an invoiceUrl:', resp);
-      return { error: 'Failed to get payment URL from Xendit.' };
-    }
-  } catch (error: any) {
-    console.error('Error creating Xendit invoice:', error);
-    let errorMessage = 'Could not create payment invoice due to an unexpected error.';
-    if (error.status && error.message) { 
-        errorMessage = `Xendit Error (${error.status}): ${error.message}`;
-    } else if (error.message) {
-        errorMessage = error.message;
-    }
-    return { error: errorMessage };
-  }
-  // --- END ORIGINAL XENDIT IMPLEMENTATION ---
+  // if (!xenditClient) { ... }
+  // ... (rest of original Xendit logic would also need to use redirect() from next/navigation if it were active) ...
+  
+  // Example if original logic was active:
+  // try {
+  //   ...
+  //   const resp = await inv.createInvoice(invoiceParams);
+  //   if (resp.invoiceUrl) {
+  //     redirect(resp.invoiceUrl); // Use redirect here too
+  //   } else {
+  //     console.error('Xendit invoice creation response did not include an invoiceUrl:', resp);
+  //     return { error: 'Failed to get payment URL from Xendit.' };
+  //   }
+  // } catch (error: any) {
+  //   if (error.digest?.startsWith('NEXT_REDIRECT')) { // Handle redirect error
+  //     throw error;
+  //   }
+  //   ... (handle other Xendit errors)
+  //   return { error: errorMessage };
+  // }
   */
 }
+
