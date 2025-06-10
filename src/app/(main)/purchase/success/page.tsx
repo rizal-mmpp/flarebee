@@ -8,32 +8,32 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { useEffect, useState } from "react";
+import { useToast } from "@/hooks/use-toast"; // Import useToast
 
 export default function PurchaseSuccessPage() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order_id') || searchParams.get('external_id');
   
-  const { clearCart, cartItems, cartLoading } = useCart(); // cartItems is used for the condition
+  const { clearCart, cartLoading } = useCart(); 
+  const { toast } = useToast(); // Get toast function
   const [hasInitiatedCartClear, setHasInitiatedCartClear] = useState(false);
 
   useEffect(() => {
-    // We want to clear the cart once when this page is visited,
-    // and the cart context is no longer loading, and we haven't tried yet.
     if (!cartLoading && !hasInitiatedCartClear) {
-      // The clearCart function can internally check if cartItems.length > 0 if needed for its own logic (e.g. for toast)
-      // Or we can keep the check here if we only want to *call* clearCart if there are items.
-      // Given clearCart now uses a ref for its internal item check, calling it is fine.
-      clearCart(); 
-      setHasInitiatedCartClear(true); // Mark that we've initiated the clear
+      try {
+        clearCart();
+      } catch (error) {
+        console.error("Error calling clearCart on success page:", error);
+        // Use the toast function from useToast
+        toast({
+          title: "Purchase Note",
+          description: "Your purchase was successful. There was an issue clearing your cart automatically, please check your cart.",
+          variant: "default" 
+        });
+      }
+      setHasInitiatedCartClear(true); 
     }
-  // Dependencies:
-  // cartLoading: to wait for cart to be loaded.
-  // hasInitiatedCartClear: to ensure one-time execution.
-  // clearCart: the function to call. Its identity should be stable or correctly handled.
-  // cartItems.length is removed because the decision to call clearCart
-  // is now primarily gated by hasInitiatedCartClear and cartLoading.
-  // The clearCart function itself will use a ref to get current cartItems.
-  }, [cartLoading, hasInitiatedCartClear, clearCart]);
+  }, [cartLoading, hasInitiatedCartClear, clearCart, toast]); // Add toast to dependencies
 
 
   const purchasedItemsDescription = "Your purchased items"; 

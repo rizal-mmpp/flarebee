@@ -33,7 +33,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
 
-  // Ref to hold the latest cartItems for callbacks that might suffer from stale closures
   const cartItemsRef = useRef(cartItems);
   useEffect(() => {
     cartItemsRef.current = cartItems;
@@ -158,11 +157,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = useCallback(async () => {
     const currentCartHadItems = cartItemsRef.current.length > 0;
+    setCartItems([]); 
 
-    setCartItems([]); // This will trigger the save useEffect
-
-    if (user && !authLoading) { // authLoading check is good, cartLoading check removed
-      await deleteUserCartFromFirestore(user.uid);
+    if (user && !authLoading) {
+      try {
+        await deleteUserCartFromFirestore(user.uid);
+      } catch (error) {
+        console.error("Failed to delete user cart from Firestore:", error);
+        setTimeout(() => { 
+          toast({
+            title: "Cart Sync Issue",
+            description: "Could not clear your cart from our servers. It is cleared on this device.",
+            variant: "destructive" 
+          });
+        }, 0);
+      }
     }
     
     if (currentCartHadItems) {
@@ -173,7 +182,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         });
         }, 0);
     }
-  }, [user, authLoading, toast, setCartItems]); // Removed cartItems, deleteUserCartFromFirestore is stable
+  }, [user, authLoading, toast, setCartItems]);
 
 
   const getCartTotal = useCallback(() => {
