@@ -27,7 +27,7 @@ export default function EditTemplatePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { register, handleSubmit, control, formState: { errors }, reset, setValue } = useForm<TemplateFormValues>({
+  const { register, handleSubmit, control, formState: { errors }, setValue } = useForm<TemplateFormValues>({
     resolver: zodResolver(templateFormSchema),
     defaultValues: {
       title: '',
@@ -53,7 +53,6 @@ export default function EditTemplatePage() {
         .then((fetchedTemplate) => {
           if (fetchedTemplate) {
             setTemplate(fetchedTemplate);
-            // Populate form with fetched template data
             setValue('title', fetchedTemplate.title);
             setValue('description', fetchedTemplate.description);
             setValue('longDescription', fetchedTemplate.longDescription || '');
@@ -158,22 +157,25 @@ export default function EditTemplatePage() {
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <div className="space-y-8">
-        <div className="flex items-center justify-between">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
             <Edit3 className="mr-3 h-8 w-8 text-primary" />
-            Edit Template
+            Edit Template: <span className="ml-2 font-normal text-muted-foreground truncate max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg">{template.title}</span>
           </h1>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" type="button" onClick={handleCancel} className="group">
+          {/* Action Buttons Group */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+            <Button variant="outline" type="button" onClick={handleCancel} className="w-full sm:w-auto group">
                 <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
                 Cancel & Back
             </Button>
-            <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isPending}>
-                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            <Button type="submit" className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isPending}>
+                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Edit3 className="mr-2 h-4 w-4" />}
                 Update Template
             </Button>
           </div>
         </div>
+        {/* Form Component */}
         <TemplateUploadForm control={control} register={register} errors={errors} />
       </div>
     </form>

@@ -70,26 +70,30 @@ export default function CreateTemplatePage() {
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <div className="space-y-8">
-        <div className="flex items-center justify-between">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
             <PlusCircle className="mr-3 h-8 w-8 text-primary" />
             Create New Template
           </h1>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" asChild className="group">
+          {/* Action Buttons Group */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+            <Button variant="outline" asChild className="w-full sm:w-auto group">
               <Link href="/admin/dashboard">
                 <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
                 Back to Dashboard
               </Link>
             </Button>
-            <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isPending}>
-              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            <Button type="submit" className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isPending}>
+              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
               Add Template
             </Button>
           </div>
         </div>
+        {/* Form Component */}
         <TemplateUploadForm control={control} register={register} errors={errors} />
       </div>
     </form>
   );
 }
+
