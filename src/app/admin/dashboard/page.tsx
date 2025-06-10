@@ -1,13 +1,12 @@
 
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { TemplateUploadForm } from '@/components/sections/admin/TemplateUploadForm';
 import { AdminTemplateList } from '@/components/sections/admin/AdminTemplateList';
 import { getAllTemplatesFromFirestore } from '@/lib/firebase/firestoreTemplates';
 import { getAllOrdersFromFirestore } from '@/lib/firebase/firestoreOrders';
 import type { Template, Order } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
-import { BarChart3, LayoutGrid, Loader2, FileText, Users, DollarSign, ShoppingCart } from 'lucide-react';
+import { BarChart3, LayoutGrid, Loader2, FileText, Users, DollarSign, ShoppingCart, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { deleteTemplateAction } from '@/lib/actions/template.actions';
 import { Button } from '@/components/ui/button';
@@ -21,7 +20,7 @@ export default function AdminDashboardPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
-  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+  // editingTemplate and related handlers are removed
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const { toast } = useToast();
@@ -51,20 +50,9 @@ export default function AdminDashboardPage() {
     fetchTemplatesAndOrders();
   }, [fetchTemplatesAndOrders]);
 
-  const handleFormSuccess = () => {
-    fetchTemplatesAndOrders();
-    setEditingTemplate(null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleEditTemplate = (template: Template) => {
-    setEditingTemplate(template);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleCancelEdit = () => {
-    setEditingTemplate(null);
-  }
+  // handleFormSuccess is removed as form is on a dedicated page
+  // handleEditTemplate is removed
+  // handleCancelEdit is removed
 
   const handleDeleteTemplate = async (templateId: string) => {
     setIsDeleting(templateId);
@@ -74,7 +62,7 @@ export default function AdminDashboardPage() {
         title: "Template Deleted",
         description: result.message,
       });
-      fetchTemplatesAndOrders(); // Refresh both lists
+      fetchTemplatesAndOrders(); 
     } else {
       toast({
         title: "Error Deleting Template",
@@ -148,10 +136,16 @@ export default function AdminDashboardPage() {
             </CardContent>
           </Card>
         </div>
-         <div className="mt-6">
+         <div className="mt-6 flex items-center gap-4">
             <Button onClick={fetchTemplatesAndOrders} disabled={isLoading}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
                 Refresh Data
+            </Button>
+            <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Link href="/admin/templates/new">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add New Template
+                </Link>
             </Button>
         </div>
       </section>
@@ -180,7 +174,7 @@ export default function AdminDashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {orders.slice(0, 10).map((order) => ( // Display recent 10 orders
+                {orders.slice(0, 10).map((order) => ( 
                   <TableRow key={order.id}>
                     <TableCell className="font-medium truncate max-w-[100px] sm:max-w-[150px]" title={order.orderId}>
                         {order.orderId.substring(0,15)}...
@@ -204,7 +198,7 @@ export default function AdminDashboardPage() {
             </Table>
              {orders.length > 10 && (
                 <CardContent className="pt-4 text-center">
-                    <Button variant="outline" size="sm">View All Orders (Not Implemented)</Button>
+                    <Button variant="outline" size="sm" disabled>View All Orders (Not Implemented)</Button>
                 </CardContent>
             )}
           </Card>
@@ -212,9 +206,8 @@ export default function AdminDashboardPage() {
       </section>
 
       <Separator className="my-10" />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        <div className="lg:col-span-2 order-2 lg:order-1">
+      
+      <section>
            <h2 className="text-2xl font-semibold text-foreground mb-4">Manage Templates</h2>
            {isLoadingTemplates && templates.length === 0 ? (
              <div className="flex justify-center items-center h-64">
@@ -223,21 +216,12 @@ export default function AdminDashboardPage() {
            ) : (
              <AdminTemplateList 
                templates={templates} 
-               onEditTemplate={handleEditTemplate}
+               // onEditTemplate is removed
                onDeleteTemplate={handleDeleteTemplate}
                isDeleting={isDeleting}
             />
            )}
-        </div>
-        <div className="lg:col-span-1 order-1 lg:order-2">
-          <TemplateUploadForm 
-            key={editingTemplate ? editingTemplate.id : 'new'}
-            editingTemplate={editingTemplate}
-            onFormSuccess={handleFormSuccess}
-            onCancelEdit={handleCancelEdit}
-          />
-        </div>
-      </div>
+        </section>
     </div>
   );
 }

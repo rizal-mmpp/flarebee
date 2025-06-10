@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Edit2, Trash2, Eye, AlertCircle } from 'lucide-react';
+import { MoreHorizontal, Edit2, Trash2, Eye, AlertCircle, ExternalLink } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,21 +24,19 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useState } from 'react';
 
 interface AdminTemplateListProps {
   templates: Template[];
-  onEditTemplate: (template: Template) => void;
+  // onEditTemplate: (template: Template) => void; // Removed
   onDeleteTemplate: (templateId: string) => Promise<void>;
-  isDeleting: string | null; // ID of template being deleted, or null
+  isDeleting: string | null; 
 }
 
-export function AdminTemplateList({ templates, onEditTemplate, onDeleteTemplate, isDeleting }: AdminTemplateListProps) {
+export function AdminTemplateList({ templates, onDeleteTemplate, isDeleting }: AdminTemplateListProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<Template | null>(null);
-
 
   const handleDeleteClick = (template: Template) => {
     setTemplateToDelete(template);
@@ -54,7 +52,7 @@ export function AdminTemplateList({ templates, onEditTemplate, onDeleteTemplate,
   };
 
   if (templates.length === 0) {
-    return <p className="text-muted-foreground mt-4 text-center py-8">No templates found. Add one using the form!</p>;
+    return <p className="text-muted-foreground mt-4 text-center py-8">No templates found. Add one using the button above!</p>;
   }
 
   return (
@@ -107,12 +105,14 @@ export function AdminTemplateList({ templates, onEditTemplate, onDeleteTemplate,
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link href={`/templates/${template.id}`} className="flex items-center cursor-pointer">
-                          <Eye className="mr-2 h-4 w-4" /> View
+                        <Link href={`/templates/${template.id}`} target="_blank" className="flex items-center cursor-pointer">
+                          <Eye className="mr-2 h-4 w-4" /> View Public Page <ExternalLink className="ml-auto h-3 w-3"/>
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onEditTemplate(template)} className="flex items-center cursor-pointer">
-                        <Edit2 className="mr-2 h-4 w-4" /> Edit
+                      <DropdownMenuItem asChild>
+                        <Link href={`/admin/templates/edit/${template.id}`} className="flex items-center cursor-pointer">
+                          <Edit2 className="mr-2 h-4 w-4" /> Edit Template
+                        </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 

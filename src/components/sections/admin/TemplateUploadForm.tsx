@@ -17,6 +17,7 @@ import { Loader2, UploadCloud, Edit3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { saveTemplateAction, updateTemplateAction } from '@/lib/actions/template.actions';
 import { cn } from '@/lib/utils';
+// import { useRouter } from 'next/navigation'; // No longer needed for onFormSuccess here
 
 const templateFormSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
@@ -31,7 +32,7 @@ const templateFormSchema = z.object({
   previewImageUrl: z.string().url('Must be a valid URL for main image').or(z.literal('')).optional(),
   dataAiHint: z.string().optional(),
   previewUrl: z.string().url('Must be a valid URL for live preview').or(z.literal('')).optional(),
-  downloadZipUrl: z.string().url('Must be a valid URL for ZIP download').or(z.literal('#')).or(z.literal('')), // Allow empty or # initially
+  downloadZipUrl: z.string().url('Must be a valid URL for ZIP download').or(z.literal('#')).or(z.literal('')),
   githubUrl: z.string().url('Must be a valid GitHub URL').or(z.literal('')).optional(),
 });
 
@@ -39,8 +40,8 @@ export type TemplateFormValues = z.infer<typeof templateFormSchema>;
 
 interface TemplateUploadFormProps {
   editingTemplate?: Template | null;
-  onFormSuccess: () => void; // Callback after successful submission
-  onCancelEdit?: () => void;
+  onFormSuccess: () => void; 
+  onCancelEdit?: () => void; // Optional: still useful if form is part of a modal or more complex UI later
 }
 
 export function TemplateUploadForm({ editingTemplate, onFormSuccess, onCancelEdit }: TemplateUploadFormProps) {
@@ -91,11 +92,10 @@ export function TemplateUploadForm({ editingTemplate, onFormSuccess, onCancelEdi
       const formData = new FormData();
       (Object.keys(data) as Array<keyof TemplateFormValues>).forEach(key => {
         const value = data[key];
-        // Ensure even empty strings for optional URLs are appended if not undefined
         if (value !== undefined && value !== null) {
           formData.append(key, String(value));
         } else if (key === 'downloadZipUrl') {
-            formData.append(key, '#'); // Ensure downloadZipUrl always has a value
+            formData.append(key, '#');
         }
       });
       
@@ -114,27 +114,25 @@ export function TemplateUploadForm({ editingTemplate, onFormSuccess, onCancelEdi
         });
       } else {
         toast({
-          title: `Template ${isEditMode ? 'Updated' : 'Saved'}`,
-          description: result.message || `Template action successful.`,
+          title: `Template ${isEditMode ? 'Updated' : 'Saved'} Successfully`,
+          description: result.message || `The template details have been processed.`,
         });
-        onFormSuccess(); 
-        if (!isEditMode) reset(); 
+        onFormSuccess(); // Trigger navigation via prop
+        // Resetting form on successful *creation* is good. For edit, we navigate away.
+        // If onFormSuccess navigates, reset might not be strictly needed, but good practice.
+        if (!isEditMode) {
+             reset();
+        }
       }
     });
   };
 
   return (
-    <Card className="shadow-lg sticky top-24">
-      <CardHeader>
-        <CardTitle className="text-2xl flex items-center">
-          {isEditMode ? <Edit3 className="mr-2 h-6 w-6 text-primary" /> : <UploadCloud className="mr-2 h-6 w-6 text-primary" />}
-          {isEditMode ? 'Edit Template' : 'Add New Template'}
-        </CardTitle>
-        <CardDescription>
-          {isEditMode ? `Editing: ${editingTemplate?.title}` : 'Fill in the details to upload a new template.'}
-        </CardDescription>
+    <Card className="shadow-lg">
+      <CardHeader className="sr-only"> {/* Title is now handled by the page */}
+        <CardTitle>{isEditMode ? 'Edit Template Details' : 'Add New Template Details'}</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div>
             <Label htmlFor="title">Title</Label>
@@ -228,15 +226,17 @@ export function TemplateUploadForm({ editingTemplate, onFormSuccess, onCancelEdi
             {errors.githubUrl && <p className="text-sm text-destructive mt-1">{errors.githubUrl.message}</p>}
           </div>
 
-          <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isPending}>
-            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {isEditMode ? 'Update Template' : 'Add Template'}
-          </Button>
-          {isEditMode && onCancelEdit && (
-            <Button type="button" variant="outline" onClick={onCancelEdit} className="w-full mt-2" disabled={isPending}>
-              Cancel Edit
+          <div className="flex flex-col sm:flex-row gap-3">
+            {isEditMode && onCancelEdit && (
+                <Button type="button" variant="outline" onClick={onCancelEdit} className="w-full sm:w-auto" disabled={isPending}>
+                Cancel
+                </Button>
+            )}
+            <Button type="submit" className="w-full sm:flex-grow bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isPending}>
+                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {isEditMode ? 'Update Template' : 'Add Template'}
             </Button>
-          )}
+          </div>
         </form>
       </CardContent>
     </Card>
