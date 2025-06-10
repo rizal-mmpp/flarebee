@@ -26,8 +26,8 @@ export default function PurchaseSuccessPage() {
       }
       setHasInitiatedCartClear(true); // Mark that we've initiated the clear
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cartLoading, cartItems.length, hasInitiatedCartClear]); // Dependencies for the effect
+  // Added clearCart to dependency array
+  }, [cartLoading, cartItems.length, hasInitiatedCartClear, clearCart]);
 
 
   const purchasedItemsDescription = "Your purchased items"; 

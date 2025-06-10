@@ -108,11 +108,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (cartLoading || authLoading) return; // Don't save while loading or auth resolving
 
-    // Only save if cartItems has actually been initialized/modified after initial load.
-    // This check prevents overwriting Firestore with an empty array if loadCart hasn't finished.
-    // A more robust check might involve comparing with a "previousCartItems" state.
-    // For now, relying on cartLoading to gate this.
-
     if (user) {
       updateUserCartInFirestore(user.uid, cartItems);
     } else {
@@ -160,13 +155,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [toast]);
 
   const clearCart = useCallback(async () => {
-    const currentCartHadItems = cartItems.length > 0;
-    setCartItems([]);
+    // Access cartItems directly from state here if needed for the toast condition,
+    // or manage currentCartHadItems differently if it's crucial before setCartItems([])
+    const currentCartHadItems = cartItems.length > 0; 
+
+    setCartItems([]); // This will trigger the save useEffect
+
     if (user && !authLoading && !cartLoading) {
       await deleteUserCartFromFirestore(user.uid);
     }
-    // For anonymous user, the useEffect for cartItems will clear localStorage.
-    if (currentCartHadItems) { // Only toast if cart wasn't already empty
+    
+    if (currentCartHadItems) {
         setTimeout(() => {
         toast({
             title: 'Cart Cleared',
@@ -174,7 +173,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         });
         }, 0);
     }
-  }, [cartItems.length, user, authLoading, cartLoading, toast]);
+  // Removed cartItems.length from deps. user, authLoading, cartLoading, toast are more stable.
+  }, [user, authLoading, cartLoading, toast]);
 
 
   const getCartTotal = useCallback(() => {
