@@ -19,12 +19,9 @@ export interface Template {
   dataAiHint?: string;
   screenshots?: string[]; // URLs of additional screenshots
   previewUrl?: string; // Link to live preview
-  downloadUrl?: string;
-  techStack?: string[];
-  files?: {
-    zipUrl?: string;
-    readmeUrl?: string;
-  };
+  downloadZipUrl: string; // Link to download the template ZIP
+  githubUrl?: string; // Link to the GitHub repository (optional)
+  // files field was a bit complex, downloadZipUrl and githubUrl are more direct
   createdAt: string; // ISO date string (from Firestore Timestamp)
   updatedAt?: string; // ISO date string (from Firestore Timestamp)
   author?: string; // Optional author name / UID
@@ -77,3 +74,4 @@ export interface Order {
 export type OrderInputData = Omit<Order, 'id' | 'createdAt'> & {
   createdAt?: any; // Allows for Firestore serverTimestamp during creation
 };
+

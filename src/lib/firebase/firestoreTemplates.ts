@@ -36,7 +36,8 @@ const fromFirestore = (docSnapshot: any): Template => {
     dataAiHint: data.dataAiHint,
     previewUrl: data.previewUrl,
     screenshots: data.screenshots || [],
-    // files will be handled separately if used
+    downloadZipUrl: data.downloadZipUrl || '#', // Default to '#' if not present
+    githubUrl: data.githubUrl,
     createdAt: (data.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
     updatedAt: (data.updatedAt as Timestamp)?.toDate().toISOString(),
     author: data.author,
@@ -50,7 +51,7 @@ export async function addTemplateToFirestore(templateData: TemplateInputData): P
   try {
     const docRef = await addDoc(collection(db, TEMPLATES_COLLECTION), {
       ...templateData,
-      // categoryId is already in templateData, no need to set category to null
+      // categoryId is already in templateData
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -105,7 +106,7 @@ export async function updateTemplateInFirestore(id: string, data: Partial<Templa
   try {
     const docRef = doc(db, TEMPLATES_COLLECTION, id);
     await updateDoc(docRef, {
-        ...data, // data should contain categoryId if it's being updated
+        ...data,
         updatedAt: serverTimestamp(),
     });
   } catch (error) {
@@ -123,3 +124,4 @@ export async function deleteTemplateFromFirestore(id: string): Promise<void> {
     throw error;
   }
 }
+

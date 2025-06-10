@@ -31,6 +31,8 @@ const templateFormSchema = z.object({
   previewImageUrl: z.string().url('Must be a valid URL for main image').or(z.literal('')).optional(),
   dataAiHint: z.string().optional(),
   previewUrl: z.string().url('Must be a valid URL for live preview').or(z.literal('')).optional(),
+  downloadZipUrl: z.string().url('Must be a valid URL for ZIP download').or(z.literal('#')).or(z.literal('')), // Allow empty or # initially
+  githubUrl: z.string().url('Must be a valid GitHub URL').or(z.literal('')).optional(),
 });
 
 export type TemplateFormValues = z.infer<typeof templateFormSchema>;
@@ -59,6 +61,8 @@ export function TemplateUploadForm({ editingTemplate, onFormSuccess, onCancelEdi
       previewImageUrl: '',
       dataAiHint: '',
       previewUrl: '',
+      downloadZipUrl: '#',
+      githubUrl: '',
     }
   });
 
@@ -67,7 +71,6 @@ export function TemplateUploadForm({ editingTemplate, onFormSuccess, onCancelEdi
       setValue('title', editingTemplate.title);
       setValue('description', editingTemplate.description);
       setValue('longDescription', editingTemplate.longDescription || '');
-      // Ensure categoryId is valid, otherwise, form will show "invalid" due to refined Zod schema
       const isValidCategory = CATEGORIES.some(cat => cat.id === editingTemplate.category.id);
       setValue('categoryId', isValidCategory ? editingTemplate.category.id : ''); 
       setValue('price', editingTemplate.price);
@@ -76,19 +79,23 @@ export function TemplateUploadForm({ editingTemplate, onFormSuccess, onCancelEdi
       setValue('previewImageUrl', editingTemplate.imageUrl);
       setValue('dataAiHint', editingTemplate.dataAiHint || '');
       setValue('previewUrl', editingTemplate.previewUrl || '');
+      setValue('downloadZipUrl', editingTemplate.downloadZipUrl || '#');
+      setValue('githubUrl', editingTemplate.githubUrl || '');
     } else {
-      reset(); // Reset to default values if not in edit mode or editingTemplate is null
+      reset(); 
     }
   }, [editingTemplate, isEditMode, setValue, reset]);
 
   const onSubmit: SubmitHandler<TemplateFormValues> = (data) => {
     startTransition(async () => {
       const formData = new FormData();
-      // Convert form data (which might have undefined for optional fields) to FormData
       (Object.keys(data) as Array<keyof TemplateFormValues>).forEach(key => {
         const value = data[key];
+        // Ensure even empty strings for optional URLs are appended if not undefined
         if (value !== undefined && value !== null) {
           formData.append(key, String(value));
+        } else if (key === 'downloadZipUrl') {
+            formData.append(key, '#'); // Ensure downloadZipUrl always has a value
         }
       });
       
@@ -110,14 +117,14 @@ export function TemplateUploadForm({ editingTemplate, onFormSuccess, onCancelEdi
           title: `Template ${isEditMode ? 'Updated' : 'Saved'}`,
           description: result.message || `Template action successful.`,
         });
-        onFormSuccess(); // Notify parent about success
-        if (!isEditMode) reset(); // Reset form only if it was a new creation
+        onFormSuccess(); 
+        if (!isEditMode) reset(); 
       }
     });
   };
 
   return (
-    <Card className="shadow-lg sticky top-24"> {/* Added sticky top for better UX on scroll */}
+    <Card className="shadow-lg sticky top-24">
       <CardHeader>
         <CardTitle className="text-2xl flex items-center">
           {isEditMode ? <Edit3 className="mr-2 h-6 w-6 text-primary" /> : <UploadCloud className="mr-2 h-6 w-6 text-primary" />}
@@ -209,6 +216,18 @@ export function TemplateUploadForm({ editingTemplate, onFormSuccess, onCancelEdi
             {errors.previewUrl && <p className="text-sm text-destructive mt-1">{errors.previewUrl.message}</p>}
           </div>
 
+          <div>
+            <Label htmlFor="downloadZipUrl">Download ZIP URL</Label>
+            <Input id="downloadZipUrl" type="url" {...register('downloadZipUrl')} className="mt-1" placeholder="https://example.com/template.zip or #" />
+            {errors.downloadZipUrl && <p className="text-sm text-destructive mt-1">{errors.downloadZipUrl.message}</p>}
+          </div>
+
+          <div>
+            <Label htmlFor="githubUrl">GitHub URL (Optional)</Label>
+            <Input id="githubUrl" type="url" {...register('githubUrl')} className="mt-1" placeholder="https://github.com/user/repo" />
+            {errors.githubUrl && <p className="text-sm text-destructive mt-1">{errors.githubUrl.message}</p>}
+          </div>
+
           <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isPending}>
             {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             {isEditMode ? 'Update Template' : 'Add Template'}
@@ -223,5 +242,3 @@ export function TemplateUploadForm({ editingTemplate, onFormSuccess, onCancelEdi
     </Card>
   );
 }
-
-    

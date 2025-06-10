@@ -29,10 +29,11 @@ export async function saveTemplateAction(formData: FormData): Promise<{ success:
     const imageUrl = formData.get('previewImageUrl') as string || 'https://placehold.co/600x400.png';
     const dataAiHint = formData.get('dataAiHint') as string | undefined;
     const previewUrl = formData.get('previewUrl') as string | undefined;
-    // const author = formData.get('author') as string | undefined; // Assuming author might be set by logged in user later
+    const downloadZipUrl = formData.get('downloadZipUrl') as string || '#';
+    const githubUrl = formData.get('githubUrl') as string | undefined;
 
-    if (!title || !description || !categoryId || isNaN(price)) {
-      return { success: false, error: "Missing required fields or invalid price." };
+    if (!title || !description || !categoryId || isNaN(price) || !downloadZipUrl) {
+      return { success: false, error: "Missing required fields (Title, Description, Category, Price, Download URL) or invalid price." };
     }
     
     const category = CATEGORIES.find(c => c.id === categoryId);
@@ -44,21 +45,22 @@ export async function saveTemplateAction(formData: FormData): Promise<{ success:
       title,
       description,
       longDescription,
-      categoryId, // Storing ID, resolved to object on fetch by firestoreTemplates
+      categoryId,
       price,
       tags,
       techStack,
       imageUrl,
       dataAiHint,
       previewUrl,
-      // author,
+      downloadZipUrl,
+      githubUrl,
     };
 
     const newTemplate = await addTemplateToFirestore(templateData);
     
     revalidatePath('/admin/dashboard');
     revalidatePath('/templates');
-    revalidatePath('/'); // For featured templates
+    revalidatePath('/'); 
 
     return { success: true, message: `Template "${newTemplate.title}" created successfully.`, template: newTemplate };
   } catch (error: any) {
@@ -76,12 +78,15 @@ export async function updateTemplateAction(id: string, formData: FormData): Prom
     const price = parseFloat(formData.get('price') as string);
     const tags = parseStringToArray(formData.get('tags') as string | null);
     const techStack = parseStringToArray(formData.get('techStack') as string | null);
-    const imageUrl = formData.get('previewImageUrl') as string || undefined; // Allow update
+    const imageUrl = formData.get('previewImageUrl') as string || undefined; 
     const dataAiHint = formData.get('dataAiHint') as string | undefined;
     const previewUrl = formData.get('previewUrl') as string | undefined;
+    const downloadZipUrl = formData.get('downloadZipUrl') as string || '#';
+    const githubUrl = formData.get('githubUrl') as string | undefined;
 
-    if (!id || !title || !description || !categoryId || isNaN(price)) {
-      return { success: false, error: "Missing required fields or invalid price." };
+
+    if (!id || !title || !description || !categoryId || isNaN(price) || !downloadZipUrl) {
+      return { success: false, error: "Missing required fields (Title, Description, Category, Price, Download URL) or invalid price." };
     }
     
     const category = CATEGORIES.find(c => c.id === categoryId);
@@ -99,6 +104,8 @@ export async function updateTemplateAction(id: string, formData: FormData): Prom
       techStack,
       dataAiHint,
       previewUrl,
+      downloadZipUrl,
+      githubUrl,
     };
     if (imageUrl) updateData.imageUrl = imageUrl;
 
@@ -134,3 +141,4 @@ export async function deleteTemplateAction(id: string): Promise<{ success: boole
     return { success: false, error: error.message || "Failed to delete template." };
   }
 }
+

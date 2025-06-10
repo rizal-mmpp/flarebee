@@ -1,13 +1,13 @@
 
-'use client'; // Needs to be client component for cart interaction and potential client-side error display
+'use client'; 
 
-import type { Template } from '@/lib/types';
-import { getTemplateByIdFromFirestore, getAllTemplatesFromFirestore } from '@/lib/firebase/firestoreTemplates';
-import { notFound, useRouter, useSearchParams } from 'next/navigation'; // Import useRouter and useSearchParams
+import type { Template, Order } from '@/lib/types';
+import { getTemplateByIdFromFirestore } from '@/lib/firebase/firestoreTemplates';
+import { notFound, useRouter, useSearchParams } from 'next/navigation'; 
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CreditCard, Eye, Zap, ShoppingCart, Loader2, ServerCrash } from 'lucide-react'; // Removed LogIn
+import { ArrowLeft, CreditCard, Eye, Zap, ShoppingCart, Loader2, ServerCrash, Download, ExternalLink, Github } from 'lucide-react'; 
 import Link from 'next/link';
 import {
   Carousel,
@@ -17,11 +17,12 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel"
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { useCart } from '@/context/CartContext'; // Import useCart
-import { use, useEffect, useState, useTransition } from 'react'; // Import use
+import { useCart } from '@/context/CartContext'; 
+import { use, useEffect, useState, useTransition } from 'react'; 
 import { toast } from '@/hooks/use-toast';
-import { useAuth } from '@/lib/firebase/AuthContext'; // Import useAuth
-import { LoginModal } from '@/components/shared/LoginModal'; // Import the new LoginModal
+import { useAuth } from '@/lib/firebase/AuthContext'; 
+import { LoginModal } from '@/components/shared/LoginModal'; 
+import { getOrdersByUserIdFromFirestore } from '@/lib/firebase/firestoreOrders';
 
 export default function TemplateDetailPage({ params }: { params: { id: string } }) {
   const unwrappedParams = use(params);
@@ -32,11 +33,14 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
   const [error, setError] = useState<string | null>(null);
   
   const { addToCart, isItemInCart } = useCart();
-  const { user, signInWithGoogle } = useAuth(); // Get user and signInWithGoogle from AuthContext
+  const { user, signInWithGoogle } = useAuth(); 
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isBuyNowPending, startBuyNowTransition] = useTransition();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  const [hasPurchased, setHasPurchased] = useState(false);
+  const [isLoadingPurchaseStatus, setIsLoadingPurchaseStatus] = useState(true);
 
   useEffect(() => {
     async function fetchTemplate() {
@@ -72,6 +76,32 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
 
   }, [id, searchParams, router]);
 
+  useEffect(() => {
+    async function checkPurchaseStatus() {
+      if (user && template) {
+        setIsLoadingPurchaseStatus(true);
+        try {
+          const orders = await getOrdersByUserIdFromFirestore(user.uid);
+          const purchased = orders.some(order => 
+            order.items.some(item => item.id === template.id) && order.status === 'completed'
+          );
+          setHasPurchased(purchased);
+        } catch (err) {
+          console.error("Failed to check purchase status:", err);
+          setHasPurchased(false); // Assume not purchased on error
+        } finally {
+          setIsLoadingPurchaseStatus(false);
+        }
+      } else {
+        setHasPurchased(false);
+        setIsLoadingPurchaseStatus(false);
+      }
+    }
+    if (!isLoading) { // Only run if template data is loaded
+        checkPurchaseStatus();
+    }
+  }, [user, template, isLoading]);
+
 
   const handleAddToCart = () => {
     if (!user) {
@@ -90,7 +120,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
     }
     if (template) {
       startBuyNowTransition(() => {
-        addToCart(template);
+        addToCart(template); // Add to cart first, then redirect
         router.push('/checkout');
       });
     }
@@ -176,7 +206,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
           <div className="py-4">
             <Badge variant="secondary" className="mb-2">{template.category.name}</Badge>
             <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">{template.title}</h1>
-            <p className="text-4xl font-extrabold text-primary mb-6">${template.price.toFixed(2)}</p>
+            {!hasPurchased && <p className="text-4xl font-extrabold text-primary mb-6">${template.price.toFixed(2)}</p>}
             
             <div className="mb-6 prose prose-invert max-w-none text-muted-foreground">
               <p>{template.longDescription || template.description}</p>
@@ -207,25 +237,64 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
             </div>
             
             <div className="space-y-4">
-              <Button 
-                size="lg" 
-                className="w-full group bg-accent hover:bg-accent/90 text-accent-foreground transition-all duration-300 ease-in-out transform hover:scale-105"
-                onClick={handleBuyNow}
-                disabled={isBuyNowPending}
-              >
-                {isBuyNowPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
-                Buy Now & Checkout
-              </Button>
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="w-full group"
-                onClick={handleAddToCart}
-                disabled={itemAlreadyInCart && user}
-              >
-                <ShoppingCart className="mr-2 h-5 w-5" />
-                {itemAlreadyInCart && user ? 'Already in Cart' : 'Add to Cart'}
-              </Button>
+              {isLoadingPurchaseStatus && (
+                <div className="flex items-center justify-center h-24">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              )}
+
+              {!isLoadingPurchaseStatus && hasPurchased && (
+                <>
+                  <h3 className="text-lg font-semibold text-foreground mb-1">You own this template!</h3>
+                  <Button 
+                    size="lg" 
+                    asChild
+                    className="w-full group bg-green-600 hover:bg-green-700 text-white transition-all duration-300 ease-in-out transform hover:scale-105"
+                    disabled={!template.downloadZipUrl || template.downloadZipUrl === '#'}
+                  >
+                    <Link href={template.downloadZipUrl || '#'} target="_blank" rel="noopener noreferrer">
+                      <Download className="mr-2 h-5 w-5" /> Download ZIP
+                    </Link>
+                  </Button>
+                  {template.githubUrl && (
+                    <Button 
+                      variant="outline" 
+                      size="lg" 
+                      asChild 
+                      className="w-full group"
+                    >
+                      <Link href={template.githubUrl} target="_blank" rel="noopener noreferrer">
+                        <Github className="mr-2 h-5 w-5" /> Visit GitHub
+                      </Link>
+                    </Button>
+                  )}
+                </>
+              )}
+
+              {!isLoadingPurchaseStatus && !hasPurchased && (
+                <>
+                  <Button 
+                    size="lg" 
+                    className="w-full group bg-accent hover:bg-accent/90 text-accent-foreground transition-all duration-300 ease-in-out transform hover:scale-105"
+                    onClick={handleBuyNow}
+                    disabled={isBuyNowPending || (itemAlreadyInCart && user)}
+                  >
+                    {isBuyNowPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
+                    {itemAlreadyInCart && user ? 'Go to Checkout (In Cart)' : 'Buy Now & Checkout'}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    className="w-full group"
+                    onClick={handleAddToCart}
+                    disabled={(itemAlreadyInCart && user) || isBuyNowPending}
+                  >
+                    <ShoppingCart className="mr-2 h-5 w-5" />
+                    {itemAlreadyInCart && user ? 'Already in Cart' : 'Add to Cart'}
+                  </Button>
+                </>
+              )}
+              
               {template.previewUrl && template.previewUrl !== '#' && (
                 <Button variant="outline" size="lg" asChild className="w-full group border-primary text-primary hover:bg-primary/10 transition-all duration-300 ease-in-out transform hover:scale-105">
                   <Link href={template.previewUrl} target="_blank" rel="noopener noreferrer">
