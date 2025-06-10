@@ -3,7 +3,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, Download, Home, ShoppingBag } from "lucide-react";
+import { CheckCircle, Home, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCart } from "@/context/CartContext";
@@ -13,30 +13,27 @@ import { useToast } from "@/hooks/use-toast";
 export default function PurchaseSuccessPage() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order_id') || searchParams.get('external_id');
-  
-  const { clearCart, cartLoading } = useCart(); 
+
+  const { clearCart, cartLoading } = useCart();
   const { toast } = useToast();
   const [hasInitiatedCartClear, setHasInitiatedCartClear] = useState(false);
 
   useEffect(() => {
-    let isMounted = true; 
+    let isMounted = true;
 
     const performCartClear = async () => {
-      // Ensure cart is not loading, clear operation hasn't been initiated, and component is mounted
       if (!cartLoading && !hasInitiatedCartClear && isMounted) {
-        // Set the flag *before* calling clearCart to break potential loops
-        setHasInitiatedCartClear(true); 
+        setHasInitiatedCartClear(true);
         try {
-          await clearCart(); 
-          // Toasts for cart clearing are now handled within clearCart itself
+          await clearCart();
+          // Toasts for cart clearing success/issues are handled within clearCart itself
         } catch (error) {
-          console.error("Error calling clearCart on success page:", error);
+          console.error("Error calling clearCart on success page (unhandled in clearCart):", error);
           if (isMounted) {
-            // This toast is a fallback if clearCart itself throws an unhandled error
             toast({
               title: "Purchase Note",
               description: "Your purchase was successful. There was an issue clearing your cart automatically.",
-              variant: "destructive" 
+              variant: "destructive"
             });
           }
         }
@@ -48,13 +45,15 @@ export default function PurchaseSuccessPage() {
     return () => {
       isMounted = false;
     };
-    // setHasInitiatedCartClear (state setter) is stable, toast is stable.
-    // clearCart's identity might change if its dependencies change.
-    // cartLoading changes.
+    // Dependencies:
+    // - cartLoading: Effect should run when cart is no longer loading.
+    // - hasInitiatedCartClear: Local state, effect re-runs, internal condition prevents re-execution of clearCart.
+    // - clearCart: Function from context. If its identity changes, effect re-runs. Guarded by hasInitiatedCartClear.
+    // - toast: Stable function from useToast.
   }, [cartLoading, hasInitiatedCartClear, clearCart, toast]);
 
 
-  const purchasedItemsDescription = "Your purchased items"; 
+  const purchasedItemsDescription = "Your purchased items";
   const downloadInfo = "Download links for your purchased items will be available in your account or sent via email.";
 
   return (
@@ -72,7 +71,7 @@ export default function PurchaseSuccessPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <p className="text-muted-foreground">
-            Your order for "{purchasedItemsDescription}" has been processed. 
+            Your order for "{purchasedItemsDescription}" has been processed.
             {downloadInfo}
             You will also receive an email receipt shortly (if an email was provided).
           </p>
