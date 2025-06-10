@@ -48,10 +48,10 @@ export default function PurchaseSuccessPage() {
     return () => {
       isMounted = false;
     };
-    // setHasInitiatedCartClear is stable, toast is stable.
-    // clearCart's identity might change if its dependencies (like cartItems) change.
+    // setHasInitiatedCartClear (state setter) is stable, toast is stable.
+    // clearCart's identity might change if its dependencies change.
     // cartLoading changes.
-  }, [cartLoading, hasInitiatedCartClear, clearCart, toast, setHasInitiatedCartClear]);
+  }, [cartLoading, hasInitiatedCartClear, clearCart, toast]);
 
 
   const purchasedItemsDescription = "Your purchased items"; 

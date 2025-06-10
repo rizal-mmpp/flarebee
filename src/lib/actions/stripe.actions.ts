@@ -1,47 +1,27 @@
-'use client';
+'use server';
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertTriangle, Home, ShoppingBag } from "lucide-react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+// This file is a placeholder for Stripe-related server actions.
+// It is not currently used in the described Xendit payment flow.
 
-export default function PurchaseCancelledPage() {
-  const searchParams = useSearchParams();
-  const externalId = searchParams.get('external_id');
+// Example structure for a Stripe action (if you were to implement it):
+/*
+import Stripe from 'stripe';
 
-  return (
-    <div className="container mx-auto px-4 py-16 md:py-24 flex justify-center items-center min-h-[calc(100vh-10rem)]">
-      <Card className="w-full max-w-lg text-center shadow-xl bg-card">
-        <CardHeader>
-          <div className="mx-auto bg-destructive/10 rounded-full p-3 w-fit mb-4">
-            <AlertTriangle className="h-12 w-12 text-destructive" />
-          </div>
-          <CardTitle className="text-3xl font-bold text-foreground">Payment Cancelled</CardTitle>
-          <CardDescription className="text-lg text-muted-foreground pt-2">
-            Your purchase process was cancelled or failed.
-            {externalId && <span className="block text-sm mt-1">Order ID: {externalId}</span>}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <p className="text-muted-foreground">
-            It seems you have cancelled the payment or something went wrong during the process. Your order has not been processed.
-            If you believe this is an error, please try again or contact support.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Button variant="outline" asChild size="lg" className="w-full group">
-              <Link href="/templates">
-                <ShoppingBag className="mr-2 h-5 w-5" /> Continue Shopping
-              </Link>
-            </Button>
-            <Button asChild size="lg" className="w-full group bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Link href="/">
-                <Home className="mr-2 h-5 w-5" /> Go to Homepage
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2024-04-10',
+});
+
+export async function createStripeCheckoutSession(items: any[], customerEmail?: string) {
+  try {
+    // ... logic to create Stripe checkout session ...
+    // const session = await stripe.checkout.sessions.create({ ... });
+    // return { sessionId: session.id, url: session.url };
+    return { error: 'Stripe actions not implemented yet.' };
+  } catch (error: any) {
+    console.error('Error creating Stripe checkout session:', error);
+    return { error: error.message || 'Failed to create Stripe session.' };
+  }
 }
+*/
+
+// Intentionally blank for now as the focus is on Xendit.
