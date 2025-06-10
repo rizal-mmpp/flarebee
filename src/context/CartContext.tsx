@@ -153,15 +153,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [toast]);
 
   const clearCart = useCallback(async () => {
-    // Capture current cart state for toast logic BEFORE modifying it
-    const currentCartItemCount = cartItems.length;
-
+    const currentCartItemCount = cartItems.length; // Capture *before* setCartItems([])
     setCartItems([]); // Optimistically clear local cart state
 
     if (user && !authLoading) {
       try {
         await deleteUserCartFromFirestore(user.uid);
-        // If successful and cart was not empty before clearing, show success toast
         if (currentCartItemCount > 0) {
           setTimeout(() => {
             toast({
@@ -172,16 +169,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error("Failed to delete user cart from Firestore:", error);
-        // Firestore deletion failed, but local cart is cleared.
-        // A toast here might be redundant if PurchaseSuccessPage also shows one for overall failure.
-        // However, this specific error message is more informative.
-        setTimeout(() => {
-          toast({
-            title: "Cart Sync Issue",
-            description: "Your cart is cleared on this device, but we couldn't fully sync this change online.",
-            variant: "destructive"
-          });
-        }, 0);
+        // Toast if an error occurred but items were "cleared" locally.
+        if (currentCartItemCount > 0) { // Only show error if there was something to clear
+            setTimeout(() => {
+                toast({
+                title: "Cart Sync Issue",
+                description: "Your cart is cleared on this device, but we couldn't fully sync this change online.",
+                variant: "destructive"
+                });
+            }, 0);
+        }
       }
     } else if (!user && currentCartItemCount > 0) {
       // User is not logged in, only local cart was cleared (localStorage handled by other useEffect)
@@ -192,8 +189,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         });
       }, 0);
     }
-    // If currentCartItemCount was 0, no toast is needed for successfully clearing an already empty cart.
-  }, [user, authLoading, setCartItems, toast]); // Removed cartItems from dependencies
+  }, [user, authLoading, cartItems, setCartItems, toast]); // Added cartItems back
 
 
   const getCartTotal = useCallback(() => {
