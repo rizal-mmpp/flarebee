@@ -6,54 +6,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { CheckCircle, Home, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCart } from "@/context/CartContext";
-import { useEffect, useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+// Removed useEffect, useState, useCart, useToast as they are no longer needed for cart clearing here.
+// If cartItems are needed for display, useCart can be re-added. For now, simplifying.
 
 export default function PurchaseSuccessPage() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order_id') || searchParams.get('external_id');
 
-  const { clearCart, cartLoading } = useCart();
-  const { toast } = useToast();
-  const [hasInitiatedCartClear, setHasInitiatedCartClear] = useState(false);
+  // The cart clearing is now handled server-side before redirecting here.
+  // The CartContext will load the latest cart state (which should be empty if server-side clear was successful).
+  // This page is now primarily for displaying the success message.
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const performCartClear = async () => {
-      if (!cartLoading && !hasInitiatedCartClear && isMounted) {
-        setHasInitiatedCartClear(true);
-        try {
-          await clearCart();
-          // Toasts for cart clearing success/issues are handled within clearCart itself
-        } catch (error) {
-          console.error("Error calling clearCart on success page (unhandled in clearCart):", error);
-          if (isMounted) {
-            toast({
-              title: "Purchase Note",
-              description: "Your purchase was successful. There was an issue clearing your cart automatically.",
-              variant: "destructive"
-            });
-          }
-        }
-      }
-    };
-
-    performCartClear();
-
-    return () => {
-      isMounted = false;
-    };
-    // Dependencies:
-    // - cartLoading: Effect should run when cart is no longer loading.
-    // - hasInitiatedCartClear: Local state, effect re-runs, internal condition prevents re-execution of clearCart.
-    // - clearCart: Function from context. If its identity changes, effect re-runs. Guarded by hasInitiatedCartClear.
-    // - toast: Stable function from useToast.
-  }, [cartLoading, hasInitiatedCartClear, clearCart, toast]);
-
-
-  const purchasedItemsDescription = "Your purchased items";
+  const purchasedItemsDescription = "Your purchased items"; // This could be made dynamic if items were passed via query params
   const downloadInfo = "Download links for your purchased items will be available in your account or sent via email.";
 
   return (
