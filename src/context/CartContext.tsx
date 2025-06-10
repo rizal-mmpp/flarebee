@@ -47,17 +47,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === template.id);
       if (existingItem) {
-        // For templates, we usually don't increase quantity, just ensure it's in cart
-        toast({
-          title: 'Already in Cart',
-          description: `"${template.title}" is already in your cart.`,
-        });
+        setTimeout(() => {
+          toast({
+            title: 'Already in Cart',
+            description: `"${template.title}" is already in your cart.`,
+          });
+        }, 0);
         return prevItems;
       }
-      toast({
-        title: 'Added to Cart',
-        description: `"${template.title}" has been added to your cart.`,
-      });
+      setTimeout(() => {
+        toast({
+          title: 'Added to Cart',
+          description: `"${template.title}" has been added to your cart.`,
+        });
+      }, 0);
       return [...prevItems, { id: template.id, title: template.title, price: template.price, imageUrl: template.imageUrl, quantity: 1 }];
     });
   }, [toast]);
@@ -66,11 +69,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCartItems((prevItems) => {
       const itemToRemove = prevItems.find(item => item.id === templateId);
       if (itemToRemove) {
-         toast({
-          title: 'Removed from Cart',
-          description: `"${itemToRemove.title}" has been removed from your cart.`,
-          variant: 'destructive'
-        });
+        setTimeout(() => {
+          toast({
+            title: 'Removed from Cart',
+            description: `"${itemToRemove.title}" has been removed from your cart.`,
+            variant: 'destructive'
+          });
+        }, 0);
       }
       return prevItems.filter((item) => item.id !== templateId);
     });
@@ -78,10 +83,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = useCallback(() => {
     setCartItems([]);
-    toast({
-        title: 'Cart Cleared',
-        description: 'Your shopping cart has been emptied.',
-    });
+    setTimeout(() => {
+      toast({
+          title: 'Cart Cleared',
+          description: 'Your shopping cart has been emptied.',
+      });
+    }, 0);
   }, [toast]);
 
   const getCartTotal = useCallback(() => {
