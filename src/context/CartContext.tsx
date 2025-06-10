@@ -2,7 +2,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { createContext, useContext, useState, useEffect, useCallback } // Removed useRef
+import { createContext, useContext, useState, useEffect, useCallback }
   from 'react';
 import type { Template, CartItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -17,7 +17,7 @@ interface CartContextType {
   cartItems: CartItem[];
   addToCart: (template: Template) => void;
   removeFromCart: (templateId: string) => void;
-  clearCart: () => Promise<void>; // Made promise explicit
+  clearCart: () => Promise<void>;
   getCartTotal: () => number;
   isItemInCart: (templateId: string) => boolean;
   cartLoading: boolean;
@@ -100,7 +100,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     loadCart();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, authLoading]); // Removed toast from here, it was used in loadCart via setTimeout
+  }, [user, authLoading]);
 
   // Sync cart effect
   useEffect(() => {
@@ -153,36 +153,47 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [toast]);
 
   const clearCart = useCallback(async () => {
-    const cartWasNotEmpty = cartItems.length > 0;
+    // Capture current cart state for toast logic BEFORE modifying it
+    const currentCartItemCount = cartItems.length;
 
-    setCartItems([]); // Update local state immediately
+    setCartItems([]); // Optimistically clear local cart state
 
-    let firestoreDeleteFailed = false;
     if (user && !authLoading) {
       try {
         await deleteUserCartFromFirestore(user.uid);
+        // If successful and cart was not empty before clearing, show success toast
+        if (currentCartItemCount > 0) {
+          setTimeout(() => {
+            toast({
+              title: 'Cart Cleared',
+              description: 'Your shopping cart has been emptied.',
+            });
+          }, 0);
+        }
       } catch (error) {
         console.error("Failed to delete user cart from Firestore:", error);
-        firestoreDeleteFailed = true;
+        // Firestore deletion failed, but local cart is cleared.
+        // A toast here might be redundant if PurchaseSuccessPage also shows one for overall failure.
+        // However, this specific error message is more informative.
         setTimeout(() => {
           toast({
             title: "Cart Sync Issue",
-            description: "Your purchase was successful. Could not clear your cart from our servers, but it's cleared on this device.",
+            description: "Your cart is cleared on this device, but we couldn't fully sync this change online.",
             variant: "destructive"
           });
         }, 0);
       }
-    }
-
-    if (cartWasNotEmpty && !firestoreDeleteFailed) {
-        setTimeout(() => {
+    } else if (!user && currentCartItemCount > 0) {
+      // User is not logged in, only local cart was cleared (localStorage handled by other useEffect)
+      setTimeout(() => {
         toast({
-            title: 'Cart Cleared',
-            description: 'Your shopping cart has been emptied.',
+          title: 'Cart Cleared',
+          description: 'Your local shopping cart has been emptied.',
         });
-        }, 0);
+      }, 0);
     }
-  }, [user, authLoading, toast, setCartItems, cartItems]); // Added cartItems dependency
+    // If currentCartItemCount was 0, no toast is needed for successfully clearing an already empty cart.
+  }, [user, authLoading, setCartItems, toast]); // Removed cartItems from dependencies
 
 
   const getCartTotal = useCallback(() => {
