@@ -6,30 +6,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { CheckCircle, Download, Home, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCart } from "@/context/CartContext"; // Import useCart
+import { useCart } from "@/context/CartContext";
 import { useEffect } from "react";
 
 export default function PurchaseSuccessPage() {
   const searchParams = useSearchParams();
-  const orderId = searchParams.get('order_id') || searchParams.get('external_id'); // Support both for transition
-  const source = searchParams.get('source'); 
+  const orderId = searchParams.get('order_id') || searchParams.get('external_id');
+  // const source = searchParams.get('source'); 
 
-  const { clearCart, cartItems } = useCart(); // Get clearCart and cartItems
+  const { clearCart, cartItems, cartLoading } = useCart();
 
   useEffect(() => {
-    // Clear the cart only if there were items and the page loaded successfully
-    // This is an optimistic clear. A more robust solution involves webhook verification.
-    if (cartItems.length > 0) {
+    // Clear the cart only if it's not loading and there were items
+    // This is an optimistic clear. A more robust solution involves webhook verification
+    // to confirm payment before clearing and provisioning access.
+    if (!cartLoading && cartItems.length > 0) {
         clearCart();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run once on mount
+  }, [cartLoading]); // Rerun when cartLoading becomes false. clearCart and cartItems are stable.
 
-  // In a real app, you might use orderId to fetch transaction details 
-  // and confirm payment, then provision access.
-  
-  // For a cart, purchasedItemName and downloadLink would be more complex.
-  // We'll keep it generic for now.
   const purchasedItemsDescription = "Your purchased items"; 
   const downloadInfo = "Download links for your purchased items will be available in your account or sent via email.";
 
@@ -52,15 +48,6 @@ export default function PurchaseSuccessPage() {
             {downloadInfo}
             You will also receive an email receipt shortly (if an email was provided).
           </p>
-          {/* 
-            For multiple items, a single "Download Now" button might not be appropriate.
-            You might list items or direct to a "My Downloads" page.
-          <Button asChild size="lg" className="w-full group bg-primary hover:bg-primary/90 text-primary-foreground">
-            <a href={"#"} download> // Placeholder
-              <Download className="mr-2 h-5 w-5" /> Access Purchases
-            </a>
-          </Button> 
-          */}
           <div className="flex flex-col sm:flex-row gap-4">
             <Button variant="outline" asChild size="lg" className="w-full group">
               <Link href="/templates">

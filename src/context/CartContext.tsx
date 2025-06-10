@@ -5,6 +5,12 @@ import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { Template, CartItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/lib/firebase/AuthContext';
+import {
+  getUserCartFromFirestore,
+  updateUserCartInFirestore,
+  deleteUserCartFromFirestore,
+} from '@/lib/firebase/firestoreCarts';
 
 interface CartContextType {
   cartItems: CartItem[];
@@ -13,35 +19,106 @@ interface CartContextType {
   clearCart: () => void;
   getCartTotal: () => number;
   isItemInCart: (templateId: string) => boolean;
+  cartLoading: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const CART_STORAGE_KEY = 'flarebeeCart';
+const LOCAL_STORAGE_ANONYMOUS_CART_KEY = 'flarebeeAnonymousCart_v1'; // Added versioning
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartLoading, setCartLoading] = useState(true);
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedCart = localStorage.getItem(CART_STORAGE_KEY);
-      if (storedCart) {
-        try {
-          setCartItems(JSON.parse(storedCart));
-        } catch (error) {
-          console.error("Failed to parse cart from localStorage", error);
-          localStorage.removeItem(CART_STORAGE_KEY); // Clear corrupted data
+    const loadCart = async () => {
+      if (authLoading) {
+        setCartLoading(true); // Keep loading if auth is still resolving
+        return;
+      }
+
+      setCartLoading(true);
+      if (user) {
+        // User is logged in
+        let firestoreCart = await getUserCartFromFirestore(user.uid);
+        const localCartJson = localStorage.getItem(LOCAL_STORAGE_ANONYMOUS_CART_KEY);
+        let localCartItems: CartItem[] = [];
+
+        if (localCartJson) {
+          try {
+            localCartItems = JSON.parse(localCartJson);
+          } catch (e) {
+            console.error("Failed to parse anonymous cart for merging", e);
+            localStorage.removeItem(LOCAL_STORAGE_ANONYMOUS_CART_KEY);
+          }
+        }
+
+        if (firestoreCart) {
+          // Firestore cart exists. If local cart also exists, merge them (Firestore takes precedence for existing items)
+          if (localCartItems.length > 0) {
+            const mergedItems = [...firestoreCart];
+            localCartItems.forEach(localItem => {
+              if (!mergedItems.some(fi => fi.id === localItem.id)) {
+                mergedItems.push(localItem);
+              }
+            });
+            setCartItems(mergedItems);
+            await updateUserCartInFirestore(user.uid, mergedItems);
+            localStorage.removeItem(LOCAL_STORAGE_ANONYMOUS_CART_KEY);
+            if (localCartItems.length > 0 && localCartItems.some(lc => !firestoreCart.some(fc => fc.id === lc.id)) ) { // Only toast if new items were actually merged
+                 toast({ title: "Cart Synced", description: "Your anonymous cart items have been merged."});
+            }
+          } else {
+            setCartItems(firestoreCart);
+          }
+        } else if (localCartItems.length > 0) {
+          // No Firestore cart, but local anonymous cart exists. Use it and save to Firestore.
+          setCartItems(localCartItems);
+          await updateUserCartInFirestore(user.uid, localCartItems);
+          localStorage.removeItem(LOCAL_STORAGE_ANONYMOUS_CART_KEY);
+           toast({ title: "Cart Synced", description: "Your previous cart items have been saved to your account."});
+        } else {
+          // No Firestore cart, no local cart
+          setCartItems([]);
+        }
+      } else {
+        // User is logged out, load from localStorage (anonymous cart)
+        const localCartJson = localStorage.getItem(LOCAL_STORAGE_ANONYMOUS_CART_KEY);
+        if (localCartJson) {
+          try {
+            setCartItems(JSON.parse(localCartJson));
+          } catch (error) {
+            console.error("Failed to parse anonymous cart from localStorage", error);
+            localStorage.removeItem(LOCAL_STORAGE_ANONYMOUS_CART_KEY);
+            setCartItems([]);
+          }
+        } else {
+          setCartItems([]);
         }
       }
-    }
-  }, []);
+      setCartLoading(false);
+    };
+
+    loadCart();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, authLoading]); // Toast is stable, no need to add.
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
+    if (cartLoading || authLoading) return; // Don't save while loading or auth resolving
+
+    // Only save if cartItems has actually been initialized/modified after initial load.
+    // This check prevents overwriting Firestore with an empty array if loadCart hasn't finished.
+    // A more robust check might involve comparing with a "previousCartItems" state.
+    // For now, relying on cartLoading to gate this.
+
+    if (user) {
+      updateUserCartInFirestore(user.uid, cartItems);
+    } else {
+      localStorage.setItem(LOCAL_STORAGE_ANONYMOUS_CART_KEY, JSON.stringify(cartItems));
     }
-  }, [cartItems]);
+  }, [cartItems, user, cartLoading, authLoading]);
 
   const addToCart = useCallback((template: Template) => {
     setCartItems((prevItems) => {
@@ -68,6 +145,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const removeFromCart = useCallback((templateId: string) => {
     setCartItems((prevItems) => {
       const itemToRemove = prevItems.find(item => item.id === templateId);
+      const newItems = prevItems.filter((item) => item.id !== templateId);
       if (itemToRemove) {
         setTimeout(() => {
           toast({
@@ -77,19 +155,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
           });
         }, 0);
       }
-      return prevItems.filter((item) => item.id !== templateId);
+      return newItems;
     });
   }, [toast]);
 
-  const clearCart = useCallback(() => {
+  const clearCart = useCallback(async () => {
+    const currentCartHadItems = cartItems.length > 0;
     setCartItems([]);
-    setTimeout(() => {
-      toast({
-          title: 'Cart Cleared',
-          description: 'Your shopping cart has been emptied.',
-      });
-    }, 0);
-  }, [toast]);
+    if (user && !authLoading && !cartLoading) {
+      await deleteUserCartFromFirestore(user.uid);
+    }
+    // For anonymous user, the useEffect for cartItems will clear localStorage.
+    if (currentCartHadItems) { // Only toast if cart wasn't already empty
+        setTimeout(() => {
+        toast({
+            title: 'Cart Cleared',
+            description: 'Your shopping cart has been emptied.',
+        });
+        }, 0);
+    }
+  }, [cartItems.length, user, authLoading, cartLoading, toast]);
+
 
   const getCartTotal = useCallback(() => {
     return cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
@@ -100,7 +186,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [cartItems]);
 
   return (
-    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, clearCart, getCartTotal, isItemInCart }}>
+    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, clearCart, getCartTotal, isItemInCart, cartLoading }}>
       {children}
     </CartContext.Provider>
   );

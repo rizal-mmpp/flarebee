@@ -22,7 +22,7 @@ interface XenditItem {
 }
 
 export default function CheckoutPage() {
-  const { cartItems, removeFromCart, getCartTotal, clearCart } = useCart();
+  const { cartItems, removeFromCart, getCartTotal, clearCart, cartLoading } = useCart();
   const { user, loading: authLoading } = useAuth(); // Get user and auth loading state
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -30,7 +30,7 @@ export default function CheckoutPage() {
   const totalAmount = getCartTotal();
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (!authLoading && !user && !cartLoading) { // Ensure cart isn't loading either before redirecting
       toast({
         title: "Login Required",
         description: "Please log in to view your cart and proceed to checkout.",
@@ -38,7 +38,7 @@ export default function CheckoutPage() {
       });
       router.replace('/'); // Redirect to homepage if not logged in
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, cartLoading, router]);
 
   const handleProceedToPayment = async () => {
     if (!user) {
@@ -78,8 +78,7 @@ export default function CheckoutPage() {
       });
 
       if (result?.invoiceUrl) {
-        // Clear cart optimistically before redirecting, or do it in success page
-        // clearCart(); // Consider implications if user closes Xendit page
+        // Cart clearing is now handled on the success page to be more robust
         router.push(result.invoiceUrl);
       } else {
         toast({
@@ -91,20 +90,19 @@ export default function CheckoutPage() {
     });
   };
 
-  if (authLoading) {
+  if (authLoading || cartLoading) {
     return (
       <div className="container mx-auto px-4 py-12 md:py-16 flex justify-center items-center min-h-[calc(100vh-10rem)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-4 text-muted-foreground">Loading cart...</p>
+        <p className="ml-4 text-muted-foreground">Loading your cart...</p>
       </div>
     );
   }
 
-  // If user is not logged in, useEffect will redirect, but this is a fallback or initial render state
+  // If user is not logged in and not loading, useEffect will redirect, but this is a fallback
   if (!user) {
     return (
        <div className="container mx-auto px-4 py-12 md:py-16 flex justify-center items-center min-h-[calc(100vh-10rem)]">
-        {/* Content for non-logged in users is minimal as redirect should occur */}
          <Card className="shadow-lg text-center">
           <CardContent className="p-6">
             <LogIn className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
@@ -201,7 +199,7 @@ export default function CheckoutPage() {
                   size="lg" 
                   className="w-full group bg-primary hover:bg-primary/90 text-primary-foreground"
                   onClick={handleProceedToPayment}
-                  disabled={isPending || cartItems.length === 0}
+                  disabled={isPending || cartItems.length === 0 || cartLoading}
                 >
                   {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
                   Proceed to Payment
