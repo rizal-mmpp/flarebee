@@ -7,40 +7,66 @@ import { randomUUID } from 'crypto';
 
 const xenditSecretKey = process.env.XENDIT_SECRET_KEY;
 
-if (!xenditSecretKey) {
-  console.warn("XENDIT_SECRET_KEY is not set. Xendit payments will not function.");
-}
+// if (!xenditSecretKey) {
+//   console.warn("XENDIT_SECRET_KEY is not set. Xendit payments will not function.");
+// }
 
-const xenditClient = xenditSecretKey ? new Xendit({ secretKey: xenditSecretKey }) : null;
+// const xenditClient = xenditSecretKey ? new Xendit({ secretKey: xenditSecretKey }) : null;
+// For dummy data, we don't need the actual client.
+const xenditClient = null; 
 
-// Define the structure for items if Xendit supports line items directly in invoice creation
-// This matches Xendit's documentation for `items` in invoice parameters
+
 interface XenditInvoiceItem {
   name: string;
   quantity: number;
-  price: number; // Price per unit
+  price: number; 
   category?: string;
   url?: string;
 }
 
 interface CreateXenditInvoiceArgs {
-  items: XenditInvoiceItem[]; // Array of items for the cart
-  totalAmount: number; // Total amount of the cart, Xendit will use this.
-  description: string; // Consolidated description for the entire cart
-  currency?: string; // e.g., 'USD', 'IDR'. Defaults to 'USD'
-  payerEmail?: string; // Optional: customer's email
-  userId?: string; // Optional: for associating purchase with a user
-  orderId?: string; // Optional: your internal order/cart ID
+  items: XenditInvoiceItem[]; 
+  totalAmount: number; 
+  description: string; 
+  currency?: string; 
+  payerEmail?: string; 
+  userId?: string; 
+  orderId?: string; 
 }
 
 interface CreateXenditInvoiceResult {
   invoiceUrl?: string | null;
   error?: string;
-  externalId?: string; // Xendit's external_id for the invoice
-  orderId?: string; // The orderId you passed, for easier tracking on success/failure pages
+  externalId?: string; 
+  orderId?: string; 
 }
 
 export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promise<CreateXenditInvoiceResult> {
+  // --- START DUMMY IMPLEMENTATION ---
+  console.log("SIMULATING Xendit invoice creation with dummy data.");
+
+  const host = headers().get('host');
+  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+  const appBaseUrl = `${protocol}://${host}`;
+
+  const uniqueOrderId = args.orderId || `flarebee-cart-dummy-${randomUUID()}`;
+  const externalId = uniqueOrderId;
+
+  // Simulate successful payment by directly creating the success URL
+  const successRedirectUrl = `${appBaseUrl}/purchase/success?order_id=${externalId}&source=xendit_dummy`;
+  
+  // Simulate a short delay as if an API call was made
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  return { 
+    invoiceUrl: successRedirectUrl, 
+    externalId: externalId, 
+    orderId: uniqueOrderId 
+  };
+  // --- END DUMMY IMPLEMENTATION ---
+
+  /*
+  // --- ORIGINAL XENDIT IMPLEMENTATION (Commented out for dummy data) ---
   if (!xenditClient) {
     console.error('Xendit client is not initialized. XENDIT_SECRET_KEY might be missing.');
     return { error: 'Payment system is not configured. Please contact support.' };
@@ -50,9 +76,8 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
   const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
   const appBaseUrl = `${protocol}://${host}`;
 
-  // Use a unique ID for the entire order/cart, or use the provided orderId
   const uniqueOrderId = args.orderId || `flarebee-cart-${randomUUID()}`;
-  const externalId = uniqueOrderId; // Use your unique order ID as Xendit's external_id
+  const externalId = uniqueOrderId; 
 
   const successRedirectUrl = `${appBaseUrl}/purchase/success?order_id=${externalId}&source=xendit`;
   const failureRedirectUrl = `${appBaseUrl}/purchase/cancelled?order_id=${externalId}&source=xendit`;
@@ -65,13 +90,13 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
 
     const invoiceParams: any = {
       externalID: externalId,
-      amount: args.totalAmount, // Xendit expects the total amount
+      amount: args.totalAmount, 
       payerEmail: args.payerEmail,
-      description: args.description, // Overall description for the invoice
+      description: args.description, 
       successRedirectURL: successRedirectUrl,
       failureRedirectURL: failureRedirectUrl,
       currency: invoiceCurrency,
-      items: args.items, // Pass the structured items array
+      items: args.items, 
       metadata: {
         userId: args.userId || '',
         appName: 'Flarebee Templates',
@@ -79,14 +104,9 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
       }
     };
     
-    // If you have customer management with Xendit and a customer ID
     if (args.userId) {
-      // This structure depends on how you've set up customers in Xendit.
-      // Example: invoiceParams.customer = { id: args.userId };
-      // Or, if you only want to associate the email for guest checkout:
-      // invoiceParams.customer = { email: args.payerEmail };
+      // invoiceParams.customer = { id: args.userId };
     }
-
 
     const resp = await inv.createInvoice(invoiceParams);
 
@@ -106,4 +126,6 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
     }
     return { error: errorMessage };
   }
+  // --- END ORIGINAL XENDIT IMPLEMENTATION ---
+  */
 }
