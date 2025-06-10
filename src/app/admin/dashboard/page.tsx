@@ -6,7 +6,7 @@ import { getAllTemplatesFromFirestore } from '@/lib/firebase/firestoreTemplates'
 import { getAllOrdersFromFirestore } from '@/lib/firebase/firestoreOrders';
 import type { Template, Order } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
-import { BarChart3, LayoutGrid, Loader2, FileText, Users, DollarSign, ShoppingCart, PlusCircle } from 'lucide-react';
+import { BarChart3, LayoutGrid, Loader2, FileText, Users, DollarSign, ShoppingCart, PlusCircle, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { deleteTemplateAction } from '@/lib/actions/template.actions';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,6 @@ export default function AdminDashboardPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
-  // editingTemplate and related handlers are removed
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const { toast } = useToast();
@@ -49,10 +48,6 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     fetchTemplatesAndOrders();
   }, [fetchTemplatesAndOrders]);
-
-  // handleFormSuccess is removed as form is on a dedicated page
-  // handleEditTemplate is removed
-  // handleCancelEdit is removed
 
   const handleDeleteTemplate = async (templateId: string) => {
     setIsDeleting(templateId);
@@ -171,13 +166,16 @@ export default function AdminDashboardPage() {
                   <TableHead className="hidden md:table-cell">Items</TableHead>
                   <TableHead className="hidden lg:table-cell">Date</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {orders.slice(0, 10).map((order) => ( 
                   <TableRow key={order.id}>
-                    <TableCell className="font-medium truncate max-w-[100px] sm:max-w-[150px]" title={order.orderId}>
+                    <TableCell className="font-medium">
+                      <Link href={`/admin/orders/${order.orderId}`} className="hover:underline text-primary">
                         {order.orderId.substring(0,15)}...
+                      </Link>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">{order.userEmail || 'N/A'}</TableCell>
                     <TableCell>${order.totalAmount.toFixed(2)}</TableCell>
@@ -192,13 +190,23 @@ export default function AdminDashboardPage() {
                             {order.status}
                         </span>
                     </TableCell>
+                    <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" asChild>
+                            <Link href={`/admin/orders/${order.orderId}`}>
+                                <Eye className="h-4 w-4" />
+                                <span className="sr-only">View Details</span>
+                            </Link>
+                        </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
              {orders.length > 10 && (
                 <CardContent className="pt-4 text-center">
-                    <Button variant="outline" size="sm" disabled>View All Orders (Not Implemented)</Button>
+                    <Button variant="outline" size="sm" asChild>
+                        <Link href="/admin/orders">View All Orders</Link> 
+                    </Button>
                 </CardContent>
             )}
           </Card>
@@ -216,7 +224,6 @@ export default function AdminDashboardPage() {
            ) : (
              <AdminTemplateList 
                templates={templates} 
-               // onEditTemplate is removed
                onDeleteTemplate={handleDeleteTemplate}
                isDeleting={isDeleting}
             />

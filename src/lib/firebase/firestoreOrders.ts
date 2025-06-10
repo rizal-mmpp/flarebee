@@ -10,6 +10,7 @@ import {
   orderBy,
   serverTimestamp,
   Timestamp,
+  limit, // Added limit
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Order, OrderInputData, PurchasedTemplateItem } from '@/lib/types';
@@ -70,5 +71,23 @@ export async function getAllOrdersFromFirestore(): Promise<Order[]> {
   } catch (error) {
     console.error("Error getting all orders from Firestore: ", error);
     throw error;
+  }
+}
+
+export async function getOrderByOrderIdFromFirestore(orderId: string): Promise<Order | null> {
+  try {
+    const q = query(
+      collection(db, ORDERS_COLLECTION),
+      where('orderId', '==', orderId),
+      limit(1) // orderId should be unique
+    );
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      return fromFirestoreOrder(querySnapshot.docs[0]);
+    }
+    return null; // No order found with that orderId
+  } catch (error) {
+    console.error(`Error getting order by orderId ${orderId} from Firestore: `, error);
+    throw error; // Or return null, depending on desired error handling
   }
 }
