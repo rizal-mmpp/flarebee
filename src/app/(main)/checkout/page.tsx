@@ -10,7 +10,7 @@ import { Trash2, CreditCard, ShoppingBag, ArrowLeft, Loader2, LogIn } from 'luci
 import { createXenditInvoice } from '@/lib/actions/xendit.actions';
 import { useAuth } from '@/lib/firebase/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useEffect, useTransition } from 'react';
+import { useEffect, useState } from 'react'; // Removed useTransition, added useState
 import { toast } from '@/hooks/use-toast';
 
 interface XenditItem {
@@ -25,7 +25,7 @@ export default function CheckoutPage() {
   const { cartItems, removeFromCart, getCartTotal, clearCart, cartLoading } = useCart();
   const { user, loading: authLoading } = useAuth(); // Get user and auth loading state
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false); // Replaced useTransition
 
   const totalAmount = getCartTotal();
 
@@ -58,36 +58,38 @@ export default function CheckoutPage() {
       return;
     }
 
-    startTransition(async () => {
-      const xenditItems: XenditItem[] = cartItems.map(item => ({
-        name: item.title,
-        quantity: item.quantity,
-        price: item.price,
-        // category: "Digital Goods" // Example, adjust as needed
-      }));
+    setIsProcessingPayment(true); // Set pending state
 
-      const description = cartItems.map(item => `${item.title} (x${item.quantity})`).join(', ');
-      
-      const result = await createXenditInvoice({
-        items: xenditItems, // Pass structured items
-        totalAmount: totalAmount, // Pass total amount explicitly
-        description: `Flarebee Order: ${description}`, // Consolidated description
-        currency: 'USD', 
-        payerEmail: user?.email || undefined,
-        userId: user?.uid || undefined,
-      });
+    const xenditItems: XenditItem[] = cartItems.map(item => ({
+      name: item.title,
+      quantity: item.quantity,
+      price: item.price,
+      // category: "Digital Goods" // Example, adjust as needed
+    }));
 
-      if (result?.invoiceUrl) {
-        // Cart clearing is now handled on the success page to be more robust
-        router.push(result.invoiceUrl);
-      } else {
-        toast({
-          title: "Payment Error",
-          description: result?.error || "Failed to initiate payment. Please try again.",
-          variant: "destructive",
-        });
-      }
+    const description = cartItems.map(item => `${item.title} (x${item.quantity})`).join(', ');
+    
+    const result = await createXenditInvoice({
+      items: xenditItems, // Pass structured items
+      totalAmount: totalAmount, // Pass total amount explicitly
+      description: `Flarebee Order: ${description}`, // Consolidated description
+      currency: 'USD', 
+      payerEmail: user?.email || undefined,
+      userId: user?.uid || undefined,
     });
+
+    setIsProcessingPayment(false); // Clear pending state
+
+    if (result?.invoiceUrl) {
+      // Cart clearing is now handled on the success page to be more robust
+      router.push(result.invoiceUrl);
+    } else {
+      toast({
+        title: "Payment Error",
+        description: result?.error || "Failed to initiate payment. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (authLoading || cartLoading) {
@@ -199,9 +201,9 @@ export default function CheckoutPage() {
                   size="lg" 
                   className="w-full group bg-primary hover:bg-primary/90 text-primary-foreground"
                   onClick={handleProceedToPayment}
-                  disabled={isPending || cartItems.length === 0 || cartLoading}
+                  disabled={isProcessingPayment || cartItems.length === 0 || cartLoading}
                 >
-                  {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
+                  {isProcessingPayment ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
                   Proceed to Payment
                 </Button>
               </CardFooter>
