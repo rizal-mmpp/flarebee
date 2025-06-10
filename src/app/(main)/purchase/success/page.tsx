@@ -6,18 +6,71 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { CheckCircle, Home, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-// Removed useEffect, useState, useCart, useToast as they are no longer needed for cart clearing here.
-// If cartItems are needed for display, useCart can be re-added. For now, simplifying.
+import { useEffect, useState, useRef } from 'react';
+import { useCart } from '@/context/CartContext';
+import { useToast } from '@/hooks/use-toast';
 
 export default function PurchaseSuccessPage() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order_id') || searchParams.get('external_id');
 
-  // The cart clearing is now handled server-side before redirecting here.
-  // The CartContext will load the latest cart state (which should be empty if server-side clear was successful).
-  // This page is now primarily for displaying the success message.
+  const { clearCart, cartLoading, cartItems } = useCart();
+  const { toast } = useToast(); // For potential fallback toasts
+  const [hasInitiatedCartClear, setHasInitiatedCartClear] = useState(false);
+  const isMountedRef = useRef(true); // Use a ref for isMounted
 
-  const purchasedItemsDescription = "Your purchased items"; // This could be made dynamic if items were passed via query params
+  useEffect(() => {
+    // Set isMounted to true on mount
+    isMountedRef.current = true;
+    // Set isMounted to false on unmount
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const performCartClear = async () => {
+      // Proceed if:
+      // - cart is not in its initial loading state
+      // - clear operation hasn't been initiated yet for this page instance
+      // - the component is still mounted
+      if (!cartLoading && !hasInitiatedCartClear && isMountedRef.current) {
+        setHasInitiatedCartClear(true); // Set flag *before* async operation
+        
+        // Only attempt to clear if there are items.
+        // For logged-in users, server action might have already cleared Firestore,
+        // and CartContext might have loaded an empty cart.
+        if (cartItems.length > 0) {
+          try {
+            await clearCart(); 
+            // Success toasts are now handled within clearCart itself.
+            // If clearCart needs to show a toast, it will.
+          } catch (error) {
+            console.error("Error calling clearCart on success page:", error);
+            if (isMountedRef.current) {
+              toast({
+                title: "Purchase Note",
+                description: "Your purchase was successful. There was an issue automatically clearing your cart from this device.",
+                variant: "destructive" 
+              });
+            }
+          }
+        }
+      }
+    };
+
+    performCartClear();
+
+  // Dependencies:
+  // - cartLoading: Effect runs when cart loading state changes.
+  // - hasInitiatedCartClear: Prevents re-running logic if already initiated.
+  // - clearCart: Function from context. Its identity is stable or handled by hasInitiatedCartClear.
+  // - cartItems: Used to check cartItems.length.
+  // - toast, setHasInitiatedCartClear: Stable setters/functions.
+  }, [cartLoading, hasInitiatedCartClear, clearCart, toast, cartItems, setHasInitiatedCartClear]);
+
+
+  const purchasedItemsDescription = "Your purchased items"; 
   const downloadInfo = "Download links for your purchased items will be available in your account or sent via email.";
 
   return (
