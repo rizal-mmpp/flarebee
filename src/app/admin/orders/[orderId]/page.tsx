@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Loader2, ServerCrash, Package, CalendarDays, User, Tag, Hash, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils'; // Added import
 
 export default function OrderDetailPage() {
   const params = useParams();
