@@ -68,10 +68,9 @@ export default function CheckoutPage() {
     const description = cartItems.map(item => `${item.title} (x${item.quantity})`).join(', ');
     
     try {
-      // The server action createXenditInvoice will now handle the redirect.
-      // If it successfully redirects, this client-side code might not proceed further.
-      // If an error occurs in the server action *before* redirecting, it will be caught here.
-      await createXenditInvoice({
+      // The server action createXenditInvoice will attempt to handle the redirect.
+      // If it encounters an error before redirecting, it should return a plain object { error: "message" }.
+      const result = await createXenditInvoice({
         items: xenditItems,
         totalAmount: totalAmount,
         description: `Flarebee Order: ${description}`,
@@ -79,23 +78,35 @@ export default function CheckoutPage() {
         payerEmail: user?.email || undefined,
         userId: user?.uid || undefined,
       });
-      // If the server action doesn't redirect (e.g., due to an error before redirect logic),
-      // or if it's designed to return something else on non-redirect paths,
-      // you might need to handle that here. For the dummy, it always redirects or implies success if no error.
-      // In a real scenario, if createXenditInvoice returned a result object on error, you'd check it here.
-      // Example:
-      // const result = await createXenditInvoice(...);
-      // if (result?.error) { // Assuming result might be NextResponse or an error object
-      //   toast({ title: "Payment Error", description: result.error, variant: "destructive" });
-      // }
-      // For this dummy, if an error happens in the server action that's not a redirect,
-      // it should throw and be caught by the catch block.
 
-    } catch (error) {
-      console.error("Error during payment processing:", error);
+      // Check if the server action returned an error object instead of redirecting
+      if (result && 'error' in result && typeof result.error === 'string') {
+        toast({
+          title: "Payment Processing Failed",
+          description: result.error,
+          variant: "destructive",
+        });
+        // setIsProcessingPayment(false) will be handled by the finally block.
+        return; // Exit if an error object was explicitly returned.
+      }
+      
+      // If a redirect was supposed to happen server-side and we are still here,
+      // it's an unexpected state for the dummy/current logic.
+      // The browser should have been redirected by the server action.
+      // For a real payment gateway, this might be where you handle a response that isn't a redirect.
+
+    } catch (error: any) { // This catch block handles errors THROWN by the server action or network issues.
+      console.error("Error during payment processing (thrown):", error);
+      let errorMessage = "An unexpected error occurred. Please try again or contact support.";
+      if (error && typeof error.message === 'string') {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      // No need to check for error.error here as this is for thrown errors.
       toast({
         title: "Payment Processing Failed",
-        description: "An unexpected error occurred. Please try again later or contact support.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -225,4 +236,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-
