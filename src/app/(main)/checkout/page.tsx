@@ -68,8 +68,6 @@ export default function CheckoutPage() {
     const description = cartItems.map(item => `${item.title} (x${item.quantity})`).join(', ');
     
     try {
-      // The server action createXenditInvoice will attempt to handle the redirect.
-      // If it encounters an error before redirecting, it should return a plain object { error: "message" }.
       const result = await createXenditInvoice({
         items: xenditItems,
         totalAmount: totalAmount,
@@ -79,39 +77,43 @@ export default function CheckoutPage() {
         userId: user?.uid || undefined,
       });
 
-      // Check if the server action returned an error object instead of redirecting
       if (result && 'error' in result && typeof result.error === 'string') {
         toast({
           title: "Payment Processing Failed",
           description: result.error,
           variant: "destructive",
         });
-        // setIsProcessingPayment(false) will be handled by the finally block.
-        return; // Exit if an error object was explicitly returned.
+        return; 
       }
       
-      // If a redirect was supposed to happen server-side and we are still here,
-      // it's an unexpected state for the dummy/current logic.
-      // The browser should have been redirected by the server action.
-      // For a real payment gateway, this might be where you handle a response that isn't a redirect.
+    } catch (error: any) {
+      // Check if the error is a Next.js redirect error
+      const NEXT_REDIRECT_ERROR_CODES = [
+        'NEXT_REDIRECT', // General redirect
+        // Add other specific redirect error codes if needed
+        // 'NEXT_ROUTER_PREFETCH_REDIRECT',
+        // 'NEXT_NOT_FOUND',
+      ];
 
-    } catch (error: any) { // This catch block handles errors THROWN by the server action or network issues.
-      console.error("Error during payment processing (thrown):", error);
-      let errorMessage = "An unexpected error occurred. Please try again or contact support.";
-      if (error && typeof error.message === 'string') {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
+      if (NEXT_REDIRECT_ERROR_CODES.includes(error.digest) || (typeof error.message === 'string' && NEXT_REDIRECT_ERROR_CODES.some(code => error.message.includes(code)))) {
+        // This is a redirect error, Next.js is handling it. Do not treat as a payment failure.
+        // The 'finally' block will reset isProcessingPayment.
+        // console.log("Redirecting (caught NEXT_REDIRECT)..."); // Optional: for debugging
+      } else {
+        console.error("Error during payment processing (thrown):", error);
+        let errorMessage = "An unexpected error occurred. Please try again or contact support.";
+        if (error && typeof error.message === 'string') {
+          errorMessage = error.message;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
+        }
+        toast({
+          title: "Payment Processing Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
       }
-      // No need to check for error.error here as this is for thrown errors.
-      toast({
-        title: "Payment Processing Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
     } finally {
-      // This ensures the processing state is reset, even if the page is about to navigate away
-      // or if an error occurred.
       setIsProcessingPayment(false);
     }
   };
