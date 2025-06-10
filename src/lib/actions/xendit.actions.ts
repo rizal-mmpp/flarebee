@@ -4,15 +4,11 @@
 import Xendit from 'xendit-node';
 import { headers } from 'next/headers';
 import { randomUUID } from 'crypto';
+import { NextResponse } from 'next/server'; // Import NextResponse
 
 const xenditSecretKey = process.env.XENDIT_SECRET_KEY;
 
-// if (!xenditSecretKey) {
-//   console.warn("XENDIT_SECRET_KEY is not set. Xendit payments will not function.");
-// }
-
 // const xenditClient = xenditSecretKey ? new Xendit({ secretKey: xenditSecretKey }) : null;
-// For dummy data, we don't need the actual client.
 const xenditClient = null; 
 
 
@@ -34,35 +30,35 @@ interface CreateXenditInvoiceArgs {
   orderId?: string; 
 }
 
+// The result might not be used if redirecting, but define for potential error cases
 interface CreateXenditInvoiceResult {
-  invoiceUrl?: string | null;
+  invoiceUrl?: string | null; // May not be used if server redirects
   error?: string;
   externalId?: string; 
   orderId?: string; 
 }
 
-export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promise<CreateXenditInvoiceResult> {
-  // --- START DUMMY IMPLEMENTATION ---
-  console.log("SIMULATING Xendit invoice creation with dummy data.");
+export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promise<CreateXenditInvoiceResult | NextResponse> {
+  // --- START DUMMY IMPLEMENTATION WITH SERVER-SIDE REDIRECT ---
+  console.log("SIMULATING Xendit invoice creation with dummy data and server-side redirect.");
 
-  const host = (await headers()).get('host');
+  const host = headers().get('host');
   const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
   const appBaseUrl = `${protocol}://${host}`;
 
   const uniqueOrderId = args.orderId || `flarebee-cart-dummy-${randomUUID()}`;
   const externalId = uniqueOrderId;
 
-  // Simulate successful payment by directly creating the success URL
-  const successRedirectUrl = `${appBaseUrl}/purchase/success?order_id=${externalId}&source=xendit_dummy`;
+  // Construct the full URL for redirection
+  const successRedirectUrl = new URL(`/purchase/success`, appBaseUrl);
+  successRedirectUrl.searchParams.append('order_id', externalId);
+  successRedirectUrl.searchParams.append('source', 'xendit_dummy');
   
   // Simulate a short delay as if an API call was made
   await new Promise(resolve => setTimeout(resolve, 500));
 
-  return { 
-    invoiceUrl: successRedirectUrl, 
-    externalId: externalId, 
-    orderId: uniqueOrderId 
-  };
+  // Perform server-side redirect
+  return NextResponse.redirect(successRedirectUrl.toString(), 303); // 303 See Other is appropriate for POST -> GET redirect
   // --- END DUMMY IMPLEMENTATION ---
 
   /*
@@ -110,8 +106,14 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
 
     const resp = await inv.createInvoice(invoiceParams);
 
+    // With server-side redirect, we might not return this if the actual Xendit API also redirects.
+    // If Xendit returns a URL for us to redirect to, then we would use NextResponse.redirect(resp.invoiceUrl)
     if (resp.invoiceUrl) {
-      return { invoiceUrl: resp.invoiceUrl, externalId: resp.externalId, orderId: uniqueOrderId };
+       // In a real scenario where Xendit returns a URL for you to redirect the user to:
+       // return NextResponse.redirect(resp.invoiceUrl, 303);
+       // For now, this part of the original code is less relevant due to the dummy redirect above.
+       // If Xendit itself handles the redirect, the action might complete without returning anything specific to client.
+       return { invoiceUrl: resp.invoiceUrl, externalId: resp.externalId, orderId: uniqueOrderId };
     } else {
       console.error('Xendit invoice creation response did not include an invoiceUrl:', resp);
       return { error: 'Failed to get payment URL from Xendit.' };
@@ -129,3 +131,4 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
   // --- END ORIGINAL XENDIT IMPLEMENTATION ---
   */
 }
+

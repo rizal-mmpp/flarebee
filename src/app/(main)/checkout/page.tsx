@@ -17,26 +17,25 @@ interface XenditItem {
   name: string;
   quantity: number;
   price: number;
-  category?: string; // Optional, as per Xendit docs
-  // url?: string; // Optional
+  category?: string; 
 }
 
 export default function CheckoutPage() {
   const { cartItems, removeFromCart, getCartTotal, clearCart, cartLoading } = useCart();
-  const { user, loading: authLoading } = useAuth(); // Get user and auth loading state
+  const { user, loading: authLoading } = useAuth(); 
   const router = useRouter();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const totalAmount = getCartTotal();
 
   useEffect(() => {
-    if (!authLoading && !user && !cartLoading) { // Ensure cart isn't loading either before redirecting
+    if (!authLoading && !user && !cartLoading) { 
       toast({
         title: "Login Required",
         description: "Please log in to view your cart and proceed to checkout.",
         variant: "destructive",
       });
-      router.replace('/'); // Redirect to homepage if not logged in
+      router.replace('/'); 
     }
   }, [user, authLoading, cartLoading, router]);
 
@@ -64,31 +63,34 @@ export default function CheckoutPage() {
       name: item.title,
       quantity: item.quantity,
       price: item.price,
-      // category: "Digital Goods" // Example, adjust as needed
     }));
 
     const description = cartItems.map(item => `${item.title} (x${item.quantity})`).join(', ');
     
     try {
-      const result = await createXenditInvoice({
-        items: xenditItems, // Pass structured items
-        totalAmount: totalAmount, // Pass total amount explicitly
-        description: `Flarebee Order: ${description}`, // Consolidated description
+      // The server action createXenditInvoice will now handle the redirect.
+      // If it successfully redirects, this client-side code might not proceed further.
+      // If an error occurs in the server action *before* redirecting, it will be caught here.
+      await createXenditInvoice({
+        items: xenditItems,
+        totalAmount: totalAmount,
+        description: `Flarebee Order: ${description}`,
         currency: 'USD', 
         payerEmail: user?.email || undefined,
         userId: user?.uid || undefined,
       });
+      // If the server action doesn't redirect (e.g., due to an error before redirect logic),
+      // or if it's designed to return something else on non-redirect paths,
+      // you might need to handle that here. For the dummy, it always redirects or implies success if no error.
+      // In a real scenario, if createXenditInvoice returned a result object on error, you'd check it here.
+      // Example:
+      // const result = await createXenditInvoice(...);
+      // if (result?.error) { // Assuming result might be NextResponse or an error object
+      //   toast({ title: "Payment Error", description: result.error, variant: "destructive" });
+      // }
+      // For this dummy, if an error happens in the server action that's not a redirect,
+      // it should throw and be caught by the catch block.
 
-      if (result?.invoiceUrl) {
-        // Cart clearing is now handled on the success page to be more robust
-        router.push(result.invoiceUrl);
-      } else {
-        toast({
-          title: "Payment Error",
-          description: result?.error || "Failed to initiate payment. Please try again.",
-          variant: "destructive",
-        });
-      }
     } catch (error) {
       console.error("Error during payment processing:", error);
       toast({
@@ -97,7 +99,9 @@ export default function CheckoutPage() {
         variant: "destructive",
       });
     } finally {
-      setIsProcessingPayment(false); // Ensure pending state is cleared
+      // This ensures the processing state is reset, even if the page is about to navigate away
+      // or if an error occurred.
+      setIsProcessingPayment(false);
     }
   };
 
@@ -157,7 +161,7 @@ export default function CheckoutPage() {
                   <Image
                     src={item.imageUrl}
                     alt={item.title}
-                    layout="fill"
+                    fill
                     objectFit="cover"
                     className="rounded-md"
                     data-ai-hint="template preview"
@@ -166,7 +170,6 @@ export default function CheckoutPage() {
                 <div className="flex-grow text-center sm:text-left">
                   <h3 className="text-lg font-semibold text-foreground">{item.title}</h3>
                   <p className="text-primary font-medium">${item.price.toFixed(2)}</p>
-                  {/* <p className="text-sm text-muted-foreground">Quantity: {item.quantity}</p> */}
                 </div>
                 <Button
                   variant="ghost"
@@ -222,3 +225,4 @@ export default function CheckoutPage() {
     </div>
   );
 }
+
