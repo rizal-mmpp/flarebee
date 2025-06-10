@@ -1,57 +1,65 @@
 
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { TemplateUploadForm, type TemplateFormValues } from '@/components/sections/admin/TemplateUploadForm';
+import { TemplateUploadForm } from '@/components/sections/admin/TemplateUploadForm';
 import { AdminTemplateList } from '@/components/sections/admin/AdminTemplateList';
 import { getAllTemplatesFromFirestore } from '@/lib/firebase/firestoreTemplates';
-import type { Template } from '@/lib/types';
+import { getAllOrdersFromFirestore } from '@/lib/firebase/firestoreOrders';
+import type { Template, Order } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
-import { BarChart3, LayoutGrid, Loader2 } from 'lucide-react';
+import { BarChart3, LayoutGrid, Loader2, FileText, Users, DollarSign, ShoppingCart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { deleteTemplateAction } from '@/lib/actions/template.actions';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import Link from 'next/link';
+
 
 export default function AdminDashboardPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false); // For form submission state
-  const [isDeleting, setIsDeleting] = useState<string | null>(null); // ID of template being deleted
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const { toast } = useToast();
 
-  const fetchTemplates = useCallback(async () => {
-    setIsLoading(true);
+  const fetchTemplatesAndOrders = useCallback(async () => {
+    setIsLoadingTemplates(true);
+    setIsLoadingOrders(true);
     try {
       const fetchedTemplates = await getAllTemplatesFromFirestore();
       setTemplates(fetchedTemplates);
+      const fetchedOrders = await getAllOrdersFromFirestore();
+      setOrders(fetchedOrders);
     } catch (error) {
-      console.error("Failed to fetch templates:", error);
+      console.error("Failed to fetch data:", error);
       toast({
-        title: "Error Fetching Templates",
-        description: "Could not load templates from the database.",
+        title: "Error Fetching Data",
+        description: "Could not load templates or orders from the database.",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsLoadingTemplates(false);
+      setIsLoadingOrders(false);
     }
   }, [toast]);
 
   useEffect(() => {
-    fetchTemplates();
-  }, [fetchTemplates]);
+    fetchTemplatesAndOrders();
+  }, [fetchTemplatesAndOrders]);
 
   const handleFormSuccess = () => {
-    fetchTemplates(); // Re-fetch templates after add/update
-    setEditingTemplate(null); // Clear editing state
-    setIsSubmitting(false);
-     // Scroll to top might be good here or to the list
+    fetchTemplatesAndOrders();
+    setEditingTemplate(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleEditTemplate = (template: Template) => {
     setEditingTemplate(template);
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to form for editing
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleCancelEdit = () => {
@@ -66,7 +74,7 @@ export default function AdminDashboardPage() {
         title: "Template Deleted",
         description: result.message,
       });
-      fetchTemplates(); // Refresh list
+      fetchTemplatesAndOrders(); // Refresh both lists
     } else {
       toast({
         title: "Error Deleting Template",
@@ -76,7 +84,15 @@ export default function AdminDashboardPage() {
     }
     setIsDeleting(null);
   };
-  
+
+  const totalSales = orders
+    .filter(order => order.status === 'completed')
+    .reduce((sum, order) => sum + order.totalAmount, 0);
+
+  const totalOrdersCount = orders.length;
+
+  const isLoading = isLoadingTemplates || isLoadingOrders;
+
   return (
     <div>
       <header className="mb-10">
@@ -85,7 +101,7 @@ export default function AdminDashboardPage() {
           Flarebee Admin Panel
         </h1>
         <p className="text-lg text-muted-foreground">
-          Manage your Flarebee templates. Add new ones, edit existing, and view site data.
+          Manage your Flarebee templates, view orders, and oversee site activity.
         </p>
       </header>
 
@@ -94,34 +110,113 @@ export default function AdminDashboardPage() {
           <BarChart3 className="mr-2 h-6 w-6 text-primary" />
           Overview
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 bg-card rounded-lg shadow">
-            <h3 className="text-sm font-medium text-muted-foreground">Total Templates</h3>
-            {isLoading ? <Loader2 className="h-6 w-6 animate-spin mt-1" /> : <p className="text-3xl font-bold text-foreground">{templates.length}</p>}
-          </div>
-          <div className="p-6 bg-card rounded-lg shadow">
-            <h3 className="text-sm font-medium text-muted-foreground">Total Sales (Placeholder)</h3>
-            <p className="text-3xl font-bold text-foreground">$0.00</p>
-          </div>
-           <div className="p-6 bg-card rounded-lg shadow">
-            <h3 className="text-sm font-medium text-muted-foreground">Total Users (Placeholder)</h3>
-            <p className="text-3xl font-bold text-foreground">0</p>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Templates</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {isLoadingTemplates ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className="text-2xl font-bold">{templates.length}</div>}
+            </CardContent>
+          </Card>
+           <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {isLoadingOrders ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className="text-2xl font-bold">${totalSales.toFixed(2)}</div>}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {isLoadingOrders ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className="text-2xl font-bold">{totalOrdersCount}</div>}
+            </CardContent>
+          </Card>
+           <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Users (Placeholder)</CardTitle>
+               <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+             <div className="text-2xl font-bold">0</div>
+            </CardContent>
+          </Card>
         </div>
          <div className="mt-6">
-            <Button onClick={fetchTemplates} disabled={isLoading}>
+            <Button onClick={fetchTemplatesAndOrders} disabled={isLoading}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                Refresh Templates
+                Refresh Data
             </Button>
         </div>
       </section>
       
       <Separator className="my-10" />
 
+      <section className="mb-10">
+        <h2 className="text-2xl font-semibold text-foreground mb-4">Recent Orders</h2>
+        {isLoadingOrders ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          </div>
+        ) : orders.length === 0 ? (
+          <p className="text-muted-foreground mt-4 text-center py-8">No orders found yet.</p>
+        ) : (
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Order ID</TableHead>
+                  <TableHead className="hidden sm:table-cell">User Email</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead className="hidden md:table-cell">Items</TableHead>
+                  <TableHead className="hidden lg:table-cell">Date</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orders.slice(0, 10).map((order) => ( // Display recent 10 orders
+                  <TableRow key={order.id}>
+                    <TableCell className="font-medium truncate max-w-[100px] sm:max-w-[150px]" title={order.orderId}>
+                        {order.orderId.substring(0,15)}...
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">{order.userEmail || 'N/A'}</TableCell>
+                    <TableCell>${order.totalAmount.toFixed(2)}</TableCell>
+                    <TableCell className="hidden md:table-cell">{order.items.length}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{new Date(order.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                            order.status === 'completed' ? 'bg-green-500/20 text-green-400' : 
+                            order.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' : 
+                            'bg-red-500/20 text-red-400'
+                        }`}>
+                            {order.status}
+                        </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+             {orders.length > 10 && (
+                <CardContent className="pt-4 text-center">
+                    <Button variant="outline" size="sm">View All Orders (Not Implemented)</Button>
+                </CardContent>
+            )}
+          </Card>
+        )}
+      </section>
+
+      <Separator className="my-10" />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         <div className="lg:col-span-2 order-2 lg:order-1">
            <h2 className="text-2xl font-semibold text-foreground mb-4">Manage Templates</h2>
-           {isLoading && templates.length === 0 ? (
+           {isLoadingTemplates && templates.length === 0 ? (
              <div className="flex justify-center items-center h-64">
                <Loader2 className="h-12 w-12 animate-spin text-primary" />
              </div>
@@ -136,7 +231,7 @@ export default function AdminDashboardPage() {
         </div>
         <div className="lg:col-span-1 order-1 lg:order-2">
           <TemplateUploadForm 
-            key={editingTemplate ? editingTemplate.id : 'new'} // Re-render form when editingTemplate changes
+            key={editingTemplate ? editingTemplate.id : 'new'}
             editingTemplate={editingTemplate}
             onFormSuccess={handleFormSuccess}
             onCancelEdit={handleCancelEdit}

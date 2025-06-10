@@ -12,16 +12,18 @@ import { useAuth } from '@/lib/firebase/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from '@/hooks/use-toast';
+import type { CartItem } from '@/lib/types'; // For explicit type for Xendit items
 
-interface XenditItem {
+interface XenditFormattedItem { // Renamed for clarity from original XenditItem
   name: string;
   quantity: number;
   price: number;
   category?: string;
+  // id: string; // Add template ID for order creation
 }
 
 export default function CheckoutPage() {
-  const { cartItems, removeFromCart, getCartTotal, cartLoading } = useCart(); // clearCart removed as it's handled server-side now
+  const { cartItems, removeFromCart, getCartTotal, cartLoading } = useCart();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -59,7 +61,8 @@ export default function CheckoutPage() {
 
     setIsProcessingPayment(true);
 
-    const xenditItems: XenditItem[] = cartItems.map(item => ({
+    const xenditItems: XenditFormattedItem[] = cartItems.map(item => ({
+      // id: item.id, // Keep original id for PurchasedTemplateItem mapping
       name: item.title,
       quantity: item.quantity,
       price: item.price,
@@ -68,16 +71,17 @@ export default function CheckoutPage() {
     const description = cartItems.map(item => `${item.title} (x${item.quantity})`).join(', ');
 
     try {
+      // Pass the original cartItems for order creation, as XenditFormattedItem might be different
       const result = await createXenditInvoice({
-        items: xenditItems,
+        cartItemsForOrder: cartItems, // Pass original cart items for accurate order creation
+        xenditFormattedItems: xenditItems, // Pass formatted items for Xendit API
         totalAmount: totalAmount,
         description: `Flarebee Order: ${description}`,
-        currency: 'USD',
+        currency: 'USD', // Or your desired currency
         payerEmail: user?.email || undefined,
-        userId: user?.uid || undefined,
+        userId: user?.uid, // userId is guaranteed to exist here due to earlier check
       });
-
-      // If createXenditInvoice returns (i.e., doesn't redirect), it means an error occurred.
+      
       if (result && 'error' in result && typeof result.error === 'string') {
         toast({
           title: "Payment Processing Failed",
@@ -85,18 +89,10 @@ export default function CheckoutPage() {
           variant: "destructive",
         });
       }
-      // If 'result' is undefined, it means the server action successfully redirected,
-      // and we don't need to do anything here as the browser will navigate.
-      
     } catch (error: any) {
-      // Check if the error is a Next.js redirect signal
       if (error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-        // This is a redirect signal from the server action.
-        // Next.js will handle the redirect. Do not treat as a payment failure.
-        // The 'finally' block will reset isProcessingPayment.
-        // console.log("Redirecting (caught NEXT_REDIRECT)..."); // For debugging if needed
+        // This is a redirect signal from the server action. Next.js will handle it.
       } else {
-        // This is an actual unexpected error during the server action call or client-side processing
         console.error("Error during payment processing (thrown):", error);
         let errorMessage = "An unexpected error occurred. Please try again or contact support.";
         if (error && typeof error.message === 'string') {
@@ -140,7 +136,6 @@ export default function CheckoutPage() {
     );
   }
 
-
   return (
     <div className="container mx-auto px-4 py-12 md:py-16">
       <Button variant="outline" asChild className="mb-8 group">
@@ -172,7 +167,8 @@ export default function CheckoutPage() {
                     src={item.imageUrl}
                     alt={item.title}
                     fill
-                    objectFit="cover"
+                    sizes="(max-width: 640px) 128px, 160px"
+                    style={{objectFit:"cover"}}
                     className="rounded-md"
                     data-ai-hint="template preview"
                   />
