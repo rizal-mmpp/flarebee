@@ -153,35 +153,42 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [toast]);
 
   const clearCart = useCallback(async () => {
-    const currentCartItemCount = cartItems.length; // Capture *before* setCartItems([])
-    setCartItems([]); // Optimistically clear local cart state
+    const currentCartItemCount = cartItems.length;
+    // Optimistically set local state to empty *first*.
+    // This will trigger the sync useEffect, which will attempt to write an empty cart to Firestore
+    // if the explicit deleteDoc below fails or isn't reached.
+    setCartItems([]);
 
     if (user && !authLoading) {
       try {
-        await deleteUserCartFromFirestore(user.uid);
+        await deleteUserCartFromFirestore(user.uid); // This will now throw on failure
+        // If deleteUserCartFromFirestore was successful:
         if (currentCartItemCount > 0) {
-          setTimeout(() => {
+          setTimeout(() => { // setTimeout to allow state update to process before toasting
             toast({
               title: 'Cart Cleared',
-              description: 'Your shopping cart has been emptied.',
+              description: 'Your shopping cart has been successfully emptied from the server.',
             });
           }, 0);
         }
       } catch (error) {
-        console.error("Failed to delete user cart from Firestore:", error);
-        // Toast if an error occurred but items were "cleared" locally.
-        if (currentCartItemCount > 0) { // Only show error if there was something to clear
-            setTimeout(() => {
-                toast({
-                title: "Cart Sync Issue",
-                description: "Your cart is cleared on this device, but we couldn't fully sync this change online.",
-                variant: "destructive"
-                });
-            }, 0);
+        console.error("Failed to delete user cart from Firestore during clearCart:", error);
+        // The cart is already cleared locally (UI).
+        // The sync useEffect (triggered by setCartItems([])) will attempt to write an empty array to Firestore,
+        // which is a good fallback.
+        if (currentCartItemCount > 0) {
+          setTimeout(() => {
+            toast({
+              title: "Cart Clearing Issue",
+              description: "Your cart is cleared on this device. There was an issue confirming immediate removal from the server, but it should sync to an empty state shortly.",
+              variant: "destructive"
+            });
+          }, 0);
         }
       }
-    } else if (!user && currentCartItemCount > 0) {
-      // User is not logged in, only local cart was cleared (localStorage handled by other useEffect)
+    } else if (!user && currentCartItemCount > 0) { // Anonymous user
+      // Local cart already cleared by setCartItems([]).
+      // localStorage sync is handled by the other useEffect.
       setTimeout(() => {
         toast({
           title: 'Cart Cleared',
@@ -189,7 +196,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         });
       }, 0);
     }
-  }, [user, authLoading, cartItems, setCartItems, toast]); // Added cartItems back
+  }, [user, authLoading, cartItems, setCartItems, toast]);
 
 
   const getCartTotal = useCallback(() => {

@@ -14,11 +14,9 @@ export async function getUserCartFromFirestore(userId: string): Promise<CartItem
       const data = cartSnap.data();
       return (data?.items as CartItem[]) || [];
     }
-    return null; 
+    return null;
   } catch (error) {
     console.error("Error getting user cart from Firestore:", error);
-    // Propagate the error or return a specific error indicator if needed
-    // For now, returning null to indicate failure or no cart.
     return null;
   }
 }
@@ -27,10 +25,10 @@ export async function updateUserCartInFirestore(userId: string, cartItems: CartI
   if (!userId) return;
   try {
     const cartRef = doc(db, USER_CARTS_COLLECTION, userId);
-    await setDoc(cartRef, { 
-      items: cartItems, 
-      updatedAt: serverTimestamp() 
-    }, { merge: true }); 
+    await setDoc(cartRef, {
+      items: cartItems,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
   } catch (error) {
     console.error("Error updating user cart in Firestore:", error);
     // Propagate the error or handle it (e.g., show a toast in CartContext)
@@ -38,12 +36,15 @@ export async function updateUserCartInFirestore(userId: string, cartItems: CartI
 }
 
 export async function deleteUserCartFromFirestore(userId: string): Promise<void> {
-  if (!userId) return;
+  if (!userId) {
+    // Optionally: throw new Error("User ID is required to delete cart.");
+    return;
+  }
   try {
     const cartRef = doc(db, USER_CARTS_COLLECTION, userId);
     await deleteDoc(cartRef);
   } catch (error) {
     console.error("Error deleting user cart from Firestore:", error);
-    // Propagate the error or handle it
+    throw error; // Re-throw the error so the caller can handle it
   }
 }
