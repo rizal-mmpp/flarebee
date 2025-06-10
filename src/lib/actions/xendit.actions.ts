@@ -37,7 +37,8 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
   console.log("SIMULATING Xendit invoice creation with dummy data and server-side redirect.");
 
   try {
-    const host = headers().get('host');
+    const hostHeaders = await headers();
+    const host = hostHeaders.get('host');
     const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
 
     if (!host) {
@@ -64,7 +65,7 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
     // If internalError is the specific error thrown by redirect(), Next.js handles it by design.
     // It's a special type of error with a 'NEXT_REDIRECT' digest.
     // We must re-throw it so Next.js can process the redirect.
-    if (internalError.digest?.startsWith('NEXT_REDIRECT')) {
+    if (internalError?.digest?.startsWith('NEXT_REDIRECT')) {
       throw internalError;
     }
 
