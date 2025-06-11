@@ -11,7 +11,7 @@ import type { CartItem, PurchasedTemplateItem, OrderInputData } from '@/lib/type
 
 // Initialize Xendit client
 const xenditClient = new Xendit({
-  secretKey: process.env.XENDIT_API_KEY || '', // Ensure your API key is in .env
+  secretKey: process.env.XENDIT_SECRET_KEY || '', // Updated environment variable name
 });
 
 const { Invoice } = xenditClient;
@@ -40,8 +40,8 @@ interface CreateXenditInvoiceErrorResult {
 }
 
 export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promise<CreateXenditInvoiceErrorResult | void> {
-  if (!process.env.XENDIT_API_KEY) {
-    console.error("XENDIT_API_KEY is not set in environment variables.");
+  if (!process.env.XENDIT_SECRET_KEY) { // Updated check
+    console.error("XENDIT_SECRET_KEY is not set in environment variables.");
     return { error: "Payment gateway configuration error. Please contact support." };
   }
 
@@ -60,7 +60,6 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
     const resolvedCurrency = args.currency || 'IDR';
 
     if (resolvedCurrency !== 'IDR') {
-        // Forcing IDR for this integration, adjust if other currencies are needed in future
         console.warn(`Currency specified was ${args.currency}, but forcing IDR for Xendit.`);
     }
 
@@ -113,7 +112,6 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
       successRedirectUrl: `${appBaseUrl}/purchase/success?external_id=${externalId}&source=xendit`,
       failureRedirectUrl: `${appBaseUrl}/purchase/cancelled?external_id=${externalId}&source=xendit`,
       customer: args.payerEmail ? { email: args.payerEmail } : undefined,
-      // fees: [{ type: 'ADMIN', value: 0 }] // Example if you need to add fees
     };
 
     console.log("Creating Xendit invoice with payload:", JSON.stringify(xenditInvoicePayload, null, 2));
@@ -125,7 +123,6 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
         return { error: "Failed to get payment URL from gateway. Please try again." };
     }
 
-    // --- Attempt to clear cart server-side if userId is provided ---
     if (args.userId) {
       try {
         console.log(`Attempting to clear cart for user ID: ${args.userId} server-side.`);
@@ -133,22 +130,20 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
         console.log(`Cart cleared successfully for user ID: ${args.userId} server-side.`);
       } catch (cartClearError: any) {
         console.error(`Error clearing cart server-side for user ID ${args.userId}:`, cartClearError.message);
-        // Log error but proceed with payment redirect
       }
     } else {
       console.log("No userId provided, skipping server-side cart clearing (anonymous user).");
     }
-    // --- End cart clearing ---
 
     redirect(invoice.invoiceUrl);
 
   } catch (error: any) {
     if (error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-      throw error; // Re-throw Next.js redirect signals
+      throw error; 
     }
     console.error("Error in createXenditInvoice:", error);
     let errorMessage = "An unexpected error occurred while processing your payment.";
-    if (error.status && error.message) { // Xendit errors often have status and message
+    if (error.status && error.message) { 
         errorMessage = `Payment Gateway Error (${error.status}): ${error.message}`;
     } else if (error.message) {
         errorMessage = error.message;
