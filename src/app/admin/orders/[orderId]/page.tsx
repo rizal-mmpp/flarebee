@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, ServerCrash, Package, CalendarDays, User, Tag, Hash, CreditCard } from 'lucide-react';
+import { ArrowLeft, Loader2, ServerCrash, Package, CalendarDays, User, Tag, Hash, CreditCard, LinkIcon, Clock, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +23,22 @@ const formatIDR = (amount: number) => {
     maximumFractionDigits: 0,
   }).format(amount);
 };
+
+const getStatusBadgeVariant = (status?: string) => {
+  switch (status?.toLowerCase()) {
+    case 'completed':
+    case 'paid': // For Xendit direct status
+      return 'bg-green-500/20 text-green-400 border-green-500/30';
+    case 'pending':
+      return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+    case 'failed':
+    case 'expired':
+      return 'bg-red-500/20 text-red-400 border-red-500/30';
+    default:
+      return 'bg-muted text-muted-foreground border-border';
+  }
+};
+
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -96,14 +112,6 @@ export default function OrderDetailPage() {
     );
   }
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'completed': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'pending': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      case 'failed': return 'bg-red-500/20 text-red-400 border-red-500/30';
-      default: return 'bg-muted text-muted-foreground border-border';
-    }
-  };
 
   return (
     <div className="space-y-8">
@@ -126,7 +134,7 @@ export default function OrderDetailPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 text-sm">
             <div className="space-y-1">
               <h4 className="font-semibold text-muted-foreground flex items-center"><User className="mr-2 h-4 w-4 text-primary" />Customer Email</h4>
               <p className="text-foreground">{order.userEmail || 'N/A'}</p>
@@ -137,10 +145,10 @@ export default function OrderDetailPage() {
             </div>
             <div className="space-y-1">
               <h4 className="font-semibold text-muted-foreground flex items-center"><Tag className="mr-2 h-4 w-4 text-primary" />Total Amount</h4>
-              <p className="text-foreground font-semibold text-lg">{formatIDR(order.totalAmount)}</p>
+              <p className="text-foreground font-semibold text-lg">{formatIDR(order.totalAmount)} ({order.currency})</p>
             </div>
              <div className="space-y-1">
-              <h4 className="font-semibold text-muted-foreground flex items-center"><Hash className="mr-2 h-4 w-4 text-primary" />Payment Status</h4>
+              <h4 className="font-semibold text-muted-foreground flex items-center"><Hash className="mr-2 h-4 w-4 text-primary" />Flarebee Status</h4>
               <Badge variant="outline" className={cn("capitalize", getStatusBadgeVariant(order.status))}>
                 {order.status}
               </Badge>
@@ -149,10 +157,40 @@ export default function OrderDetailPage() {
               <h4 className="font-semibold text-muted-foreground flex items-center"><CreditCard className="mr-2 h-4 w-4 text-primary" />Payment Gateway</h4>
               <p className="text-foreground capitalize">{order.paymentGateway.replace('_', ' ')}</p>
             </div>
-             <div className="space-y-1">
-              <h4 className="font-semibold text-muted-foreground flex items-center"><CreditCard className="mr-2 h-4 w-4 text-primary" />Currency</h4>
-              <p className="text-foreground">{order.currency}</p>
-            </div>
+            {order.paymentGateway === 'xendit' && (
+              <>
+                <div className="space-y-1">
+                  <h4 className="font-semibold text-muted-foreground flex items-center"><Info className="mr-2 h-4 w-4 text-primary" />Xendit Invoice ID</h4>
+                  <p className="text-foreground break-all">{order.xenditInvoiceId || 'N/A'}</p>
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-semibold text-muted-foreground flex items-center"><LinkIcon className="mr-2 h-4 w-4 text-primary" />Xendit Invoice URL</h4>
+                  {order.xenditInvoiceUrl ? (
+                    <Link href={order.xenditInvoiceUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+                      View on Xendit <ExternalLink className="inline-block ml-1 h-3 w-3" />
+                    </Link>
+                  ) : (
+                    <p className="text-foreground">N/A</p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-semibold text-muted-foreground flex items-center"><Clock className="mr-2 h-4 w-4 text-primary" />Xendit Invoice Expiry</h4>
+                  <p className="text-foreground">
+                    {order.xenditExpiryDate ? format(new Date(order.xenditExpiryDate), "PPPp") : 'N/A'}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-semibold text-muted-foreground flex items-center"><Hash className="mr-2 h-4 w-4 text-primary" />Xendit Payment Status</h4>
+                   {order.xenditPaymentStatus ? (
+                     <Badge variant="outline" className={cn("capitalize", getStatusBadgeVariant(order.xenditPaymentStatus))}>
+                       {order.xenditPaymentStatus}
+                     </Badge>
+                   ) : (
+                    <p className="text-foreground">N/A</p>
+                   )}
+                </div>
+              </>
+            )}
           </div>
 
           <div>

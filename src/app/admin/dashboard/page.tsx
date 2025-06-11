@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
 
 // Helper to format IDR currency
 const formatIDR = (amount: number) => {
@@ -23,6 +25,21 @@ const formatIDR = (amount: number) => {
     maximumFractionDigits: 0,
   }).format(amount);
 };
+
+const getStatusBadgeVariant = (status?: string) => {
+    switch (status?.toLowerCase()) {
+      case 'completed':
+      case 'paid': // For Xendit direct status
+        return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'pending':
+        return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+      case 'failed':
+      case 'expired':
+        return 'bg-red-500/20 text-red-400 border-red-500/30';
+      default:
+        return 'bg-muted text-muted-foreground border-border';
+    }
+  };
 
 export default function AdminDashboardPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -78,7 +95,7 @@ export default function AdminDashboardPage() {
   };
 
   const totalSales = orders
-    .filter(order => order.status === 'completed' || order.status === 'pending') // Counting pending as sales for Xendit test flow
+    .filter(order => order.status === 'completed' || order.xenditPaymentStatus === 'PAID')
     .reduce((sum, order) => sum + order.totalAmount, 0);
 
   const totalOrdersCount = orders.length;
@@ -189,15 +206,11 @@ export default function AdminDashboardPage() {
                     <TableCell className="hidden sm:table-cell">{order.userEmail || 'N/A'}</TableCell>
                     <TableCell>{formatIDR(order.totalAmount)}</TableCell>
                     <TableCell className="hidden md:table-cell">{order.items.length}</TableCell>
-                    <TableCell className="hidden lg:table-cell">{new Date(order.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{format(new Date(order.createdAt), "PP")}</TableCell>
                     <TableCell>
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                            order.status === 'completed' ? 'bg-green-500/20 text-green-400' : 
-                            order.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' : 
-                            'bg-red-500/20 text-red-400'
-                        }`}>
+                        <Badge variant="outline" className={`capitalize text-xs ${getStatusBadgeVariant(order.status)}`}>
                             {order.status}
-                        </span>
+                        </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                         <Button variant="ghost" size="icon" asChild>
