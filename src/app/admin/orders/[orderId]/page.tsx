@@ -12,7 +12,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Loader2, ServerCrash, Package, CalendarDays, User, Tag, Hash, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils'; // Added import
+import { cn } from '@/lib/utils';
+
+// Helper to format IDR currency
+const formatIDR = (amount: number) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -127,7 +137,7 @@ export default function OrderDetailPage() {
             </div>
             <div className="space-y-1">
               <h4 className="font-semibold text-muted-foreground flex items-center"><Tag className="mr-2 h-4 w-4 text-primary" />Total Amount</h4>
-              <p className="text-foreground font-semibold text-lg">{order.currency} {order.totalAmount.toFixed(2)}</p>
+              <p className="text-foreground font-semibold text-lg">{formatIDR(order.totalAmount)}</p>
             </div>
              <div className="space-y-1">
               <h4 className="font-semibold text-muted-foreground flex items-center"><Hash className="mr-2 h-4 w-4 text-primary" />Payment Status</h4>
@@ -137,7 +147,11 @@ export default function OrderDetailPage() {
             </div>
             <div className="space-y-1">
               <h4 className="font-semibold text-muted-foreground flex items-center"><CreditCard className="mr-2 h-4 w-4 text-primary" />Payment Gateway</h4>
-              <p className="text-foreground">{order.paymentGateway}</p>
+              <p className="text-foreground capitalize">{order.paymentGateway.replace('_', ' ')}</p>
+            </div>
+             <div className="space-y-1">
+              <h4 className="font-semibold text-muted-foreground flex items-center"><CreditCard className="mr-2 h-4 w-4 text-primary" />Currency</h4>
+              <p className="text-foreground">{order.currency}</p>
             </div>
           </div>
 
@@ -155,7 +169,7 @@ export default function OrderDetailPage() {
                   {order.items.map((item, index) => (
                     <TableRow key={`${item.id}-${index}`}>
                       <TableCell className="font-medium text-foreground">{item.title}</TableCell>
-                      <TableCell className="text-right text-foreground">{order.currency} {item.price.toFixed(2)}</TableCell>
+                      <TableCell className="text-right text-foreground">{formatIDR(item.price)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

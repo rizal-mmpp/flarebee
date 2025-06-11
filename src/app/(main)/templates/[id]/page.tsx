@@ -18,15 +18,25 @@ import {
 } from "@/components/ui/carousel"
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { useCart } from '@/context/CartContext'; 
-import { use, useEffect, useState, useTransition } from 'react'; 
+import { useEffect, useState, useTransition } from 'react'; 
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/firebase/AuthContext'; 
 import { LoginModal } from '@/components/shared/LoginModal'; 
 import { getOrdersByUserIdFromFirestore } from '@/lib/firebase/firestoreOrders';
 
+// Helper to format IDR currency
+const formatIDR = (amount: number) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
 export default function TemplateDetailPage({ params }: { params: { id: string } }) {
-  const unwrappedParams = use(params);
-  const id = unwrappedParams.id;
+  // For client components, direct access to params is fine. `use(params)` is not typical here.
+  const id = params.id;
 
   const [template, setTemplate] = useState<Template | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,7 +45,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
   const { addToCart, isItemInCart } = useCart();
   const { user, signInWithGoogle } = useAuth(); 
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // Keep this for potential error messages from redirects
   const [isBuyNowPending, startBuyNowTransition] = useTransition();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
@@ -64,17 +74,18 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
       fetchTemplate();
     }
 
-    const xenditError = searchParams?.get('error');
+    const xenditError = searchParams?.get('error'); // Check for 'error' from payment gateway
     if (xenditError) {
       toast({
         title: "Payment Error",
         description: decodeURIComponent(xenditError),
         variant: "destructive",
       });
-      router.replace(`/templates/${id}`, { scroll: false });
+      // Clear the error from URL to prevent re-showing on refresh
+      router.replace(`/templates/${id}`, { scroll: false }); 
     }
 
-  }, [id, searchParams, router]);
+  }, [id, searchParams, router]); // Removed `params` from deps as `id` is derived and stable within effect
 
   useEffect(() => {
     async function checkPurchaseStatus() {
@@ -82,13 +93,15 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
         setIsLoadingPurchaseStatus(true);
         try {
           const orders = await getOrdersByUserIdFromFirestore(user.uid);
+          // Check for 'completed' or 'pending' status for test Xendit flow
+          // In production, strictly 'completed' after webhook confirmation.
           const purchased = orders.some(order => 
-            order.items.some(item => item.id === template.id) && order.status === 'completed'
+            order.items.some(item => item.id === template.id) && (order.status === 'completed' || order.status === 'pending')
           );
           setHasPurchased(purchased);
         } catch (err) {
           console.error("Failed to check purchase status:", err);
-          setHasPurchased(false); // Assume not purchased on error
+          setHasPurchased(false); 
         } finally {
           setIsLoadingPurchaseStatus(false);
         }
@@ -97,7 +110,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
         setIsLoadingPurchaseStatus(false);
       }
     }
-    if (!isLoading) { // Only run if template data is loaded
+    if (!isLoading && template) { // Ensure template is loaded before checking purchase status
         checkPurchaseStatus();
     }
   }, [user, template, isLoading]);
@@ -120,7 +133,9 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
     }
     if (template) {
       startBuyNowTransition(() => {
-        addToCart(template); // Add to cart first, then redirect
+        if (!isItemInCart(template.id)) { // Only add if not already in cart
+          addToCart(template); 
+        }
         router.push('/checkout');
       });
     }
@@ -181,6 +196,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
                           className="rounded-lg object-cover"
                           data-ai-hint={template.dataAiHint || "template screenshot"}
                           priority={index === 0}
+                           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 800px"
                         />
                       </AspectRatio>
                     </CarouselItem>
@@ -198,6 +214,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
                   className="rounded-lg object-cover"
                   data-ai-hint={template.dataAiHint || "template image"}
                   priority
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 800px"
                 />
               </AspectRatio>
             )}
@@ -206,7 +223,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
           <div className="py-4">
             <Badge variant="secondary" className="mb-2">{template.category.name}</Badge>
             <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">{template.title}</h1>
-            {!hasPurchased && <p className="text-4xl font-extrabold text-primary mb-6">${template.price.toFixed(2)}</p>}
+            {!hasPurchased && <p className="text-4xl font-extrabold text-primary mb-6">{formatIDR(template.price)}</p>}
             
             <div className="mb-6 prose prose-invert max-w-none text-muted-foreground">
               <p>{template.longDescription || template.description}</p>

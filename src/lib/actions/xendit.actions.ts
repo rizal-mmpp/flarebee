@@ -4,28 +4,35 @@
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { randomUUID } from 'crypto';
+import { Xendit } from 'xendit-node';
 import { deleteUserCartFromFirestore } from '@/lib/firebase/firestoreCarts';
 import { createOrderInFirestore } from '@/lib/firebase/firestoreOrders';
 import type { CartItem, PurchasedTemplateItem, OrderInputData } from '@/lib/types';
 
-// Interface for items specifically formatted for Xendit API (if needed)
+// Initialize Xendit client
+const xenditClient = new Xendit({
+  secretKey: process.env.XENDIT_API_KEY || '', // Ensure your API key is in .env
+});
+
+const { Invoice } = xenditClient;
+
 interface XenditFormattedItem {
   name: string;
   quantity: number;
-  price: number;
+  price: number; // Price per unit in IDR
   category?: string;
-  url?: string;
+  url?: string; // Optional: URL to the item page
 }
 
 interface CreateXenditInvoiceArgs {
-  cartItemsForOrder: CartItem[]; // Original cart items for creating the order
-  xenditFormattedItems: XenditFormattedItem[]; // Items formatted for Xendit
-  totalAmount: number;
+  cartItemsForOrder: CartItem[];
+  xenditFormattedItems: XenditFormattedItem[];
+  totalAmount: number; // Total amount in IDR
   description: string;
-  currency?: string;
+  currency?: string; // Should be 'IDR'
   payerEmail?: string;
-  userId?: string; // User ID for cart clearing and order creation
-  orderId?: string; // Optional pre-generated order ID
+  userId?: string;
+  orderId?: string; // Optional pre-generated order ID, will be used as external_id
 }
 
 interface CreateXenditInvoiceErrorResult {
@@ -33,7 +40,10 @@ interface CreateXenditInvoiceErrorResult {
 }
 
 export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promise<CreateXenditInvoiceErrorResult | void> {
-  console.log("SIMULATING Xendit invoice creation with dummy data and server-side redirect.");
+  if (!process.env.XENDIT_API_KEY) {
+    console.error("XENDIT_API_KEY is not set in environment variables.");
+    return { error: "Payment gateway configuration error. Please contact support." };
+  }
 
   try {
     const hostHeaders = await headers();
@@ -46,42 +56,74 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
     }
     const appBaseUrl = `${protocol}://${host}`;
 
-    const uniquePaymentId = args.orderId || `flarebee-dummy-${randomUUID()}`; // This acts as the payment transaction ID
+    const externalId = args.orderId || `flarebee-order-${randomUUID()}`;
+    const resolvedCurrency = args.currency || 'IDR';
 
-    // --- Create Order in Firestore if userId is provided ---
+    if (resolvedCurrency !== 'IDR') {
+        // Forcing IDR for this integration, adjust if other currencies are needed in future
+        console.warn(`Currency specified was ${args.currency}, but forcing IDR for Xendit.`);
+    }
+
+    // --- Create Order in Firestore with 'pending' status ---
+    let createdOrderId: string | undefined;
     if (args.userId && args.cartItemsForOrder.length > 0) {
       const purchasedItems: PurchasedTemplateItem[] = args.cartItemsForOrder.map(item => ({
         id: item.id,
         title: item.title,
-        price: item.price,
+        price: item.price, // Assuming price is already in IDR
       }));
 
       const orderData: OrderInputData = {
         userId: args.userId,
         userEmail: args.payerEmail,
-        orderId: uniquePaymentId, // Use the payment ID as the orderId
+        orderId: externalId,
         items: purchasedItems,
         totalAmount: args.totalAmount,
-        currency: args.currency || 'USD',
-        status: 'completed', // For dummy flow, always completed
-        paymentGateway: 'xendit_dummy',
-        // createdAt will be set by serverTimestamp in createOrderInFirestore
+        currency: 'IDR',
+        status: 'pending', // Initial status
+        paymentGateway: 'xendit',
       };
 
       try {
-        console.log(`Attempting to create order for user ID: ${args.userId}`);
-        await createOrderInFirestore(orderData);
-        console.log(`Order created successfully for user ID: ${args.userId}, Order ID: ${uniquePaymentId}`);
+        const createdOrder = await createOrderInFirestore(orderData);
+        createdOrderId = createdOrder.id; // Firestore document ID
+        console.log(`Order ${externalId} (doc ID: ${createdOrderId}) created with status 'pending' for user ID: ${args.userId}`);
       } catch (orderError: any) {
-        console.error(`Error creating order for user ID ${args.userId}:`, orderError.message);
-        // For a real system, you might want to return an error or handle this more gracefully.
-        // For the dummy flow, we'll log and proceed with cart clearing & redirect.
-        // return { error: "Failed to save your order. Please try again or contact support." };
+        console.error(`Error creating order in Firestore for user ID ${args.userId}:`, orderError.message);
+        return { error: "Failed to save your order. Please try again or contact support." };
       }
-    } else if (!args.userId) {
-        console.log("No userId provided, skipping order creation (anonymous user or no items).");
+    } else {
+      console.log("No userId provided or cart empty, skipping order creation.");
     }
+    // --- End Order Creation ---
 
+    const xenditInvoicePayload = {
+      externalId: externalId,
+      amount: args.totalAmount,
+      payerEmail: args.payerEmail,
+      description: args.description,
+      currency: 'IDR', // Xendit requires currency specified here
+      items: args.xenditFormattedItems.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price, // Price per unit in IDR
+        category: item.category,
+        url: item.url,
+      })),
+      successRedirectUrl: `${appBaseUrl}/purchase/success?external_id=${externalId}&source=xendit`,
+      failureRedirectUrl: `${appBaseUrl}/purchase/cancelled?external_id=${externalId}&source=xendit`,
+      customer: args.payerEmail ? { email: args.payerEmail } : undefined,
+      // fees: [{ type: 'ADMIN', value: 0 }] // Example if you need to add fees
+    };
+
+    console.log("Creating Xendit invoice with payload:", JSON.stringify(xenditInvoicePayload, null, 2));
+    const invoice = await Invoice.createInvoice({ data: xenditInvoicePayload });
+    console.log("Xendit invoice created:", invoice);
+
+    if (!invoice.invoiceUrl) {
+        console.error("Xendit invoice creation succeeded but no invoice_url was returned.", invoice);
+        return { error: "Failed to get payment URL from gateway. Please try again." };
+    }
 
     // --- Attempt to clear cart server-side if userId is provided ---
     if (args.userId) {
@@ -91,29 +133,26 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
         console.log(`Cart cleared successfully for user ID: ${args.userId} server-side.`);
       } catch (cartClearError: any) {
         console.error(`Error clearing cart server-side for user ID ${args.userId}:`, cartClearError.message);
+        // Log error but proceed with payment redirect
       }
     } else {
       console.log("No userId provided, skipping server-side cart clearing (anonymous user).");
     }
     // --- End cart clearing ---
 
-    const successRedirectUrl = new URL(`/purchase/success`, appBaseUrl);
-    successRedirectUrl.searchParams.append('order_id', uniquePaymentId);
-    successRedirectUrl.searchParams.append('source', 'xendit_dummy');
+    redirect(invoice.invoiceUrl);
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    redirect(successRedirectUrl.toString());
-
-  } catch (internalError: any) {
-    // Re-throw Next.js redirect signals
-    if (internalError && typeof internalError.digest === 'string' && internalError.digest.startsWith('NEXT_REDIRECT')) {
-      throw internalError;
+  } catch (error: any) {
+    if (error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+      throw error; // Re-throw Next.js redirect signals
     }
-    console.error("Internal error in createXenditInvoice (dummy implementation):", internalError);
-    return {
-      error: "An internal server error occurred while preparing your payment. Please try again or contact support.",
-    };
+    console.error("Error in createXenditInvoice:", error);
+    let errorMessage = "An unexpected error occurred while processing your payment.";
+    if (error.status && error.message) { // Xendit errors often have status and message
+        errorMessage = `Payment Gateway Error (${error.status}): ${error.message}`;
+    } else if (error.message) {
+        errorMessage = error.message;
+    }
+    return { error: errorMessage };
   }
 }

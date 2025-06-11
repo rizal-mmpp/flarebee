@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Template } from '@/lib/types';
@@ -10,6 +11,16 @@ interface TemplateCardProps {
   template: Template;
 }
 
+// Helper to format IDR currency
+const formatIDR = (amount: number) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
 export function TemplateCard({ template }: TemplateCardProps) {
   return (
     <Card className="flex flex-col overflow-hidden rounded-lg shadow-lg transition-all duration-300 ease-in-out hover:shadow-primary/20 hover:shadow-xl hover:-translate-y-1">
@@ -19,10 +30,11 @@ export function TemplateCard({ template }: TemplateCardProps) {
             <Image
               src={template.imageUrl}
               alt={template.title}
-              layout="fill"
-              objectFit="cover"
+              fill
+              style={{objectFit:"cover"}}
               className="transition-transform duration-300 ease-in-out group-hover:scale-105"
               data-ai-hint={template.dataAiHint || "template preview"}
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
           </div>
         </CardHeader>
@@ -47,7 +59,7 @@ export function TemplateCard({ template }: TemplateCardProps) {
       </CardContent>
       <CardFooter className="p-4 md:p-6 pt-0 flex justify-between items-center">
         <p className="text-xl font-bold text-primary">
-          ${template.price}
+          {formatIDR(template.price)}
         </p>
         <Button asChild variant="outline" size="sm" className="group transition-all duration-300 ease-in-out hover:bg-accent hover:text-accent-foreground hover:border-accent">
           <Link href={`/templates/${template.id}`}>

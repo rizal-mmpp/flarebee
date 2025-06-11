@@ -14,6 +14,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Link from 'next/link';
 
+// Helper to format IDR currency
+const formatIDR = (amount: number) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
 
 export default function AdminDashboardPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -69,7 +78,7 @@ export default function AdminDashboardPage() {
   };
 
   const totalSales = orders
-    .filter(order => order.status === 'completed')
+    .filter(order => order.status === 'completed' || order.status === 'pending') // Counting pending as sales for Xendit test flow
     .reduce((sum, order) => sum + order.totalAmount, 0);
 
   const totalOrdersCount = orders.length;
@@ -109,7 +118,7 @@ export default function AdminDashboardPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              {isLoadingOrders ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className="text-2xl font-bold">${totalSales.toFixed(2)}</div>}
+              {isLoadingOrders ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className="text-2xl font-bold">{formatIDR(totalSales)}</div>}
             </CardContent>
           </Card>
           <Card>
@@ -178,7 +187,7 @@ export default function AdminDashboardPage() {
                       </Link>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">{order.userEmail || 'N/A'}</TableCell>
-                    <TableCell>${order.totalAmount.toFixed(2)}</TableCell>
+                    <TableCell>{formatIDR(order.totalAmount)}</TableCell>
                     <TableCell className="hidden md:table-cell">{order.items.length}</TableCell>
                     <TableCell className="hidden lg:table-cell">{new Date(order.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell>

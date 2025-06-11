@@ -12,14 +12,14 @@ import { useAuth } from '@/lib/firebase/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from '@/hooks/use-toast';
-import type { CartItem } from '@/lib/types'; // For explicit type for Xendit items
+import type { CartItem } from '@/lib/types';
 
-interface XenditFormattedItem { // Renamed for clarity from original XenditItem
+interface XenditFormattedItem {
   name: string;
   quantity: number;
   price: number;
   category?: string;
-  // id: string; // Add template ID for order creation
+  url?: string;
 }
 
 export default function CheckoutPage() {
@@ -28,7 +28,17 @@ export default function CheckoutPage() {
   const router = useRouter();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  const totalAmount = getCartTotal();
+  const totalAmount = getCartTotal(); // Assuming prices are already in IDR
+
+  // Helper to format IDR currency
+  const formatIDR = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
 
   useEffect(() => {
     if (!authLoading && !user && !cartLoading) {
@@ -62,24 +72,24 @@ export default function CheckoutPage() {
     setIsProcessingPayment(true);
 
     const xenditItems: XenditFormattedItem[] = cartItems.map(item => ({
-      // id: item.id, // Keep original id for PurchasedTemplateItem mapping
       name: item.title,
       quantity: item.quantity,
-      price: item.price,
+      price: item.price, // Price per unit in IDR
+      category: 'Digital Goods', // Example category
+      url: `${window.location.origin}/templates/${item.id}`, // Example URL
     }));
 
     const description = cartItems.map(item => `${item.title} (x${item.quantity})`).join(', ');
 
     try {
-      // Pass the original cartItems for order creation, as XenditFormattedItem might be different
       const result = await createXenditInvoice({
-        cartItemsForOrder: cartItems, // Pass original cart items for accurate order creation
-        xenditFormattedItems: xenditItems, // Pass formatted items for Xendit API
+        cartItemsForOrder: cartItems,
+        xenditFormattedItems: xenditItems,
         totalAmount: totalAmount,
         description: `Flarebee Order: ${description}`,
-        currency: 'USD', // Or your desired currency
+        currency: 'IDR',
         payerEmail: user?.email || undefined,
-        userId: user?.uid, // userId is guaranteed to exist here due to earlier check
+        userId: user?.uid,
       });
       
       if (result && 'error' in result && typeof result.error === 'string') {
@@ -89,11 +99,13 @@ export default function CheckoutPage() {
           variant: "destructive",
         });
       }
+      // If successful, createXenditInvoice will redirect, so no further client-side action needed here.
     } catch (error: any) {
       if (error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
         // This is a redirect signal from the server action. Next.js will handle it.
+        // No toast needed here.
       } else {
-        console.error("Error during payment processing (thrown):", error);
+        console.error("Error during payment processing (thrown by createXenditInvoice or other):", error);
         let errorMessage = "An unexpected error occurred. Please try again or contact support.";
         if (error && typeof error.message === 'string') {
           errorMessage = error.message;
@@ -175,7 +187,7 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex-grow text-center sm:text-left">
                   <h3 className="text-lg font-semibold text-foreground">{item.title}</h3>
-                  <p className="text-primary font-medium">${item.price.toFixed(2)}</p>
+                  <p className="text-primary font-medium">{formatIDR(item.price)}</p>
                 </div>
                 <Button
                   variant="ghost"
@@ -198,7 +210,7 @@ export default function CheckoutPage() {
               <CardContent className="space-y-4">
                 <div className="flex justify-between text-muted-foreground">
                   <span>Subtotal</span>
-                  <span>${totalAmount.toFixed(2)}</span>
+                  <span>{formatIDR(totalAmount)}</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Taxes</span>
@@ -207,7 +219,7 @@ export default function CheckoutPage() {
                 <hr className="border-border" />
                 <div className="flex justify-between text-xl font-bold text-foreground">
                   <span>Total</span>
-                  <span>${totalAmount.toFixed(2)}</span>
+                  <span>{formatIDR(totalAmount)}</span>
                 </div>
               </CardContent>
               <CardFooter className="flex-col space-y-3">

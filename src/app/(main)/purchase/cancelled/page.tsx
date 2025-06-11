@@ -9,7 +9,8 @@ import { useSearchParams } from "next/navigation";
 
 export default function PurchaseCancelledPage() {
   const searchParams = useSearchParams();
-  const orderId = searchParams.get('order_id') || searchParams.get('external_id'); // Support both
+  // Xendit uses 'external_id' in the redirect URL
+  const orderId = searchParams.get('external_id') || searchParams.get('order_id'); 
   // const source = searchParams.get('source'); // Available if needed
 
   return (
@@ -19,7 +20,7 @@ export default function PurchaseCancelledPage() {
           <div className="mx-auto bg-destructive/10 rounded-full p-3 w-fit mb-4">
             <AlertTriangle className="h-12 w-12 text-destructive" />
           </div>
-          <CardTitle className="text-3xl font-bold text-foreground">Payment Cancelled</CardTitle>
+          <CardTitle className="text-3xl font-bold text-foreground">Payment Cancelled or Failed</CardTitle>
           <CardDescription className="text-lg text-muted-foreground pt-2">
             Your purchase process was cancelled or failed.
             {orderId && <span className="block text-sm mt-1">Order ID: {orderId}</span>}
@@ -27,12 +28,12 @@ export default function PurchaseCancelledPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <p className="text-muted-foreground">
-            It seems you have cancelled the payment or something went wrong during the process. Your order has not been processed.
+            It seems you have cancelled the payment or something went wrong during the process. Your order has not been fully processed.
             If you believe this is an error, please try again or contact support.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <Button variant="outline" asChild size="lg" className="w-full group">
-              <Link href="/checkout"> {/* Link back to cart/checkout */}
+              <Link href="/checkout"> 
                 <ShoppingBag className="mr-2 h-5 w-5" /> View Cart
               </Link>
             </Button>

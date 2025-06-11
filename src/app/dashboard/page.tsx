@@ -11,6 +11,16 @@ import { getOrdersByUserIdFromFirestore } from '@/lib/firebase/firestoreOrders';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 
+// Helper to format IDR currency
+const formatIDR = (amount: number) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
 export default function UserDashboardPage() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -24,7 +34,11 @@ export default function UserDashboardPage() {
         setError(null);
         try {
           const userOrders = await getOrdersByUserIdFromFirestore(user.uid);
-          setOrders(userOrders);
+           // Filter for 'pending' or 'completed' orders for display
+          const relevantOrders = userOrders.filter(
+            (order) => order.status === 'completed' || order.status === 'pending'
+          );
+          setOrders(relevantOrders);
         } catch (err) {
           console.error("Failed to fetch user orders:", err);
           setError("Could not load your purchased templates. Please try again later.");
@@ -139,7 +153,7 @@ export default function UserDashboardPage() {
                     <CardTitle className="text-xl">Order ID: {order.orderId.substring(0, 18)}...</CardTitle>
                     <Badge variant="secondary">Purchased: {new Date(order.createdAt).toLocaleDateString()}</Badge>
                   </div>
-                  <CardDescription>Total: ${order.totalAmount.toFixed(2)} ({order.items.length} item{order.items.length === 1 ? '' : 's'})</CardDescription>
+                  <CardDescription>Total: {formatIDR(order.totalAmount)} ({order.items.length} item{order.items.length === 1 ? '' : 's'})</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-4">
@@ -147,7 +161,7 @@ export default function UserDashboardPage() {
                       <li key={item.id} className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 p-3 rounded-md border bg-card/50">
                         <div>
                           <h4 className="font-semibold text-foreground">{item.title}</h4>
-                          <p className="text-sm text-muted-foreground">Price: ${item.price.toFixed(2)}</p>
+                          <p className="text-sm text-muted-foreground">Price: {formatIDR(item.price)}</p>
                         </div>
                         <div className="flex gap-2 flex-shrink-0">
                           <Button variant="outline" size="sm" asChild className="group">
@@ -155,8 +169,16 @@ export default function UserDashboardPage() {
                                 View Template <ExternalLink className="ml-2 h-3 w-3" />
                             </Link>
                           </Button>
-                          <Button size="sm" disabled className="group bg-primary/80 hover:bg-primary/70"> {/* Placeholder */}
-                            <Download className="mr-2 h-4 w-4" /> Download
+                          <Button 
+                            size="sm" 
+                            asChild
+                            className="group bg-primary/80 hover:bg-primary/70 text-primary-foreground"
+                            // This assumes template.downloadZipUrl would be fetched or available
+                            // For now, we link to the template detail page where the actual download link is
+                          >
+                             <Link href={`/templates/${item.id}`}>
+                                <Download className="mr-2 h-4 w-4" /> Access/Download
+                            </Link>
                           </Button>
                         </div>
                       </li>
