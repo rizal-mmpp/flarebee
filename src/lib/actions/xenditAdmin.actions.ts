@@ -167,6 +167,7 @@ export interface CreateTestInvoiceArgs {
   amount: number;
   description: string;
   payerEmail?: string;
+  requestFva?: boolean;
 }
 
 export interface XenditInvoiceData {
@@ -184,6 +185,7 @@ export interface XenditInvoiceData {
   currency: string;
   created: string;
   updated: string;
+  payment_methods?: any[];
   // ... other fields as per Xendit's full response
 }
 
@@ -222,32 +224,34 @@ export async function createXenditTestInvoice(args: CreateTestInvoiceArgs): Prom
     ];
     // Ensure total item price matches args.amount for this test
     const itemsTotal = sampleItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    if (itemsTotal !== args.amount) {
-        // Adjust the last item's price to match, for simplicity in testing
-        const diff = args.amount - (itemsTotal - sampleItems[sampleItems.length-1].price);
+    if (itemsTotal !== args.amount && args.amount > 0) {
+        const diff = args.amount - (itemsTotal - (sampleItems[sampleItems.length-1]?.price || 0) );
         if (sampleItems.length > 0 && diff > 0) {
             sampleItems[sampleItems.length-1].price = diff;
-        } else if (sampleItems.length === 0 && args.amount > 0) {
-            sampleItems.push({ name: 'Single Test Item', quantity: 1, price: args.amount, category: 'Test Category', url: `${appBaseUrl}/templates/sample-item` });
-        } else if (args.amount === 0 && sampleItems.length > 0) {
-            // If amount is 0, make items free or remove them
-            sampleItems.forEach(item => item.price = 0);
+        } else if (sampleItems.length === 0) {
+             sampleItems.push({ name: 'Single Test Item', quantity: 1, price: args.amount, category: 'Test Category', url: `${appBaseUrl}/templates/sample-item` });
         }
+    } else if (args.amount === 0 && sampleItems.length > 0) {
+        sampleItems.forEach(item => item.price = 0);
     }
 
 
-    const invoicePayload = {
+    const invoicePayload: any = {
       externalId: externalId,
       amount: args.amount,
-      payerEmail: args.payerEmail || undefined, // Xendit SDK handles undefined correctly
+      payerEmail: args.payerEmail || undefined, 
       description: args.description,
       currency: 'IDR',
       items: sampleItems,
       successRedirectUrl: `${appBaseUrl}/purchase/success?external_id=${externalId}&source=xendit_test`,
       failureRedirectUrl: `${appBaseUrl}/purchase/cancelled?external_id=${externalId}&source=xendit_test`,
       customer: args.payerEmail ? { email: args.payerEmail } : undefined,
-      shouldSendEmail: true, // For testing, let's see the email if payerEmail is provided
+      shouldSendEmail: true,
     };
+
+    if (args.requestFva) {
+      invoicePayload.paymentMethods = ['BCA', 'BNI', 'BRI', 'MANDIRI', 'PERMATA']; // Common FVA bank codes
+    }
 
     const invoice = await Invoice.createInvoice({ data: invoicePayload });
     
@@ -256,7 +260,85 @@ export async function createXenditTestInvoice(args: CreateTestInvoiceArgs): Prom
   } catch (error: any) {
     console.error('Error creating Xendit test invoice:', error);
     let errorMessage = "An unexpected error occurred while creating the test invoice.";
-    if (error.status && error.message) { // Xendit SDK error format
+    if (error.status && error.message) { 
+        errorMessage = `Xendit SDK Error (${error.status}): ${error.message}`;
+        if (error.errorCode) {
+          errorMessage = `Xendit SDK Error (${error.errorCode} - ${error.status}): ${error.message}`;
+        }
+    } else if (error.message) {
+        errorMessage = error.message;
+    }
+    return { error: errorMessage, rawResponse: error };
+  }
+}
+
+export async function getXenditTestInvoice(invoiceId: string): Promise<XenditInvoiceResult> {
+  const secretKey = process.env.XENDIT_SECRET_KEY;
+  if (!secretKey) {
+    return { error: 'XENDIT_SECRET_KEY is not set in environment variables.' };
+  }
+  if (!invoiceId) {
+    return { error: 'Invoice ID is required.' };
+  }
+
+  try {
+    const invoice = await Invoice.getInvoice({ invoiceID: invoiceId });
+    return { data: invoice as XenditInvoiceData, rawResponse: invoice };
+  } catch (error: any) {
+    console.error(`Error fetching Xendit invoice ${invoiceId}:`, error);
+    let errorMessage = `An unexpected error occurred while fetching invoice ${invoiceId}.`;
+     if (error.status && error.message) { 
+        errorMessage = `Xendit SDK Error (${error.status}): ${error.message}`;
+        if (error.errorCode) {
+          errorMessage = `Xendit SDK Error (${error.errorCode} - ${error.status}): ${error.message}`;
+        }
+    } else if (error.message) {
+        errorMessage = error.message;
+    }
+    return { error: errorMessage, rawResponse: error };
+  }
+}
+
+export interface SimulatePaymentArgs {
+  invoiceId: string;
+  amount?: number; // Optional amount for simulation
+}
+
+export interface XenditSimulatePaymentResult {
+  data?: XenditInvoiceData; // Simulating payment often returns the updated invoice
+  error?: string;
+  rawResponse?: any;
+}
+
+export async function simulateXenditInvoicePayment(args: SimulatePaymentArgs): Promise<XenditSimulatePaymentResult> {
+  const secretKey = process.env.XENDIT_SECRET_KEY;
+  if (!secretKey) {
+    return { error: 'XENDIT_SECRET_KEY is not set in environment variables.' };
+  }
+  if (!args.invoiceId) {
+    return { error: 'Invoice ID is required for payment simulation.' };
+  }
+
+  try {
+    const simulationPayload: { invoiceID: string; amount?: number } = { invoiceID: args.invoiceId };
+    if (args.amount && args.amount > 0) {
+      simulationPayload.amount = args.amount;
+    }
+    // The simulatePayment method in the SDK might not return the full invoice,
+    // but typically the API itself does. Let's assume it might return something.
+    // If it returns a simple success/status, we might need to re-fetch the invoice.
+    // For now, we'll type the response as potentially an invoice.
+    const simulationResponse = await Invoice.simulatePayment(simulationPayload);
+    
+    // Xendit's simulate payment API usually returns the updated invoice object or a success message.
+    // If it only returns a success message, you might want to call getXenditTestInvoice immediately after.
+    // For now, we'll assume simulationResponse could be the updated invoice.
+    return { data: simulationResponse as XenditInvoiceData, rawResponse: simulationResponse };
+
+  } catch (error: any) {
+    console.error(`Error simulating payment for Xendit invoice ${args.invoiceId}:`, error);
+    let errorMessage = `An unexpected error occurred while simulating payment for invoice ${args.invoiceId}.`;
+    if (error.status && error.message) { 
         errorMessage = `Xendit SDK Error (${error.status}): ${error.message}`;
         if (error.errorCode) {
           errorMessage = `Xendit SDK Error (${error.errorCode} - ${error.status}): ${error.message}`;

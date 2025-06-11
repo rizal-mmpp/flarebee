@@ -8,17 +8,22 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   getXenditBalance, 
   createXenditPaymentRequest,
   createXenditTestInvoice,
+  getXenditTestInvoice,
+  simulateXenditInvoicePayment,
   type XenditBalanceResult,
   type XenditPaymentRequestResult,
   type CreatePaymentRequestArgs,
   type XenditInvoiceResult,
   type CreateTestInvoiceArgs,
+  type XenditSimulatePaymentResult,
+  type SimulatePaymentArgs,
 } from '@/lib/actions/xenditAdmin.actions';
-import { Loader2, CheckCircle, AlertTriangle, Wifi, Banknote, CreditCard, FileText } from 'lucide-react';
+import { Loader2, CheckCircle, AlertTriangle, Wifi, Banknote, CreditCard, FileText, Search, Send } from 'lucide-react';
 import Link from 'next/link';
 
 // Helper to format IDR currency
@@ -42,12 +47,24 @@ export default function XenditTestPage() {
   const [isProcessingPr, setIsProcessingPr] = useState(false);
   const [prResult, setPrResult] = useState<XenditPaymentRequestResult | null>(null);
 
-  // Invoice Simulation State
+  // Invoice Creation Simulation State
   const [invoiceAmount, setInvoiceAmount] = useState<number>(50000);
   const [invoiceDescription, setInvoiceDescription] = useState('Sample Flarebee Test Invoice');
   const [invoicePayerEmail, setInvoicePayerEmail] = useState('');
+  const [requestFva, setRequestFva] = useState(false);
   const [isProcessingInvoice, setIsProcessingInvoice] = useState(false);
-  const [invoiceResult, setInvoiceResult] = useState<XenditInvoiceResult | null>(null);
+  const [invoiceCreationResult, setInvoiceCreationResult] = useState<XenditInvoiceResult | null>(null);
+
+  // Get Invoice State
+  const [getInvoiceId, setGetInvoiceId] = useState('');
+  const [isFetchingInvoice, setIsFetchingInvoice] = useState(false);
+  const [getInvoiceResult, setGetInvoiceResult] = useState<XenditInvoiceResult | null>(null);
+
+  // Simulate Invoice Payment State
+  const [simulatePaymentInvoiceId, setSimulatePaymentInvoiceId] = useState('');
+  const [simulatePaymentAmount, setSimulatePaymentAmount] = useState<string>(''); // string to allow empty
+  const [isSimulatingPayment, setIsSimulatingPayment] = useState(false);
+  const [simulatePaymentResult, setSimulatePaymentResult] = useState<XenditSimulatePaymentResult | null>(null);
 
 
   const handleTestBalance = async () => {
@@ -73,16 +90,44 @@ export default function XenditTestPage() {
 
   const handleCreateTestInvoice = async () => {
     setIsProcessingInvoice(true);
-    setInvoiceResult(null);
+    setInvoiceCreationResult(null);
     const args: CreateTestInvoiceArgs = {
       amount: invoiceAmount,
       description: invoiceDescription,
       payerEmail: invoicePayerEmail || undefined,
+      requestFva: requestFva,
     };
     const response = await createXenditTestInvoice(args);
-    setInvoiceResult(response);
+    setInvoiceCreationResult(response);
+    if (response.data?.id) {
+      setGetInvoiceId(response.data.id); // Pre-fill for get invoice
+      setSimulatePaymentInvoiceId(response.data.id); // Pre-fill for simulate payment
+    }
     setIsProcessingInvoice(false);
   };
+
+  const handleGetInvoice = async () => {
+    if (!getInvoiceId) return;
+    setIsFetchingInvoice(true);
+    setGetInvoiceResult(null);
+    const response = await getXenditTestInvoice(getInvoiceId);
+    setGetInvoiceResult(response);
+    setIsFetchingInvoice(false);
+  };
+
+  const handleSimulatePayment = async () => {
+    if (!simulatePaymentInvoiceId) return;
+    setIsSimulatingPayment(true);
+    setSimulatePaymentResult(null);
+    const paymentAmount = simulatePaymentAmount ? parseFloat(simulatePaymentAmount) : undefined;
+    const args: SimulatePaymentArgs = {
+      invoiceId: simulatePaymentInvoiceId,
+      amount: paymentAmount,
+    };
+    const response = await simulateXenditInvoicePayment(args);
+    setSimulatePaymentResult(response);
+    setIsSimulatingPayment(false);
+  }
 
   const renderRawResponse = (rawResponse: any) => (
     <details className="mt-2 text-xs">
@@ -104,7 +149,7 @@ export default function XenditTestPage() {
           </CardTitle>
           <CardDescription>
             Test connections and simulate API calls to Xendit.
-            Ensure your <code className="font-mono bg-muted px-1 py-0.5 rounded-sm">XENDIT_SECRET_KEY</code> is correctly configured in your environment variables.
+            Ensure your <code className="font-mono bg-muted px-1 py-0.5 rounded-sm">XENDIT_SECRET_KEY</code> is correctly configured.
           </CardDescription>
         </CardHeader>
         
@@ -115,14 +160,9 @@ export default function XenditTestPage() {
             1. Check Xendit Account Balance (GET /balance)
           </h3>
           <Button onClick={handleTestBalance} disabled={isFetchingBalance} size="lg" className="w-full sm:w-auto">
-            {isFetchingBalance ? (
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            ) : (
-              <Banknote className="mr-2 h-5 w-5" />
-            )}
+            {isFetchingBalance ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Banknote className="mr-2 h-5 w-5" />}
             Fetch Xendit Balance
           </Button>
-
           {balanceResult && (
             <div className="mt-4">
               {balanceResult.error ? (
@@ -143,12 +183,7 @@ export default function XenditTestPage() {
                     {balanceResult.rawResponse && renderRawResponse(balanceResult.rawResponse)}
                   </AlertDescription>
                 </Alert>
-              ) : (
-                <Alert>
-                  <AlertTitle>No Balance Result</AlertTitle>
-                  <AlertDescription>The test did not return a clear result.</AlertDescription>
-                </Alert>
-              )}
+              ) : null }
             </div>
           )}
         </CardContent>
@@ -164,36 +199,17 @@ export default function XenditTestPage() {
           <div className="space-y-4 max-w-md">
             <div>
               <Label htmlFor="prAmount">Amount (IDR)</Label>
-              <Input 
-                id="prAmount" 
-                type="number" 
-                value={prAmount}
-                onChange={(e) => setPrAmount(Number(e.target.value))}
-                className="mt-1"
-                placeholder="e.g., 15000"
-              />
+              <Input id="prAmount" type="number" value={prAmount} onChange={(e) => setPrAmount(Number(e.target.value))} className="mt-1" />
             </div>
             <div>
               <Label htmlFor="prDescription">Description</Label>
-              <Input 
-                id="prDescription" 
-                type="text" 
-                value={prDescription}
-                onChange={(e) => setPrDescription(e.target.value)}
-                className="mt-1"
-                placeholder="e.g., Test payment for DANA QR"
-              />
+              <Input id="prDescription" type="text" value={prDescription} onChange={(e) => setPrDescription(e.target.value)} className="mt-1" />
             </div>
           </div>
           <Button onClick={handleCreatePaymentRequest} disabled={isProcessingPr || prAmount <= 0} size="lg" className="w-full sm:w-auto">
-            {isProcessingPr ? (
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            ) : (
-              <CreditCard className="mr-2 h-5 w-5" />
-            )}
+            {isProcessingPr ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
             Create Test Payment Request
           </Button>
-
           {prResult && (
             <div className="mt-4">
               {prResult.error ? (
@@ -208,126 +224,128 @@ export default function XenditTestPage() {
               ) : prResult.data ? (
                  <Alert variant="default" className="border-primary bg-primary/10">
                   <CheckCircle className="h-5 w-5 text-primary" />
-                  <AlertTitle className="text-primary">Payment Request Created Successfully!</AlertTitle>
+                  <AlertTitle className="text-primary">Payment Request Created!</AlertTitle>
                   <AlertDescription className="text-foreground/80 space-y-1">
-                    <p>Status: <span className="font-semibold">{prResult.data.status}</span></p>
-                    <p>ID: <span className="font-semibold">{prResult.data.id}</span></p>
+                    <p>Status: <span className="font-semibold">{prResult.data.status}</span>, ID: <span className="font-semibold">{prResult.data.id}</span></p>
                     {prResult.data.payment_method?.qr_code?.channel_properties?.qr_string && (
-                        <p>QR String (simulated): <code className="text-xs bg-muted px-1 rounded-sm truncate block max-w-xs sm:max-w-sm md:max-w-md">{prResult.data.payment_method.qr_code.channel_properties.qr_string}</code></p>
+                        <p>QR String: <code className="text-xs bg-muted px-1 rounded-sm truncate block max-w-xs sm:max-w-sm md:max-w-md">{prResult.data.payment_method.qr_code.channel_properties.qr_string}</code></p>
                     )}
                     {prResult.rawResponse && renderRawResponse(prResult.rawResponse)}
                   </AlertDescription>
                 </Alert>
-              ) : (
-                <Alert>
-                  <AlertTitle>No Payment Request Result</AlertTitle>
-                  <AlertDescription>The simulation did not return a clear result.</AlertDescription>
-                </Alert>
-              )}
+              ) : null }
             </div>
           )}
         </CardContent>
         
         <Separator className="my-6" />
 
-        {/* Invoice Simulation Section */}
+        {/* Invoice Creation Section */}
         <CardContent className="space-y-6">
           <h3 className="text-lg font-semibold flex items-center text-foreground">
             <FileText className="mr-2 h-5 w-5 text-primary/80" />
-            3. Simulate Invoice Creation (POST /v2/invoices)
+            3. Create Test Invoice (POST /v2/invoices)
           </h3>
           <div className="space-y-4 max-w-md">
-            <div>
-              <Label htmlFor="invoiceAmount">Amount (IDR)</Label>
-              <Input 
-                id="invoiceAmount" 
-                type="number" 
-                value={invoiceAmount}
-                onChange={(e) => setInvoiceAmount(Number(e.target.value))}
-                className="mt-1"
-                placeholder="e.g., 50000"
-              />
-            </div>
-            <div>
-              <Label htmlFor="invoiceDescription">Description</Label>
-              <Input 
-                id="invoiceDescription" 
-                type="text" 
-                value={invoiceDescription}
-                onChange={(e) => setInvoiceDescription(e.target.value)}
-                className="mt-1"
-                placeholder="e.g., Test invoice for product"
-              />
-            </div>
-             <div>
-              <Label htmlFor="invoicePayerEmail">Payer Email (Optional)</Label>
-              <Input 
-                id="invoicePayerEmail" 
-                type="email" 
-                value={invoicePayerEmail}
-                onChange={(e) => setInvoicePayerEmail(e.target.value)}
-                className="mt-1"
-                placeholder="e.g., customer@example.com"
-              />
+            <div><Label htmlFor="invoiceAmount">Amount (IDR)</Label><Input id="invoiceAmount" type="number" value={invoiceAmount} onChange={(e) => setInvoiceAmount(Number(e.target.value))} className="mt-1"/></div>
+            <div><Label htmlFor="invoiceDescription">Description</Label><Input id="invoiceDescription" type="text" value={invoiceDescription} onChange={(e) => setInvoiceDescription(e.target.value)} className="mt-1"/></div>
+            <div><Label htmlFor="invoicePayerEmail">Payer Email (Optional)</Label><Input id="invoicePayerEmail" type="email" value={invoicePayerEmail} onChange={(e) => setInvoicePayerEmail(e.target.value)} className="mt-1"/></div>
+            <div className="flex items-center space-x-2 pt-2">
+                <Checkbox id="requestFva" checked={requestFva} onCheckedChange={(checked) => setRequestFva(checked as boolean)} />
+                <Label htmlFor="requestFva" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Request Fixed Virtual Account (FVA) Payment Methods
+                </Label>
             </div>
           </div>
           <Button onClick={handleCreateTestInvoice} disabled={isProcessingInvoice || invoiceAmount <= 0} size="lg" className="w-full sm:w-auto">
-            {isProcessingInvoice ? (
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            ) : (
-              <FileText className="mr-2 h-5 w-5" />
-            )}
+            {isProcessingInvoice ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <FileText className="mr-2 h-5 w-5" />}
             Create Test Invoice
           </Button>
-
-          {invoiceResult && (
+          {invoiceCreationResult && (
             <div className="mt-4">
-              {invoiceResult.error ? (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-5 w-5" />
-                  <AlertTitle>Error Creating Test Invoice</AlertTitle>
-                  <AlertDescription>
-                    <p>{invoiceResult.error}</p>
-                    {invoiceResult.rawResponse && renderRawResponse(invoiceResult.rawResponse)}
-                  </AlertDescription>
-                </Alert>
-              ) : invoiceResult.data ? (
-                 <Alert variant="default" className="border-blue-500 bg-blue-500/10">
-                  <CheckCircle className="h-5 w-5 text-blue-600" />
-                  <AlertTitle className="text-blue-700">Test Invoice Created Successfully!</AlertTitle>
-                  <AlertDescription className="text-blue-600/90 space-y-1">
-                    <p>Status: <span className="font-semibold">{invoiceResult.data.status}</span></p>
-                    <p>External ID: <span className="font-semibold">{invoiceResult.data.external_id}</span></p>
-                    <p>Invoice ID: <span className="font-semibold">{invoiceResult.data.id}</span></p>
-                    {invoiceResult.data.invoice_url && (
-                        <p>Invoice URL: 
-                            <Link href={invoiceResult.data.invoice_url} target="_blank" rel="noopener noreferrer" className="font-semibold underline hover:text-blue-700 ml-1">
-                                {invoiceResult.data.invoice_url.substring(0,50)}...
-                            </Link>
-                        </p>
-                    )}
-                    {invoiceResult.rawResponse && renderRawResponse(invoiceResult.rawResponse)}
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <Alert>
-                  <AlertTitle>No Invoice Result</AlertTitle>
-                  <AlertDescription>The simulation did not return a clear result.</AlertDescription>
-                </Alert>
-              )}
+              {invoiceCreationResult.error ? (
+                <Alert variant="destructive"><AlertTriangle className="h-5 w-5" /><AlertTitle>Error Creating Invoice</AlertTitle><AlertDescription><p>{invoiceCreationResult.error}</p>{invoiceCreationResult.rawResponse && renderRawResponse(invoiceCreationResult.rawResponse)}</AlertDescription></Alert>
+              ) : invoiceCreationResult.data ? (
+                 <Alert variant="default" className="border-blue-500 bg-blue-500/10"><CheckCircle className="h-5 w-5 text-blue-600" /><AlertTitle className="text-blue-700">Invoice Created!</AlertTitle><AlertDescription className="text-blue-600/90 space-y-1">
+                    <p>Status: <span className="font-semibold">{invoiceCreationResult.data.status}</span>, External ID: <span className="font-semibold">{invoiceCreationResult.data.external_id}</span></p>
+                    <p>Invoice ID: <span className="font-semibold">{invoiceCreationResult.data.id}</span></p>
+                    {invoiceCreationResult.data.invoice_url && (<p>URL: <Link href={invoiceCreationResult.data.invoice_url} target="_blank" rel="noopener noreferrer" className="font-semibold underline hover:text-blue-700 ml-1">{invoiceCreationResult.data.invoice_url.substring(0,50)}...</Link></p>)}
+                    {invoiceCreationResult.data.payment_methods && (<p>Payment Methods: {invoiceCreationResult.data.payment_methods.map((pm: any) => pm.type || pm).join(', ')}</p>)}
+                    {invoiceCreationResult.rawResponse && renderRawResponse(invoiceCreationResult.rawResponse)}</AlertDescription></Alert>
+              ) : null}
+            </div>
+          )}
+        </CardContent>
+
+        <Separator className="my-6" />
+
+        {/* Get Invoice Details Section */}
+        <CardContent className="space-y-6">
+          <h3 className="text-lg font-semibold flex items-center text-foreground">
+            <Search className="mr-2 h-5 w-5 text-primary/80" />
+            4. Get Invoice Details (GET /v2/invoices/:invoice_id)
+          </h3>
+          <div className="space-y-4 max-w-md">
+            <div><Label htmlFor="getInvoiceId">Invoice ID</Label><Input id="getInvoiceId" type="text" value={getInvoiceId} onChange={(e) => setGetInvoiceId(e.target.value)} placeholder="inv_..." className="mt-1"/></div>
+          </div>
+          <Button onClick={handleGetInvoice} disabled={isFetchingInvoice || !getInvoiceId} size="lg" className="w-full sm:w-auto">
+            {isFetchingInvoice ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Search className="mr-2 h-5 w-5" />}
+            Fetch Invoice Details
+          </Button>
+          {getInvoiceResult && (
+            <div className="mt-4">
+              {getInvoiceResult.error ? (
+                <Alert variant="destructive"><AlertTriangle className="h-5 w-5" /><AlertTitle>Error Fetching Invoice</AlertTitle><AlertDescription><p>{getInvoiceResult.error}</p>{getInvoiceResult.rawResponse && renderRawResponse(getInvoiceResult.rawResponse)}</AlertDescription></Alert>
+              ) : getInvoiceResult.data ? (
+                 <Alert variant="default" className="border-purple-500 bg-purple-500/10"><CheckCircle className="h-5 w-5 text-purple-600" /><AlertTitle className="text-purple-700">Invoice Details Fetched!</AlertTitle><AlertDescription className="text-purple-600/90 space-y-1">
+                    <p>Status: <span className="font-semibold">{getInvoiceResult.data.status}</span>, Amount: <span className="font-semibold">{formatIDR(getInvoiceResult.data.amount)}</span></p>
+                    <p>External ID: <span className="font-semibold">{getInvoiceResult.data.external_id}</span></p>
+                    {getInvoiceResult.data.payment_methods && (<p>Payment Methods: {getInvoiceResult.data.payment_methods.map((pm: any) => pm.type || pm).join(', ')}</p>)}
+                    {getInvoiceResult.rawResponse && renderRawResponse(getInvoiceResult.rawResponse)}</AlertDescription></Alert>
+              ) : null}
+            </div>
+          )}
+        </CardContent>
+
+        <Separator className="my-6" />
+        
+        {/* Simulate Invoice Payment Section */}
+        <CardContent className="space-y-6">
+          <h3 className="text-lg font-semibold flex items-center text-foreground">
+            <Send className="mr-2 h-5 w-5 text-primary/80" />
+            5. Simulate Invoice Payment (POST /v2/invoices/:invoice_id/simulate_payment)
+          </h3>
+          <div className="space-y-4 max-w-md">
+            <div><Label htmlFor="simulatePaymentInvoiceId">Invoice ID to Simulate Payment For</Label><Input id="simulatePaymentInvoiceId" type="text" value={simulatePaymentInvoiceId} onChange={(e) => setSimulatePaymentInvoiceId(e.target.value)} placeholder="inv_..." className="mt-1"/></div>
+            <div><Label htmlFor="simulatePaymentAmount">Simulated Payment Amount (IDR, Optional)</Label><Input id="simulatePaymentAmount" type="number" value={simulatePaymentAmount} onChange={(e) => setSimulatePaymentAmount(e.target.value)} placeholder="e.g., 50000 (uses invoice amount if blank)" className="mt-1"/></div>
+          </div>
+          <Button onClick={handleSimulatePayment} disabled={isSimulatingPayment || !simulatePaymentInvoiceId} size="lg" className="w-full sm:w-auto">
+            {isSimulatingPayment ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
+            Simulate Payment
+          </Button>
+          {simulatePaymentResult && (
+            <div className="mt-4">
+              {simulatePaymentResult.error ? (
+                <Alert variant="destructive"><AlertTriangle className="h-5 w-5" /><AlertTitle>Error Simulating Payment</AlertTitle><AlertDescription><p>{simulatePaymentResult.error}</p>{simulatePaymentResult.rawResponse && renderRawResponse(simulatePaymentResult.rawResponse)}</AlertDescription></Alert>
+              ) : simulatePaymentResult.data ? (
+                 <Alert variant="default" className="border-teal-500 bg-teal-500/10"><CheckCircle className="h-5 w-5 text-teal-600" /><AlertTitle className="text-teal-700">Payment Simulation Successful!</AlertTitle><AlertDescription className="text-teal-600/90 space-y-1">
+                    <p>Invoice should now be marked as PAID (or relevant status).</p>
+                    <p>Response Status: <span className="font-semibold">{simulatePaymentResult.data.status || "N/A (Check raw response)"}</span></p>
+                    <p>Check "Get Invoice Details" again for updated status.</p>
+                    {simulatePaymentResult.rawResponse && renderRawResponse(simulatePaymentResult.rawResponse)}</AlertDescription></Alert>
+              ) : null}
             </div>
           )}
         </CardContent>
 
 
         <CardFooter>
-            <p className="text-xs text-muted-foreground text-center w-full">
+            <p className="text-xs text-muted-foreground text-center w-full pt-4">
                 Note: These tests directly interact with the Xendit API using your configured secret key in test mode.
-                The payment request and invoice simulations create real (test mode) objects in Xendit.
+                These actions will create/modify test objects in your Xendit dashboard.
             </p>
         </CardFooter>
       </Card>
     </div>
   );
 }
-
