@@ -195,10 +195,10 @@ export interface XenditInvoiceResult {
   rawResponse?: any;
 }
 
-const xenditClient = new Xendit({
+const xenditClientSDK = new Xendit({ // Renamed to avoid conflict if we use Invoice class directly elsewhere
   secretKey: process.env.XENDIT_SECRET_KEY || '',
 });
-const { Invoice } = xenditClient;
+// We will avoid using xenditClientSDK.Invoice directly for methods that are problematic
 
 export async function createXenditTestInvoice(args: CreateTestInvoiceArgs): Promise<XenditInvoiceResult> {
   const secretKey = process.env.XENDIT_SECRET_KEY;
@@ -222,7 +222,7 @@ export async function createXenditTestInvoice(args: CreateTestInvoiceArgs): Prom
       { name: 'Test Item 1', quantity: 1, price: Math.floor(args.amount * 0.6) , category: 'Test Category', url: `${appBaseUrl}/templates/sample-item-1`},
       { name: 'Test Item 2', quantity: 1, price: args.amount - Math.floor(args.amount * 0.6), category: 'Test Category', url: `${appBaseUrl}/templates/sample-item-2` },
     ];
-    // Ensure total item price matches args.amount for this test
+    
     const itemsTotal = sampleItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
     if (itemsTotal !== args.amount && args.amount > 0) {
         const diff = args.amount - (itemsTotal - (sampleItems[sampleItems.length-1]?.price || 0) );
@@ -237,35 +237,48 @@ export async function createXenditTestInvoice(args: CreateTestInvoiceArgs): Prom
 
 
     const invoicePayload: any = {
-      externalId: externalId,
+      external_id: externalId, // Xendit API uses snake_case
       amount: args.amount,
-      payerEmail: args.payerEmail || undefined, 
+      payer_email: args.payerEmail || undefined, 
       description: args.description,
       currency: 'IDR',
       items: sampleItems,
-      successRedirectUrl: `${appBaseUrl}/purchase/success?external_id=${externalId}&source=xendit_test`,
-      failureRedirectUrl: `${appBaseUrl}/purchase/cancelled?external_id=${externalId}&source=xendit_test`,
+      success_redirect_url: `${appBaseUrl}/purchase/success?external_id=${externalId}&source=xendit_test`,
+      failure_redirect_url: `${appBaseUrl}/purchase/cancelled?external_id=${externalId}&source=xendit_test`,
       customer: args.payerEmail ? { email: args.payerEmail } : undefined,
-      shouldSendEmail: true,
+      should_send_email: true,
     };
 
     if (args.requestFva) {
-      invoicePayload.paymentMethods = ['BCA', 'BNI', 'BRI', 'MANDIRI', 'PERMATA']; // Common FVA bank codes
+      invoicePayload.payment_methods = ['BCA', 'BNI', 'BRI', 'MANDIRI', 'PERMATA']; 
     }
 
-    const invoice = await Invoice.createInvoice({ data: invoicePayload });
+    const encodedKey = Buffer.from(secretKey + ':').toString('base64');
+    const response = await fetch('https://api.xendit.co/v2/invoices', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Basic ${encodedKey}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(invoicePayload)
+    });
     
-    return { data: invoice as XenditInvoiceData, rawResponse: invoice };
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      const errorMessage = responseData.error_code 
+        ? `${responseData.error_code}: ${responseData.message}` 
+        : (responseData.message || `Xendit API request failed with status ${response.status}`);
+      console.error('Xendit API Error (Create Invoice):', responseData);
+      return { error: errorMessage, rawResponse: responseData };
+    }
+    
+    return { data: responseData as XenditInvoiceData, rawResponse: responseData };
 
   } catch (error: any) {
     console.error('Error creating Xendit test invoice:', error);
     let errorMessage = "An unexpected error occurred while creating the test invoice.";
-    if (error.status && error.message) { 
-        errorMessage = `Xendit SDK Error (${error.status}): ${error.message}`;
-        if (error.errorCode) {
-          errorMessage = `Xendit SDK Error (${error.errorCode} - ${error.status}): ${error.message}`;
-        }
-    } else if (error.message) {
+     if (error.message) {
         errorMessage = error.message;
     }
     return { error: errorMessage, rawResponse: error };
@@ -288,9 +301,8 @@ export async function getXenditTestInvoice(invoiceId: string): Promise<XenditInv
       headers: {
         'Authorization': `Basic ${encodedKey}`,
         'Content-Type': 'application/json',
-        // 'for-user-id': 'YOUR_BUSINESS_ID_OR_SUB_ACCOUNT_ID', // If operating on behalf of sub-accounts
       },
-      cache: 'no-store', // Ensure fresh data for testing
+      cache: 'no-store', 
     });
 
     const responseData = await response.json();
@@ -311,18 +323,22 @@ export async function getXenditTestInvoice(invoiceId: string): Promise<XenditInv
     if (error.message) {
         errorMessage = error.message;
     }
-    // The original error object might be more useful than just its message
     return { error: errorMessage, rawResponse: error };
   }
 }
 
 export interface SimulatePaymentArgs {
   invoiceId: string;
-  amount?: number; // Optional amount for simulation
+  amount?: number; 
+}
+
+export interface XenditSimulatePaymentData { // More generic success response
+    message?: string;
+    status?: string; // Often the API might return the updated invoice status or a success message
 }
 
 export interface XenditSimulatePaymentResult {
-  data?: XenditInvoiceData; // Simulating payment often returns the updated invoice
+  data?: XenditSimulatePaymentData; 
   error?: string;
   rawResponse?: any;
 }
@@ -337,27 +353,61 @@ export async function simulateXenditInvoicePayment(args: SimulatePaymentArgs): P
   }
 
   try {
-    const simulationPayload: { invoiceID: string; amount?: number } = { invoiceID: args.invoiceId };
+    const encodedKey = Buffer.from(secretKey + ':').toString('base64');
+    const bodyPayload: { amount?: number } = {};
     if (args.amount && args.amount > 0) {
-      simulationPayload.amount = args.amount;
+      bodyPayload.amount = args.amount;
+    }
+
+    const response = await fetch(`https://api.xendit.co/v2/invoices/${args.invoiceId}/simulate_payment`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${encodedKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: Object.keys(bodyPayload).length > 0 ? JSON.stringify(bodyPayload) : undefined, // Send body only if amount is provided
+    });
+
+    let responseData;
+    // Check if response is OK and has content before trying to parse JSON
+    if (response.ok) {
+        const textResponse = await response.text();
+        if (textResponse) {
+            try {
+                responseData = JSON.parse(textResponse);
+            } catch (e) {
+                 // If parsing fails but response is OK, it might be an empty success response or non-JSON
+                responseData = { message: "Payment simulation submitted. Status: " + response.status, status_code: response.status };
+            }
+        } else {
+             responseData = { message: "Payment simulation submitted successfully (no content). Status: " + response.status, status_code: response.status };
+        }
+    } else {
+        responseData = await response.json(); // For errors, Xendit usually returns JSON
+    }
+
+
+    if (!response.ok) {
+      const errorMessage = responseData.error_code 
+        ? `${responseData.error_code}: ${responseData.message}` 
+        : (responseData.message || `Xendit API request failed with status ${response.status}`);
+      console.error(`Xendit API Error (Simulate Payment for ${args.invoiceId}):`, responseData);
+      return { error: errorMessage, rawResponse: responseData };
     }
     
-    const simulationResponse = await Invoice.simulatePayment(simulationPayload);
-    
-    return { data: simulationResponse as XenditInvoiceData, rawResponse: simulationResponse };
+    // The simulate payment endpoint might return 200 OK with an empty body or a simple status message
+    // It doesn't typically return the full invoice object like other endpoints.
+    // So, we adapt the success data structure.
+    return { data: { message: responseData.message || "Payment simulated successfully.", status: responseData.status }, rawResponse: responseData };
 
   } catch (error: any) {
     console.error(`Error simulating payment for Xendit invoice ${args.invoiceId}:`, error);
     let errorMessage = `An unexpected error occurred while simulating payment for invoice ${args.invoiceId}.`;
-    if (error.status && error.message) { 
-        errorMessage = `Xendit SDK Error (${error.status}): ${error.message}`;
-        if (error.errorCode) {
-          errorMessage = `Xendit SDK Error (${error.errorCode} - ${error.status}): ${error.message}`;
-        }
-    } else if (error.message) {
+     if (error.message) {
         errorMessage = error.message;
     }
     return { error: errorMessage, rawResponse: error };
   }
 }
 
+      
