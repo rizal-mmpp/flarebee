@@ -1,6 +1,7 @@
 
 'use client'; 
 
+import { use, useEffect, useState, useTransition } from 'react'; // Import 'use'
 import type { Template, Order } from '@/lib/types';
 import { getTemplateByIdFromFirestore } from '@/lib/firebase/firestoreTemplates';
 import { notFound, useRouter, useSearchParams } from 'next/navigation'; 
@@ -18,7 +19,6 @@ import {
 } from "@/components/ui/carousel"
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { useCart } from '@/context/CartContext'; 
-import { useEffect, useState, useTransition } from 'react'; 
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/firebase/AuthContext'; 
 import { LoginModal } from '@/components/shared/LoginModal'; 
@@ -34,8 +34,9 @@ const formatIDR = (amount: number) => {
   }).format(amount);
 };
 
-export default function TemplateDetailPage({ params }: { params: { id: string } }) {
-  // For client components, direct access to params is fine. `use(params)` is not typical here.
+// Updated props type to reflect params as a Promise
+export default function TemplateDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+  const params = use(paramsPromise); // Unwrap the params promise
   const id = params.id;
 
   const [template, setTemplate] = useState<Template | null>(null);
@@ -45,7 +46,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
   const { addToCart, isItemInCart } = useCart();
   const { user, signInWithGoogle } = useAuth(); 
   const router = useRouter();
-  const searchParams = useSearchParams(); // Keep this for potential error messages from redirects
+  const searchParams = useSearchParams(); 
   const [isBuyNowPending, startBuyNowTransition] = useTransition();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
@@ -57,6 +58,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
       setIsLoading(true);
       setError(null);
       try {
+        // 'id' is now guaranteed to be resolved here due to use(paramsPromise)
         const fetchedTemplate = await getTemplateByIdFromFirestore(id);
         if (!fetchedTemplate) {
           notFound();
@@ -74,18 +76,17 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
       fetchTemplate();
     }
 
-    const xenditError = searchParams?.get('error'); // Check for 'error' from payment gateway
+    const xenditError = searchParams?.get('error'); 
     if (xenditError) {
       toast({
         title: "Payment Error",
         description: decodeURIComponent(xenditError),
         variant: "destructive",
       });
-      // Clear the error from URL to prevent re-showing on refresh
       router.replace(`/templates/${id}`, { scroll: false }); 
     }
 
-  }, [id, searchParams, router]); // Removed `params` from deps as `id` is derived and stable within effect
+  }, [id, searchParams, router]);
 
   useEffect(() => {
     async function checkPurchaseStatus() {
@@ -93,8 +94,6 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
         setIsLoadingPurchaseStatus(true);
         try {
           const orders = await getOrdersByUserIdFromFirestore(user.uid);
-          // Check for 'completed' or 'pending' status for test Xendit flow
-          // In production, strictly 'completed' after webhook confirmation.
           const purchased = orders.some(order => 
             order.items.some(item => item.id === template.id) && (order.status === 'completed' || order.status === 'pending')
           );
@@ -110,7 +109,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
         setIsLoadingPurchaseStatus(false);
       }
     }
-    if (!isLoading && template) { // Ensure template is loaded before checking purchase status
+    if (!isLoading && template) { 
         checkPurchaseStatus();
     }
   }, [user, template, isLoading]);
@@ -133,7 +132,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
     }
     if (template) {
       startBuyNowTransition(() => {
-        if (!isItemInCart(template.id)) { // Only add if not already in cart
+        if (!isItemInCart(template.id)) { 
           addToCart(template); 
         }
         router.push('/checkout');
