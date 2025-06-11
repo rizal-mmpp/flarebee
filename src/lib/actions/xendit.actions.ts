@@ -11,7 +11,7 @@ import type { CartItem, PurchasedTemplateItem, OrderInputData } from '@/lib/type
 
 // Initialize Xendit client
 const xenditClient = new Xendit({
-  secretKey: process.env.XENDIT_SECRET_KEY || '', // Updated environment variable name
+  secretKey: process.env.XENDIT_SECRET_KEY || '',
 });
 
 const { Invoice } = xenditClient;
@@ -40,7 +40,7 @@ interface CreateXenditInvoiceErrorResult {
 }
 
 export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promise<CreateXenditInvoiceErrorResult | void> {
-  if (!process.env.XENDIT_SECRET_KEY) { // Updated check
+  if (!process.env.XENDIT_SECRET_KEY) {
     console.error("XENDIT_SECRET_KEY is not set in environment variables.");
     return { error: "Payment gateway configuration error. Please contact support." };
   }
@@ -64,7 +64,7 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
     }
 
     // --- Create Order in Firestore with 'pending' status ---
-    let createdOrderId: string | undefined;
+    let createdOrderIdInFirestore: string | undefined;
     if (args.userId && args.cartItemsForOrder.length > 0) {
       const purchasedItems: PurchasedTemplateItem[] = args.cartItemsForOrder.map(item => ({
         id: item.id,
@@ -75,7 +75,7 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
       const orderData: OrderInputData = {
         userId: args.userId,
         userEmail: args.payerEmail,
-        orderId: externalId,
+        orderId: externalId, // This is the Xendit external_id
         items: purchasedItems,
         totalAmount: args.totalAmount,
         currency: 'IDR',
@@ -85,14 +85,16 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
 
       try {
         const createdOrder = await createOrderInFirestore(orderData);
-        createdOrderId = createdOrder.id; // Firestore document ID
-        console.log(`Order ${externalId} (doc ID: ${createdOrderId}) created with status 'pending' for user ID: ${args.userId}`);
+        createdOrderIdInFirestore = createdOrder.id; // Firestore document ID
+        console.log(`Order ${externalId} (doc ID: ${createdOrderIdInFirestore}) created with status 'pending' for user ID: ${args.userId}`);
       } catch (orderError: any) {
         console.error(`Error creating order in Firestore for user ID ${args.userId}:`, orderError.message);
         return { error: "Failed to save your order. Please try again or contact support." };
       }
+    } else if (args.cartItemsForOrder.length === 0 && args.userId) {
+        console.log("Cart is empty, skipping order creation in Firestore.");
     } else {
-      console.log("No userId provided or cart empty, skipping order creation.");
+      console.log("No userId provided or cart empty, skipping order creation in Firestore.");
     }
     // --- End Order Creation ---
 
@@ -101,11 +103,11 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
       amount: args.totalAmount,
       payerEmail: args.payerEmail,
       description: args.description,
-      currency: 'IDR', // Xendit requires currency specified here
+      currency: 'IDR',
       items: args.xenditFormattedItems.map(item => ({
         name: item.name,
         quantity: item.quantity,
-        price: item.price, // Price per unit in IDR
+        price: item.price,
         category: item.category,
         url: item.url,
       })),
@@ -151,3 +153,4 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
     return { error: errorMessage };
   }
 }
+
