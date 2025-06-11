@@ -282,19 +282,36 @@ export async function getXenditTestInvoice(invoiceId: string): Promise<XenditInv
   }
 
   try {
-    const invoice = await Invoice.getInvoice({ invoiceID: invoiceId });
-    return { data: invoice as XenditInvoiceData, rawResponse: invoice };
+    const encodedKey = Buffer.from(secretKey + ':').toString('base64');
+    const response = await fetch(`https://api.xendit.co/v2/invoices/${invoiceId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${encodedKey}`,
+        'Content-Type': 'application/json',
+        // 'for-user-id': 'YOUR_BUSINESS_ID_OR_SUB_ACCOUNT_ID', // If operating on behalf of sub-accounts
+      },
+      cache: 'no-store', // Ensure fresh data for testing
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      const errorMessage = responseData.error_code 
+        ? `${responseData.error_code}: ${responseData.message}` 
+        : (responseData.message || `Xendit API request failed with status ${response.status}`);
+      console.error(`Xendit API Error (Get Invoice ${invoiceId}):`, responseData);
+      return { error: errorMessage, rawResponse: responseData };
+    }
+    
+    return { data: responseData as XenditInvoiceData, rawResponse: responseData };
+
   } catch (error: any) {
-    console.error(`Error fetching Xendit invoice ${invoiceId}:`, error);
+    console.error(`Error fetching Xendit invoice ${invoiceId} via direct fetch:`, error);
     let errorMessage = `An unexpected error occurred while fetching invoice ${invoiceId}.`;
-     if (error.status && error.message) { 
-        errorMessage = `Xendit SDK Error (${error.status}): ${error.message}`;
-        if (error.errorCode) {
-          errorMessage = `Xendit SDK Error (${error.errorCode} - ${error.status}): ${error.message}`;
-        }
-    } else if (error.message) {
+    if (error.message) {
         errorMessage = error.message;
     }
+    // The original error object might be more useful than just its message
     return { error: errorMessage, rawResponse: error };
   }
 }
@@ -324,15 +341,9 @@ export async function simulateXenditInvoicePayment(args: SimulatePaymentArgs): P
     if (args.amount && args.amount > 0) {
       simulationPayload.amount = args.amount;
     }
-    // The simulatePayment method in the SDK might not return the full invoice,
-    // but typically the API itself does. Let's assume it might return something.
-    // If it returns a simple success/status, we might need to re-fetch the invoice.
-    // For now, we'll type the response as potentially an invoice.
+    
     const simulationResponse = await Invoice.simulatePayment(simulationPayload);
     
-    // Xendit's simulate payment API usually returns the updated invoice object or a success message.
-    // If it only returns a success message, you might want to call getXenditTestInvoice immediately after.
-    // For now, we'll assume simulationResponse could be the updated invoice.
     return { data: simulationResponse as XenditInvoiceData, rawResponse: simulationResponse };
 
   } catch (error: any) {
@@ -349,3 +360,4 @@ export async function simulateXenditInvoicePayment(args: SimulatePaymentArgs): P
     return { error: errorMessage, rawResponse: error };
   }
 }
+
