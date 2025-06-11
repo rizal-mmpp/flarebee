@@ -11,11 +11,15 @@ import { Separator } from '@/components/ui/separator';
 import { 
   getXenditBalance, 
   createXenditPaymentRequest,
+  createXenditTestInvoice,
   type XenditBalanceResult,
   type XenditPaymentRequestResult,
-  type CreatePaymentRequestArgs
+  type CreatePaymentRequestArgs,
+  type XenditInvoiceResult,
+  type CreateTestInvoiceArgs,
 } from '@/lib/actions/xenditAdmin.actions';
-import { Loader2, CheckCircle, AlertTriangle, Wifi, Banknote, CreditCard } from 'lucide-react';
+import { Loader2, CheckCircle, AlertTriangle, Wifi, Banknote, CreditCard, FileText } from 'lucide-react';
+import Link from 'next/link';
 
 // Helper to format IDR currency
 const formatIDR = (amount: number) => {
@@ -33,10 +37,18 @@ export default function XenditTestPage() {
   const [balanceResult, setBalanceResult] = useState<XenditBalanceResult | null>(null);
 
   // Payment Request Simulation State
-  const [paymentAmount, setPaymentAmount] = useState<number>(15000);
-  const [paymentDescription, setPaymentDescription] = useState('Sample Flarebee Test Payment');
-  const [isProcessingPaymentRequest, setIsProcessingPaymentRequest] = useState(false);
-  const [paymentRequestResult, setPaymentRequestResult] = useState<XenditPaymentRequestResult | null>(null);
+  const [prAmount, setPrAmount] = useState<number>(15000);
+  const [prDescription, setPrDescription] = useState('Sample Flarebee Payment Request (DANA QR)');
+  const [isProcessingPr, setIsProcessingPr] = useState(false);
+  const [prResult, setPrResult] = useState<XenditPaymentRequestResult | null>(null);
+
+  // Invoice Simulation State
+  const [invoiceAmount, setInvoiceAmount] = useState<number>(50000);
+  const [invoiceDescription, setInvoiceDescription] = useState('Sample Flarebee Test Invoice');
+  const [invoicePayerEmail, setInvoicePayerEmail] = useState('');
+  const [isProcessingInvoice, setIsProcessingInvoice] = useState(false);
+  const [invoiceResult, setInvoiceResult] = useState<XenditInvoiceResult | null>(null);
+
 
   const handleTestBalance = async () => {
     setIsFetchingBalance(true);
@@ -47,16 +59,29 @@ export default function XenditTestPage() {
   };
 
   const handleCreatePaymentRequest = async () => {
-    setIsProcessingPaymentRequest(true);
-    setPaymentRequestResult(null);
+    setIsProcessingPr(true);
+    setPrResult(null);
     const args: CreatePaymentRequestArgs = {
-      amount: paymentAmount,
-      description: paymentDescription,
-      currency: 'IDR', // Fixed to IDR as per example
+      amount: prAmount,
+      description: prDescription,
+      currency: 'IDR',
     };
     const response = await createXenditPaymentRequest(args);
-    setPaymentRequestResult(response);
-    setIsProcessingPaymentRequest(false);
+    setPrResult(response);
+    setIsProcessingPr(false);
+  };
+
+  const handleCreateTestInvoice = async () => {
+    setIsProcessingInvoice(true);
+    setInvoiceResult(null);
+    const args: CreateTestInvoiceArgs = {
+      amount: invoiceAmount,
+      description: invoiceDescription,
+      payerEmail: invoicePayerEmail || undefined,
+    };
+    const response = await createXenditTestInvoice(args);
+    setInvoiceResult(response);
+    setIsProcessingInvoice(false);
   };
 
   const renderRawResponse = (rawResponse: any) => (
@@ -79,7 +104,7 @@ export default function XenditTestPage() {
           </CardTitle>
           <CardDescription>
             Test connections and simulate API calls to Xendit.
-            Ensure your <code className="font-mono bg-muted px-1 py-0.5 rounded-sm">XENDIT_SECRET_KEY</code> is correctly configured.
+            Ensure your <code className="font-mono bg-muted px-1 py-0.5 rounded-sm">XENDIT_SECRET_KEY</code> is correctly configured in your environment variables.
           </CardDescription>
         </CardHeader>
         
@@ -87,7 +112,7 @@ export default function XenditTestPage() {
         <CardContent className="space-y-6">
           <h3 className="text-lg font-semibold flex items-center text-foreground">
             <Banknote className="mr-2 h-5 w-5 text-primary/80" />
-            1. Check Xendit Account Balance
+            1. Check Xendit Account Balance (GET /balance)
           </h3>
           <Button onClick={handleTestBalance} disabled={isFetchingBalance} size="lg" className="w-full sm:w-auto">
             {isFetchingBalance ? (
@@ -134,34 +159,34 @@ export default function XenditTestPage() {
         <CardContent className="space-y-6">
           <h3 className="text-lg font-semibold flex items-center text-foreground">
             <CreditCard className="mr-2 h-5 w-5 text-primary/80" />
-            2. Simulate Payment Request (QR Code - DANA)
+            2. Simulate Payment Request (POST /payment_requests - QR Code DANA)
           </h3>
           <div className="space-y-4 max-w-md">
             <div>
-              <Label htmlFor="paymentAmount">Amount (IDR)</Label>
+              <Label htmlFor="prAmount">Amount (IDR)</Label>
               <Input 
-                id="paymentAmount" 
+                id="prAmount" 
                 type="number" 
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                value={prAmount}
+                onChange={(e) => setPrAmount(Number(e.target.value))}
                 className="mt-1"
                 placeholder="e.g., 15000"
               />
             </div>
             <div>
-              <Label htmlFor="paymentDescription">Description</Label>
+              <Label htmlFor="prDescription">Description</Label>
               <Input 
-                id="paymentDescription" 
+                id="prDescription" 
                 type="text" 
-                value={paymentDescription}
-                onChange={(e) => setPaymentDescription(e.target.value)}
+                value={prDescription}
+                onChange={(e) => setPrDescription(e.target.value)}
                 className="mt-1"
-                placeholder="e.g., Test payment for item"
+                placeholder="e.g., Test payment for DANA QR"
               />
             </div>
           </div>
-          <Button onClick={handleCreatePaymentRequest} disabled={isProcessingPaymentRequest || paymentAmount <= 0} size="lg" className="w-full sm:w-auto">
-            {isProcessingPaymentRequest ? (
+          <Button onClick={handleCreatePaymentRequest} disabled={isProcessingPr || prAmount <= 0} size="lg" className="w-full sm:w-auto">
+            {isProcessingPr ? (
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             ) : (
               <CreditCard className="mr-2 h-5 w-5" />
@@ -169,28 +194,28 @@ export default function XenditTestPage() {
             Create Test Payment Request
           </Button>
 
-          {paymentRequestResult && (
+          {prResult && (
             <div className="mt-4">
-              {paymentRequestResult.error ? (
+              {prResult.error ? (
                 <Alert variant="destructive">
                   <AlertTriangle className="h-5 w-5" />
                   <AlertTitle>Error Creating Payment Request</AlertTitle>
                   <AlertDescription>
-                    <p>{paymentRequestResult.error}</p>
-                    {paymentRequestResult.rawResponse && renderRawResponse(paymentRequestResult.rawResponse)}
+                    <p>{prResult.error}</p>
+                    {prResult.rawResponse && renderRawResponse(prResult.rawResponse)}
                   </AlertDescription>
                 </Alert>
-              ) : paymentRequestResult.data ? (
+              ) : prResult.data ? (
                  <Alert variant="default" className="border-primary bg-primary/10">
                   <CheckCircle className="h-5 w-5 text-primary" />
                   <AlertTitle className="text-primary">Payment Request Created Successfully!</AlertTitle>
-                  <AlertDescription className="text-foreground/80">
-                    <p>Status: <span className="font-semibold">{paymentRequestResult.data.status}</span></p>
-                    <p>ID: <span className="font-semibold">{paymentRequestResult.data.id}</span></p>
-                    {paymentRequestResult.data.payment_method?.qr_code?.channel_properties?.qr_string && (
-                        <p className="mt-2">QR String (simulated): <code className="text-xs bg-muted px-1 rounded-sm truncate block max-w-xs sm:max-w-sm md:max-w-md">{paymentRequestResult.data.payment_method.qr_code.channel_properties.qr_string}</code></p>
+                  <AlertDescription className="text-foreground/80 space-y-1">
+                    <p>Status: <span className="font-semibold">{prResult.data.status}</span></p>
+                    <p>ID: <span className="font-semibold">{prResult.data.id}</span></p>
+                    {prResult.data.payment_method?.qr_code?.channel_properties?.qr_string && (
+                        <p>QR String (simulated): <code className="text-xs bg-muted px-1 rounded-sm truncate block max-w-xs sm:max-w-sm md:max-w-md">{prResult.data.payment_method.qr_code.channel_properties.qr_string}</code></p>
                     )}
-                    {paymentRequestResult.rawResponse && renderRawResponse(paymentRequestResult.rawResponse)}
+                    {prResult.rawResponse && renderRawResponse(prResult.rawResponse)}
                   </AlertDescription>
                 </Alert>
               ) : (
@@ -202,10 +227,103 @@ export default function XenditTestPage() {
             </div>
           )}
         </CardContent>
+        
+        <Separator className="my-6" />
+
+        {/* Invoice Simulation Section */}
+        <CardContent className="space-y-6">
+          <h3 className="text-lg font-semibold flex items-center text-foreground">
+            <FileText className="mr-2 h-5 w-5 text-primary/80" />
+            3. Simulate Invoice Creation (POST /v2/invoices)
+          </h3>
+          <div className="space-y-4 max-w-md">
+            <div>
+              <Label htmlFor="invoiceAmount">Amount (IDR)</Label>
+              <Input 
+                id="invoiceAmount" 
+                type="number" 
+                value={invoiceAmount}
+                onChange={(e) => setInvoiceAmount(Number(e.target.value))}
+                className="mt-1"
+                placeholder="e.g., 50000"
+              />
+            </div>
+            <div>
+              <Label htmlFor="invoiceDescription">Description</Label>
+              <Input 
+                id="invoiceDescription" 
+                type="text" 
+                value={invoiceDescription}
+                onChange={(e) => setInvoiceDescription(e.target.value)}
+                className="mt-1"
+                placeholder="e.g., Test invoice for product"
+              />
+            </div>
+             <div>
+              <Label htmlFor="invoicePayerEmail">Payer Email (Optional)</Label>
+              <Input 
+                id="invoicePayerEmail" 
+                type="email" 
+                value={invoicePayerEmail}
+                onChange={(e) => setInvoicePayerEmail(e.target.value)}
+                className="mt-1"
+                placeholder="e.g., customer@example.com"
+              />
+            </div>
+          </div>
+          <Button onClick={handleCreateTestInvoice} disabled={isProcessingInvoice || invoiceAmount <= 0} size="lg" className="w-full sm:w-auto">
+            {isProcessingInvoice ? (
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            ) : (
+              <FileText className="mr-2 h-5 w-5" />
+            )}
+            Create Test Invoice
+          </Button>
+
+          {invoiceResult && (
+            <div className="mt-4">
+              {invoiceResult.error ? (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-5 w-5" />
+                  <AlertTitle>Error Creating Test Invoice</AlertTitle>
+                  <AlertDescription>
+                    <p>{invoiceResult.error}</p>
+                    {invoiceResult.rawResponse && renderRawResponse(invoiceResult.rawResponse)}
+                  </AlertDescription>
+                </Alert>
+              ) : invoiceResult.data ? (
+                 <Alert variant="default" className="border-blue-500 bg-blue-500/10">
+                  <CheckCircle className="h-5 w-5 text-blue-600" />
+                  <AlertTitle className="text-blue-700">Test Invoice Created Successfully!</AlertTitle>
+                  <AlertDescription className="text-blue-600/90 space-y-1">
+                    <p>Status: <span className="font-semibold">{invoiceResult.data.status}</span></p>
+                    <p>External ID: <span className="font-semibold">{invoiceResult.data.external_id}</span></p>
+                    <p>Invoice ID: <span className="font-semibold">{invoiceResult.data.id}</span></p>
+                    {invoiceResult.data.invoice_url && (
+                        <p>Invoice URL: 
+                            <Link href={invoiceResult.data.invoice_url} target="_blank" rel="noopener noreferrer" className="font-semibold underline hover:text-blue-700 ml-1">
+                                {invoiceResult.data.invoice_url.substring(0,50)}...
+                            </Link>
+                        </p>
+                    )}
+                    {invoiceResult.rawResponse && renderRawResponse(invoiceResult.rawResponse)}
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert>
+                  <AlertTitle>No Invoice Result</AlertTitle>
+                  <AlertDescription>The simulation did not return a clear result.</AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
+        </CardContent>
+
+
         <CardFooter>
-            <p className="text-xs text-muted-foreground text-center">
-                Note: These tests directly interact with the Xendit API using your configured secret key.
-                The payment request simulation creates a real (test mode) payment request in Xendit.
+            <p className="text-xs text-muted-foreground text-center w-full">
+                Note: These tests directly interact with the Xendit API using your configured secret key in test mode.
+                The payment request and invoice simulations create real (test mode) objects in Xendit.
             </p>
         </CardFooter>
       </Card>
