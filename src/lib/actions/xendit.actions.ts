@@ -14,7 +14,7 @@ const xenditClient = new Xendit({
   secretKey: process.env.XENDIT_SECRET_KEY || '',
 });
 
-const { Invoice } = xenditClient;
+const { Invoice } = xenditClient; // Assuming Invoice module is on xenditClient
 
 interface XenditFormattedItem {
   name: string;
@@ -32,7 +32,7 @@ interface CreateXenditInvoiceArgs {
   currency?: string; // Should be 'IDR'
   payerEmail?: string;
   userId?: string;
-  orderId?: string; // Optional pre-generated order ID, will be used as external_id
+  // orderId is now generated internally or used as external_id for Xendit
 }
 
 interface CreateXenditInvoiceErrorResult {
@@ -45,59 +45,24 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
     return { error: "Payment gateway configuration error. Please contact support." };
   }
 
+  const hostHeaders = await headers();
+  const host = hostHeaders.get('host');
+  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+
+  if (!host) {
+    console.error("Error in createXenditInvoice: Host header is missing or null.");
+    return { error: "Failed to determine application host. Cannot proceed with payment." };
+  }
+  const appBaseUrl = `${protocol}://${host}`;
+  const externalId = `flarebee-order-${randomUUID()}`; // This will be our orderId in Firestore too
+  const resolvedCurrency = args.currency || 'IDR';
+
+  if (resolvedCurrency !== 'IDR') {
+      console.warn(`Currency specified was ${args.currency}, but forcing IDR for Xendit.`);
+  }
+
   try {
-    const hostHeaders = await headers();
-    const host = hostHeaders.get('host');
-    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
-
-    if (!host) {
-      console.error("Error in createXenditInvoice: Host header is missing or null.");
-      return { error: "Failed to determine application host. Cannot proceed with payment." };
-    }
-    const appBaseUrl = `${protocol}://${host}`;
-
-    const externalId = args.orderId || `flarebee-order-${randomUUID()}`;
-    const resolvedCurrency = args.currency || 'IDR';
-
-    if (resolvedCurrency !== 'IDR') {
-        console.warn(`Currency specified was ${args.currency}, but forcing IDR for Xendit.`);
-    }
-
-    // --- Create Order in Firestore with 'pending' status ---
-    let createdOrderIdInFirestore: string | undefined;
-    if (args.userId && args.cartItemsForOrder.length > 0) {
-      const purchasedItems: PurchasedTemplateItem[] = args.cartItemsForOrder.map(item => ({
-        id: item.id,
-        title: item.title,
-        price: item.price, // Assuming price is already in IDR
-      }));
-
-      const orderData: OrderInputData = {
-        userId: args.userId,
-        userEmail: args.payerEmail,
-        orderId: externalId, // This is the Xendit external_id
-        items: purchasedItems,
-        totalAmount: args.totalAmount,
-        currency: 'IDR',
-        status: 'pending', // Initial status
-        paymentGateway: 'xendit',
-      };
-
-      try {
-        const createdOrder = await createOrderInFirestore(orderData);
-        createdOrderIdInFirestore = createdOrder.id; // Firestore document ID
-        console.log(`Order ${externalId} (doc ID: ${createdOrderIdInFirestore}) created with status 'pending' for user ID: ${args.userId}`);
-      } catch (orderError: any) {
-        console.error(`Error creating order in Firestore for user ID ${args.userId}:`, orderError.message);
-        return { error: "Failed to save your order. Please try again or contact support." };
-      }
-    } else if (args.cartItemsForOrder.length === 0 && args.userId) {
-        console.log("Cart is empty, skipping order creation in Firestore.");
-    } else {
-      console.log("No userId provided or cart empty, skipping order creation in Firestore.");
-    }
-    // --- End Order Creation ---
-
+    // Step 1: Create Xendit Invoice
     const xenditInvoicePayload = {
       externalId: externalId,
       amount: args.totalAmount,
@@ -114,17 +79,57 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
       successRedirectUrl: `${appBaseUrl}/purchase/success?external_id=${externalId}&source=xendit`,
       failureRedirectUrl: `${appBaseUrl}/purchase/cancelled?external_id=${externalId}&source=xendit`,
       customer: args.payerEmail ? { email: args.payerEmail } : undefined,
+      // should_send_email: true by default
     };
 
     console.log("Creating Xendit invoice with payload:", JSON.stringify(xenditInvoicePayload, null, 2));
-    const invoice = await Invoice.createInvoice({ data: xenditInvoicePayload });
-    console.log("Xendit invoice created:", invoice);
+    const xenditInvoice = await Invoice.createInvoice({ data: xenditInvoicePayload });
+    console.log("Xendit invoice created:", xenditInvoice);
 
-    if (!invoice.invoiceUrl) {
-        console.error("Xendit invoice creation succeeded but no invoice_url was returned.", invoice);
-        return { error: "Failed to get payment URL from gateway. Please try again." };
+    if (!xenditInvoice.invoiceUrl || !xenditInvoice.id) {
+        console.error("Xendit invoice creation succeeded but invoice_url or id was missing.", xenditInvoice);
+        return { error: "Failed to get payment details from gateway. Please try again." };
     }
 
+    // Step 2: Create Order in Firestore with Xendit details
+    if (args.userId && args.cartItemsForOrder.length > 0) {
+      const purchasedItems: PurchasedTemplateItem[] = args.cartItemsForOrder.map(item => ({
+        id: item.id,
+        title: item.title,
+        price: item.price,
+      }));
+
+      const orderData: OrderInputData = {
+        userId: args.userId,
+        userEmail: args.payerEmail,
+        orderId: externalId, // Using Xendit's external_id as our main orderId
+        items: purchasedItems,
+        totalAmount: args.totalAmount,
+        currency: 'IDR',
+        status: 'pending', // Initial status
+        paymentGateway: 'xendit',
+        xenditInvoiceId: xenditInvoice.id,
+        xenditInvoiceUrl: xenditInvoice.invoiceUrl,
+        xenditExpiryDate: xenditInvoice.expiryDate?.toISOString(), // expiryDate is a Date object from SDK
+        xenditPaymentStatus: xenditInvoice.status, // e.g., "PENDING"
+      };
+
+      try {
+        await createOrderInFirestore(orderData);
+        console.log(`Order ${externalId} (Xendit ID: ${xenditInvoice.id}) created with status 'pending' for user ID: ${args.userId}`);
+      } catch (orderError: any) {
+        console.error(`Error creating order in Firestore for user ID ${args.userId} after Xendit success:`, orderError.message);
+        // Log this critical error. The user can still pay, but our record is missing/incomplete.
+        // Might need a reconciliation process later.
+        // For now, we'll proceed to redirect the user as Xendit invoice is created.
+        // Optionally, you could return an error here to prevent redirect if DB write is critical before payment.
+        // return { error: "Failed to save your order details locally. Please contact support." };
+      }
+    } else {
+      console.log("No userId provided or cart empty, skipping order creation in Firestore.");
+    }
+
+    // Step 3: Clear User Cart (if logged in)
     if (args.userId) {
       try {
         console.log(`Attempting to clear cart for user ID: ${args.userId} server-side.`);
@@ -132,12 +137,12 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
         console.log(`Cart cleared successfully for user ID: ${args.userId} server-side.`);
       } catch (cartClearError: any) {
         console.error(`Error clearing cart server-side for user ID ${args.userId}:`, cartClearError.message);
+        // Non-critical for payment flow, log and continue.
       }
-    } else {
-      console.log("No userId provided, skipping server-side cart clearing (anonymous user).");
     }
 
-    redirect(invoice.invoiceUrl);
+    // Step 4: Redirect to Xendit Payment Page
+    redirect(xenditInvoice.invoiceUrl);
 
   } catch (error: any) {
     if (error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
@@ -153,4 +158,3 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
     return { error: errorMessage };
   }
 }
-

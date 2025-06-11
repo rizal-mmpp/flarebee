@@ -10,7 +10,8 @@ import {
   orderBy,
   serverTimestamp,
   Timestamp,
-  limit, // Added limit
+  limit,
+  updateDoc, // Added updateDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Order, OrderInputData, PurchasedTemplateItem } from '@/lib/types';
@@ -28,9 +29,14 @@ const fromFirestoreOrder = (docSnapshot: any): Order => {
     items: data.items as PurchasedTemplateItem[],
     totalAmount: data.totalAmount,
     currency: data.currency,
-    status: data.status,
+    status: data.status as Order['status'],
     paymentGateway: data.paymentGateway,
     createdAt: (data.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+    updatedAt: (data.updatedAt as Timestamp)?.toDate()?.toISOString(),
+    xenditInvoiceId: data.xenditInvoiceId,
+    xenditInvoiceUrl: data.xenditInvoiceUrl,
+    xenditExpiryDate: data.xenditExpiryDate, // Firestore stores ISO string if we send it as such
+    xenditPaymentStatus: data.xenditPaymentStatus,
   };
 };
 
@@ -38,7 +44,8 @@ export async function createOrderInFirestore(orderData: OrderInputData): Promise
   try {
     const docRef = await addDoc(collection(db, ORDERS_COLLECTION), {
       ...orderData,
-      createdAt: serverTimestamp(), // Ensure server timestamp is used
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(), // Also set updatedAt on creation
     });
     const newOrderSnapshot = await getDoc(docRef);
     return fromFirestoreOrder(newOrderSnapshot);
@@ -47,6 +54,25 @@ export async function createOrderInFirestore(orderData: OrderInputData): Promise
     throw error;
   }
 }
+
+// Optional: Function to update order status (e.g., from webhook)
+export async function updateOrderStatusInFirestore(orderDocId: string, newStatus: Order['status'], xenditPaymentStatus?: string): Promise<void> {
+  try {
+    const orderRef = doc(db, ORDERS_COLLECTION, orderDocId);
+    const updateData: Partial<OrderInputData> = {
+      status: newStatus,
+      updatedAt: serverTimestamp(),
+    };
+    if (xenditPaymentStatus) {
+      updateData.xenditPaymentStatus = xenditPaymentStatus;
+    }
+    await updateDoc(orderRef, updateData);
+  } catch (error) {
+    console.error(`Error updating order ${orderDocId} status in Firestore: `, error);
+    throw error;
+  }
+}
+
 
 export async function getOrdersByUserIdFromFirestore(userId: string): Promise<Order[]> {
   try {
@@ -78,16 +104,35 @@ export async function getOrderByOrderIdFromFirestore(orderId: string): Promise<O
   try {
     const q = query(
       collection(db, ORDERS_COLLECTION),
-      where('orderId', '==', orderId),
-      limit(1) // orderId should be unique
+      where('orderId', '==', orderId), // Query by Xendit's external_id which we store as orderId
+      limit(1)
     );
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
       return fromFirestoreOrder(querySnapshot.docs[0]);
     }
-    return null; // No order found with that orderId
+    return null;
   } catch (error) {
     console.error(`Error getting order by orderId ${orderId} from Firestore: `, error);
-    throw error; // Or return null, depending on desired error handling
+    throw error;
+  }
+}
+
+// New function to get order by Xendit Invoice ID
+export async function getOrderByXenditInvoiceIdFromFirestore(xenditInvoiceId: string): Promise<Order | null> {
+  try {
+    const q = query(
+      collection(db, ORDERS_COLLECTION),
+      where('xenditInvoiceId', '==', xenditInvoiceId),
+      limit(1)
+    );
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      return fromFirestoreOrder(querySnapshot.docs[0]);
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error getting order by Xendit Invoice ID ${xenditInvoiceId} from Firestore: `, error);
+    throw error;
   }
 }
