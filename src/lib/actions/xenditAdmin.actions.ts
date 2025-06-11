@@ -195,10 +195,6 @@ export interface XenditInvoiceResult {
   rawResponse?: any;
 }
 
-// const xenditClientSDK = new Xendit({ // Avoid direct SDK use for problematic methods
-//   secretKey: process.env.XENDIT_SECRET_KEY || '',
-// });
-
 export async function createXenditTestInvoice(args: CreateTestInvoiceArgs): Promise<XenditInvoiceResult> {
   const secretKey = process.env.XENDIT_SECRET_KEY;
   if (!secretKey) {
@@ -249,6 +245,7 @@ export async function createXenditTestInvoice(args: CreateTestInvoiceArgs): Prom
     };
 
     if (args.requestFva) {
+      // Common VA bank codes, Xendit will select available ones from these.
       invoicePayload.payment_methods = ['BCA', 'BNI', 'BRI', 'MANDIRI', 'PERMATA']; 
     }
 
@@ -295,11 +292,11 @@ export async function getXenditTestInvoice(invoiceId: string): Promise<XenditInv
 
   try {
     const encodedKey = Buffer.from(secretKey + ':').toString('base64');
-    const response = await fetch(`https://api.xendit.co/v2/invoices/${invoiceId.trim()}`, { // Added .trim()
+    const response = await fetch(`https://api.xendit.co/v2/invoices/${invoiceId.trim()}`, {
       method: 'GET',
       headers: {
         'Authorization': `Basic ${encodedKey}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json', // Good practice, though not strictly needed for GET
       },
       cache: 'no-store', 
     });
@@ -347,49 +344,52 @@ export async function simulateXenditInvoicePayment(args: SimulatePaymentArgs): P
   if (!secretKey) {
     return { error: 'XENDIT_SECRET_KEY is not set in environment variables.' };
   }
-  if (!args.invoiceId) {
+  const trimmedInvoiceId = args.invoiceId?.trim();
+  if (!trimmedInvoiceId) {
     return { error: 'Invoice ID is required for payment simulation.' };
   }
 
   try {
-    const trimmedInvoiceId = args.invoiceId.trim(); // Trim the invoice ID
-    if (!trimmedInvoiceId) { // Check if it's empty after trimming
-        return { error: 'Invoice ID cannot be empty.' };
-    }
-
     const encodedKey = Buffer.from(secretKey + ':').toString('base64');
     const bodyPayload: { amount?: number } = {};
     
-    if (args.amount !== undefined && !isNaN(args.amount) && args.amount > 0) {
-      bodyPayload.amount = args.amount;
+    // Ensure amount is a positive number if provided
+    if (args.amount !== undefined && !isNaN(args.amount) && Number(args.amount) > 0) {
+      bodyPayload.amount = Number(args.amount);
     }
 
     const response = await fetch(`https://api.xendit.co/v2/invoices/${trimmedInvoiceId}/simulate_payment`, {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${encodedKey}`,
-        'Content-Type': 'application/json', // Ensure Content-Type is always set
+        'Content-Type': 'application/json',
       },
-      // Send body only if it has content, otherwise Xendit might expect it based on Content-Type
       body: Object.keys(bodyPayload).length > 0 ? JSON.stringify(bodyPayload) : undefined, 
     });
 
     let responseData;
+    const responseText = await response.text(); // Read text first
+
     if (response.ok) {
-        const textResponse = await response.text();
-        if (textResponse) {
+        if (responseText) {
             try {
-                responseData = JSON.parse(textResponse);
+                responseData = JSON.parse(responseText);
             } catch (e) {
+                // If JSON parsing fails but response is OK, it might be an empty or non-JSON success response
                 responseData = { message: "Payment simulation submitted. Status: " + response.status, status_code: response.status };
             }
         } else {
+             // Empty response but OK status
              responseData = { message: "Payment simulation submitted successfully (no content). Status: " + response.status, status_code: response.status };
         }
     } else {
-        responseData = await response.json(); 
+        try {
+            responseData = JSON.parse(responseText); // Attempt to parse error as JSON
+        } catch (e) {
+            // If error response is not JSON
+            responseData = { error_code: "PARSE_ERROR", message: responseText || `Xendit API request failed with status ${response.status}` };
+        }
     }
-
 
     if (!response.ok) {
       const errorMessage = responseData.error_code 
@@ -410,4 +410,66 @@ export async function simulateXenditInvoicePayment(args: SimulatePaymentArgs): P
     return { error: errorMessage, rawResponse: error };
   }
 }
+
+// Simulate Direct Virtual Account Payment
+export interface SimulateVAPaymentArgs {
+  bankCode: string;
+  accountNumber: string;
+  amount: number;
+}
+
+export interface XenditSimulateVAPaymentData {
+  status: string;
+  message: string;
+}
+
+export interface XenditSimulateVAPaymentResult {
+  data?: XenditSimulateVAPaymentData;
+  error?: string;
+  rawResponse?: any;
+}
+
+export async function simulateXenditVAPayment(args: SimulateVAPaymentArgs): Promise<XenditSimulateVAPaymentResult> {
+  const secretKey = process.env.XENDIT_SECRET_KEY;
+  if (!secretKey) {
+    return { error: 'XENDIT_SECRET_KEY is not set in environment variables.' };
+  }
+  if (!args.bankCode || !args.accountNumber || !args.amount || args.amount <= 0) {
+    return { error: 'Bank Code, Account Number, and a positive Amount are required.' };
+  }
+
+  const payload = {
+    bank_code: args.bankCode.trim(),
+    bank_account_number: args.accountNumber.trim(),
+    transfer_amount: args.amount,
+  };
+
+  try {
+    const encodedKey = Buffer.from(secretKey + ':').toString('base64');
+    const response = await fetch('https://api.xendit.co/pool_virtual_accounts/simulate_payment', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${encodedKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      const errorMessage = responseData.error_code
+        ? `${responseData.error_code}: ${responseData.message}`
+        : (responseData.message || `Xendit API request failed with status ${response.status}`);
+      console.error('Xendit API Error (Simulate VA Payment):', responseData);
+      return { error: errorMessage, rawResponse: responseData };
+    }
+
+    return { data: responseData as XenditSimulateVAPaymentData, rawResponse: responseData };
+  } catch (error: any) {
+    console.error('Error simulating Xendit VA payment:', error);
+    return { error: error.message || 'An unexpected error occurred while simulating VA payment.' };
+  }
+}
       
+

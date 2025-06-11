@@ -15,6 +15,7 @@ import {
   createXenditTestInvoice,
   getXenditTestInvoice,
   simulateXenditInvoicePayment,
+  simulateXenditVAPayment, // New import
   type XenditBalanceResult,
   type XenditPaymentRequestResult,
   type CreatePaymentRequestArgs,
@@ -22,8 +23,10 @@ import {
   type CreateTestInvoiceArgs,
   type XenditSimulatePaymentResult,
   type SimulatePaymentArgs,
+  type SimulateVAPaymentArgs, // New import
+  type XenditSimulateVAPaymentResult, // New import
 } from '@/lib/actions/xenditAdmin.actions';
-import { Loader2, CheckCircle, AlertTriangle, Wifi, Banknote, CreditCard, FileText, Search, Send } from 'lucide-react';
+import { Loader2, CheckCircle, AlertTriangle, Wifi, Banknote, CreditCard, FileText, Search, Send, Landmark } from 'lucide-react'; // Added Landmark
 import Link from 'next/link';
 
 // Helper to format IDR currency
@@ -66,6 +69,13 @@ export default function XenditTestPage() {
   const [isSimulatingPayment, setIsSimulatingPayment] = useState(false);
   const [simulatePaymentResult, setSimulatePaymentResult] = useState<XenditSimulatePaymentResult | null>(null);
 
+  // Simulate Direct VA Payment State
+  const [vaBankCode, setVaBankCode] = useState('BCA');
+  const [vaAccountNumber, setVaAccountNumber] = useState('');
+  const [vaAmount, setVaAmount] = useState<number>(50000);
+  const [isSimulatingVAPayment, setIsSimulatingVAPayment] = useState(false);
+  const [simulateVAPaymentResult, setSimulateVAPaymentResult] = useState<XenditSimulateVAPaymentResult | null>(null);
+
 
   const handleTestBalance = async () => {
     setIsFetchingBalance(true);
@@ -100,8 +110,8 @@ export default function XenditTestPage() {
     const response = await createXenditTestInvoice(args);
     setInvoiceCreationResult(response);
     if (response.data?.id) {
-      setGetInvoiceId(response.data.id); // Pre-fill for get invoice
-      setSimulatePaymentInvoiceId(response.data.id); // Pre-fill for simulate payment
+      setGetInvoiceId(response.data.id); 
+      setSimulatePaymentInvoiceId(response.data.id); 
     }
     setIsProcessingInvoice(false);
   };
@@ -128,6 +138,20 @@ export default function XenditTestPage() {
     setSimulatePaymentResult(response);
     setIsSimulatingPayment(false);
   }
+
+  const handleSimulateVAPayment = async () => {
+    if (!vaBankCode || !vaAccountNumber || vaAmount <= 0) return;
+    setIsSimulatingVAPayment(true);
+    setSimulateVAPaymentResult(null);
+    const args: SimulateVAPaymentArgs = {
+      bankCode: vaBankCode,
+      accountNumber: vaAccountNumber,
+      amount: vaAmount,
+    };
+    const response = await simulateXenditVAPayment(args);
+    setSimulateVAPaymentResult(response);
+    setIsSimulatingVAPayment(false);
+  };
 
   const renderRawResponse = (rawResponse: any) => (
     <details className="mt-2 text-xs">
@@ -321,18 +345,49 @@ export default function XenditTestPage() {
           </div>
           <Button onClick={handleSimulatePayment} disabled={isSimulatingPayment || !simulatePaymentInvoiceId} size="lg" className="w-full sm:w-auto">
             {isSimulatingPayment ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
-            Simulate Payment
+            Simulate Invoice Payment
           </Button>
           {simulatePaymentResult && (
             <div className="mt-4">
               {simulatePaymentResult.error ? (
-                <Alert variant="destructive"><AlertTriangle className="h-5 w-5" /><AlertTitle>Error Simulating Payment</AlertTitle><AlertDescription><p>{simulatePaymentResult.error}</p>{simulatePaymentResult.rawResponse && renderRawResponse(simulatePaymentResult.rawResponse)}</AlertDescription></Alert>
+                <Alert variant="destructive"><AlertTriangle className="h-5 w-5" /><AlertTitle>Error Simulating Invoice Payment</AlertTitle><AlertDescription><p>{simulatePaymentResult.error}</p>{simulatePaymentResult.rawResponse && renderRawResponse(simulatePaymentResult.rawResponse)}</AlertDescription></Alert>
               ) : simulatePaymentResult.data ? (
-                 <Alert variant="default" className="border-teal-500 bg-teal-500/10"><CheckCircle className="h-5 w-5 text-teal-600" /><AlertTitle className="text-teal-700">Payment Simulation Successful!</AlertTitle><AlertDescription className="text-teal-600/90 space-y-1">
+                 <Alert variant="default" className="border-teal-500 bg-teal-500/10"><CheckCircle className="h-5 w-5 text-teal-600" /><AlertTitle className="text-teal-700">Invoice Payment Simulation Successful!</AlertTitle><AlertDescription className="text-teal-600/90 space-y-1">
                     <p>Invoice should now be marked as PAID (or relevant status).</p>
                     <p>Response Status: <span className="font-semibold">{simulatePaymentResult.data.status || "N/A (Check raw response)"}</span></p>
                     <p>Check "Get Invoice Details" again for updated status.</p>
                     {simulatePaymentResult.rawResponse && renderRawResponse(simulatePaymentResult.rawResponse)}</AlertDescription></Alert>
+              ) : null}
+            </div>
+          )}
+        </CardContent>
+
+        <Separator className="my-6" />
+
+        {/* Simulate Direct VA Payment Section */}
+        <CardContent className="space-y-6">
+          <h3 className="text-lg font-semibold flex items-center text-foreground">
+            <Landmark className="mr-2 h-5 w-5 text-primary/80" />
+            6. Simulate Direct Virtual Account (VA) Payment (POST /pool_virtual_accounts/simulate_payment)
+          </h3>
+          <div className="space-y-4 max-w-md">
+            <div><Label htmlFor="vaBankCode">Bank Code (e.g., BCA, MANDIRI)</Label><Input id="vaBankCode" type="text" value={vaBankCode} onChange={(e) => setVaBankCode(e.target.value)} placeholder="BCA" className="mt-1"/></div>
+            <div><Label htmlFor="vaAccountNumber">Bank Account Number (VA Number)</Label><Input id="vaAccountNumber" type="text" value={vaAccountNumber} onChange={(e) => setVaAccountNumber(e.target.value)} placeholder="Test VA Number" className="mt-1"/></div>
+            <div><Label htmlFor="vaAmount">Transfer Amount (IDR)</Label><Input id="vaAmount" type="number" value={vaAmount} onChange={(e) => setVaAmount(Number(e.target.value))} placeholder="50000" className="mt-1"/></div>
+          </div>
+          <Button onClick={handleSimulateVAPayment} disabled={isSimulatingVAPayment || !vaBankCode || !vaAccountNumber || vaAmount <=0} size="lg" className="w-full sm:w-auto">
+            {isSimulatingVAPayment ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Landmark className="mr-2 h-5 w-5" />}
+            Simulate VA Payment
+          </Button>
+          {simulateVAPaymentResult && (
+            <div className="mt-4">
+              {simulateVAPaymentResult.error ? (
+                <Alert variant="destructive"><AlertTriangle className="h-5 w-5" /><AlertTitle>Error Simulating VA Payment</AlertTitle><AlertDescription><p>{simulateVAPaymentResult.error}</p>{simulateVAPaymentResult.rawResponse && renderRawResponse(simulateVAPaymentResult.rawResponse)}</AlertDescription></Alert>
+              ) : simulateVAPaymentResult.data ? (
+                 <Alert variant="default" className="border-orange-500 bg-orange-500/10"><CheckCircle className="h-5 w-5 text-orange-600" /><AlertTitle className="text-orange-700">VA Payment Simulation Submitted!</AlertTitle><AlertDescription className="text-orange-600/90 space-y-1">
+                    <p>Status: <span className="font-semibold">{simulateVAPaymentResult.data.status}</span></p>
+                    <p>Message: {simulateVAPaymentResult.data.message}</p>
+                    {simulateVAPaymentResult.rawResponse && renderRawResponse(simulateVAPaymentResult.rawResponse)}</AlertDescription></Alert>
               ) : null}
             </div>
           )}
@@ -349,3 +404,4 @@ export default function XenditTestPage() {
     </div>
   );
 }
+
