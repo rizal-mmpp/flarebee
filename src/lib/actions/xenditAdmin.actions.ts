@@ -195,10 +195,9 @@ export interface XenditInvoiceResult {
   rawResponse?: any;
 }
 
-const xenditClientSDK = new Xendit({ // Renamed to avoid conflict if we use Invoice class directly elsewhere
-  secretKey: process.env.XENDIT_SECRET_KEY || '',
-});
-// We will avoid using xenditClientSDK.Invoice directly for methods that are problematic
+// const xenditClientSDK = new Xendit({ // Avoid direct SDK use for problematic methods
+//   secretKey: process.env.XENDIT_SECRET_KEY || '',
+// });
 
 export async function createXenditTestInvoice(args: CreateTestInvoiceArgs): Promise<XenditInvoiceResult> {
   const secretKey = process.env.XENDIT_SECRET_KEY;
@@ -237,7 +236,7 @@ export async function createXenditTestInvoice(args: CreateTestInvoiceArgs): Prom
 
 
     const invoicePayload: any = {
-      external_id: externalId, // Xendit API uses snake_case
+      external_id: externalId, 
       amount: args.amount,
       payer_email: args.payerEmail || undefined, 
       description: args.description,
@@ -296,7 +295,7 @@ export async function getXenditTestInvoice(invoiceId: string): Promise<XenditInv
 
   try {
     const encodedKey = Buffer.from(secretKey + ':').toString('base64');
-    const response = await fetch(`https://api.xendit.co/v2/invoices/${invoiceId}`, {
+    const response = await fetch(`https://api.xendit.co/v2/invoices/${invoiceId.trim()}`, { // Added .trim()
       method: 'GET',
       headers: {
         'Authorization': `Basic ${encodedKey}`,
@@ -332,9 +331,9 @@ export interface SimulatePaymentArgs {
   amount?: number; 
 }
 
-export interface XenditSimulatePaymentData { // More generic success response
+export interface XenditSimulatePaymentData { 
     message?: string;
-    status?: string; // Often the API might return the updated invoice status or a success message
+    status?: string; 
 }
 
 export interface XenditSimulatePaymentResult {
@@ -353,37 +352,42 @@ export async function simulateXenditInvoicePayment(args: SimulatePaymentArgs): P
   }
 
   try {
+    const trimmedInvoiceId = args.invoiceId.trim(); // Trim the invoice ID
+    if (!trimmedInvoiceId) { // Check if it's empty after trimming
+        return { error: 'Invoice ID cannot be empty.' };
+    }
+
     const encodedKey = Buffer.from(secretKey + ':').toString('base64');
     const bodyPayload: { amount?: number } = {};
-    if (args.amount && args.amount > 0) {
+    
+    if (args.amount !== undefined && !isNaN(args.amount) && args.amount > 0) {
       bodyPayload.amount = args.amount;
     }
 
-    const response = await fetch(`https://api.xendit.co/v2/invoices/${args.invoiceId}/simulate_payment`, {
+    const response = await fetch(`https://api.xendit.co/v2/invoices/${trimmedInvoiceId}/simulate_payment`, {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${encodedKey}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json', // Ensure Content-Type is always set
       },
-      body: Object.keys(bodyPayload).length > 0 ? JSON.stringify(bodyPayload) : undefined, // Send body only if amount is provided
+      // Send body only if it has content, otherwise Xendit might expect it based on Content-Type
+      body: Object.keys(bodyPayload).length > 0 ? JSON.stringify(bodyPayload) : undefined, 
     });
 
     let responseData;
-    // Check if response is OK and has content before trying to parse JSON
     if (response.ok) {
         const textResponse = await response.text();
         if (textResponse) {
             try {
                 responseData = JSON.parse(textResponse);
             } catch (e) {
-                 // If parsing fails but response is OK, it might be an empty success response or non-JSON
                 responseData = { message: "Payment simulation submitted. Status: " + response.status, status_code: response.status };
             }
         } else {
              responseData = { message: "Payment simulation submitted successfully (no content). Status: " + response.status, status_code: response.status };
         }
     } else {
-        responseData = await response.json(); // For errors, Xendit usually returns JSON
+        responseData = await response.json(); 
     }
 
 
@@ -391,13 +395,10 @@ export async function simulateXenditInvoicePayment(args: SimulatePaymentArgs): P
       const errorMessage = responseData.error_code 
         ? `${responseData.error_code}: ${responseData.message}` 
         : (responseData.message || `Xendit API request failed with status ${response.status}`);
-      console.error(`Xendit API Error (Simulate Payment for ${args.invoiceId}):`, responseData);
+      console.error(`Xendit API Error (Simulate Payment for ${trimmedInvoiceId}):`, responseData);
       return { error: errorMessage, rawResponse: responseData };
     }
     
-    // The simulate payment endpoint might return 200 OK with an empty body or a simple status message
-    // It doesn't typically return the full invoice object like other endpoints.
-    // So, we adapt the success data structure.
     return { data: { message: responseData.message || "Payment simulated successfully.", status: responseData.status }, rawResponse: responseData };
 
   } catch (error: any) {
@@ -409,5 +410,4 @@ export async function simulateXenditInvoicePayment(args: SimulatePaymentArgs): P
     return { error: errorMessage, rawResponse: error };
   }
 }
-
       
