@@ -31,7 +31,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'flarebee.com',
+        hostname: 'rio-assets.com', // Updated from flarebee.com
         port: '',
         pathname: '/**',
       },
@@ -46,3 +46,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+

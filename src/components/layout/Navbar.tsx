@@ -48,7 +48,7 @@ export function Navbar() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
         <Link href="/" className="flex items-center gap-2 group mr-6">
           <Hexagon className="h-8 w-8 text-primary transition-transform duration-300 ease-in-out group-hover:rotate-[30deg]" />
-          <span className="text-xl font-bold text-foreground">Flarebee</span>
+          <span className="text-xl font-bold text-foreground">RIO</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm ml-auto">
@@ -156,7 +156,7 @@ export function Navbar() {
               <SheetHeader className="p-6 pb-4 border-b border-border">
                 <SheetTitle className="flex items-center gap-2">
                    <Hexagon className="h-7 w-7 text-primary" />
-                   <span className="text-lg font-semibold">Flarebee Menu</span>
+                   <span className="text-lg font-semibold">RIO Menu</span>
                 </SheetTitle>
               </SheetHeader>
               

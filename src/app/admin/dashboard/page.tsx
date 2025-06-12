@@ -107,10 +107,10 @@ export default function AdminDashboardPage() {
       <header className="mb-10">
         <h1 className="text-4xl font-bold tracking-tight text-foreground mb-3 flex items-center">
           <LayoutGrid className="mr-3 h-8 w-8 text-primary" />
-          Flarebee Admin Panel
+          RIO Admin Panel
         </h1>
         <p className="text-lg text-muted-foreground">
-          Manage your Flarebee templates, view orders, and oversee site activity.
+          Manage your RIO templates, view orders, and oversee site activity.
         </p>
       </header>
 

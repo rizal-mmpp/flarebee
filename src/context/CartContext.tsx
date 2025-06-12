@@ -25,7 +25,7 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_ANONYMOUS_CART_KEY = 'flarebeeAnonymousCart_v1';
+const LOCAL_STORAGE_ANONYMOUS_CART_KEY = 'rioAnonymousCart_v1';
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);

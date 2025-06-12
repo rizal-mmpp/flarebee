@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Flarebee Templates',
+  title: 'RIO Templates',
   description: 'High-quality templates for your next project.',
 };
 

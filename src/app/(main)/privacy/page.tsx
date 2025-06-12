@@ -18,7 +18,7 @@ export default function PrivacyPage() {
           <CardTitle className="text-3xl md:text-4xl">Privacy Policy</CardTitle>
         </CardHeader>
         <CardContent className="prose prose-invert max-w-none text-muted-foreground">
-          <p>Your privacy is important to us. It is Flarebee's policy to respect your privacy regarding any information we may collect from you across our website, and other sites we own and operate.</p>
+          <p>Your privacy is important to us. It is Ragam Inovasi Optima's (RIO) policy to respect your privacy regarding any information we may collect from you across our website, and other sites we own and operate.</p>
           
           <h2 className="text-2xl font-semibold text-foreground mt-6 mb-3">1. Information We Collect</h2>
           <p>Log data: When you visit our website, our servers may automatically log the standard data provided by your web browser. It may include your computer’s Internet Protocol (IP) address, your browser type and version, the pages you visit, the time and date of your visit, the time spent on each page, and other details.</p>
@@ -55,7 +55,7 @@ export default function PrivacyPage() {
           <p>At our discretion, we may change our privacy policy to reflect current acceptable practices. We will take reasonable steps to let users know about changes via our website. Your continued use of this site after any changes to this policy will be regarded as acceptance of our practices around privacy and personal information.</p>
           
           <p className="mt-8">
-            <em>This is a placeholder Privacy Policy page. Please replace this with your actual policy.</em>
+            <em>This is a placeholder Privacy Policy page. Please replace this with your actual policy for RIO.</em>
           </p>
           <p><strong>Last updated:</strong> {new Date().toLocaleDateString()}</p>
         </CardContent>

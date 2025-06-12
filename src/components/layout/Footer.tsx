@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Hexagon } from 'lucide-react';
 
@@ -9,12 +10,12 @@ export function Footer() {
           <Link href="/" className="flex items-center gap-2">
             <Hexagon className="h-6 w-6 text-primary" />
             <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
-              Flarebee Templates
+              Ragam Inovasi Optima
             </p>
           </Link>
         </div>
         <p className="text-center text-sm text-muted-foreground md:text-left">
-          &copy; {new Date().getFullYear()} Flarebee. All rights reserved.
+          &copy; {new Date().getFullYear()} Ragam Inovasi Optima. All rights reserved.
         </p>
         <div className="flex items-center gap-4">
           <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">

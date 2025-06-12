@@ -19,25 +19,25 @@ export default function TermsPage() {
         </CardHeader>
         <CardContent className="prose prose-invert max-w-none text-muted-foreground">
           <p>
-            Welcome to Flarebee Templates! These terms and conditions outline the rules and regulations for the use of
-            Flarebee's Website, located at your website URL.
+            Welcome to RIO Templates! These terms and conditions outline the rules and regulations for the use of
+            Ragam Inovasi Optima's Website, located at your website URL.
           </p>
           <p>
-            By accessing this website we assume you accept these terms and conditions. Do not continue to use Flarebee
+            By accessing this website we assume you accept these terms and conditions. Do not continue to use RIO
             Templates if you do not agree to take all of the terms and conditions stated on this page.
           </p>
           <h2 className="text-2xl font-semibold text-foreground mt-6 mb-3">License</h2>
           <p>
-            Unless otherwise stated, Flarebee and/or its licensors own the intellectual property rights for all
-            material on Flarebee Templates. All intellectual property rights are reserved. You may access this from
-            Flarebee Templates for your own personal use subjected to restrictions set in these terms and conditions.
+            Unless otherwise stated, Ragam Inovasi Optima (RIO) and/or its licensors own the intellectual property rights for all
+            material on RIO Templates. All intellectual property rights are reserved. You may access this from
+            RIO Templates for your own personal use subjected to restrictions set in these terms and conditions.
           </p>
           <p>You must not:</p>
           <ul>
-            <li>Republish material from Flarebee Templates</li>
-            <li>Sell, rent or sub-license material from Flarebee Templates</li>
-            <li>Reproduce, duplicate or copy material from Flarebee Templates</li>
-            <li>Redistribute content from Flarebee Templates</li>
+            <li>Republish material from RIO Templates</li>
+            <li>Sell, rent or sub-license material from RIO Templates</li>
+            <li>Reproduce, duplicate or copy material from RIO Templates</li>
+            <li>Redistribute content from RIO Templates</li>
           </ul>
           <h2 className="text-2xl font-semibold text-foreground mt-6 mb-3">Disclaimer</h2>
           <p>
@@ -60,7 +60,7 @@ export default function TermsPage() {
             will not be liable for any loss or damage of any nature.
           </p>
           <p className="mt-8">
-            <em>This is a placeholder Terms of Service page. Please replace this with your actual terms.</em>
+            <em>This is a placeholder Terms of Service page. Please replace this with your actual terms for RIO.</em>
           </p>
         </CardContent>
       </Card>

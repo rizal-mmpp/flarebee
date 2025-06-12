@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles } from 'lucide-react';
@@ -11,7 +12,7 @@ export function HeroSection() {
           <span>Powered by AI & Modern Design</span>
         </div>
         <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground mb-6">
-          Launch Your Next Project with <span className="text-primary">Flarebee</span> Templates
+          Launch Your Next Project with <span className="text-primary">RIO</span> Templates
         </h1>
         <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-10">
           Discover professionally designed, ready-to-use templates. Built with the latest technologies to help you ship faster and look better.

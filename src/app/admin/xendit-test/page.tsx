@@ -15,7 +15,7 @@ import {
   createXenditTestInvoice,
   getXenditTestInvoice,
   simulateXenditInvoicePayment,
-  simulateXenditVAPayment, // New import
+  simulateXenditVAPayment,
   type XenditBalanceResult,
   type XenditPaymentRequestResult,
   type CreatePaymentRequestArgs,
@@ -23,10 +23,10 @@ import {
   type CreateTestInvoiceArgs,
   type XenditSimulatePaymentResult,
   type SimulatePaymentArgs,
-  type SimulateVAPaymentArgs, // New import
-  type XenditSimulateVAPaymentResult, // New import
+  type SimulateVAPaymentArgs,
+  type XenditSimulateVAPaymentResult,
 } from '@/lib/actions/xenditAdmin.actions';
-import { Loader2, CheckCircle, AlertTriangle, Wifi, Banknote, CreditCard, FileText, Search, Send, Landmark } from 'lucide-react'; // Added Landmark
+import { Loader2, CheckCircle, AlertTriangle, Wifi, Banknote, CreditCard, FileText, Search, Send, Landmark } from 'lucide-react';
 import Link from 'next/link';
 
 // Helper to format IDR currency
@@ -46,13 +46,13 @@ export default function XenditTestPage() {
 
   // Payment Request Simulation State
   const [prAmount, setPrAmount] = useState<number>(15000);
-  const [prDescription, setPrDescription] = useState('Sample Flarebee Payment Request (DANA QR)');
+  const [prDescription, setPrDescription] = useState('Sample RIO Payment Request (DANA QR)');
   const [isProcessingPr, setIsProcessingPr] = useState(false);
   const [prResult, setPrResult] = useState<XenditPaymentRequestResult | null>(null);
 
   // Invoice Creation Simulation State
   const [invoiceAmount, setInvoiceAmount] = useState<number>(50000);
-  const [invoiceDescription, setInvoiceDescription] = useState('Sample Flarebee Test Invoice');
+  const [invoiceDescription, setInvoiceDescription] = useState('Sample RIO Test Invoice');
   const [invoicePayerEmail, setInvoicePayerEmail] = useState('');
   const [requestFva, setRequestFva] = useState(false);
   const [isProcessingInvoice, setIsProcessingInvoice] = useState(false);
@@ -169,7 +169,7 @@ export default function XenditTestPage() {
         <CardHeader>
           <CardTitle className="text-2xl flex items-center">
             <Wifi className="mr-3 h-7 w-7 text-primary" />
-            Xendit Integration Tests
+            Xendit Integration Tests for RIO
           </CardTitle>
           <CardDescription>
             Test connections and simulate API calls to Xendit.
@@ -404,4 +404,3 @@ export default function XenditTestPage() {
     </div>
   );
 }
-

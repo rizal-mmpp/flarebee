@@ -86,7 +86,7 @@ export default function CheckoutPage() {
         cartItemsForOrder: cartItems,
         xenditFormattedItems: xenditItems,
         totalAmount: totalAmount,
-        description: `Flarebee Order: ${description}`,
+        description: `RIO Order: ${description}`, // Updated from Flarebee
         currency: 'IDR',
         payerEmail: user?.email || undefined,
         userId: user?.uid,

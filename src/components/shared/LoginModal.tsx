@@ -50,7 +50,7 @@ export function LoginModal({ isOpen, onOpenChange, onLogin }: LoginModalProps) {
         </DialogHeader>
         <div className="py-4">
           <p className="text-sm text-muted-foreground">
-            Access your cart, purchase history, and enjoy a seamless experience by logging into your Flarebee account.
+            Access your cart, purchase history, and enjoy a seamless experience by logging into your RIO account.
           </p>
         </div>
         <DialogFooter>

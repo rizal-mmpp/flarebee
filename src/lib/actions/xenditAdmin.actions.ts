@@ -123,7 +123,7 @@ export async function createXenditPaymentRequest(args: CreatePaymentRequestArgs)
     },
     description: description,
     metadata: {
-      test_reference: `flarebee_payment_request_test_${randomUUID()}`
+      test_reference: `rio_payment_request_test_${randomUUID()}` // Updated from flarebee
     }
   };
 
@@ -212,7 +212,7 @@ export async function createXenditTestInvoice(args: CreateTestInvoiceArgs): Prom
     }
     const appBaseUrl = `${protocol}://${host}`;
 
-    const externalId = `flarebee-test-invoice-${randomUUID()}`;
+    const externalId = `rio-test-invoice-${randomUUID()}`; // Updated from flarebee
     const sampleItems: XenditSDKInvoiceItem[] = [
       { name: 'Test Item 1', quantity: 1, price: Math.floor(args.amount * 0.6) , category: 'Test Category', url: `${appBaseUrl}/templates/sample-item-1`},
       { name: 'Test Item 2', quantity: 1, price: args.amount - Math.floor(args.amount * 0.6), category: 'Test Category', url: `${appBaseUrl}/templates/sample-item-2` },
@@ -296,7 +296,7 @@ export async function getXenditTestInvoice(invoiceId: string): Promise<XenditInv
       method: 'GET',
       headers: {
         'Authorization': `Basic ${encodedKey}`,
-        'Content-Type': 'application/json', // Good practice, though not strictly needed for GET
+        'Content-Type': 'application/json', 
       },
       cache: 'no-store', 
     });
@@ -353,8 +353,7 @@ export async function simulateXenditInvoicePayment(args: SimulatePaymentArgs): P
     const encodedKey = Buffer.from(secretKey + ':').toString('base64');
     const bodyPayload: { amount?: number } = {};
     
-    // Ensure amount is a positive number if provided
-    if (args.amount !== undefined && !isNaN(args.amount) && Number(args.amount) > 0) {
+    if (args.amount !== undefined && !isNaN(Number(args.amount)) && Number(args.amount) > 0) {
       bodyPayload.amount = Number(args.amount);
     }
 
@@ -368,25 +367,22 @@ export async function simulateXenditInvoicePayment(args: SimulatePaymentArgs): P
     });
 
     let responseData;
-    const responseText = await response.text(); // Read text first
+    const responseText = await response.text(); 
 
     if (response.ok) {
         if (responseText) {
             try {
                 responseData = JSON.parse(responseText);
             } catch (e) {
-                // If JSON parsing fails but response is OK, it might be an empty or non-JSON success response
                 responseData = { message: "Payment simulation submitted. Status: " + response.status, status_code: response.status };
             }
         } else {
-             // Empty response but OK status
              responseData = { message: "Payment simulation submitted successfully (no content). Status: " + response.status, status_code: response.status };
         }
     } else {
         try {
-            responseData = JSON.parse(responseText); // Attempt to parse error as JSON
+            responseData = JSON.parse(responseText); 
         } catch (e) {
-            // If error response is not JSON
             responseData = { error_code: "PARSE_ERROR", message: responseText || `Xendit API request failed with status ${response.status}` };
         }
     }
@@ -471,5 +467,3 @@ export async function simulateXenditVAPayment(args: SimulateVAPaymentArgs): Prom
     return { error: error.message || 'An unexpected error occurred while simulating VA payment.' };
   }
 }
-      
-

@@ -54,7 +54,7 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
     return { error: "Failed to determine application host. Cannot proceed with payment." };
   }
   const appBaseUrl = `${protocol}://${host}`;
-  const externalId = `flarebee-order-${randomUUID()}`; // This will be our orderId in Firestore too
+  const externalId = `rio-order-${randomUUID()}`; // Updated from flarebee-order
   const resolvedCurrency = args.currency || 'IDR';
 
   if (resolvedCurrency !== 'IDR') {
@@ -67,7 +67,7 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
       externalId: externalId,
       amount: args.totalAmount,
       payerEmail: args.payerEmail,
-      description: args.description,
+      description: args.description, // Description comes from checkout page, already updated to RIO Order
       currency: 'IDR',
       items: args.xenditFormattedItems.map(item => ({
         name: item.name,
