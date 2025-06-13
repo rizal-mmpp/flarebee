@@ -1,7 +1,7 @@
 
 'use client';
 import Link from 'next/link';
-import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, LayoutGrid, ShoppingCart, ChevronDown, Home } from 'lucide-react';
+import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, LayoutGrid, ShoppingCart, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
@@ -40,9 +40,9 @@ export function Navbar() {
 
   const cartItemCount = cartItems.reduce((count, item) => count + item.quantity, 0);
 
-  const mobileMenuItemClass = "flex items-center rounded-md p-2 text-base font-bold text-card-foreground transition-colors hover:bg-muted w-full";
-  const mobileMenuAccordionTriggerClass = cn(mobileMenuItemClass, "justify-between hover:no-underline");
-  const mobileMenuAccordionContentLinkClass = cn(mobileMenuItemClass, "font-normal text-sm"); // Adjusted for sub-items
+  const mobileMenuMainItemClass = "flex items-center rounded-md p-2 text-base font-bold text-card-foreground transition-colors hover:bg-muted w-full";
+  const mobileMenuAccordionTriggerClass = cn(mobileMenuMainItemClass, "justify-between hover:no-underline");
+  const mobileMenuAccordionContentLinkClass = cn(mobileMenuMainItemClass, "font-normal text-sm");
 
   const desktopMenuItemClass = "text-sm text-foreground/80 transition-colors hover:text-foreground hover:font-medium";
   const desktopDropdownItemClass = "cursor-pointer text-sm";
@@ -165,9 +165,9 @@ export function Navbar() {
                  <CustomMenuIcon isOpen={mobileMenuOpen} />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[85vw] bg-card p-0 flex flex-col">
+            <SheetContent side="right" className="w-[90vw] bg-card p-0 flex flex-col">
               <SheetHeader className="p-6 pb-4 border-b border-border">
-                <SheetTitle className="flex items-center gap-2 text-lg font-semibold text-card-foreground">
+                <SheetTitle className="flex items-center gap-2 text-base font-semibold text-card-foreground">
                    <Hexagon className="h-7 w-7 text-primary" />
                    <span>RAGAM INOVASI OPTIMA</span>
                 </SheetTitle>
@@ -175,17 +175,17 @@ export function Navbar() {
               
               <div className="flex-grow overflow-y-auto p-6 space-y-2 flex flex-col">
                 {user && (
-                  <div className="mb-2"> 
-                    <div className="flex items-center gap-3 mb-2">
+                  <div className="mb-4"> 
+                    <div className="flex items-center gap-3 mb-1">
                       <Avatar className="h-12 w-12">
                         <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
                         <AvatarFallback className="text-lg">{getAvatarFallback(user.displayName)}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="text-sm font-medium leading-tight text-card-foreground">{user.displayName || 'User'}</p>
+                        <p className="text-sm font-semibold leading-tight text-card-foreground">{user.displayName || 'User'}</p>
                         <p className="text-xs leading-tight text-muted-foreground">{user.email}</p>
                          {role && (
-                          <p className="text-xs leading-none text-muted-foreground flex items-center pt-1">
+                          <p className="text-xs leading-tight text-muted-foreground flex items-center pt-0.5">
                             <ShieldCheck className="mr-1 h-3 w-3 text-primary" />
                             <span className="font-medium capitalize text-card-foreground/80">{role}</span>
                           </p>
@@ -198,7 +198,8 @@ export function Navbar() {
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="explore-categories" className="border-b-0">
                     <AccordionTrigger className={mobileMenuAccordionTriggerClass}>
-                      <div className="flex items-center text-card-foreground">
+                      <div className="flex items-center">
+                        <ShoppingCart className="mr-2 h-5 w-5" /> {/* Using ShoppingCart as placeholder, update if specific explore icon exists */}
                         Explore
                       </div>
                     </AccordionTrigger>
@@ -223,14 +224,14 @@ export function Navbar() {
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
-
+                
                 {user && (
                   <Link
                       href="/checkout"
                       onClick={() => setMobileMenuOpen(false)}
-                      className={cn(mobileMenuItemClass, "relative")}
+                      className={cn(mobileMenuMainItemClass, "relative")}
                   >
-                      <ShoppingCart className="mr-2 h-5 w-5" /> <span className="text-card-foreground">Cart</span>
+                      <ShoppingCart className="mr-2 h-5 w-5" /> <span>Cart</span>
                       {cartItemCount > 0 && (
                           <Badge variant="destructive" className="absolute top-1 right-1 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
                           {cartItemCount}
@@ -243,10 +244,10 @@ export function Navbar() {
                   <Link
                     href="/dashboard"
                     onClick={() => setMobileMenuOpen(false)}
-                    className={mobileMenuItemClass}
+                    className={mobileMenuMainItemClass}
                   >
                     <LayoutDashboard className="mr-2 h-5 w-5" />
-                    <span className="text-card-foreground">Dashboard</span>
+                    <span>Dashboard</span>
                   </Link>
                 )}
 
@@ -254,16 +255,13 @@ export function Navbar() {
                   <Link
                     href="/admin/dashboard"
                     onClick={() => setMobileMenuOpen(false)}
-                    className={mobileMenuItemClass}
+                    className={mobileMenuMainItemClass}
                   >
-                     <LayoutGrid className="mr-2 h-5 w-5" /> <span className="text-card-foreground">Admin Panel</span>
+                     <LayoutGrid className="mr-2 h-5 w-5" /> <span>Admin Panel</span>
                   </Link>
                 )}
                 
-                <div className="flex-grow"></div>
-
-                <Separator className="my-3"/>
-                <div className="pt-2">               
+                <div className="mt-auto pt-4 border-t border-border"> {/* Pushes sign out to bottom */}
                   {loading ? (
                     <div className="h-10 w-full animate-pulse rounded-md bg-muted"></div>
                   ) : user ? (
