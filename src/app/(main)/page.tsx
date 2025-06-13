@@ -10,7 +10,7 @@ import { Loader2, Search } from 'lucide-react';
 import type { Template } from '@/lib/types';
 import { getAllTemplatesFromFirestore } from '@/lib/firebase/firestoreTemplates';
 
-export default function HomePage() { // Renamed from TemplatesPage to HomePage
+export default function HomePage() {
   const [allTemplates, setAllTemplates] = useState<Template[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -51,9 +51,9 @@ export default function HomePage() { // Renamed from TemplatesPage to HomePage
   return (
     <div className="container mx-auto px-4 md:px-6 py-12 md:py-16">
       <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">Explore Our Templates</h1>
+        <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">Launch Faster with Modern Templates</h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          Find the perfect starting point for your next project. Filter by category or search by keyword.
+          Browse ready-to-use templates built with cutting-edge technology. Ship your projects quicker and impress your users.
         </p>
       </div>
       
