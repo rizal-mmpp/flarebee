@@ -47,7 +47,7 @@ export function Navbar() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
         <Link href="/" className="flex items-center gap-2 group mr-6">
           <Hexagon className="h-8 w-8 text-primary transition-transform duration-300 ease-in-out group-hover:rotate-[30deg]" />
-          <span className="text-xl font-bold text-foreground">RIO</span>
+          <span className="text-lg font-bold text-foreground">RAGAM INOVASI OPTIMA</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm ml-auto">
@@ -148,15 +148,15 @@ export function Navbar() {
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild className="md:hidden">
               <Button variant="ghost" size="icon">
-                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                {mobileMenuOpen ? <X className="h-7 w-7" /> : <Menu className="h-7 w-7" />}
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[300px] bg-card p-0 flex flex-col">
               <SheetHeader className="p-6 pb-4 border-b border-border">
-                <SheetTitle className="flex items-center gap-2 text-xl font-bold"> {/* Increased size and ensured boldness */}
+                <SheetTitle className="flex items-center gap-2 text-xl font-bold">
                    <Hexagon className="h-7 w-7 text-primary" />
-                   <span>RIO Menu</span>
+                   <span>RAGAM INOVASI OPTIMA</span>
                 </SheetTitle>
               </SheetHeader>
               
