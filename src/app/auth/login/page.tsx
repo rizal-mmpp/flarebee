@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, LogIn, Mail } from 'lucide-react'; // Using Mail as a generic Google icon for simplicity here
+import { Loader2, LogIn, Eye, EyeOff } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -25,6 +25,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { user, signInWithEmailPassword, signInWithGoogle, loading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -64,7 +65,6 @@ export default function LoginPage() {
     );
   }
 
-
   return (
     <Card className="w-full shadow-2xl">
       <CardHeader className="text-center">
@@ -80,7 +80,24 @@ export default function LoginPage() {
           </div>
           <div>
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" {...register('password')} placeholder="••••••••" className="mt-1" />
+            <div className="relative mt-1">
+              <Input 
+                id="password" 
+                type={showPassword ? "text" : "password"} 
+                {...register('password')} 
+                placeholder="••••••••"
+              />
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="icon" 
+                className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
             {errors.password && <p className="text-sm text-destructive mt-1">{errors.password.message}</p>}
           </div>
           <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isSubmitting || loading}>
