@@ -35,13 +35,23 @@ export async function createUserProfile(user: FirebaseUser, displayNameParam?: s
     }
   }
   const existingProfileData = userSnap.data();
+  let createdAtDate = new Date(); // Default to now
+
+  if (existingProfileData.createdAt && typeof existingProfileData.createdAt.toDate === 'function') {
+    createdAtDate = (existingProfileData.createdAt as Timestamp).toDate();
+  } else {
+    console.warn(`User profile ${existingProfileData.uid} has an invalid or missing 'createdAt' field. Defaulting to current date.`);
+    // Optionally, you might want to update the Firestore document with a serverTimestamp here if it's missing
+    // await setDoc(userRef, { createdAt: serverTimestamp() }, { merge: true });
+  }
+  
   const existingProfile: UserProfile = {
     uid: existingProfileData.uid,
     email: existingProfileData.email,
     displayName: existingProfileData.displayName,
     photoURL: existingProfileData.photoURL,
     role: existingProfileData.role || 'user',
-    createdAt: (existingProfileData.createdAt as Timestamp).toDate(),
+    createdAt: createdAtDate,
   };
   
   // If displayNameParam is provided and different from existing, update it.
@@ -64,12 +74,24 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const userSnap = await getDoc(userRef);
 
   if (userSnap.exists()) {
-    const userData = userSnap.data() as Omit<UserProfile, 'createdAt'> & { createdAt: Timestamp };
+    const userData = userSnap.data();
+    let createdAtDate = new Date(); // Default to now
+
+    if (userData.createdAt && typeof userData.createdAt.toDate === 'function') {
+      createdAtDate = (userData.createdAt as Timestamp).toDate();
+    } else {
+      console.warn(`User profile ${uid} from getUserProfile has an invalid or missing 'createdAt' field. Defaulting to current date.`);
+    }
+
     return {
-      ...userData,
+      uid: userData.uid,
+      email: userData.email,
+      displayName: userData.displayName,
+      photoURL: userData.photoURL,
       role: userData.role || 'user', // Ensure role defaults to 'user' if missing
-      createdAt: userData.createdAt.toDate(),
-    };
+      createdAt: createdAtDate,
+    } as UserProfile;
   }
   return null;
 }
+
