@@ -35,7 +35,7 @@ export default function DashboardLayout({
 
   // If user is logged in, render the dashboard layout
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="dark flex min-h-screen flex-col"> {/* Added className="dark" */}
       <Navbar /> 
       <main className="flex-grow bg-background">
         <div className="container mx-auto px-4 py-8 md:py-12">
