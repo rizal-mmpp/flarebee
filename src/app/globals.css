@@ -3,10 +3,6 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
-
 @layer base {
   :root {
     --background: 0 0% 100%; /* White */
@@ -37,7 +33,7 @@ body {
     --input: 220 15% 80%; /* Using the same as border for input borders on light theme */
     --ring: 45 100% 58%; /* Yellow for focus rings #FFC72C */
 
-    --radius: 0.5rem;
+    --radius: 1rem; /* Increased for more pronounced rounding, e.g. rounded-xl */
 
     /* Charts will use these, colors defined based on light background */
     --chart-1: 45 100% 50%;
@@ -75,6 +71,8 @@ body {
     --border: 220 15% 25%; /* Original Dark: #353C4C */
     --input: 220 15% 20%; /* Original Dark: #2A303C */
     --ring: 45 100% 58%; /* Original Dark: #FFC72C */
+    
+    --radius: 1rem; /* Consistent with light theme */
 
     --chart-1: 45 100% 58%;
     --chart-2: 33 100% 50%;
@@ -90,5 +88,6 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    /* font-family: Arial, Helvetica, sans-serif; Removed to allow Geist Sans from layout.tsx to take effect */
   }
 }

@@ -5,7 +5,7 @@ import { ArrowRight, Sparkles } from 'lucide-react';
 
 export function HeroSection() {
   return (
-    <section className="py-20 md:py-32 bg-gradient-to-br from-background to-card">
+    <section className="py-16 md:py-24 bg-gradient-to-br from-background to-card"> {/* Reduced padding from py-20 md:py-32 */}
       <div className="container mx-auto px-4 text-center">
         <div className="inline-flex items-center justify-center rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary mb-6">
           <Sparkles className="h-4 w-4 mr-2" />

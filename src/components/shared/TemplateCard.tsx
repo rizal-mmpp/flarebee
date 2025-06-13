@@ -23,10 +23,10 @@ const formatIDR = (amount: number) => {
 
 export function TemplateCard({ template }: TemplateCardProps) {
   return (
-    <Card className="flex flex-col overflow-hidden rounded-lg transition-all duration-300 ease-in-out hover:border-primary/50"> {/* Removed shadow-lg, hover:shadow-primary/20 hover:shadow-xl hover:-translate-y-1 and added hover:border-primary/50 for subtle feedback */}
-      <Link href={`/templates/${template.id}`} className="block group"> {/* Added group for image hover effect */}
+    <Card className="flex flex-col overflow-hidden rounded-xl transition-all duration-300 ease-in-out hover:border-primary/50"> 
+      <Link href={`/templates/${template.id}`} className="block group">
         <CardHeader className="p-0">
-          <div className="aspect-[3/2] relative w-full overflow-hidden rounded-t-lg"> {/* Added overflow-hidden and rounded-t-lg */}
+          <div className="aspect-[3/2] relative w-full overflow-hidden rounded-t-xl"> 
             <Image
               src={template.imageUrl}
               alt={template.title}
@@ -49,9 +49,9 @@ export function TemplateCard({ template }: TemplateCardProps) {
           {template.description}
         </p>
         <div className="flex flex-wrap gap-2 mb-3">
-          <Badge variant="secondary">{template.category.name}</Badge>
+          <Badge variant="secondary" className="rounded-full px-3 py-1">{template.category.name}</Badge>
           {template.tags.slice(0, 2).map((tag) => (
-            <Badge key={tag} variant="outline">
+            <Badge key={tag} variant="outline" className="rounded-full px-3 py-1">
               {tag}
             </Badge>
           ))}
@@ -61,7 +61,7 @@ export function TemplateCard({ template }: TemplateCardProps) {
         <p className="text-xl font-bold text-primary">
           {formatIDR(template.price)}
         </p>
-        <Button asChild variant="outline" size="sm" className="group transition-all duration-300 ease-in-out hover:bg-accent hover:text-accent-foreground hover:border-accent">
+        <Button asChild variant="outline" size="sm" className="group transition-all duration-300 ease-in-out hover:bg-accent/20 hover:text-accent-foreground hover:border-accent">
           <Link href={`/templates/${template.id}`}>
             View Details <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:translate-x-1" />
           </Link>
