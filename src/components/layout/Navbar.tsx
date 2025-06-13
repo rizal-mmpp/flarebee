@@ -1,7 +1,7 @@
 
 'use client';
 import Link from 'next/link';
-import { Hexagon, LogIn, LogOut, Menu, UserCircle, X, LayoutDashboard, ShieldCheck, LayoutGrid, ShoppingCart } from 'lucide-react';
+import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, LayoutGrid, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
@@ -15,9 +15,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { CustomMenuIcon } from '@/components/shared/CustomMenuIcon'; // Import the new icon
 
 const baseNavLinks = [
   { href: '/', label: 'Home' },
@@ -45,9 +46,9 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
-        <Link href="/" className="flex items-center gap-2 group mr-6">
-          <Hexagon className="h-8 w-8 text-primary transition-transform duration-300 ease-in-out group-hover:rotate-[30deg]" />
-          <span className="text-lg font-bold text-foreground">RAGAM INOVASI OPTIMA</span>
+        <Link href="/" className="flex items-center gap-2 group mr-2 sm:mr-6 overflow-hidden"> {/* Reduced mr for smaller screens, added overflow-hidden */}
+          <Hexagon className="h-8 w-8 text-primary transition-transform duration-300 ease-in-out group-hover:rotate-[30deg] flex-shrink-0" /> {/* Added flex-shrink-0 */}
+          <span className="text-sm sm:text-base font-bold text-foreground whitespace-nowrap">RAGAM INOVASI OPTIMA</span> {/* Adjusted font size & added whitespace-nowrap */}
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm ml-auto">
@@ -147,14 +148,14 @@ export function Navbar() {
 
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon">
-                {mobileMenuOpen ? <X className="h-7 w-7" /> : <Menu className="h-7 w-7" />}
-                <span className="sr-only">Toggle menu</span>
+              {/* Use Button as a simple wrapper for the custom icon. size="icon" gives it a default clickable area */}
+              <Button variant="ghost" size="icon" aria-label="Toggle menu">
+                 <CustomMenuIcon isOpen={mobileMenuOpen} />
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[300px] bg-card p-0 flex flex-col">
               <SheetHeader className="p-6 pb-4 border-b border-border">
-                <SheetTitle className="flex items-center gap-2 text-xl font-bold">
+                <SheetTitle className="flex items-center gap-2 text-base sm:text-lg font-bold"> {/* Adjusted SheetTitle font size */}
                    <Hexagon className="h-7 w-7 text-primary" />
                    <span>RAGAM INOVASI OPTIMA</span>
                 </SheetTitle>
