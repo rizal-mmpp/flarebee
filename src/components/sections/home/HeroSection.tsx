@@ -12,7 +12,7 @@ export function HeroSection() {
           <span>Powered by AI & Modern Design</span>
         </div>
         <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground mb-6">
-          Discover Premium Web Templates
+          Launch Your Next Project with RIO Templates
         </h1>
         <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-10">
           Accelerate your projects with our collection of high-quality, ready-to-use templates, built with modern tech to help you ship faster and look stunning.
