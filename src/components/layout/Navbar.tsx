@@ -1,7 +1,7 @@
 
 'use client';
 import Link from 'next/link';
-import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, LayoutGrid, ShoppingCart } from 'lucide-react';
+import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, LayoutGrid, ShoppingCart, HomeIcon, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
@@ -19,6 +19,9 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { CustomMenuIcon } from '@/components/shared/CustomMenuIcon';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { CATEGORIES } from '@/lib/constants';
+import { cn } from '@/lib/utils';
 
 const baseNavLinks = [
   // Home is implicitly handled by the logo/brand link.
@@ -43,6 +46,10 @@ export function Navbar() {
   };
 
   const cartItemCount = cartItems.reduce((count, item) => count + item.quantity, 0);
+
+  const mobileMenuItemClass = "flex items-center rounded-md p-2 text-base font-bold text-card-foreground transition-colors hover:bg-muted w-full";
+  const mobileMenuAccordionTriggerClass = cn(mobileMenuItemClass, "justify-between hover:no-underline");
+  const mobileMenuAccordionContentLinkClass = cn(mobileMenuItemClass, "font-normal"); // Sub-items might not need to be as bold
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -161,16 +168,16 @@ export function Navbar() {
             </SheetTrigger>
             <SheetContent side="right" className="w-[90vw] bg-card p-0 flex flex-col">
               <SheetHeader className="p-6 pb-4 border-b border-border">
-                <SheetTitle className="flex items-center gap-2 text-lg font-semibold">
+                <SheetTitle className="flex items-center gap-2 text-lg font-semibold text-card-foreground">
                    <Hexagon className="h-7 w-7 text-primary" />
                    <span>RAGAM INOVASI OPTIMA</span>
                 </SheetTitle>
               </SheetHeader>
               
               {/* Main scrollable content area */}
-              <div className="flex-grow overflow-y-auto p-6 space-y-4">
+              <div className="flex-grow overflow-y-auto p-6 space-y-2">
                 {user && (
-                  <div className="mb-6"> {/* User Data Section */}
+                  <div className="mb-4"> {/* User Data Section - moved higher for now, will be adjusted in next step */}
                     <div className="flex items-center gap-3 mb-2">
                       <Avatar className="h-12 w-12">
                         <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
@@ -191,21 +198,45 @@ export function Navbar() {
                 )}
 
                 {/* Navigation Links */}
-                <Link
-                  href="/"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center rounded-md p-2 text-base font-medium text-card-foreground/80 transition-colors hover:bg-muted hover:text-card-foreground"
-                >
-                  Home
-                </Link>
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="explore-categories" className="border-b-0">
+                    <AccordionTrigger className={mobileMenuAccordionTriggerClass}>
+                      <div className="flex items-center">
+                        <HomeIcon className="mr-2 h-5 w-5" /> {/* Example Icon, change as needed */}
+                        Explore
+                      </div>
+                      {/* ChevronDown is part of AccordionTrigger by default */}
+                    </AccordionTrigger>
+                    <AccordionContent className="pl-4 pt-1 pb-0 space-y-1">
+                       <Link
+                        href={`/`}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={mobileMenuAccordionContentLinkClass}
+                      >
+                        All Templates
+                      </Link>
+                      {CATEGORIES.map((category) => (
+                        <Link
+                          key={category.id}
+                          href={`/?category=${category.slug}`}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={mobileMenuAccordionContentLinkClass}
+                        >
+                          {category.name}
+                        </Link>
+                      ))}
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+
 
                 {user && (
                   <Link
                     href="/dashboard"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center rounded-md p-2 text-base font-medium text-card-foreground/80 transition-colors hover:bg-muted hover:text-card-foreground"
+                    className={mobileMenuItemClass}
                   >
-                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    <LayoutDashboard className="mr-2 h-5 w-5" />
                     Dashboard
                   </Link>
                 )}
@@ -214,9 +245,9 @@ export function Navbar() {
                   <Link
                     href="/admin/dashboard"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center rounded-md p-2 text-base font-medium text-card-foreground/80 transition-colors hover:bg-muted hover:text-card-foreground"
+                    className={mobileMenuItemClass}
                   >
-                     <LayoutGrid className="mr-2 h-4 w-4" /> Admin Panel
+                     <LayoutGrid className="mr-2 h-5 w-5" /> Admin Panel
                   </Link>
                 )}
 
@@ -224,7 +255,7 @@ export function Navbar() {
                   <Link
                       href="/checkout"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center rounded-md p-2 text-base font-medium text-card-foreground/80 transition-colors hover:bg-muted hover:text-card-foreground relative"
+                      className={cn(mobileMenuItemClass, "relative")}
                   >
                       <ShoppingCart className="mr-2 h-5 w-5" /> Cart
                       {cartItemCount > 0 && (
@@ -236,8 +267,32 @@ export function Navbar() {
                 )}
               </div>
               
-              {/* Bottom Section (Sign Out / Sign In) */}
-              <div className="p-6 mt-auto border-t border-border">
+              {/* Bottom Section (User data and Sign Out / Sign In) */}
+              <div className="p-6 mt-auto border-t border-border space-y-4">
+                {user && (
+                   <div className="mb-0"> {/* User Data Section */}
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
+                        <AvatarFallback>{getAvatarFallback(user.displayName)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-medium leading-tight text-card-foreground">{user.displayName || 'User'}</p>
+                        <p className="text-xs leading-tight text-muted-foreground">{user.email}</p>
+                         {role && (
+                          <p className="text-xs leading-none text-muted-foreground flex items-center pt-0.5">
+                            <ShieldCheck className="mr-1 h-3 w-3 text-primary" />
+                            <span className="font-medium capitalize text-card-foreground/80">{role}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                     <Button variant="link" asChild className="pl-0 mt-1 text-xs h-auto py-0 text-primary hover:text-primary/80">
+                        <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>View Dashboard</Link>
+                     </Button>
+                  </div>
+                )}
+               
                 {loading ? (
                   <div className="h-10 w-full animate-pulse rounded-md bg-muted"></div>
                 ) : user ? (
