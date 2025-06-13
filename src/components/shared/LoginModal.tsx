@@ -16,7 +16,7 @@ import { LogIn, Loader2, Hexagon } from "lucide-react";
 interface LoginModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onLogin: () => Promise<void>;
+  onLogin: () => Promise<void>; // This will be signInWithGoogle
 }
 
 export function LoginModal({ isOpen, onOpenChange, onLogin }: LoginModalProps) {
@@ -28,7 +28,7 @@ export function LoginModal({ isOpen, onOpenChange, onLogin }: LoginModalProps) {
       await onLogin();
       // AuthContext will handle user state update. Modal might close due to parent re-render or explicitly.
     } catch (error) {
-      console.error("Login failed from modal:", error);
+      console.error("Sign In failed from modal:", error);
       // Optionally show an error message within the modal
     } finally {
       setIsLoggingIn(false);
@@ -42,15 +42,15 @@ export function LoginModal({ isOpen, onOpenChange, onLogin }: LoginModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <Hexagon className="h-6 w-6 text-primary mr-2" />
-            Login Required
+            Sign In Required
           </DialogTitle>
           <DialogDescription>
-            Please log in to continue with your action. It's quick and easy with Google.
+            Please sign in to continue with your action. It's quick and easy with Google.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
           <p className="text-sm text-muted-foreground">
-            Access your cart, purchase history, and enjoy a seamless experience by logging into your RIO account.
+            Access your cart, purchase history, and enjoy a seamless experience by signing into your RIO account.
           </p>
         </div>
         <DialogFooter>
@@ -71,7 +71,7 @@ export function LoginModal({ isOpen, onOpenChange, onLogin }: LoginModalProps) {
             ) : (
               <LogIn className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
             )}
-            Login with Google
+            Sign In with Google
           </Button>
         </DialogFooter>
       </DialogContent>

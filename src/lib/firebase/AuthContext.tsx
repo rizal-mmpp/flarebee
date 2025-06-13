@@ -90,13 +90,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
         setUser(authUser);
         setRole(authUser.role);
-        toast({ title: "Login Successful", description: "Welcome back!" });
+        toast({ title: "Sign In Successful", description: "Welcome back!" });
         return true;
       }
       return false;
     } catch (error: any) {
       console.error('Error during Google sign-in:', error);
-      toast({ title: "Login Failed", description: error.message || "Could not sign in with Google.", variant: "destructive" });
+      toast({ title: "Sign In Failed", description: error.message || "Could not sign in with Google.", variant: "destructive" });
       setUser(null);
       setRole(null);
       return false;
@@ -162,7 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       // onAuthStateChanged will handle setting user and role
-      toast({ title: "Login Successful", description: "Welcome back!" });
+      toast({ title: "Sign In Successful", description: "Welcome back!" });
       return { success: true };
     } catch (error: any) {
       console.error('Error signing in with email/password:', error);
@@ -181,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             errorMessage = error.message;
         }
       }
-      toast({ title: "Login Failed", description: errorMessage, variant: "destructive" });
+      toast({ title: "Sign In Failed", description: errorMessage, variant: "destructive" });
       return { success: false, error: errorMessage };
     } finally {
       setLoading(false);
@@ -217,10 +217,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signOut(auth);
       setUser(null);
       setRole(null);
-      toast({ title: "Logged Out", description: "You have been successfully logged out." });
+      toast({ title: "Signed Out", description: "You have been successfully signed out." });
     } catch (error: any) {
       console.error('Error signing out:', error);
-      toast({ title: "Logout Failed", description: error.message, variant: "destructive" });
+      toast({ title: "Sign Out Failed", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }

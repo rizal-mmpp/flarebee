@@ -26,7 +26,7 @@ const baseNavLinks = [
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, role, signOutUser, loading } = useAuth(); // Removed signInWithGoogle from here
+  const { user, role, signOutUser, loading } = useAuth(); 
   const { cartItems } = useCart(); 
 
   const navLinks = [...baseNavLinks];
@@ -130,7 +130,7 @@ export function Navbar() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={signOutUser} className="cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
+                    <span>Sign Out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -138,7 +138,7 @@ export function Navbar() {
               <Button variant="outline" asChild className="group">
                 <Link href="/auth/login">
                   <LogIn className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
-                  Login / Sign Up
+                  Sign In / Sign Up
                 </Link>
               </Button>
             )}
@@ -228,13 +228,13 @@ export function Navbar() {
                 ) : user ? (
                   <Button variant="outline" onClick={() => { signOutUser(); setMobileMenuOpen(false); }} className="w-full group text-destructive-foreground border-destructive hover:bg-destructive/10 hover:text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
-                    Log out
+                    Sign Out
                   </Button>
                 ) : (
                    <Button variant="default" asChild className="w-full group bg-primary hover:bg-primary/90 text-primary-foreground">
                     <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
                       <LogIn className="mr-2 h-4 w-4" />
-                      Login / Sign Up
+                      Sign In / Sign Up
                     </Link>
                   </Button>
                 )}
