@@ -49,7 +49,7 @@ export default function TemplatesPage() {
   }, [selectedCategory, searchTerm, allTemplates]);
 
   return (
-    <div className="container mx-auto px-4 py-12 md:py-16">
+    <div className="container mx-auto px-4 md:px-6 py-12 md:py-16"> {/* Added container classes */}
       <div className="text-center mb-12">
         <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">Explore Our Templates</h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -63,7 +63,7 @@ export default function TemplatesPage() {
           placeholder="Search templates (e.g., 'dashboard', 'react', 'portfolio')..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 text-base h-12 rounded-md"
+          className="pl-10 text-base h-12 rounded-xl"
         />
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
       </div>

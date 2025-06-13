@@ -6,14 +6,14 @@ import { ArrowLeft } from 'lucide-react';
 
 export default function TermsPage() {
   return (
-    <div className="container mx-auto px-4 py-12 md:py-16">
+    <div className="container mx-auto px-4 md:px-6 py-12 md:py-16"> {/* Added container classes */}
       <Button variant="outline" asChild className="mb-8 group">
         <Link href="/">
           <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
           Back to Home
         </Link>
       </Button>
-      <Card> {/* Removed shadow-lg */}
+      <Card> 
         <CardHeader>
           <CardTitle className="text-3xl md:text-4xl">Terms of Service</CardTitle>
         </CardHeader>

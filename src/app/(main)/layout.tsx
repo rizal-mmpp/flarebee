@@ -11,7 +11,8 @@ export default function MainLayout({
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="flex-grow">
-        <div className="container mx-auto px-4 py-8 md:px-6 md:py-12">
+        {/* Removed container and padding classes from here */}
+        <div> 
           {children}
         </div>
       </main>

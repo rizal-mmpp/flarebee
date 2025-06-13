@@ -142,7 +142,7 @@ export default function TemplateDetailPage({ params: paramsPromise }: { params: 
   
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-12 md:py-16 flex justify-center items-center min-h-[60vh]">
+      <div className="container mx-auto px-4 md:px-6 py-12 md:py-16 flex justify-center items-center min-h-[60vh]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
@@ -150,7 +150,7 @@ export default function TemplateDetailPage({ params: paramsPromise }: { params: 
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-12 md:py-16 text-center">
+      <div className="container mx-auto px-4 md:px-6 py-12 md:py-16 text-center">
          <ServerCrash className="mx-auto h-16 w-16 text-destructive mb-4" />
         <h2 className="text-2xl font-semibold text-destructive mb-2">Error Loading Template</h2>
         <p className="text-muted-foreground mb-6">{error}</p>
@@ -171,154 +171,152 @@ export default function TemplateDetailPage({ params: paramsPromise }: { params: 
   const itemAlreadyInCart = user ? isItemInCart(template.id) : false;
 
   return (
-    <>
-      <div className="container mx-auto px-4 py-12 md:py-16">
-        <Button variant="outline" asChild className="mb-8 group">
-          <Link href="/templates">
-            <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
-            Back to Templates
-          </Link>
-        </Button>
+    <div className="container mx-auto px-4 md:px-6 py-12 md:py-16"> {/* Added container classes */}
+      <Button variant="outline" asChild className="mb-8 group">
+        <Link href="/templates">
+          <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
+          Back to Templates
+        </Link>
+      </Button>
 
-        <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-          <div>
-            {template.screenshots && template.screenshots.length > 0 ? (
-              <Carousel className="w-full rounded-lg overflow-hidden border"> {/* Removed shadow-xl, added border for flat */}
-                <CarouselContent>
-                  {[template.imageUrl, ...template.screenshots].map((src, index) => (
-                    <CarouselItem key={index}>
-                      <AspectRatio ratio={16 / 9} className="bg-muted rounded-lg">
-                        <Image
-                          src={src}
-                          alt={`${template.title} screenshot ${index + 1}`}
-                          fill
-                          className="rounded-lg object-cover"
-                          data-ai-hint={template.dataAiHint || "template screenshot"}
-                          priority={index === 0}
-                           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 800px"
-                        />
-                      </AspectRatio>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-                <CarouselPrevious className="ml-12" />
-                <CarouselNext className="mr-12" />
-              </Carousel>
-            ) : (
-              <AspectRatio ratio={16 / 9} className="bg-muted rounded-lg border overflow-hidden"> {/* Removed shadow-xl, added border */}
-                <Image
-                  src={template.imageUrl}
-                  alt={template.title}
-                  fill
-                  className="rounded-lg object-cover"
-                  data-ai-hint={template.dataAiHint || "template image"}
-                  priority
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 800px"
-                />
-              </AspectRatio>
-            )}
+      <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
+        <div>
+          {template.screenshots && template.screenshots.length > 0 ? (
+            <Carousel className="w-full rounded-xl overflow-hidden border"> 
+              <CarouselContent>
+                {[template.imageUrl, ...template.screenshots].map((src, index) => (
+                  <CarouselItem key={index}>
+                    <AspectRatio ratio={16 / 9} className="bg-muted rounded-xl">
+                      <Image
+                        src={src}
+                        alt={`${template.title} screenshot ${index + 1}`}
+                        fill
+                        className="rounded-xl object-cover"
+                        data-ai-hint={template.dataAiHint || "template screenshot"}
+                        priority={index === 0}
+                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 800px"
+                      />
+                    </AspectRatio>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="ml-12" />
+              <CarouselNext className="mr-12" />
+            </Carousel>
+          ) : (
+            <AspectRatio ratio={16 / 9} className="bg-muted rounded-xl border overflow-hidden"> 
+              <Image
+                src={template.imageUrl}
+                alt={template.title}
+                fill
+                className="rounded-xl object-cover"
+                data-ai-hint={template.dataAiHint || "template image"}
+                priority
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 800px"
+              />
+            </AspectRatio>
+          )}
+        </div>
+
+        <div className="py-4">
+          <Badge variant="secondary" className="mb-2">{template.category.name}</Badge>
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">{template.title}</h1>
+          {!hasPurchased && <p className="text-4xl font-extrabold text-primary mb-6">{formatIDR(template.price)}</p>}
+          
+          <div className="mb-6 prose prose-invert max-w-none text-muted-foreground">
+            <p>{template.longDescription || template.description}</p>
           </div>
 
-          <div className="py-4">
-            <Badge variant="secondary" className="mb-2">{template.category.name}</Badge>
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">{template.title}</h1>
-            {!hasPurchased && <p className="text-4xl font-extrabold text-primary mb-6">{formatIDR(template.price)}</p>}
-            
-            <div className="mb-6 prose prose-invert max-w-none text-muted-foreground">
-              <p>{template.longDescription || template.description}</p>
-            </div>
-
-            {template.techStack && template.techStack.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-foreground mb-2 flex items-center">
-                  <Zap className="h-5 w-5 mr-2 text-primary" /> Tech Stack
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {template.techStack.map((tech) => (
-                    <Badge key={tech} variant="outline">{tech}</Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold text-foreground mb-2">Tags</h3>
+          {template.techStack && template.techStack.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-foreground mb-2 flex items-center">
+                <Zap className="h-5 w-5 mr-2 text-primary" /> Tech Stack
+              </h3>
               <div className="flex flex-wrap gap-2">
-                {template.tags.map((tag) => (
-                  <Badge key={tag} variant="default" className="bg-primary/20 text-primary hover:bg-primary/30">
-                    {tag}
-                  </Badge>
+                {template.techStack.map((tech) => (
+                  <Badge key={tech} variant="outline">{tech}</Badge>
                 ))}
               </div>
             </div>
-            
-            <div className="space-y-4">
-              {isLoadingPurchaseStatus && (
-                <div className="flex items-center justify-center h-24">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-              )}
+          )}
+          
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Tags</h3>
+            <div className="flex flex-wrap gap-2">
+              {template.tags.map((tag) => (
+                <Badge key={tag} variant="default" className="bg-primary/20 text-primary hover:bg-primary/30 rounded-full">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            {isLoadingPurchaseStatus && (
+              <div className="flex items-center justify-center h-24">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            )}
 
-              {!isLoadingPurchaseStatus && hasPurchased && (
-                <>
-                  <h3 className="text-lg font-semibold text-foreground mb-1">You own this template!</h3>
-                  <Button 
-                    size="lg" 
-                    asChild
-                    className="w-full group bg-green-600 hover:bg-green-700 text-white transition-all duration-300 ease-in-out" // Removed transform hover:scale-105
-                    disabled={!template.downloadZipUrl || template.downloadZipUrl === '#'}
-                  >
-                    <Link href={template.downloadZipUrl || '#'} target="_blank" rel="noopener noreferrer">
-                      <Download className="mr-2 h-5 w-5" /> Download ZIP
-                    </Link>
-                  </Button>
-                  {template.githubUrl && (
-                    <Button 
-                      variant="outline" 
-                      size="lg" 
-                      asChild 
-                      className="w-full group"
-                    >
-                      <Link href={template.githubUrl} target="_blank" rel="noopener noreferrer">
-                        <Github className="mr-2 h-5 w-5" /> Visit GitHub
-                      </Link>
-                    </Button>
-                  )}
-                </>
-              )}
-
-              {!isLoadingPurchaseStatus && !hasPurchased && (
-                <>
-                  <Button 
-                    size="lg" 
-                    className="w-full group bg-accent hover:bg-accent/90 text-accent-foreground transition-all duration-300 ease-in-out" // Removed transform hover:scale-105
-                    onClick={handleBuyNow}
-                    disabled={isBuyNowPending || (itemAlreadyInCart && user)}
-                  >
-                    {isBuyNowPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
-                    {itemAlreadyInCart && user ? 'Go to Checkout (In Cart)' : 'Buy Now & Checkout'}
-                  </Button>
+            {!isLoadingPurchaseStatus && hasPurchased && (
+              <>
+                <h3 className="text-lg font-semibold text-foreground mb-1">You own this template!</h3>
+                <Button 
+                  size="lg" 
+                  asChild
+                  className="w-full group bg-green-600 hover:bg-green-700 text-white transition-all duration-300 ease-in-out"
+                  disabled={!template.downloadZipUrl || template.downloadZipUrl === '#'}
+                >
+                  <Link href={template.downloadZipUrl || '#'} target="_blank" rel="noopener noreferrer">
+                    <Download className="mr-2 h-5 w-5" /> Download ZIP
+                  </Link>
+                </Button>
+                {template.githubUrl && (
                   <Button 
                     variant="outline" 
                     size="lg" 
+                    asChild 
                     className="w-full group"
-                    onClick={handleAddToCart}
-                    disabled={(itemAlreadyInCart && user) || isBuyNowPending}
                   >
-                    <ShoppingCart className="mr-2 h-5 w-5" />
-                    {itemAlreadyInCart && user ? 'Already in Cart' : 'Add to Cart'}
+                    <Link href={template.githubUrl} target="_blank" rel="noopener noreferrer">
+                      <Github className="mr-2 h-5 w-5" /> Visit GitHub
+                    </Link>
                   </Button>
-                </>
-              )}
-              
-              {template.previewUrl && template.previewUrl !== '#' && (
-                <Button variant="outline" size="lg" asChild className="w-full group border-primary text-primary hover:bg-primary/10 transition-all duration-300 ease-in-out"> {/* Removed transform hover:scale-105 */}
-                  <Link href={template.previewUrl} target="_blank" rel="noopener noreferrer">
-                    <Eye className="mr-2 h-5 w-5" /> Live Preview
-                  </Link>
+                )}
+              </>
+            )}
+
+            {!isLoadingPurchaseStatus && !hasPurchased && (
+              <>
+                <Button 
+                  size="lg" 
+                  className="w-full group bg-accent hover:bg-accent/90 text-accent-foreground transition-all duration-300 ease-in-out"
+                  onClick={handleBuyNow}
+                  disabled={isBuyNowPending || (itemAlreadyInCart && user)}
+                >
+                  {isBuyNowPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
+                  {itemAlreadyInCart && user ? 'Go to Checkout (In Cart)' : 'Buy Now & Checkout'}
                 </Button>
-              )}
-            </div>
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  className="w-full group"
+                  onClick={handleAddToCart}
+                  disabled={(itemAlreadyInCart && user) || isBuyNowPending}
+                >
+                  <ShoppingCart className="mr-2 h-5 w-5" />
+                  {itemAlreadyInCart && user ? 'Already in Cart' : 'Add to Cart'}
+                </Button>
+              </>
+            )}
+            
+            {template.previewUrl && template.previewUrl !== '#' && (
+              <Button variant="outline" size="lg" asChild className="w-full group border-primary text-primary hover:bg-primary/10 transition-all duration-300 ease-in-out">
+                <Link href={template.previewUrl} target="_blank" rel="noopener noreferrer">
+                  <Eye className="mr-2 h-5 w-5" /> Live Preview
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -327,6 +325,6 @@ export default function TemplateDetailPage({ params: paramsPromise }: { params: 
         onOpenChange={setIsLoginModalOpen} 
         onLogin={signInWithGoogle} 
       />
-    </>
+    </div>
   );
 }

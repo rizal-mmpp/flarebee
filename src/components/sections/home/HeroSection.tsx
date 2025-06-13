@@ -6,7 +6,7 @@ import { ArrowRight, Sparkles } from 'lucide-react';
 export function HeroSection() {
   return (
     <section className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] bg-gradient-to-br from-background to-secondary">
-      <div className="container mx-auto px-4 text-center">
+      <div className="container mx-auto px-4 md:px-6 text-center"> {/* Ensured md:px-6 */}
         <div className="inline-flex items-center justify-center rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary mb-6">
           <Sparkles className="h-4 w-4 mr-2" />
           <span>Powered by AI & Modern Design</span>

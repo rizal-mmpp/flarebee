@@ -125,7 +125,7 @@ export default function CheckoutPage() {
 
   if (authLoading || cartLoading) {
     return (
-      <div className="container mx-auto px-4 py-12 md:py-16 flex justify-center items-center min-h-[calc(100vh-10rem)]">
+      <div className="container mx-auto px-4 md:px-6 py-12 md:py-16 flex justify-center items-center min-h-[calc(100vh-10rem)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="ml-4 text-muted-foreground">Loading your cart...</p>
       </div>
@@ -134,8 +134,8 @@ export default function CheckoutPage() {
 
   if (!user) {
     return (
-       <div className="container mx-auto px-4 py-12 md:py-16 flex justify-center items-center min-h-[calc(100vh-10rem)]">
-         <Card className="text-center"> {/* Removed shadow-lg */}
+       <div className="container mx-auto px-4 md:px-6 py-12 md:py-16 flex justify-center items-center min-h-[calc(100vh-10rem)]">
+         <Card className="text-center">
           <CardContent className="p-6">
             <LogIn className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
             <p className="text-xl text-muted-foreground mb-6">Please log in to access your cart.</p>
@@ -149,7 +149,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-12 md:py-16">
+    <div className="container mx-auto px-4 md:px-6 py-12 md:py-16"> {/* Ensured md:px-6 */}
       <Button variant="outline" asChild className="mb-8 group">
         <Link href="/templates">
           <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
@@ -160,7 +160,7 @@ export default function CheckoutPage() {
       <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-8 text-center">Shopping Cart</h1>
 
       {cartItems.length === 0 ? (
-        <Card> {/* Removed shadow-lg */}
+        <Card>
           <CardContent className="p-6 text-center">
             <ShoppingBag className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
             <p className="text-xl text-muted-foreground mb-6">Your cart is empty.</p>
@@ -173,7 +173,7 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             {cartItems.map((item) => (
-              <Card key={item.id} className="flex flex-col sm:flex-row items-center gap-4 p-4"> {/* Removed shadow-md */}
+              <Card key={item.id} className="flex flex-col sm:flex-row items-center gap-4 p-4"> 
                 <div className="relative w-32 h-20 sm:w-40 sm:h-24 rounded-md overflow-hidden flex-shrink-0">
                   <Image
                     src={item.imageUrl}
@@ -203,7 +203,7 @@ export default function CheckoutPage() {
           </div>
 
           <div className="lg:col-span-1">
-            <Card className="sticky top-24"> {/* Removed shadow-xl */}
+            <Card className="sticky top-24"> 
               <CardHeader>
                 <CardTitle className="text-2xl">Order Summary</CardTitle>
               </CardHeader>
