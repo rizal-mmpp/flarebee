@@ -1,7 +1,7 @@
 
 'use client';
 import Link from 'next/link';
-import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, LayoutGrid, ShoppingCart, ChevronDown } from 'lucide-react';
+import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, LayoutGrid, ShoppingCart, ChevronDown, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
@@ -42,7 +42,7 @@ export function Navbar() {
 
   const mobileMenuItemClass = "flex items-center rounded-md p-2 text-base font-bold text-card-foreground transition-colors hover:bg-muted w-full";
   const mobileMenuAccordionTriggerClass = cn(mobileMenuItemClass, "justify-between hover:no-underline");
-  const mobileMenuAccordionContentLinkClass = cn(mobileMenuItemClass, "font-normal");
+  const mobileMenuAccordionContentLinkClass = cn(mobileMenuItemClass, "font-normal text-sm"); // Adjusted for sub-items
 
   const desktopMenuItemClass = "text-sm text-foreground/80 transition-colors hover:text-foreground hover:font-medium";
   const desktopDropdownItemClass = "cursor-pointer text-sm";
@@ -57,7 +57,6 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-4 text-sm ml-auto">
-          {/* Desktop Navigation Links */}
           <DropdownMenu>
             <DropdownMenuTrigger className={cn(desktopMenuItemClass, "flex items-center gap-1 outline-none")}>
               Explore <ChevronDown className="h-4 w-4" />
@@ -160,7 +159,6 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Mobile Menu Sheet */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild className="md:hidden">
               <Button variant="ghost" size="icon" aria-label="Toggle menu">
@@ -176,9 +174,8 @@ export function Navbar() {
               </SheetHeader>
               
               <div className="flex-grow overflow-y-auto p-6 space-y-2 flex flex-col">
-                {/* User Data Section - Top of scrollable area */}
                 {user && (
-                  <div className="mb-4"> 
+                  <div className="mb-2"> 
                     <div className="flex items-center gap-3 mb-2">
                       <Avatar className="h-12 w-12">
                         <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
@@ -195,11 +192,9 @@ export function Navbar() {
                         )}
                       </div>
                     </div>
-                    <Separator className="my-3"/>
                   </div>
                 )}
 
-                {/* Navigation Links - Accordion for Explore */}
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="explore-categories" className="border-b-0">
                     <AccordionTrigger className={mobileMenuAccordionTriggerClass}>
@@ -265,11 +260,10 @@ export function Navbar() {
                   </Link>
                 )}
                 
-                {/* Pusher div to push sign out to bottom */}
                 <div className="flex-grow"></div>
 
-                {/* Sign Out / Sign In Section at the bottom */}
-                <div className="pt-6 mt-auto border-t border-border">               
+                <Separator className="my-3"/>
+                <div className="pt-2">               
                   {loading ? (
                     <div className="h-10 w-full animate-pulse rounded-md bg-muted"></div>
                   ) : user ? (

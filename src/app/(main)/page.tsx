@@ -2,6 +2,7 @@
 'use client'; 
 
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { CATEGORIES } from '@/lib/constants';
 import { CategoryFilter } from '@/components/sections/templates/CategoryFilter';
 import { TemplateGrid } from '@/components/sections/templates/TemplateGrid';
@@ -32,6 +33,8 @@ export default function HomePage() {
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   useEffect(() => {
     async function fetchTemplates() {
@@ -47,6 +50,15 @@ export default function HomePage() {
     }
     fetchTemplates();
   }, []);
+
+  useEffect(() => {
+    const categoryFromQuery = searchParams.get('category');
+    if (categoryFromQuery && CATEGORIES.some(cat => cat.slug === categoryFromQuery)) {
+      setSelectedCategory(categoryFromQuery);
+    } else if (!categoryFromQuery) { // Only reset if no category query param
+      setSelectedCategory(null);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -66,22 +78,26 @@ export default function HomePage() {
 
   const handleSelectCategory = (slug: string | null) => {
     setSelectedCategory(slug);
-    // Optionally, deactivate search when a category is clicked
-    // setIsSearchActive(false); 
+    router.push(slug ? `/?category=${slug}` : '/', { scroll: false });
+    setIsSearchActive(false); 
   };
 
   const handleSuggestionClick = (suggestion: string) => {
     setSearchTerm(suggestion);
-    setIsSearchActive(false);
-    inputRef.current?.focus(); // Keep focus or blur, depending on desired UX
+    setIsSearchActive(false); 
+    inputRef.current?.focus();
   };
 
-  const handleCancelSearch = () => {
-    setSearchTerm('');
-    setIsSearchActive(false);
-    inputRef.current?.blur();
+  const handleClearOrCancelSearch = () => {
+    if (searchTerm) {
+      setSearchTerm('');
+      inputRef.current?.focus();
+    } else {
+      setIsSearchActive(false);
+      inputRef.current?.blur();
+    }
   };
-
+  
   const filteredTemplates = useMemo(() => {
     return allTemplates.filter((template) => {
       const categoryMatch = selectedCategory ? template.category.slug === selectedCategory : true;
@@ -106,37 +122,36 @@ export default function HomePage() {
       </div>
       
       <div ref={searchContainerRef} className="mb-8 max-w-xl mx-auto relative">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-grow">
-            <Input 
-              ref={inputRef}
-              type="text"
-              placeholder="What are you looking for?"
-              value={searchTerm}
-              onFocus={() => setIsSearchActive(true)}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={cn(
-                "pl-10 pr-3 text-base h-12 rounded-xl transition-all duration-150 ease-in-out w-full",
-                isSearchActive 
-                  ? "bg-background border border-primary focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0" 
-                  : "bg-muted border-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-              )}
-            />
-            <Search 
-              className={cn(
-                "absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 pointer-events-none",
-                isSearchActive ? "text-primary" : "text-muted-foreground"
-              )} 
-            />
-          </div>
+        <div className="relative flex items-center">
+          <Search 
+            className={cn(
+              "absolute left-3.5 top-1/2 transform -translate-y-1/2 h-5 w-5 pointer-events-none z-10",
+              isSearchActive ? "text-primary" : "text-muted-foreground"
+            )} 
+          />
+          <Input 
+            ref={inputRef}
+            type="text"
+            placeholder="What are you looking for?"
+            value={searchTerm}
+            onFocus={() => setIsSearchActive(true)}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className={cn(
+              "pl-10 pr-10 text-base h-12 transition-all duration-150 ease-in-out w-full rounded-full", // Added pr-10 for X icon space
+              isSearchActive 
+                ? "bg-background border border-primary focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0" 
+                : "bg-muted border-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+            )}
+          />
           {isSearchActive && (
             <Button 
               variant="ghost" 
-              size="sm" 
-              onClick={handleCancelSearch} 
-              className="text-muted-foreground hover:text-foreground px-3 h-10" // Matched height roughly
+              size="icon" 
+              onClick={handleClearOrCancelSearch} 
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 text-muted-foreground hover:text-foreground rounded-full"
+              aria-label={searchTerm ? "Clear search" : "Cancel search"}
             >
-              Cancel
+              <X className="h-5 w-5" />
             </Button>
           )}
         </div>
@@ -169,13 +184,14 @@ export default function HomePage() {
                         <li
                         key={template.id}
                         onClick={() => {
+                            // Navigate to template page or fill search, depending on desired UX
+                            // For now, let's fill search and close suggestions
                             setSearchTerm(template.title);
                             setIsSearchActive(false);
-                            // Potentially navigate or scroll to template if needed
+                            router.push(`/templates/${template.id}`);
                         }}
                         className="flex items-center gap-2 p-2 hover:bg-muted rounded-lg cursor-pointer text-sm group"
                         >
-                        {/* Could add a small image or specific icon here */}
                         <span className="text-foreground/80 group-hover:text-foreground line-clamp-1">{template.title}</span>
                         <span className="text-xs text-primary ml-auto">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(template.price)}</span>
                         </li>
@@ -205,4 +221,3 @@ export default function HomePage() {
     </div>
   );
 }
-
