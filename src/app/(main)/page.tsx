@@ -132,7 +132,7 @@ export default function HomePage() {
           <Input 
             ref={inputRef}
             type="text"
-            placeholder="What are you looking for?"
+            placeholder="Search for templates..."
             value={searchTerm}
             onFocus={() => setIsSearchActive(true)}
             onChange={(e) => setSearchTerm(e.target.value)}

@@ -165,7 +165,7 @@ export function Navbar() {
                  <CustomMenuIcon isOpen={mobileMenuOpen} />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[90vw] bg-card p-0 flex flex-col">
+            <SheetContent side="right" className="w-[85vw] bg-card p-0 flex flex-col">
               <SheetHeader className="p-6 pb-4 border-b border-border">
                 <SheetTitle className="flex items-center gap-2 text-lg font-semibold text-card-foreground">
                    <Hexagon className="h-7 w-7 text-primary" />
@@ -226,6 +226,21 @@ export function Navbar() {
 
                 {user && (
                   <Link
+                      href="/checkout"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={cn(mobileMenuItemClass, "relative")}
+                  >
+                      <ShoppingCart className="mr-2 h-5 w-5" /> <span className="text-card-foreground">Cart</span>
+                      {cartItemCount > 0 && (
+                          <Badge variant="destructive" className="absolute top-1 right-1 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
+                          {cartItemCount}
+                          </Badge>
+                      )}
+                  </Link>
+                )}
+
+                {user && (
+                  <Link
                     href="/dashboard"
                     onClick={() => setMobileMenuOpen(false)}
                     className={mobileMenuItemClass}
@@ -242,21 +257,6 @@ export function Navbar() {
                     className={mobileMenuItemClass}
                   >
                      <LayoutGrid className="mr-2 h-5 w-5" /> <span className="text-card-foreground">Admin Panel</span>
-                  </Link>
-                )}
-
-                {user && (
-                  <Link
-                      href="/checkout"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={cn(mobileMenuItemClass, "relative")}
-                  >
-                      <ShoppingCart className="mr-2 h-5 w-5" /> <span className="text-card-foreground">Cart</span>
-                      {cartItemCount > 0 && (
-                          <Badge variant="destructive" className="absolute top-1 right-1 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
-                          {cartItemCount}
-                          </Badge>
-                      )}
                   </Link>
                 )}
                 
