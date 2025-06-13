@@ -51,8 +51,8 @@ export default function HomePage() {
   return (
     <div className="container mx-auto px-4 md:px-6 py-12 md:py-16">
       <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-          Launch <span className="font-normal italic text-muted-foreground">Faster</span> with Modern <span className="text-accent">Templates</span>
+        <h1 className="text-4xl md:text-5xl font-happy-monkey text-foreground mb-4">
+          Launch <span className="italic font-normal text-muted-foreground">Faster</span> with Modern <span className="text-accent">Templates</span>
         </h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
           Browse ready-to-use templates built with cutting-edge technology. Ship your projects quicker and impress your users.
@@ -65,7 +65,7 @@ export default function HomePage() {
           placeholder="Search templates (e.g., 'dashboard', 'react', 'portfolio')..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 text-base h-12 rounded-xl"
+          className="pl-10 text-base h-12 rounded-xl focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none"
         />
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
       </div>

@@ -1,7 +1,7 @@
 
 'use client';
 import Link from 'next/link';
-import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, LayoutGrid, ShoppingCart, HomeIcon, ChevronDown } from 'lucide-react';
+import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, LayoutGrid, ShoppingCart, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
@@ -23,17 +23,10 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { CATEGORIES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
-const baseNavLinks = [
-  // Home is implicitly handled by the logo/brand link.
-  // Other base links can be added here if needed in the future.
-];
-
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, role, signOutUser, loading } = useAuth();
   const { cartItems } = useCart();
-
-  const navLinks = [...baseNavLinks]; // Currently empty, can be extended
 
   const getAvatarFallback = (displayName: string | null | undefined) => {
     if (!displayName) return <UserCircle className="h-6 w-6" />;
@@ -49,7 +42,11 @@ export function Navbar() {
 
   const mobileMenuItemClass = "flex items-center rounded-md p-2 text-base font-bold text-card-foreground transition-colors hover:bg-muted w-full";
   const mobileMenuAccordionTriggerClass = cn(mobileMenuItemClass, "justify-between hover:no-underline");
-  const mobileMenuAccordionContentLinkClass = cn(mobileMenuItemClass, "font-normal"); // Sub-items might not need to be as bold
+  const mobileMenuAccordionContentLinkClass = cn(mobileMenuItemClass, "font-normal");
+
+  const desktopMenuItemClass = "text-sm text-foreground/80 transition-colors hover:text-foreground hover:font-medium";
+  const desktopDropdownItemClass = "cursor-pointer text-sm";
+
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -59,26 +56,29 @@ export function Navbar() {
           <span className="text-sm sm:text-base font-bold text-foreground whitespace-nowrap">RAGAM INOVASI OPTIMA</span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6 text-sm ml-auto">
-          <Link
-              href="/"
-              className="text-foreground/80 transition-colors hover:text-foreground hover:font-medium"
-            >
-              Home
-          </Link>
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-foreground/80 transition-colors hover:text-foreground hover:font-medium"
-            >
-              {link.label}
-            </Link>
-          ))}
+        <nav className="hidden md:flex items-center gap-4 text-sm ml-auto">
+          {/* Desktop Navigation Links */}
+          <DropdownMenu>
+            <DropdownMenuTrigger className={cn(desktopMenuItemClass, "flex items-center gap-1 outline-none")}>
+              Explore <ChevronDown className="h-4 w-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56">
+              <DropdownMenuItem asChild className={desktopDropdownItemClass}>
+                <Link href="/">All Templates</Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {CATEGORIES.map((category) => (
+                <DropdownMenuItem key={category.id} asChild className={desktopDropdownItemClass}>
+                  <Link href={`/?category=${category.slug}`}>{category.name}</Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {user && role === 'admin' && (
              <Link
               href="/admin/dashboard"
-              className="text-foreground/80 transition-colors hover:text-foreground hover:font-medium"
+              className={desktopMenuItemClass}
             >
               Admin Panel
             </Link>
@@ -129,22 +129,22 @@ export function Navbar() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard" className="w-full">
+                  <DropdownMenuItem asChild className={desktopDropdownItemClass}>
+                    <Link href="/dashboard" className="w-full flex items-center">
                       <LayoutDashboard className="mr-2 h-4 w-4" />
                       <span>Dashboard</span>
                     </Link>
                   </DropdownMenuItem>
                   {role === 'admin' && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/admin/dashboard" className="w-full">
+                    <DropdownMenuItem asChild className={desktopDropdownItemClass}>
+                      <Link href="/admin/dashboard" className="w-full flex items-center">
                         <LayoutGrid className="mr-2 h-4 w-4" />
                         <span>Admin Panel</span>
                       </Link>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={signOutUser} className="cursor-pointer">
+                  <DropdownMenuItem onClick={signOutUser} className={cn(desktopDropdownItemClass, "text-destructive focus:text-destructive")}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign Out</span>
                   </DropdownMenuItem>
@@ -160,6 +160,7 @@ export function Navbar() {
             )}
           </div>
 
+          {/* Mobile Menu Sheet */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild className="md:hidden">
               <Button variant="ghost" size="icon" aria-label="Toggle menu">
@@ -174,10 +175,10 @@ export function Navbar() {
                 </SheetTitle>
               </SheetHeader>
               
-              {/* Main scrollable content area */}
-              <div className="flex-grow overflow-y-auto p-6 space-y-2">
+              <div className="flex-grow overflow-y-auto p-6 space-y-2 flex flex-col">
+                {/* User Data Section - Top of scrollable area */}
                 {user && (
-                  <div className="mb-4"> {/* User Data Section - moved higher for now, will be adjusted in next step */}
+                  <div className="mb-4"> 
                     <div className="flex items-center gap-3 mb-2">
                       <Avatar className="h-12 w-12">
                         <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
@@ -194,18 +195,17 @@ export function Navbar() {
                         )}
                       </div>
                     </div>
+                    <Separator className="my-3"/>
                   </div>
                 )}
 
-                {/* Navigation Links */}
+                {/* Navigation Links - Accordion for Explore */}
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="explore-categories" className="border-b-0">
                     <AccordionTrigger className={mobileMenuAccordionTriggerClass}>
-                      <div className="flex items-center">
-                        <HomeIcon className="mr-2 h-5 w-5" /> {/* Example Icon, change as needed */}
+                      <div className="flex items-center text-card-foreground">
                         Explore
                       </div>
-                      {/* ChevronDown is part of AccordionTrigger by default */}
                     </AccordionTrigger>
                     <AccordionContent className="pl-4 pt-1 pb-0 space-y-1">
                        <Link
@@ -229,7 +229,6 @@ export function Navbar() {
                   </AccordionItem>
                 </Accordion>
 
-
                 {user && (
                   <Link
                     href="/dashboard"
@@ -237,7 +236,7 @@ export function Navbar() {
                     className={mobileMenuItemClass}
                   >
                     <LayoutDashboard className="mr-2 h-5 w-5" />
-                    Dashboard
+                    <span className="text-card-foreground">Dashboard</span>
                   </Link>
                 )}
 
@@ -247,7 +246,7 @@ export function Navbar() {
                     onClick={() => setMobileMenuOpen(false)}
                     className={mobileMenuItemClass}
                   >
-                     <LayoutGrid className="mr-2 h-5 w-5" /> Admin Panel
+                     <LayoutGrid className="mr-2 h-5 w-5" /> <span className="text-card-foreground">Admin Panel</span>
                   </Link>
                 )}
 
@@ -257,7 +256,7 @@ export function Navbar() {
                       onClick={() => setMobileMenuOpen(false)}
                       className={cn(mobileMenuItemClass, "relative")}
                   >
-                      <ShoppingCart className="mr-2 h-5 w-5" /> Cart
+                      <ShoppingCart className="mr-2 h-5 w-5" /> <span className="text-card-foreground">Cart</span>
                       {cartItemCount > 0 && (
                           <Badge variant="destructive" className="absolute top-1 right-1 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
                           {cartItemCount}
@@ -265,53 +264,32 @@ export function Navbar() {
                       )}
                   </Link>
                 )}
-              </div>
-              
-              {/* Bottom Section (User data and Sign Out / Sign In) */}
-              <div className="p-6 mt-auto border-t border-border space-y-4">
-                {user && (
-                   <div className="mb-0"> {/* User Data Section */}
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
-                        <AvatarFallback>{getAvatarFallback(user.displayName)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm font-medium leading-tight text-card-foreground">{user.displayName || 'User'}</p>
-                        <p className="text-xs leading-tight text-muted-foreground">{user.email}</p>
-                         {role && (
-                          <p className="text-xs leading-none text-muted-foreground flex items-center pt-0.5">
-                            <ShieldCheck className="mr-1 h-3 w-3 text-primary" />
-                            <span className="font-medium capitalize text-card-foreground/80">{role}</span>
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                     <Button variant="link" asChild className="pl-0 mt-1 text-xs h-auto py-0 text-primary hover:text-primary/80">
-                        <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>View Dashboard</Link>
-                     </Button>
-                  </div>
-                )}
-               
-                {loading ? (
-                  <div className="h-10 w-full animate-pulse rounded-md bg-muted"></div>
-                ) : user ? (
-                  <Button 
-                    variant="outline" 
-                    onClick={() => { signOutUser(); setMobileMenuOpen(false); }} 
-                    className="w-full group text-destructive border-destructive/70 hover:bg-destructive/10 hover:text-destructive hover:border-destructive"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sign Out
-                  </Button>
-                ) : (
-                   <Button variant="default" asChild className="w-full group bg-primary hover:bg-primary/90 text-primary-foreground">
-                    <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
-                      <LogIn className="mr-2 h-4 w-4" />
-                      Sign In / Sign Up
-                    </Link>
-                  </Button>
-                )}
+                
+                {/* Pusher div to push sign out to bottom */}
+                <div className="flex-grow"></div>
+
+                {/* Sign Out / Sign In Section at the bottom */}
+                <div className="pt-6 mt-auto border-t border-border">               
+                  {loading ? (
+                    <div className="h-10 w-full animate-pulse rounded-md bg-muted"></div>
+                  ) : user ? (
+                    <Button 
+                      variant="outline" 
+                      onClick={() => { signOutUser(); setMobileMenuOpen(false); }} 
+                      className="w-full group text-destructive border-destructive/70 hover:bg-destructive/10 hover:text-destructive hover:border-destructive"
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sign Out
+                    </Button>
+                  ) : (
+                    <Button variant="default" asChild className="w-full group bg-primary hover:bg-primary/90 text-primary-foreground">
+                      <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
+                        <LogIn className="mr-2 h-4 w-4" />
+                        Sign In / Sign Up
+                      </Link>
+                    </Button>
+                  )}
+                </div>
               </div>
             </SheetContent>
           </Sheet>
@@ -320,4 +298,3 @@ export function Navbar() {
     </header>
   );
 }
-
