@@ -42,7 +42,8 @@ export function Navbar() {
 
   const mobileMenuMainItemClass = "flex items-center rounded-md p-2 text-base font-bold text-card-foreground transition-colors hover:bg-muted w-full";
   const mobileMenuAccordionTriggerClass = cn(mobileMenuMainItemClass, "justify-between hover:no-underline");
-  const mobileMenuAccordionContentLinkClass = cn(mobileMenuMainItemClass, "font-normal text-sm");
+  const mobileMenuAccordionContentLinkClass = cn(mobileMenuMainItemClass, "font-normal text-sm hover:bg-muted/80");
+
 
   const desktopMenuItemClass = "text-sm text-foreground/80 transition-colors hover:text-foreground hover:font-medium";
   const desktopDropdownItemClass = "cursor-pointer text-sm";
@@ -161,7 +162,7 @@ export function Navbar() {
 
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon" aria-label="Toggle menu">
+              <Button variant="ghost" size="icon" aria-label="Toggle menu" className="h-9 w-9">
                  <CustomMenuIcon isOpen={mobileMenuOpen} />
               </Button>
             </SheetTrigger>
@@ -214,7 +215,7 @@ export function Navbar() {
                   <AccordionItem value="explore-categories" className="border-b-0">
                     <AccordionTrigger className={mobileMenuAccordionTriggerClass}>
                       <div className="flex items-center">
-                        <Compass className="mr-2 h-5 w-5" /> {/* Changed icon here */}
+                        <Compass className="mr-2 h-5 w-5" />
                         Explore
                       </div>
                     </AccordionTrigger>
