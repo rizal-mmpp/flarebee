@@ -1,7 +1,7 @@
 
 'use client';
 import Link from 'next/link';
-import { Hexagon, LogIn, LogOut, Menu, UserCircle, X, LayoutDashboard, ShieldCheck, LayoutGrid, ShoppingCart, ExternalLink } from 'lucide-react';
+import { Hexagon, LogIn, LogOut, Menu, UserCircle, X, LayoutDashboard, ShieldCheck, LayoutGrid, ShoppingCart } from 'lucide-react'; // Removed ExternalLink as it was only used in removed "Explore"
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 
 const baseNavLinks = [
   { href: '/', label: 'Home' },
-  { href: '/templates', label: 'Explore' },
+  // { href: '/templates', label: 'Explore' }, // Removed Explore link
 ];
 
 export function Navbar() {

@@ -149,9 +149,9 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 md:px-6 py-12 md:py-16"> {/* Ensured md:px-6 */}
+    <div className="container mx-auto px-4 md:px-6 py-12 md:py-16">
       <Button variant="outline" asChild className="mb-8 group">
-        <Link href="/templates">
+        <Link href="/">
           <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
           Continue Shopping
         </Link>
@@ -165,7 +165,7 @@ export default function CheckoutPage() {
             <ShoppingBag className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
             <p className="text-xl text-muted-foreground mb-6">Your cart is empty.</p>
             <Button asChild>
-              <Link href="/templates">Explore Templates</Link>
+              <Link href="/">Explore Templates</Link>
             </Button>
           </CardContent>
         </Card>

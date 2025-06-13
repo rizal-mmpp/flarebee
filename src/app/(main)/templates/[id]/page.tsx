@@ -155,7 +155,7 @@ export default function TemplateDetailPage({ params: paramsPromise }: { params: 
         <h2 className="text-2xl font-semibold text-destructive mb-2">Error Loading Template</h2>
         <p className="text-muted-foreground mb-6">{error}</p>
         <Button variant="outline" asChild className="group">
-          <Link href="/templates">
+          <Link href="/">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Templates
           </Link>
@@ -171,9 +171,9 @@ export default function TemplateDetailPage({ params: paramsPromise }: { params: 
   const itemAlreadyInCart = user ? isItemInCart(template.id) : false;
 
   return (
-    <div className="container mx-auto px-4 md:px-6 py-12 md:py-16"> {/* Added container classes */}
+    <div className="container mx-auto px-4 md:px-6 py-12 md:py-16">
       <Button variant="outline" asChild className="mb-8 group">
-        <Link href="/templates">
+        <Link href="/">
           <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
           Back to Templates
         </Link>
