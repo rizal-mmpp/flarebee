@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
 import { useAuth } from '@/lib/firebase/AuthContext';
-import { useCart } from '@/context/CartContext'; // Import useCart
+import { useCart } from '@/context/CartContext'; 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -26,8 +26,8 @@ const baseNavLinks = [
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, role, signInWithGoogle, signOutUser, loading } = useAuth();
-  const { cartItems } = useCart(); // Get cart items
+  const { user, role, signOutUser, loading } = useAuth(); // Removed signInWithGoogle from here
+  const { cartItems } = useCart(); 
 
   const navLinks = [...baseNavLinks];
 
@@ -72,7 +72,6 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-3 pl-4">
-          {/* Cart Icon */}
           <Button variant="ghost" size="icon" asChild className="relative hidden md:inline-flex">
             <Link href="/checkout">
               <ShoppingCart className="h-5 w-5" />
@@ -85,7 +84,6 @@ export function Navbar() {
             </Link>
           </Button>
 
-          {/* Desktop Auth Buttons / Profile Dropdown */}
           <div className="hidden md:flex items-center">
             {loading ? (
               <div className="h-9 w-24 animate-pulse rounded-md bg-muted"></div>
@@ -137,14 +135,15 @@ export function Navbar() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button variant="outline" onClick={signInWithGoogle} className="group">
-                <LogIn className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
-                Login with Google
+              <Button variant="outline" asChild className="group">
+                <Link href="/auth/login">
+                  <LogIn className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
+                  Login / Sign Up
+                </Link>
               </Button>
             )}
           </div>
 
-          {/* Mobile Menu Trigger */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild className="md:hidden">
               <Button variant="ghost" size="icon">
@@ -161,7 +160,6 @@ export function Navbar() {
               </SheetHeader>
               
               <div className="flex-grow overflow-y-auto p-6 space-y-3">
-                 {/* Mobile Cart Link */}
                 <Link
                     href="/checkout"
                     onClick={() => setMobileMenuOpen(false)}
@@ -233,9 +231,11 @@ export function Navbar() {
                     Log out
                   </Button>
                 ) : (
-                  <Button variant="default" onClick={() => { signInWithGoogle(); setMobileMenuOpen(false); }} className="w-full group bg-primary hover:bg-primary/90 text-primary-foreground">
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Login with Google
+                   <Button variant="default" asChild className="w-full group bg-primary hover:bg-primary/90 text-primary-foreground">
+                    <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
+                      <LogIn className="mr-2 h-4 w-4" />
+                      Login / Sign Up
+                    </Link>
                   </Button>
                 )}
               </div>
