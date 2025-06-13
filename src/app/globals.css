@@ -33,15 +33,15 @@ body {
     --destructive: 0 72% 51%; /* Red #E53E3E */
     --destructive-foreground: 0 0% 98%; /* Off-white for red bg #F8FAFC */
 
-    --border: 220 15% 88%; /* Light Gray Border #DDE1E6 */
-    --input: 0 0% 100%; /* White input background */
+    --border: 220 15% 80%; /* #C4C9D4 - Made slightly darker for light theme */
+    --input: 220 15% 80%; /* Using the same as border for input borders on light theme */
     --ring: 45 100% 58%; /* Yellow for focus rings #FFC72C */
 
     --radius: 0.5rem;
 
     /* Charts will use these, colors defined based on light background */
-    --chart-1: 45 100% 50%; /* Adjusted Primary for light bg */
-    --chart-2: 33 100% 45%; /* Adjusted Accent for light bg */
+    --chart-1: 45 100% 50%;
+    --chart-2: 33 100% 45%;
     --chart-3: 220 15% 45%; 
     --chart-4: 210 40% 60%;
     --chart-5: 220 10% 55%; 
