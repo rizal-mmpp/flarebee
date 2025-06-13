@@ -21,7 +21,8 @@ import { Badge } from '@/components/ui/badge';
 import { CustomMenuIcon } from '@/components/shared/CustomMenuIcon';
 
 const baseNavLinks = [
-  { href: '/', label: 'Home' },
+  // Home is implicitly handled by the logo/brand link.
+  // Other base links can be added here if needed in the future.
 ];
 
 export function Navbar() {
@@ -29,7 +30,7 @@ export function Navbar() {
   const { user, role, signOutUser, loading } = useAuth();
   const { cartItems } = useCart();
 
-  const navLinks = [...baseNavLinks];
+  const navLinks = [...baseNavLinks]; // Currently empty, can be extended
 
   const getAvatarFallback = (displayName: string | null | undefined) => {
     if (!displayName) return <UserCircle className="h-6 w-6" />;
@@ -52,6 +53,12 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm ml-auto">
+          <Link
+              href="/"
+              className="text-foreground/80 transition-colors hover:text-foreground hover:font-medium"
+            >
+              Home
+          </Link>
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -160,48 +167,11 @@ export function Navbar() {
                 </SheetTitle>
               </SheetHeader>
               
-              <div className="flex-grow overflow-y-auto p-6 space-y-3">
+              {/* Main scrollable content area */}
+              <div className="flex-grow overflow-y-auto p-6 space-y-4">
                 {user && (
-                  <Link
-                      href="/checkout"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center rounded-md p-2 text-base font-medium text-card-foreground/80 transition-colors hover:bg-muted hover:text-card-foreground relative"
-                  >
-                      <ShoppingCart className="mr-2 h-5 w-5" /> Cart
-                      {cartItemCount > 0 && (
-                          <Badge variant="destructive" className="absolute top-1 right-1 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
-                          {cartItemCount}
-                          </Badge>
-                      )}
-                  </Link>
-                )}
-
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center rounded-md p-2 text-base font-medium text-card-foreground/80 transition-colors hover:bg-muted hover:text-card-foreground"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-                {user && role === 'admin' && (
-                  <Link
-                    href="/admin/dashboard"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center rounded-md p-2 text-base font-medium text-card-foreground/80 transition-colors hover:bg-muted hover:text-card-foreground"
-                  >
-                     <LayoutGrid className="mr-2 h-4 w-4" /> Admin Panel
-                  </Link>
-                )}
-              </div>
-              
-              {/* User Info and Sign Out Section - Pushed to bottom */}
-              <div className="p-6 mt-auto border-t border-border">
-                {user && (
-                  <div className="mb-4">
-                    <div className="flex items-center gap-3 mb-3">
+                  <div className="mb-6"> {/* User Data Section */}
+                    <div className="flex items-center gap-3 mb-2">
                       <Avatar className="h-12 w-12">
                         <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
                         <AvatarFallback className="text-lg">{getAvatarFallback(user.displayName)}</AvatarFallback>
@@ -217,22 +187,64 @@ export function Navbar() {
                         )}
                       </div>
                     </div>
-                     <Button variant="ghost" size="sm" asChild className="w-full justify-start text-card-foreground/90 hover:text-card-foreground">
-                        <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
-                          <LayoutDashboard className="mr-2 h-4 w-4" />
-                          Dashboard
-                        </Link>
-                      </Button>
                   </div>
                 )}
 
+                {/* Navigation Links */}
+                <Link
+                  href="/"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center rounded-md p-2 text-base font-medium text-card-foreground/80 transition-colors hover:bg-muted hover:text-card-foreground"
+                >
+                  Home
+                </Link>
+
+                {user && (
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center rounded-md p-2 text-base font-medium text-card-foreground/80 transition-colors hover:bg-muted hover:text-card-foreground"
+                  >
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    Dashboard
+                  </Link>
+                )}
+
+                {user && role === 'admin' && (
+                  <Link
+                    href="/admin/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center rounded-md p-2 text-base font-medium text-card-foreground/80 transition-colors hover:bg-muted hover:text-card-foreground"
+                  >
+                     <LayoutGrid className="mr-2 h-4 w-4" /> Admin Panel
+                  </Link>
+                )}
+
+                {user && (
+                  <Link
+                      href="/checkout"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center rounded-md p-2 text-base font-medium text-card-foreground/80 transition-colors hover:bg-muted hover:text-card-foreground relative"
+                  >
+                      <ShoppingCart className="mr-2 h-5 w-5" /> Cart
+                      {cartItemCount > 0 && (
+                          <Badge variant="destructive" className="absolute top-1 right-1 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
+                          {cartItemCount}
+                          </Badge>
+                      )}
+                  </Link>
+                )}
+              </div>
+              
+              {/* Bottom Section (Sign Out / Sign In) */}
+              <div className="p-6 mt-auto border-t border-border">
                 {loading ? (
                   <div className="h-10 w-full animate-pulse rounded-md bg-muted"></div>
                 ) : user ? (
                   <Button 
                     variant="outline" 
                     onClick={() => { signOutUser(); setMobileMenuOpen(false); }} 
-                    className="w-full group text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive-foreground"
+                    className="w-full group text-destructive border-destructive/70 hover:bg-destructive/10 hover:text-destructive hover:border-destructive"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign Out
@@ -253,3 +265,4 @@ export function Navbar() {
     </header>
   );
 }
+
