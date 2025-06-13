@@ -1,7 +1,7 @@
 
 'use client';
 import Link from 'next/link';
-import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, LayoutGrid, ShoppingCart, ChevronDown } from 'lucide-react';
+import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, LayoutGrid, ShoppingCart, ChevronDown, Compass } from 'lucide-react'; // Added Compass
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
@@ -195,11 +195,26 @@ export function Navbar() {
                   </div>
                 )}
 
+                {user && (
+                  <Link
+                      href="/checkout"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={cn(mobileMenuMainItemClass, "relative")}
+                  >
+                      <ShoppingCart className="mr-2 h-5 w-5" /> <span>Cart</span>
+                      {cartItemCount > 0 && (
+                          <Badge variant="destructive" className="absolute top-1 right-1 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
+                          {cartItemCount}
+                          </Badge>
+                      )}
+                  </Link>
+                )}
+
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="explore-categories" className="border-b-0">
                     <AccordionTrigger className={mobileMenuAccordionTriggerClass}>
                       <div className="flex items-center">
-                        <ShoppingCart className="mr-2 h-5 w-5" /> {/* Using ShoppingCart as placeholder, update if specific explore icon exists */}
+                        <Compass className="mr-2 h-5 w-5" /> {/* Changed icon here */}
                         Explore
                       </div>
                     </AccordionTrigger>
@@ -225,21 +240,6 @@ export function Navbar() {
                   </AccordionItem>
                 </Accordion>
                 
-                {user && (
-                  <Link
-                      href="/checkout"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={cn(mobileMenuMainItemClass, "relative")}
-                  >
-                      <ShoppingCart className="mr-2 h-5 w-5" /> <span>Cart</span>
-                      {cartItemCount > 0 && (
-                          <Badge variant="destructive" className="absolute top-1 right-1 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
-                          {cartItemCount}
-                          </Badge>
-                      )}
-                  </Link>
-                )}
-
                 {user && (
                   <Link
                     href="/dashboard"
