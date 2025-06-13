@@ -1,7 +1,7 @@
 
 'use client';
 import Link from 'next/link';
-import { Hexagon, LogIn, LogOut, Menu, UserCircle, X, LayoutDashboard, ShieldCheck, LayoutGrid, ShoppingCart } from 'lucide-react'; // Removed ExternalLink as it was only used in removed "Explore"
+import { Hexagon, LogIn, LogOut, Menu, UserCircle, X, LayoutDashboard, ShieldCheck, LayoutGrid, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
@@ -21,7 +21,6 @@ import { Badge } from '@/components/ui/badge';
 
 const baseNavLinks = [
   { href: '/', label: 'Home' },
-  // { href: '/templates', label: 'Explore' }, // Removed Explore link
 ];
 
 export function Navbar() {
@@ -72,17 +71,19 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-3 pl-4">
-          <Button variant="ghost" size="icon" asChild className="relative hidden md:inline-flex">
-            <Link href="/checkout">
-              <ShoppingCart className="h-5 w-5" />
-              {cartItemCount > 0 && (
-                <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
-                  {cartItemCount}
-                </Badge>
-              )}
-              <span className="sr-only">Shopping Cart</span>
-            </Link>
-          </Button>
+          {user && (
+            <Button variant="ghost" size="icon" asChild className="relative hidden md:inline-flex">
+              <Link href="/checkout">
+                <ShoppingCart className="h-5 w-5" />
+                {cartItemCount > 0 && (
+                  <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
+                    {cartItemCount}
+                  </Badge>
+                )}
+                <span className="sr-only">Shopping Cart</span>
+              </Link>
+            </Button>
+          )}
 
           <div className="hidden md:flex items-center">
             {loading ? (
@@ -153,25 +154,27 @@ export function Navbar() {
             </SheetTrigger>
             <SheetContent side="right" className="w-[300px] bg-card p-0 flex flex-col">
               <SheetHeader className="p-6 pb-4 border-b border-border">
-                <SheetTitle className="flex items-center gap-2">
+                <SheetTitle className="flex items-center gap-2 text-xl font-bold"> {/* Increased size and ensured boldness */}
                    <Hexagon className="h-7 w-7 text-primary" />
-                   <span className="text-lg font-semibold">RIO Menu</span>
+                   <span>RIO Menu</span>
                 </SheetTitle>
               </SheetHeader>
               
               <div className="flex-grow overflow-y-auto p-6 space-y-3">
-                <Link
-                    href="/checkout"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center rounded-md p-2 text-base font-medium text-card-foreground/80 transition-colors hover:bg-muted hover:text-card-foreground relative"
-                >
-                    <ShoppingCart className="mr-2 h-5 w-5" /> Cart
-                    {cartItemCount > 0 && (
-                        <Badge variant="destructive" className="absolute top-1 right-1 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
-                        {cartItemCount}
-                        </Badge>
-                    )}
-                </Link>
+                {user && (
+                  <Link
+                      href="/checkout"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center rounded-md p-2 text-base font-medium text-card-foreground/80 transition-colors hover:bg-muted hover:text-card-foreground relative"
+                  >
+                      <ShoppingCart className="mr-2 h-5 w-5" /> Cart
+                      {cartItemCount > 0 && (
+                          <Badge variant="destructive" className="absolute top-1 right-1 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
+                          {cartItemCount}
+                          </Badge>
+                      )}
+                  </Link>
+                )}
 
                 {user && (
                   <div className="pb-4 mb-4 border-b border-border">

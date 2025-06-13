@@ -51,7 +51,9 @@ export default function HomePage() {
   return (
     <div className="container mx-auto px-4 md:px-6 py-12 md:py-16">
       <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">Launch Faster with Modern Templates</h1>
+        <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+          Launch Faster with Modern <span className="text-primary">Templates</span>
+        </h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
           Browse ready-to-use templates built with cutting-edge technology. Ship your projects quicker and impress your users.
         </p>
