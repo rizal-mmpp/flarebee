@@ -23,10 +23,10 @@ const formatIDR = (amount: number) => {
 
 export function TemplateCard({ template }: TemplateCardProps) {
   return (
-    <Card className="flex flex-col overflow-hidden rounded-lg shadow-lg transition-all duration-300 ease-in-out hover:shadow-primary/20 hover:shadow-xl hover:-translate-y-1">
-      <Link href={`/templates/${template.id}`} className="block">
+    <Card className="flex flex-col overflow-hidden rounded-lg transition-all duration-300 ease-in-out hover:border-primary/50"> {/* Removed shadow-lg, hover:shadow-primary/20 hover:shadow-xl hover:-translate-y-1 and added hover:border-primary/50 for subtle feedback */}
+      <Link href={`/templates/${template.id}`} className="block group"> {/* Added group for image hover effect */}
         <CardHeader className="p-0">
-          <div className="aspect-[3/2] relative w-full">
+          <div className="aspect-[3/2] relative w-full overflow-hidden rounded-t-lg"> {/* Added overflow-hidden and rounded-t-lg */}
             <Image
               src={template.imageUrl}
               alt={template.title}

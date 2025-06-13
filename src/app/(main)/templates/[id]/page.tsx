@@ -183,7 +183,7 @@ export default function TemplateDetailPage({ params: paramsPromise }: { params: 
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
           <div>
             {template.screenshots && template.screenshots.length > 0 ? (
-              <Carousel className="w-full rounded-lg overflow-hidden shadow-xl">
+              <Carousel className="w-full rounded-lg overflow-hidden border"> {/* Removed shadow-xl, added border for flat */}
                 <CarouselContent>
                   {[template.imageUrl, ...template.screenshots].map((src, index) => (
                     <CarouselItem key={index}>
@@ -205,7 +205,7 @@ export default function TemplateDetailPage({ params: paramsPromise }: { params: 
                 <CarouselNext className="mr-12" />
               </Carousel>
             ) : (
-              <AspectRatio ratio={16 / 9} className="bg-muted rounded-lg shadow-xl overflow-hidden">
+              <AspectRatio ratio={16 / 9} className="bg-muted rounded-lg border overflow-hidden"> {/* Removed shadow-xl, added border */}
                 <Image
                   src={template.imageUrl}
                   alt={template.title}
@@ -265,7 +265,7 @@ export default function TemplateDetailPage({ params: paramsPromise }: { params: 
                   <Button 
                     size="lg" 
                     asChild
-                    className="w-full group bg-green-600 hover:bg-green-700 text-white transition-all duration-300 ease-in-out transform hover:scale-105"
+                    className="w-full group bg-green-600 hover:bg-green-700 text-white transition-all duration-300 ease-in-out" // Removed transform hover:scale-105
                     disabled={!template.downloadZipUrl || template.downloadZipUrl === '#'}
                   >
                     <Link href={template.downloadZipUrl || '#'} target="_blank" rel="noopener noreferrer">
@@ -291,7 +291,7 @@ export default function TemplateDetailPage({ params: paramsPromise }: { params: 
                 <>
                   <Button 
                     size="lg" 
-                    className="w-full group bg-accent hover:bg-accent/90 text-accent-foreground transition-all duration-300 ease-in-out transform hover:scale-105"
+                    className="w-full group bg-accent hover:bg-accent/90 text-accent-foreground transition-all duration-300 ease-in-out" // Removed transform hover:scale-105
                     onClick={handleBuyNow}
                     disabled={isBuyNowPending || (itemAlreadyInCart && user)}
                   >
@@ -312,7 +312,7 @@ export default function TemplateDetailPage({ params: paramsPromise }: { params: 
               )}
               
               {template.previewUrl && template.previewUrl !== '#' && (
-                <Button variant="outline" size="lg" asChild className="w-full group border-primary text-primary hover:bg-primary/10 transition-all duration-300 ease-in-out transform hover:scale-105">
+                <Button variant="outline" size="lg" asChild className="w-full group border-primary text-primary hover:bg-primary/10 transition-all duration-300 ease-in-out"> {/* Removed transform hover:scale-105 */}
                   <Link href={template.previewUrl} target="_blank" rel="noopener noreferrer">
                     <Eye className="mr-2 h-5 w-5" /> Live Preview
                   </Link>

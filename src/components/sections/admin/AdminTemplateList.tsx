@@ -57,7 +57,7 @@ export function AdminTemplateList({ templates, onDeleteTemplate, isDeleting }: A
 
   return (
     <>
-      <div className="mt-8 rounded-lg border bg-card text-card-foreground shadow-sm">
+      <div className="mt-8 rounded-lg border bg-card text-card-foreground"> {/* Removed shadow-sm */}
         <Table>
           <TableHeader>
             <TableRow>

@@ -126,7 +126,7 @@ export default function OrderDetailPage() {
         </Button>
       </div>
 
-      <Card className="shadow-lg">
+      <Card> {/* Removed shadow-lg */}
         <CardHeader>
           <CardTitle className="text-2xl">Order ID: {order.orderId}</CardTitle>
           <CardDescription>
@@ -225,4 +225,3 @@ export default function OrderDetailPage() {
     </div>
   );
 }
-

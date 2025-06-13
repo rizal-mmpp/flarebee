@@ -15,7 +15,7 @@ export default function PurchaseCancelledPage() {
 
   return (
     <div className="container mx-auto px-4 py-16 md:py-24 flex justify-center items-center min-h-[calc(100vh-10rem)]">
-      <Card className="w-full max-w-lg text-center shadow-xl bg-card">
+      <Card className="w-full max-w-lg text-center bg-card"> {/* Removed shadow-xl */}
         <CardHeader>
           <div className="mx-auto bg-destructive/10 rounded-full p-3 w-fit mb-4">
             <AlertTriangle className="h-12 w-12 text-destructive" />

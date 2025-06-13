@@ -13,7 +13,7 @@ export default function TermsPage() {
           Back to Home
         </Link>
       </Button>
-      <Card className="shadow-lg">
+      <Card> {/* Removed shadow-lg */}
         <CardHeader>
           <CardTitle className="text-3xl md:text-4xl">Terms of Service</CardTitle>
         </CardHeader>

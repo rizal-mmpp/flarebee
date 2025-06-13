@@ -135,7 +135,7 @@ export default function CheckoutPage() {
   if (!user) {
     return (
        <div className="container mx-auto px-4 py-12 md:py-16 flex justify-center items-center min-h-[calc(100vh-10rem)]">
-         <Card className="shadow-lg text-center">
+         <Card className="text-center"> {/* Removed shadow-lg */}
           <CardContent className="p-6">
             <LogIn className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
             <p className="text-xl text-muted-foreground mb-6">Please log in to access your cart.</p>
@@ -160,7 +160,7 @@ export default function CheckoutPage() {
       <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-8 text-center">Shopping Cart</h1>
 
       {cartItems.length === 0 ? (
-        <Card className="shadow-lg">
+        <Card> {/* Removed shadow-lg */}
           <CardContent className="p-6 text-center">
             <ShoppingBag className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
             <p className="text-xl text-muted-foreground mb-6">Your cart is empty.</p>
@@ -173,7 +173,7 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             {cartItems.map((item) => (
-              <Card key={item.id} className="flex flex-col sm:flex-row items-center gap-4 p-4 shadow-md">
+              <Card key={item.id} className="flex flex-col sm:flex-row items-center gap-4 p-4"> {/* Removed shadow-md */}
                 <div className="relative w-32 h-20 sm:w-40 sm:h-24 rounded-md overflow-hidden flex-shrink-0">
                   <Image
                     src={item.imageUrl}
@@ -203,7 +203,7 @@ export default function CheckoutPage() {
           </div>
 
           <div className="lg:col-span-1">
-            <Card className="shadow-xl sticky top-24">
+            <Card className="sticky top-24"> {/* Removed shadow-xl */}
               <CardHeader>
                 <CardTitle className="text-2xl">Order Summary</CardTitle>
               </CardHeader>

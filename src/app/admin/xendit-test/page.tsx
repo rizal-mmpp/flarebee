@@ -165,7 +165,7 @@ export default function XenditTestPage() {
 
   return (
     <div className="space-y-8">
-      <Card className="shadow-lg">
+      <Card> {/* Removed shadow-lg */}
         <CardHeader>
           <CardTitle className="text-2xl flex items-center">
             <Wifi className="mr-3 h-7 w-7 text-primary" />

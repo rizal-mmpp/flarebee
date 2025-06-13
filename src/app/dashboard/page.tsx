@@ -83,7 +83,7 @@ export default function UserDashboardPage() {
       <section>
         <h2 className="text-2xl font-semibold text-foreground mb-6">Overview</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card className="hover:shadow-lg transition-shadow duration-300">
+          <Card className="transition-colors duration-300 hover:border-primary/50"> {/* Removed shadow, added hover border */}
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Active/Purchased Templates
@@ -101,7 +101,7 @@ export default function UserDashboardPage() {
               </p>
             </CardContent>
           </Card>
-          <Card className="hover:shadow-lg transition-shadow duration-300">
+          <Card className="transition-colors duration-300 hover:border-primary/50"> {/* Removed shadow, added hover border */}
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Account Settings (Placeholder)
@@ -114,7 +114,7 @@ export default function UserDashboardPage() {
                 </p>
             </CardContent>
           </Card>
-           <Card className="hover:shadow-lg transition-shadow duration-300">
+           <Card className="transition-colors duration-300 hover:border-primary/50"> {/* Removed shadow, added hover border */}
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Total Orders
@@ -165,7 +165,7 @@ export default function UserDashboardPage() {
         ) : (
           <div className="space-y-6">
             {orders.map((order) => (
-              <Card key={order.id} className="shadow-md">
+              <Card key={order.id}> {/* Removed shadow-md */}
                 <CardHeader>
                   <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-2">
                     <div>

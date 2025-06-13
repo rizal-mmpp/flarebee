@@ -20,7 +20,7 @@ interface TemplateUploadFormProps {
 
 export function TemplateUploadForm({ control, register, errors }: TemplateUploadFormProps) {
   return (
-    <Card className="shadow-lg">
+    <Card> {/* Removed shadow-lg */}
       <CardContent className="pt-6 space-y-6">
         <div>
           <Label htmlFor="title">Title</Label>

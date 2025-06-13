@@ -66,7 +66,7 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="w-full shadow-2xl">
+    <Card className="w-full"> {/* Removed shadow-2xl */}
       <CardHeader className="text-center">
         <CardTitle className="text-2xl md:text-3xl">Welcome Back to RIO!</CardTitle>
         <CardDescription>Sign in to access your account and templates.</CardDescription>
