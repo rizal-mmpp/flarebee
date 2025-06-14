@@ -3,9 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Template } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react'; // Kept in case of future re-additions, but not used now
 
 interface TemplateCardProps {
   template: Template;
@@ -23,10 +21,10 @@ const formatIDR = (amount: number) => {
 
 export function TemplateCard({ template }: TemplateCardProps) {
   return (
-    <Card className="flex flex-col overflow-hidden rounded-xl transition-all duration-300 ease-in-out hover:border-primary/50"> 
-      <Link href={`/templates/${template.id}`} className="block group">
+    <Card className="flex flex-col overflow-hidden rounded-xl transition-all duration-300 ease-in-out hover:border-primary/50">
+      <Link href={`/templates/${template.id}`} className="block group flex-grow flex flex-col">
         <CardHeader className="p-0">
-          <div className="aspect-[3/2] relative w-full overflow-hidden rounded-t-xl"> 
+          <div className="aspect-[3/2] relative w-full overflow-hidden rounded-t-xl">
             <Image
               src={template.imageUrl}
               alt={template.title}
@@ -38,35 +36,17 @@ export function TemplateCard({ template }: TemplateCardProps) {
             />
           </div>
         </CardHeader>
-      </Link>
-      <CardContent className="flex-grow p-4 md:p-6">
-        <Link href={`/templates/${template.id}`} className="block">
-          <CardTitle className="mb-2 text-lg font-semibold leading-tight hover:text-primary transition-colors">
+        <CardContent className="p-4 md:p-6 flex-grow">
+          <CardTitle className="mb-1 text-lg font-semibold leading-tight hover:text-primary transition-colors">
             {template.title}
           </CardTitle>
-        </Link>
-        <p className="mb-3 text-sm text-muted-foreground line-clamp-2">
-          {template.description}
-        </p>
-        <div className="flex flex-wrap gap-2 mb-3">
-          <Badge variant="secondary" className="rounded-full px-3 py-1">{template.category.name}</Badge>
-          {template.tags.slice(0, 2).map((tag) => (
-            <Badge key={tag} variant="outline" className="rounded-full px-3 py-1">
-              {tag}
-            </Badge>
-          ))}
-        </div>
-      </CardContent>
-      <CardFooter className="p-4 md:p-6 pt-0 flex justify-between items-center">
-        <p className="text-xl font-bold text-primary">
-          {formatIDR(template.price)}
-        </p>
-        <Button asChild variant="outline" size="sm" className="group transition-all duration-300 ease-in-out hover:bg-accent/20 hover:text-accent-foreground hover:border-accent">
-          <Link href={`/templates/${template.id}`}>
-            View Details <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:translate-x-1" />
-          </Link>
-        </Button>
-      </CardFooter>
+        </CardContent>
+        <CardFooter className="p-4 md:p-6 pt-0">
+          <p className="text-xl font-bold text-primary">
+            {formatIDR(template.price)}
+          </p>
+        </CardFooter>
+      </Link>
     </Card>
   );
 }
