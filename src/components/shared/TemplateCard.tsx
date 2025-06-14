@@ -2,7 +2,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Template } from '@/lib/types';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface TemplateCardProps {
   template: Template;
@@ -20,33 +20,32 @@ const formatIDR = (amount: number) => {
 
 export function TemplateCard({ template }: TemplateCardProps) {
   return (
-    <Card className="flex flex-col overflow-hidden rounded-xl transition-all duration-300 ease-in-out hover:border-primary/50">
+    <Card className="flex flex-col overflow-hidden rounded-xl border-0 transition-all duration-300 ease-in-out hover:shadow-lg">
       <Link href={`/templates/${template.id}`} className="block group flex-grow flex flex-col">
-        <CardHeader className="p-0">
-          <div className="aspect-[3/2] relative w-full overflow-hidden rounded-t-xl">
-            <Image
-              src={template.imageUrl}
-              alt={template.title}
-              fill
-              style={{objectFit:"cover"}}
-              className="transition-transform duration-300 ease-in-out group-hover:scale-105"
-              data-ai-hint={template.dataAiHint || "template preview"}
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              priority={false} // Set to true only for above-the-fold critical images
-            />
+        <div className="aspect-[3/2] relative w-full overflow-hidden rounded-t-xl">
+          <Image
+            src={template.imageUrl}
+            alt={template.title}
+            fill
+            style={{objectFit:"cover"}}
+            className="transition-transform duration-300 ease-in-out group-hover:scale-105"
+            data-ai-hint={template.dataAiHint || "template preview"}
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            priority={false} 
+          />
+        </div>
+        <CardContent className="p-4 py-3 md:p-5 md:py-4"> 
+          <div className="flex justify-between items-center gap-2">
+            <CardTitle className="text-base font-semibold leading-tight hover:text-primary transition-colors truncate">
+              {template.title}
+            </CardTitle>
+            <p className="text-lg font-bold text-primary flex-shrink-0">
+              {formatIDR(template.price)}
+            </p>
           </div>
-        </CardHeader>
-        <CardContent className="p-4 md:p-5 flex-grow"> {/* Adjusted padding slightly */}
-          <CardTitle className="mb-1 text-lg font-semibold leading-tight hover:text-primary transition-colors line-clamp-2">
-            {template.title}
-          </CardTitle>
         </CardContent>
-        <CardFooter className="p-4 md:p-5 pt-0"> {/* Adjusted padding slightly */}
-          <p className="text-xl font-bold text-primary">
-            {formatIDR(template.price)}
-          </p>
-        </CardFooter>
       </Link>
     </Card>
   );
 }
+
