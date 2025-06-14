@@ -38,7 +38,7 @@ export default function AdminLayout({
 
   // If user is admin, render the admin layout
   return (
-    <div className="dark flex min-h-screen flex-col"> {/* Added className="dark" */}
+    <div className="flex min-h-screen flex-col"> {/* Removed className="dark" */}
       <Navbar /> 
       <main className="flex-grow bg-background">
         <div className="container mx-auto px-4 py-8 md:py-12">
