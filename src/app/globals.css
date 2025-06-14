@@ -23,8 +23,8 @@
     --muted: 220 20% 96%; /* Even Lighter Gray #F0F2F5 */
     --muted-foreground: 220 10% 45%; /* Medium Gray #6A737D */
 
-    --accent: 33 100% 50%; /* Orange #FF9100 */
-    --accent-foreground: 33 100% 10%; /* Dark Brown/Black for orange bg #331D00 */
+    --accent: 33 90% 44%; /* Darker Orange #D97706 */
+    --accent-foreground: 0 0% 98%; /* Off-white #FAFAFA */
     
     --destructive: 0 72% 51%; /* Red #E53E3E */
     --destructive-foreground: 0 0% 98%; /* Off-white for red bg #F8FAFC */
@@ -62,8 +62,8 @@
     --muted: 220 15% 25%; /* Original Dark: #353C4C */
     --muted-foreground: 220 10% 65%; /* Original Dark: #98A0B3 */
 
-    --accent: 33 100% 50%; /* Original Dark: #FF9100 */
-    --accent-foreground: 33 100% 10%; /* Original Dark: #331D00 */
+    --accent: 33 90% 44%; /* Darker Orange #D97706 */
+    --accent-foreground: 0 0% 98%; /* Off-white #FAFAFA */
     
     --destructive: 0 72% 51%; /* Original Dark: #E53E3E */
     --destructive-foreground: 0 0% 98%; /* Original Dark: #F8FAFC */
@@ -88,6 +88,5 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* font-family: Arial, Helvetica, sans-serif; Removed to allow Geist Sans from layout.tsx to take effect */
   }
 }
