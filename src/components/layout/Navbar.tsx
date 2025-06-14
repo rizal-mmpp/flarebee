@@ -75,6 +75,15 @@ export function Navbar() {
             </DropdownMenuContent>
           </DropdownMenu>
 
+          {user && (
+            <Link
+              href="/dashboard"
+              className={desktopMenuItemClass}
+            >
+              Dashboard
+            </Link>
+          )}
+
           {user && role === 'admin' && (
              <Link
               href="/admin/dashboard"
@@ -129,21 +138,8 @@ export function Navbar() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className={desktopDropdownItemClass}>
-                    <Link href="/dashboard" className="w-full flex items-center">
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
-                      <span>Dashboard</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  {role === 'admin' && (
-                    <DropdownMenuItem asChild className={desktopDropdownItemClass}>
-                      <Link href="/admin/dashboard" className="w-full flex items-center">
-                        <LayoutGrid className="mr-2 h-4 w-4" />
-                        <span>Admin Panel</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
+                  {/* Dashboard and Admin Panel links are removed from here for desktop view */}
+                  {/* They remain for consistency in the mobile menu logic below */}
                   <DropdownMenuItem onClick={signOutUser} className={cn(desktopDropdownItemClass, "text-destructive focus:text-destructive")}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign Out</span>
