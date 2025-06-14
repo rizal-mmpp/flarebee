@@ -3,7 +3,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Template } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight } from 'lucide-react'; // Kept in case of future re-additions, but not used now
 
 interface TemplateCardProps {
   template: Template;
@@ -32,16 +31,17 @@ export function TemplateCard({ template }: TemplateCardProps) {
               style={{objectFit:"cover"}}
               className="transition-transform duration-300 ease-in-out group-hover:scale-105"
               data-ai-hint={template.dataAiHint || "template preview"}
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              priority={false} // Set to true only for above-the-fold critical images
             />
           </div>
         </CardHeader>
-        <CardContent className="p-4 md:p-6 flex-grow">
-          <CardTitle className="mb-1 text-lg font-semibold leading-tight hover:text-primary transition-colors">
+        <CardContent className="p-4 md:p-5 flex-grow"> {/* Adjusted padding slightly */}
+          <CardTitle className="mb-1 text-lg font-semibold leading-tight hover:text-primary transition-colors line-clamp-2">
             {template.title}
           </CardTitle>
         </CardContent>
-        <CardFooter className="p-4 md:p-6 pt-0">
+        <CardFooter className="p-4 md:p-5 pt-0"> {/* Adjusted padding slightly */}
           <p className="text-xl font-bold text-primary">
             {formatIDR(template.price)}
           </p>
