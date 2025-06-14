@@ -20,9 +20,9 @@ const formatIDR = (amount: number) => {
 
 export function TemplateCard({ template }: TemplateCardProps) {
   return (
-    <Card className="flex flex-col overflow-hidden rounded-xl border-0 transition-all duration-300 ease-in-out hover:shadow-lg">
+    <Card className="flex flex-col overflow-hidden rounded-xl border-0 transition-all duration-300 ease-in-out">
       <Link href={`/templates/${template.id}`} className="block group flex-grow flex flex-col">
-        <div className="aspect-[3/2] relative w-full overflow-hidden rounded-t-xl">
+        <div className="aspect-[3/2] relative w-full overflow-hidden rounded-xl">
           <Image
             src={template.imageUrl}
             alt={template.title}
@@ -34,12 +34,12 @@ export function TemplateCard({ template }: TemplateCardProps) {
             priority={false} 
           />
         </div>
-        <CardContent className="p-4 py-3 md:p-5 md:py-4"> 
+        <CardContent className="p-2"> 
           <div className="flex justify-between items-center gap-2">
             <CardTitle className="text-base font-semibold leading-tight hover:text-primary transition-colors truncate">
               {template.title}
             </CardTitle>
-            <p className="text-lg font-bold text-primary flex-shrink-0">
+            <p className="text-lg font-bold text-accent flex-shrink-0">
               {formatIDR(template.price)}
             </p>
           </div>
