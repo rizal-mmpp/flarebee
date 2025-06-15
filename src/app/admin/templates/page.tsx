@@ -21,13 +21,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import type { ColumnDef, SortingState, ColumnFiltersState, PaginationState } from '@tanstack/react-table';
 import { DataTable } from '@/components/data-table/data-table';
 import { DataTableColumnHeader } from '@/components/data-table/data-table-column-header';
@@ -42,34 +35,41 @@ const formatIDR = (amount: number) => {
   }).format(amount);
 };
 
+const searchByTemplateOptions = [
+  { value: 'title', label: 'Title' },
+  { value: 'category.name', label: 'Category' },
+  { value: 'price', label: 'Price' },
+  { value: 'tags', label: 'Tags' },
+];
+
 export default function AdminTemplatesPage() {
-  const [allFetchedTemplates, setAllFetchedTemplates] = useState<Template[]>([]); // Holds data from server for current page
-  const [displayedTemplates, setDisplayedTemplates] = useState<Template[]>([]); // Holds client-side filtered data
+  const [allFetchedTemplates, setAllFetchedTemplates] = useState<Template[]>([]);
+  const [displayedTemplates, setDisplayedTemplates] = useState<Template[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const { toast } = useToast();
 
+  const [selectedSearchField, setSelectedSearchField] = useState<string>('title');
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  // Sorting is now client-side, so TanStack Table will manage its state internally if manualSorting is false.
-  // We keep this state here to potentially pass to table if needed, but it won't trigger server refetch for sort.
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'title', desc: false }]); // Default client sort
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'title', desc: false }]);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [pageCount, setPageCount] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<Template | null>(null);
+  
+  const searchColumnId = 'title'; // This ID is used by the toolbar to store the filter string
 
   const fetchTemplates = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Server fetch does not use searchTerm for templates anymore
       const result = await getAllTemplatesFromFirestore({
         pageIndex: pagination.pageIndex,
         pageSize: pagination.pageSize,
-        // No sorting or searchTerm passed for server-side in this simplified version
+        // searchTerm is removed as search is client-side for this table
       });
-      setAllFetchedTemplates(result.data); // Store all fetched for potential client filtering
+      setAllFetchedTemplates(result.data);
       setPageCount(result.pageCount);
       setTotalItems(result.totalItems);
     } catch (error: any) {
@@ -82,27 +82,38 @@ export default function AdminTemplatesPage() {
     } finally {
       setIsLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagination, toast]); // Removed columnFilters from dependency to avoid re-fetching on client search typing
+  }, [pagination, toast]);
 
   useEffect(() => {
     fetchTemplates();
   }, [fetchTemplates]);
 
-  // Client-side filtering based on search term
+  // Client-side filtering logic
   useEffect(() => {
-    const titleFilter = columnFilters.find(f => f.id === 'title');
-    const currentSearchTerm = typeof titleFilter?.value === 'string' ? titleFilter.value.toLowerCase() : '';
+    const filter = columnFilters.find(f => f.id === searchColumnId);
+    const currentSearchTerm = typeof filter?.value === 'string' ? filter.value.toLowerCase() : '';
 
     if (currentSearchTerm) {
-      const filtered = allFetchedTemplates.filter(template =>
-        template.title.toLowerCase().includes(currentSearchTerm)
-      );
+      const filtered = allFetchedTemplates.filter(template => {
+        const lowerSearchTerm = currentSearchTerm; // Already lowercased
+        switch (selectedSearchField) {
+          case 'title':
+            return template.title.toLowerCase().includes(lowerSearchTerm);
+          case 'category.name':
+            return template.category.name.toLowerCase().includes(lowerSearchTerm);
+          case 'price':
+            return String(template.price).toLowerCase().includes(lowerSearchTerm);
+          case 'tags':
+            return template.tags.some(tag => tag.toLowerCase().includes(lowerSearchTerm));
+          default:
+            return true;
+        }
+      });
       setDisplayedTemplates(filtered);
     } else {
       setDisplayedTemplates(allFetchedTemplates);
     }
-  }, [allFetchedTemplates, columnFilters]);
+  }, [allFetchedTemplates, columnFilters, selectedSearchField]);
 
 
   const handleDeleteClick = (template: Template) => {
@@ -159,7 +170,7 @@ export default function AdminTemplatesPage() {
     },
     {
       accessorKey: "tags",
-      header: "Tags",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Tags"/>,
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1 max-w-xs">
           {row.original.tags.slice(0, 3).map((tag) => (
@@ -168,7 +179,7 @@ export default function AdminTemplatesPage() {
           {row.original.tags.length > 3 && <Badge variant="secondary" className="text-xs">...</Badge>}
         </div>
       ),
-      enableSorting: false,
+      enableSorting: true, 
     },
     {
       id: "actions",
@@ -222,7 +233,7 @@ export default function AdminTemplatesPage() {
             Manage Templates
           </h1>
           <p className="text-muted-foreground mt-1">
-            Add, edit, or remove templates. Total: {totalItems} (before client-side search)
+            Add, edit, or remove templates. Total fetched: {totalItems} (client-side search applied on this set).
           </p>
         </div>
         <div className="flex gap-2 flex-col sm:flex-row">
@@ -247,25 +258,26 @@ export default function AdminTemplatesPage() {
         <CardContent>
           <DataTable
             columns={columns}
-            data={displayedTemplates} // Use client-side filtered data
-            pageCount={pageCount} // Server-side page count
-            totalItems={totalItems} // Server-side total items
+            data={displayedTemplates} 
+            pageCount={pageCount} 
+            totalItems={totalItems} 
             onPaginationChange={setPagination}
-            // Sorting is now client-side, TanStack table handles its own sorting state
-            onSortingChange={setSorting} // Keep to update local sort state for table header indicators
-            onColumnFiltersChange={setColumnFilters} // This will trigger client-side filtering
+            onSortingChange={setSorting} 
+            onColumnFiltersChange={setColumnFilters} 
             initialState={{
               pagination,
-              sorting, // Pass initial sort state
+              sorting, 
               columnFilters,
-              // No columnVisibility passed, defaults to all visible
             }}
-            manualPagination={true} // Pagination is server-side
-            manualSorting={false}   // Sorting is client-side
-            manualFiltering={false} // Primary filtering is now client-side for this table
+            manualPagination={true} 
+            manualSorting={false}   
+            manualFiltering={true} // Toolbar filter sets table state, page filters client-side
             isLoading={isLoading}
-            searchColumnId="title" 
-            searchPlaceholder="Search by title..."
+            searchColumnId={searchColumnId} // Tells toolbar which filter key to use
+            searchByOptions={searchByTemplateOptions}
+            selectedSearchBy={selectedSearchField}
+            onSelectedSearchByChange={setSelectedSearchField}
+            // searchPlaceholder is now dynamic in the toolbar
           />
         </CardContent>
       </Card>
