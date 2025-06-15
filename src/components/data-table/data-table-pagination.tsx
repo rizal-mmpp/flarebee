@@ -9,7 +9,7 @@ import {
   ChevronsRightIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 interface DataTablePaginationProps<TData> {
   table: Table<TData>;
@@ -18,7 +18,7 @@ interface DataTablePaginationProps<TData> {
 
 export function DataTablePagination<TData>({
   table,
-  pageSizeOptions = [10, 20, 30, 40, 50],
+  pageSizeOptions = [20, 50, 100], // Default to new button values
 }: DataTablePaginationProps<TData>) {
   return (
     <div className="flex w-full flex-col items-center justify-between gap-4 overflow-auto px-2 py-1 sm:flex-row sm:gap-8">
@@ -29,26 +29,25 @@ export function DataTablePagination<TData>({
       <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
         <div className="flex items-center space-x-2">
           <p className="whitespace-nowrap text-sm font-medium">Rows per page</p>
-          <Select
-            value={`${table.getState().pagination.pageSize}`}
-            onValueChange={(value) => {
-              table.setPageSize(Number(value));
-            }}
-          >
-            <SelectTrigger className="h-8 w-[70px]">
-              <SelectValue placeholder={table.getState().pagination.pageSize} />
-            </SelectTrigger>
-            <SelectContent side="top">
-              {pageSizeOptions.map((pageSize) => (
-                <SelectItem key={pageSize} value={`${pageSize}`}>
-                  {pageSize}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {pageSizeOptions.map((pageSize) => (
+            <Button
+              key={pageSize}
+              variant={table.getState().pagination.pageSize === pageSize ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => table.setPageSize(Number(pageSize))}
+              className={cn(
+                "h-8 w-10 p-0",
+                 table.getState().pagination.pageSize === pageSize 
+                   ? "bg-primary text-primary-foreground" 
+                   : "text-muted-foreground"
+              )}
+            >
+              {pageSize}
+            </Button>
+          ))}
         </div>
         <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-          Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+          Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount() > 0 ? table.getPageCount() : 1}
         </div>
         <div className="flex items-center space-x-2">
           <Button
@@ -86,7 +85,7 @@ export function DataTablePagination<TData>({
             size="icon"
             className="hidden size-8 p-0 lg:flex"
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
+            disabled={!table.getCanNextPage() || table.getPageCount() === 0}
           >
             <ChevronsRightIcon className="size-4" aria-hidden="true" />
           </Button>

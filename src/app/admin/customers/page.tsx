@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
-import type { ColumnDef, SortingState, ColumnFiltersState, PaginationState } from '@tanstack/react-table';
+import type { ColumnDef, SortingState, ColumnFiltersState, PaginationState, VisibilityState } from '@tanstack/react-table';
 import { DataTable } from '@/components/data-table/data-table';
 import { DataTableColumnHeader } from '@/components/data-table/data-table-column-header';
 import {
@@ -50,7 +50,8 @@ export default function AdminCustomersPage() {
 
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 }); // Default to 20
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({}); // Added for column visibility
   const [pageCount, setPageCount] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
 
@@ -65,8 +66,6 @@ export default function AdminCustomersPage() {
         searchTerm,
       });
 
-      // Fetch order details for each customer to calculate orderCount and totalSpent
-      // This can be performance intensive for many customers. Consider denormalizing or optimizing.
       const customersWithOrderStats: CustomerRowData[] = await Promise.all(
         result.data.map(async (user) => {
           try {
@@ -80,7 +79,7 @@ export default function AdminCustomersPage() {
             };
           } catch (orderError) {
             console.warn(`Failed to fetch orders for user ${user.uid}`, orderError);
-            return { ...user, orderCount: 0, totalSpent: 0 }; // Default if order fetch fails
+            return { ...user, orderCount: 0, totalSpent: 0 };
           }
         })
       );
@@ -100,7 +99,7 @@ export default function AdminCustomersPage() {
       setIsLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagination, sorting, columnFilters, toast]); // Removed fetchOrders from dependency array
+  }, [pagination, sorting, columnFilters, toast]); 
 
   useEffect(() => {
     fetchCustomers();
@@ -125,9 +124,14 @@ export default function AdminCustomersPage() {
       cell: ({ row }) => (
         <Link href={`/admin/customers/${row.original.uid}`} className="hover:underline text-primary font-medium">
           {row.original.displayName || 'N/A'}
-          <p className="text-xs text-muted-foreground">{row.original.email}</p>
         </Link>
       ),
+    },
+    { // Keep email column for hiding/showing
+      accessorKey: "email",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Email" />,
+      cell: ({ row }) => row.original.email,
+      enableHiding: true,
     },
     {
       accessorKey: "createdAt",
@@ -138,11 +142,13 @@ export default function AdminCustomersPage() {
       accessorKey: "orderCount",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Orders" />,
       cell: ({ row }) => row.original.orderCount,
+      enableSorting: false, // Disabled server-side sorting for this calculated field
     },
     {
       accessorKey: "totalSpent",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Total Spent" />,
       cell: ({ row }) => formatIDR(row.original.totalSpent),
+      enableSorting: false, // Disabled server-side sorting for this calculated field
     },
     {
       id: "actions",
@@ -200,12 +206,17 @@ export default function AdminCustomersPage() {
             onPaginationChange={setPagination}
             onSortingChange={setSorting}
             onColumnFiltersChange={setColumnFilters}
-            initialPagination={pagination}
-            initialSorting={sorting}
-            initialColumnFilters={columnFilters}
+            onColumnVisibilityChange={setColumnVisibility} // Added prop
+            initialState={{ // Added to manage initial visibility
+                pagination,
+                sorting,
+                columnFilters,
+                columnVisibility: { email: false }, // Hide email by default
+            }}
             isLoading={isLoading}
-            searchColumnId="displayName" // Search by name or email (handled in fetchCustomers)
+            searchColumnId="displayName" 
             searchPlaceholder="Search by name or email..."
+            pageSizeOptions={[20,50,100]} // Pass new page size options
           />
         </CardContent>
       </Card>

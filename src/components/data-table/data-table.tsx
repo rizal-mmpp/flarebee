@@ -7,7 +7,8 @@ import type {
   ColumnFiltersState,
   SortingState,
   VisibilityState,
-  Table as TanstackTableInstance, // Renamed to avoid conflict
+  Table as TanstackTableInstance, 
+  PaginationState, // Added
 } from '@tanstack/react-table';
 import {
   flexRender,
@@ -22,7 +23,7 @@ import {
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DataTablePagination } from './data-table-pagination';
-import { DataTableToolbar } from './data-table-toolbar'; // Assuming this will be created
+import { DataTableToolbar } from './data-table-toolbar'; 
 import { Loader2 } from 'lucide-react';
 
 interface DataTableProps<TData, TValue> {
@@ -30,15 +31,20 @@ interface DataTableProps<TData, TValue> {
   data: TData[];
   pageCount: number;
   totalItems: number;
-  onPaginationChange: (pagination: { pageIndex: number; pageSize: number }) => void;
+  onPaginationChange: (pagination: PaginationState) => void; // Updated type
   onSortingChange: (sorting: SortingState) => void;
   onColumnFiltersChange: (filters: ColumnFiltersState) => void;
-  initialPagination?: { pageIndex: number; pageSize: number };
-  initialSorting?: SortingState;
-  initialColumnFilters?: ColumnFiltersState;
+  onColumnVisibilityChange: (visibility: VisibilityState) => void; // Added prop
+  initialState?: { // Use TanStack Table's InitialTableState type definition
+    pagination?: PaginationState;
+    sorting?: SortingState;
+    columnFilters?: ColumnFiltersState;
+    columnVisibility?: VisibilityState;
+  };
   isLoading?: boolean;
   searchColumnId?: string;
   searchPlaceholder?: string;
+  pageSizeOptions?: number[]; // Added this prop
 }
 
 export function DataTable<TData, TValue>({
@@ -49,51 +55,44 @@ export function DataTable<TData, TValue>({
   onPaginationChange,
   onSortingChange,
   onColumnFiltersChange,
-  initialPagination = { pageIndex: 0, pageSize: 10 },
-  initialSorting = [],
-  initialColumnFilters = [],
+  onColumnVisibilityChange,
+  initialState,
   isLoading = false,
   searchColumnId,
   searchPlaceholder,
+  pageSizeOptions, // Use this prop
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({});
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(initialColumnFilters);
-  const [sorting, setSorting] = React.useState<SortingState>(initialSorting);
-  const [pagination, setPagination] = React.useState(initialPagination);
+  
+  // These states are now controlled by the parent component via initialState and on-change handlers
+  // const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(initialState?.columnVisibility ?? {});
+  // const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(initialState?.columnFilters ?? []);
+  // const [sorting, setSorting] = React.useState<SortingState>(initialState?.sorting ?? []);
+  // const [pagination, setPagination] = React.useState<PaginationState>(initialState?.pagination ?? { pageIndex: 0, pageSize: 10 });
+
 
   const table = useReactTable({
     data,
     columns,
     pageCount: pageCount ?? -1,
-    state: {
-      pagination,
-      sorting,
-      columnVisibility,
+    state: { // State is now derived from props/initialState passed to useReactTable
+      // These are controlled by the hook's internal state, initialized by initialState
+      pagination: initialState?.pagination,
+      sorting: initialState?.sorting,
+      columnVisibility: initialState?.columnVisibility,
       rowSelection,
-      columnFilters,
+      columnFilters: initialState?.columnFilters,
     },
+    initialState: initialState, // Directly pass the initialState object
     enableRowSelection: true,
     manualPagination: true,
     manualSorting: true,
-    manualFiltering: true,
+    manualFiltering: true, // Assuming manual filtering if server-side
     onRowSelectionChange: setRowSelection,
-    onSortingChange: (updater) => {
-      const newSorting = typeof updater === 'function' ? updater(sorting) : updater;
-      setSorting(newSorting);
-      onSortingChange(newSorting);
-    },
-    onColumnFiltersChange: (updater) => {
-      const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater;
-      setColumnFilters(newFilters);
-      onColumnFiltersChange(newFilters);
-    },
-    onColumnVisibilityChange: setColumnVisibility,
-    onPaginationChange: (updater) => {
-        const newPagination = typeof updater === 'function' ? updater(pagination) : updater;
-        setPagination(newPagination);
-        onPaginationChange(newPagination);
-    },
+    onSortingChange: onSortingChange, // Directly use the passed handler
+    onColumnFiltersChange: onColumnFiltersChange, // Directly use the passed handler
+    onColumnVisibilityChange: onColumnVisibilityChange, // Directly use the passed handler
+    onPaginationChange: onPaginationChange, // Directly use the passed handler
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -103,15 +102,17 @@ export function DataTable<TData, TValue>({
   });
 
   // Debounce filter changes if searchColumnId is provided
+  // This effect should be in the parent component that controls `columnFilters` state
+  // For simplicity, it's kept here but be mindful of where state control lies.
+  // If columnFilters is fully controlled from parent, this useEffect should be there.
   React.useEffect(() => {
-    if (searchColumnId) {
+    if (searchColumnId && initialState?.columnFilters) { // Check if columnFilters are part of initialState
       const timeout = setTimeout(() => {
-        onColumnFiltersChange(columnFilters);
-      }, 500); // 500ms debounce
+        onColumnFiltersChange(initialState.columnFilters!);
+      }, 500); 
       return () => clearTimeout(timeout);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columnFilters, searchColumnId]); // Only re-run if columnFilters or searchColumnId changes
+  }, [initialState?.columnFilters, searchColumnId, onColumnFiltersChange]);
 
 
   return (
@@ -170,8 +171,7 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      <DataTablePagination table={table} />
+      <DataTablePagination table={table} pageSizeOptions={pageSizeOptions} />
     </div>
   );
 }
-

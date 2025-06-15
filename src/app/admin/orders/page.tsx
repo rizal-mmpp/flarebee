@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import type { ColumnDef, SortingState, ColumnFiltersState, PaginationState } from '@tanstack/react-table';
+import type { ColumnDef, SortingState, ColumnFiltersState, PaginationState, VisibilityState } from '@tanstack/react-table';
 import { DataTable } from '@/components/data-table/data-table';
 import { DataTableColumnHeader } from '@/components/data-table/data-table-column-header';
 import {
@@ -53,7 +53,8 @@ export default function AdminOrdersPage() {
 
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }]);
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 }); // Default to 20
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({ userEmail: false }); // Hide email by default
   const [pageCount, setPageCount] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
 
@@ -101,6 +102,7 @@ export default function AdminOrdersPage() {
       accessorKey: "userEmail",
       header: ({ column }) => <DataTableColumnHeader column={column} title="User Email" />,
       cell: ({ row }) => row.original.userEmail || 'N/A',
+      enableHiding: true,
     },
     {
       accessorKey: "totalAmount",
@@ -190,12 +192,17 @@ export default function AdminOrdersPage() {
             onPaginationChange={setPagination}
             onSortingChange={setSorting}
             onColumnFiltersChange={setColumnFilters}
-            initialPagination={pagination}
-            initialSorting={sorting}
-            initialColumnFilters={columnFilters}
+            onColumnVisibilityChange={setColumnVisibility} // Added prop
+            initialState={{ // Pass initial state to table hook
+                pagination,
+                sorting,
+                columnFilters,
+                columnVisibility, // Pass controlled state here
+            }}
             isLoading={isLoading}
-            searchColumnId="orderId_or_email" // Custom ID for combined search
+            searchColumnId="orderId_or_email" 
             searchPlaceholder="Search by Order ID or Email..."
+            pageSizeOptions={[20,50,100]} // Pass new page size options
           />
         </CardContent>
       </Card>
