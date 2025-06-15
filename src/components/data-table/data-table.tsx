@@ -64,6 +64,7 @@ export function DataTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({});
   
+  // Ensure initialState parts are defaulted if not fully provided
   const tablePagination = initialState?.pagination ?? { pageIndex: 0, pageSize: pageSizeOptions?.[0] ?? 20 };
   const tableSorting = initialState?.sorting ?? [];
   const tableColumnFilters = initialState?.columnFilters ?? [];
@@ -97,16 +98,9 @@ export function DataTable<TData, TValue>({
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
-  React.useEffect(() => {
-    if (searchColumnId && tableColumnFilters) { 
-      const timeout = setTimeout(() => {
-        onColumnFiltersChange(tableColumnFilters);
-      }, 500); 
-      return () => clearTimeout(timeout);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tableColumnFilters, searchColumnId]);
-
+  // Removed the custom useEffect for debouncing columnFilters.
+  // The onColumnFiltersChange prop passed to useReactTable (which is typically setColumnFilters from the parent)
+  // will trigger the parent component's useEffect to refetch data when filters change.
 
   return (
     <div className="w-full space-y-3 overflow-auto">
@@ -168,4 +162,3 @@ export function DataTable<TData, TValue>({
     </div>
   );
 }
-

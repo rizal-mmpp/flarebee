@@ -53,20 +53,21 @@ export default function AdminOrdersPage() {
 
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }]);
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 }); // Default to 20
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({ userEmail: false }); // Hide email by default
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({ userEmail: false });
   const [pageCount, setPageCount] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
 
   const fetchOrders = useCallback(async () => {
     setIsLoading(true);
     try {
-      const searchTerm = columnFilters.find(f => f.id === 'orderId_or_email')?.value as string | undefined;
+      // The search term is derived from the filter set on the 'orderId' column by the DataTableToolbar
+      const searchTerm = columnFilters.find(f => f.id === 'orderId')?.value as string | undefined;
       const result = await getAllOrdersFromFirestore({
         pageIndex: pagination.pageIndex,
         pageSize: pagination.pageSize,
         sorting,
-        searchTerm,
+        searchTerm, // This searchTerm will be used by the backend to search across orderId and userEmail
       });
       setOrdersData(result.data);
       setPageCount(result.pageCount);
@@ -81,7 +82,6 @@ export default function AdminOrdersPage() {
     } finally {
       setIsLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination, sorting, columnFilters, toast]);
 
   useEffect(() => {
@@ -192,17 +192,17 @@ export default function AdminOrdersPage() {
             onPaginationChange={setPagination}
             onSortingChange={setSorting}
             onColumnFiltersChange={setColumnFilters}
-            onColumnVisibilityChange={setColumnVisibility} // Added prop
-            initialState={{ // Pass initial state to table hook
+            onColumnVisibilityChange={setColumnVisibility}
+            initialState={{
                 pagination,
                 sorting,
                 columnFilters,
-                columnVisibility, // Pass controlled state here
+                columnVisibility,
             }}
             isLoading={isLoading}
-            searchColumnId="orderId_or_email" 
-            searchPlaceholder="Search by Order ID or Email..."
-            pageSizeOptions={[20,50,100]} // Pass new page size options
+            searchColumnId="orderId" // Toolbar search input will filter the 'orderId' column
+            searchPlaceholder="Search by Order ID or Email..." // Placeholder text remains informative
+            pageSizeOptions={[20,50,100]}
           />
         </CardContent>
       </Card>
