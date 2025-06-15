@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, MailLock, ArrowLeft } from 'lucide-react';
+import { Loader2, MailCheck, ArrowLeft, Send } from 'lucide-react';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -38,7 +38,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <Card className="w-full shadow-2xl">
+    <Card className="w-full">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl md:text-3xl">Forgot Your Password?</CardTitle>
         <CardDescription>
@@ -51,14 +51,14 @@ export default function ForgotPasswordPage() {
       <CardContent>
         {emailSent ? (
           <div className="text-center space-y-4 py-4">
-            <MailLock className="mx-auto h-16 w-16 text-primary" />
+            <MailCheck className="mx-auto h-16 w-16 text-primary" />
             <p className="text-muted-foreground">
               Please check your inbox (and spam folder) for the reset link.
             </p>
              <Button asChild variant="outline" className="w-full group">
                 <Link href="/auth/login">
                   <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
-                  Back to Login
+                  Back to Sign In
                 </Link>
             </Button>
           </div>
@@ -70,7 +70,7 @@ export default function ForgotPasswordPage() {
               {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
             </div>
             <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isSubmitting || loading}>
-              {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <MailLock className="mr-2 h-5 w-5" />}
+              {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
               Send Reset Link
             </Button>
           </form>
