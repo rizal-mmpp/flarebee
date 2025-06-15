@@ -123,7 +123,7 @@ export function DataTableToolbar<TData>({
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "h-9 w-full justify-start text-left font-normal rounded-md pr-10", // Added pr-10 for icon space
+                    "h-9 w-full justify-start text-left font-normal rounded-md",
                     !selectedDate && "text-muted-foreground"
                   )}
                 >
@@ -137,13 +137,6 @@ export function DataTableToolbar<TData>({
                   selected={selectedDate}
                   onSelect={(date) => {
                     setSelectedDate(date);
-                    // Optionally trigger search immediately on date select, or wait for search button
-                    // if (date) {
-                    //   table.getColumn(searchColumnId)?.setFilterValue(format(date, 'yyyy-MM-dd'));
-                    // } else {
-                    //   table.getColumn(searchColumnId)?.setFilterValue('');
-                    // }
-                    // setIsDatePickerOpen(false);
                   }}
                   initialFocus
                 />
@@ -162,15 +155,15 @@ export function DataTableToolbar<TData>({
                   handleSearch();
                 }
               }}
-              className="h-9 w-full rounded-md pr-20" // Increased pr for two icons
+              className="h-9 w-full rounded-md" 
             />
           )}
           <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
             <Button
                 aria-label="Search"
-                variant="secondary" // Changed to secondary for background
+                variant="default" // Changed to default for primary background
                 size="icon"
-                className="h-7 w-7 p-0 shrink-0 rounded-full" // Kept size
+                className="h-7 w-7 p-0 shrink-0 rounded-full" 
                 onClick={handleSearch}
             >
                 <SearchIcon className="h-4 w-4" />
@@ -178,7 +171,7 @@ export function DataTableToolbar<TData>({
             {(isInputOrDateFilled || isTableFiltered) && (
                 <Button
                 aria-label="Reset search"
-                variant="ghost" // Kept as ghost
+                variant="ghost"
                 size="icon"
                 className="h-7 w-7 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
                 onClick={handleReset}
@@ -193,3 +186,4 @@ export function DataTableToolbar<TData>({
     </div>
   );
 }
+
