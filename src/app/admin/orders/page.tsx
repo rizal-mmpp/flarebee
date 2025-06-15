@@ -6,12 +6,12 @@ import Link from 'next/link';
 import { getAllOrdersFromFirestore } from '@/lib/firebase/firestoreOrders';
 import { getUserProfile } from '@/lib/firebase/firestore';
 import type { Order, UserProfile } from '@/lib/types';
-import { ShoppingCart, Eye, Loader2, MoreHorizontal, RefreshCw } from 'lucide-react'; // CalendarIcon removed as it's in toolbar
+import { ShoppingCart, Eye, Loader2, MoreHorizontal, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { format, isValid, parseISO } from 'date-fns';
+import { format, isValid, parseISO, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { ColumnDef, SortingState, ColumnFiltersState, PaginationState, VisibilityState } from '@tanstack/react-table';
 import { DataTable } from '@/components/data-table/data-table';
@@ -22,8 +22,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-// Popover and Calendar imports are now primarily handled by DataTableToolbar
-
 
 interface DisplayOrder extends Order {
   userDisplayName?: string;
@@ -39,19 +37,18 @@ const formatIDR = (amount: number) => {
 };
 
 const getStatusBadgeVariant = (status?: string) => {
-  // Consistent with Xendit statuses (usually uppercase) or our desired display
   switch (status?.toUpperCase()) {
     case 'PAID':
-    case 'COMPLETED': // if we map internal 'completed' to 'PAID' for display
+    case 'COMPLETED':
     case 'SETTLED':
       return 'bg-green-500/20 text-green-400 border-green-500/30';
     case 'PENDING':
-    case 'UNPAID': // if 'UNPAID' is a desired display status for PENDING
+    case 'UNPAID': 
       return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
     case 'FAILED':
     case 'EXPIRED':
       return 'bg-red-500/20 text-red-400 border-red-500/30';
-    case 'ACTIVE': // For subscriptions or other active states if applicable
+    case 'ACTIVE': 
       return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
     case 'STOPPED':
       return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
@@ -65,13 +62,13 @@ const searchByOrderOptions = [
   { value: 'customer', label: 'Customer' },
   { value: 'amount', label: 'Amount' },
   { value: 'date', label: 'Date' },
-  { value: 'status', label: 'Status' }, // Label changed
+  { value: 'status', label: 'Status' },
 ];
 
 const orderStatusFilterOptions = ["Unpaid", "Paid", "Settled", "Expired", "Active", "Stopped"];
 
 
-const SEARCH_FILTER_ID = "orderId"; // Using an existing column for generic filter storage
+const SEARCH_FILTER_ID = "orderId"; 
 
 export default function AdminOrdersPage() {
   const [allFetchedOrders, setAllFetchedOrders] = useState<DisplayOrder[]>([]);
@@ -100,8 +97,6 @@ export default function AdminOrdersPage() {
       const userProfilesMap = new Map<string, UserProfile>();
 
       if (userIds.length > 0) {
-        // Batch fetch user profiles if many, or individual if few.
-        // For simplicity, individual fetches here:
         const profilePromises = userIds.map(uid => getUserProfile(uid));
         const profiles = await Promise.all(profilePromises);
         profiles.forEach(profile => {
@@ -119,7 +114,7 @@ export default function AdminOrdersPage() {
         };
       });
 
-      setAllFetchedOrders(enrichedOrders); // Store all fetched orders
+      setAllFetchedOrders(enrichedOrders);
       setPageCount(result.pageCount);
       setTotalItems(result.totalItems);
     } catch (error) {
@@ -138,7 +133,6 @@ export default function AdminOrdersPage() {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Client-side filtering based on columnFilters (which gets search term from toolbar)
   useEffect(() => {
     const filter = columnFilters.find(f => f.id === SEARCH_FILTER_ID);
     const currentSearchTerm = typeof filter?.value === 'string' ? filter.value : '';
@@ -155,11 +149,20 @@ export default function AdminOrdersPage() {
           case 'amount':
             return String(order.totalAmount).toLowerCase().includes(lowerSearchTerm);
           case 'date':
-            // currentSearchTerm for date is "yyyy-MM-dd"
-            const orderDate = format(new Date(order.createdAt), "yyyy-MM-dd");
-            return orderDate === currentSearchTerm; // currentSearchTerm should be already yyyy-MM-dd
-          case 'status': // Search by Xendit Status
-            return order.xenditPaymentStatus?.toLowerCase() === lowerSearchTerm;
+            const orderDate = new Date(order.createdAt);
+            const filterDate = parseISO(currentSearchTerm); // currentSearchTerm is "yyyy-MM-dd"
+            if (isValid(orderDate) && isValid(filterDate)) {
+              return startOfDay(orderDate).getTime() === startOfDay(filterDate).getTime();
+            }
+            return false;
+          case 'status':
+            const orderStatus = order.xenditPaymentStatus?.toLowerCase();
+            if (!orderStatus) return false;
+
+            if (lowerSearchTerm === "unpaid") {
+              return orderStatus === "pending";
+            }
+            return orderStatus === lowerSearchTerm;
           default:
             return true;
         }
@@ -210,11 +213,14 @@ export default function AdminOrdersPage() {
     {
       accessorKey: "createdAt",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Date" />,
-      cell: ({ row }) => format(new Date(row.original.createdAt), "PP"),
+      cell: ({ row }) => {
+        const date = new Date(row.original.createdAt);
+        return isValid(date) ? format(date, "PP") : 'Invalid Date';
+      },
     },
     {
-      id: "status", // Used for filtering target, accessorFn gets the Xendit status
-      accessorFn: row => row.xenditPaymentStatus, // Important for sorting/filtering
+      id: "status", 
+      accessorFn: row => row.xenditPaymentStatus,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
       cell: ({ row }) => {
         const xenditStatus = row.original.xenditPaymentStatus;
@@ -253,7 +259,6 @@ export default function AdminOrdersPage() {
   
   const handleSelectedSearchByChange = (value: string) => {
     setSelectedSearchField(value);
-    // When search field changes, clear existing filter value from the table state
     const currentFilters = columnFilters.filter(f => f.id !== SEARCH_FILTER_ID);
     setColumnFilters(currentFilters); 
   };
@@ -285,12 +290,12 @@ export default function AdminOrdersPage() {
         <CardContent>
           <DataTable
             columns={columns}
-            data={displayedOrders} // Use client-side filtered data
-            pageCount={pageCount} // Still from server for overall pagination
-            totalItems={totalItems} // Still from server
+            data={displayedOrders} 
+            pageCount={pageCount} 
+            totalItems={totalItems} 
             onPaginationChange={setPagination}
             onSortingChange={setSorting} 
-            onColumnFiltersChange={setColumnFilters} // Manages the shared filter input
+            onColumnFiltersChange={setColumnFilters} 
             onColumnVisibilityChange={setColumnVisibility}
             initialState={{
                 pagination,
@@ -299,8 +304,8 @@ export default function AdminOrdersPage() {
                 columnVisibility, 
             }}
             manualPagination={true} 
-            manualSorting={false} // Sorting is client-side on the current page's data
-            manualFiltering={false} // Filtering is client-side based on selectedSearchField
+            manualSorting={false} 
+            manualFiltering={false} 
             isLoading={isLoading}
             searchColumnId={SEARCH_FILTER_ID} 
             searchPlaceholder="Enter search term..." 
