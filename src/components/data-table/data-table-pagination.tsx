@@ -1,6 +1,7 @@
 
 'use client';
 
+import * as React from 'react'; // Added React import
 import type { Table } from '@tanstack/react-table';
 import {
   ChevronLeftIcon,
@@ -18,7 +19,7 @@ interface DataTablePaginationProps<TData> {
 
 export function DataTablePagination<TData>({
   table,
-  pageSizeOptions = [20, 50, 100], // Default to new button values
+  pageSizeOptions = [20, 50, 100],
 }: DataTablePaginationProps<TData>) {
   const currentTablePageSize = table.getState().pagination?.pageSize;
 
