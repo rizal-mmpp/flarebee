@@ -30,7 +30,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'; // Added this import
+} from '@/components/ui/dropdown-menu';
 
 const formatIDR = (amount: number) => {
   return new Intl.NumberFormat('id-ID', {
@@ -41,6 +41,7 @@ const formatIDR = (amount: number) => {
   }).format(amount);
 };
 
+// Options for the "Search by" dropdown
 const searchByTemplateOptions = [
   { value: 'title', label: 'Title' },
   { value: 'category.name', label: 'Category' },
@@ -55,7 +56,9 @@ export default function AdminTemplatesPage() {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // State for the "Search by" dropdown
   const [selectedSearchField, setSelectedSearchField] = useState<string>('title');
+  
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([{ id: 'title', desc: false }]);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
@@ -70,13 +73,13 @@ export default function AdminTemplatesPage() {
   const fetchTemplates = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Since search is client-side, we fetch all and then filter
+      // Server-side only handles pagination, not search or full sorting for this page.
       const result = await getAllTemplatesFromFirestore({
         pageIndex: pagination.pageIndex,
         pageSize: pagination.pageSize,
-        // No searchTerm here, client-side filtering applies to allFetchedTemplates
+        // No searchTerm or specific sorting passed here for server-side.
       });
-      setAllFetchedTemplates(result.data); // Store all fetched for current pagination settings
+      setAllFetchedTemplates(result.data);
       setPageCount(result.pageCount);
       setTotalItems(result.totalItems);
     } catch (error: any) {
@@ -89,13 +92,13 @@ export default function AdminTemplatesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [pagination, toast]); // Removed searchTerm from dependency
+  }, [pagination, toast]);
 
   useEffect(() => {
     fetchTemplates();
   }, [fetchTemplates]);
 
-  // Client-side filtering logic
+  // Client-side filtering logic based on selectedSearchField
   useEffect(() => {
     const filter = columnFilters.find(f => f.id === searchColumnId);
     const currentSearchTerm = typeof filter?.value === 'string' ? filter.value.toLowerCase() : '';
@@ -269,21 +272,22 @@ export default function AdminTemplatesPage() {
             pageCount={pageCount} 
             totalItems={totalItems} 
             onPaginationChange={setPagination}
-            onSortingChange={setSorting} // Client-side sorting, DataTable manages internal state
-            onColumnFiltersChange={setColumnFilters} // For search input
+            onSortingChange={setSorting} 
+            onColumnFiltersChange={setColumnFilters} 
             initialState={{
               pagination,
               sorting, 
               columnFilters,
             }}
-            manualPagination={true} // Server handles pagination
-            manualSorting={false}   // Client handles sorting
-            manualFiltering={true}  // Toolbar filter sets table state, page filters client-side
+            manualPagination={true} 
+            manualSorting={false}   
+            manualFiltering={true} 
             isLoading={isLoading}
-            searchColumnId={searchColumnId} // Tells toolbar which filter key to use
-            searchByOptions={searchByTemplateOptions}
-            selectedSearchBy={selectedSearchField}
-            onSelectedSearchByChange={setSelectedSearchField}
+            searchColumnId={searchColumnId} 
+            searchByOptions={searchByTemplateOptions} // Pass the options
+            selectedSearchBy={selectedSearchField} // Pass the selected field state
+            onSelectedSearchByChange={setSelectedSearchField} // Pass the state updater
+            // searchPlaceholder is now dynamic, handled by DataTableToolbar
           />
         </CardContent>
       </Card>
@@ -314,4 +318,4 @@ export default function AdminTemplatesPage() {
     </div>
   );
 }
-
+    

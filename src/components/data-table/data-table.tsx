@@ -34,7 +34,7 @@ interface DataTableProps<TData, TValue> {
   onPaginationChange: (pagination: PaginationState) => void; 
   onSortingChange: (sorting: SortingState) => void;
   onColumnFiltersChange: (filters: ColumnFiltersState) => void;
-  onColumnVisibilityChange: (visibility: VisibilityState) => void; 
+  onColumnVisibilityChange?: (visibility: VisibilityState) => void; // Made optional
   initialState?: { 
     pagination?: PaginationState;
     sorting?: SortingState;
@@ -44,7 +44,10 @@ interface DataTableProps<TData, TValue> {
   isLoading?: boolean;
   searchColumnId?: string;
   searchPlaceholder?: string;
-  pageSizeOptions?: number[]; 
+  searchByOptions?: { value: string; label: string }[]; // New prop for search by options
+  selectedSearchBy?: string; // New prop for selected search field
+  onSelectedSearchByChange?: (value: string) => void; // New prop for changing search field
+  pageSizeOptions?: number[];
 }
 
 export function DataTable<TData, TValue>({
@@ -60,12 +63,15 @@ export function DataTable<TData, TValue>({
   isLoading = false,
   searchColumnId,
   searchPlaceholder,
-  pageSizeOptions, 
+  searchByOptions, // Added
+  selectedSearchBy, // Added
+  onSelectedSearchByChange, // Added
+  pageSizeOptions,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({});
   
   // Ensure initialState parts are defaulted if not fully provided
-  const tablePagination = initialState?.pagination ?? { pageIndex: 0, pageSize: pageSizeOptions?.[0] ?? 20 };
+  const tablePagination = initialState?.pagination ?? { pageIndex: 0, pageSize: pageSizeOptions?.[0] ?? 10 };
   const tableSorting = initialState?.sorting ?? [];
   const tableColumnFilters = initialState?.columnFilters ?? [];
   const tableColumnVisibility = initialState?.columnVisibility ?? {};
@@ -83,7 +89,7 @@ export function DataTable<TData, TValue>({
     },
     enableRowSelection: true,
     manualPagination: true,
-    manualSorting: true,
+    manualSorting: false, // Sorting is client-side
     manualFiltering: true, 
     onRowSelectionChange: setRowSelection,
     onSortingChange: onSortingChange, 
@@ -98,17 +104,17 @@ export function DataTable<TData, TValue>({
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
-  // Removed the custom useEffect for debouncing columnFilters.
-  // The onColumnFiltersChange prop passed to useReactTable (which is typically setColumnFilters from the parent)
-  // will trigger the parent component's useEffect to refetch data when filters change.
 
   return (
     <div className="w-full space-y-3 overflow-auto">
-      {searchColumnId && (
+      {searchColumnId && ( // Toolbar is rendered if searchColumnId is provided
          <DataTableToolbar 
             table={table} 
             searchColumnId={searchColumnId} 
             searchPlaceholder={searchPlaceholder}
+            searchByOptions={searchByOptions} // Pass through
+            selectedSearchBy={selectedSearchBy} // Pass through
+            onSelectedSearchByChange={onSelectedSearchByChange} // Pass through
         />
       )}
       <div className="rounded-md border">
@@ -162,3 +168,4 @@ export function DataTable<TData, TValue>({
     </div>
   );
 }
+    

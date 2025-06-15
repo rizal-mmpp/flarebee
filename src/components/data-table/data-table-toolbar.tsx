@@ -90,12 +90,12 @@ export function DataTableToolbar<TData>({
                 handleSearch();
               }
             }}
-            className="h-9 w-full rounded-md pr-16 sm:pr-10" // Adjust padding for buttons
+            className="h-9 w-full rounded-md pr-16 sm:pr-20" // Adjusted padding for buttons
           />
           <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
             <Button
               aria-label="Search"
-              variant="default"
+              variant="default" // Default variant has background
               size="icon"
               className="h-7 w-7 shrink-0 rounded-md"
               onClick={handleSearch}
@@ -105,7 +105,7 @@ export function DataTableToolbar<TData>({
             {(localSearchInput || isTableFiltered) && (
               <Button
                 aria-label="Reset search"
-                variant="ghost"
+                variant="ghost" // Ghost for icon only without bg
                 size="icon"
                 className="h-7 w-7 shrink-0 rounded-md ml-1"
                 onClick={handleReset}
@@ -120,3 +120,4 @@ export function DataTableToolbar<TData>({
     </div>
   );
 }
+    
