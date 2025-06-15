@@ -1,7 +1,7 @@
 
 'use client';
 
-import * as React from 'react'; // Added React import
+import * as React from 'react';
 import type { Table } from '@tanstack/react-table';
 import {
   ChevronLeftIcon,
@@ -30,28 +30,26 @@ export function DataTablePagination<TData>({
         {table.getFilteredRowModel().rows.length} row(s) selected.
       </div>
       <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
-        <div className="flex items-center space-x-1">
-          <span className="text-sm font-medium text-muted-foreground">(</span>
+        <div className="inline-flex rounded-md shadow-sm" role="group">
           {pageSizeOptions.map((pageSize, index) => (
-            <React.Fragment key={pageSize}>
-              <Button
-                variant="link"
-                onClick={() => table.setPageSize(Number(pageSize))}
-                className={cn(
-                  "h-auto p-1 text-sm font-medium",
-                  currentTablePageSize === pageSize
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {pageSize}
-              </Button>
-              {index < pageSizeOptions.length - 1 && (
-                <span className="text-sm font-medium text-muted-foreground">|</span>
+            <Button
+              key={pageSize}
+              variant={currentTablePageSize === pageSize ? "default" : "outline"}
+              onClick={() => table.setPageSize(Number(pageSize))}
+              className={cn(
+                "h-9 px-3 py-2 text-sm relative focus:z-10", // Standard size, focus behavior
+                // Conditional rounding for segmented control effect
+                pageSizeOptions.length === 1 ? "rounded-md" : "",
+                pageSizeOptions.length > 1 && index === 0 ? "rounded-l-md rounded-r-none" : "",
+                pageSizeOptions.length > 1 && index === pageSizeOptions.length - 1 ? "rounded-r-md rounded-l-none" : "",
+                pageSizeOptions.length > 1 && index > 0 && index < pageSizeOptions.length - 1 ? "rounded-none" : "",
+                // Overlap borders by using negative margin on subsequent buttons
+                index > 0 ? "-ml-px" : ""
               )}
-            </React.Fragment>
+            >
+              {pageSize}
+            </Button>
           ))}
-          <span className="text-sm font-medium text-muted-foreground">)</span>
         </div>
         <div className="flex w-[100px] items-center justify-center text-sm font-medium">
           Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount() > 0 ? table.getPageCount() : 1}
