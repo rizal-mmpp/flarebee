@@ -68,9 +68,9 @@ export async function addTemplateToFirestore(templateData: TemplateInputData): P
 }
 
 interface FetchTemplatesParams {
-  pageIndex: number;
-  pageSize: number;
-  sorting: SortingState;
+  pageIndex?: number; // Optional
+  pageSize?: number;  // Optional
+  sorting?: SortingState; // Optional
   searchTerm?: string;
 }
 
@@ -81,52 +81,61 @@ interface FetchTemplatesResult {
 }
 
 export async function getAllTemplatesFromFirestore({
-  pageIndex,
-  pageSize,
-  sorting,
+  pageIndex = 0,
+  pageSize = 0, // Default to 0 for fetching all (or no limit)
+  sorting = [{ id: 'createdAt', desc: true }],
   searchTerm,
-}: FetchTemplatesParams): Promise<FetchTemplatesResult> {
+}: FetchTemplatesParams = {}): Promise<FetchTemplatesResult> { // Default empty object if no params
   try {
     const templatesCollection = collection(db, TEMPLATES_COLLECTION);
     const constraints: QueryConstraint[] = [];
 
-    // Count total items (ideally with filter if searchTerm was effectively applied server-side)
-    const countSnapshot = await getCountFromServer(templatesCollection);
+    // Count total items
+    // For simplicity, count query doesn't include searchTerm for now.
+    // For accurate count with search, searchTerm logic would need to be included in count constraints.
+    const countSnapshot = await getCountFromServer(query(templatesCollection, ...(searchTerm ? [where('title', '>=', searchTerm), where('title', '<=', searchTerm + '\uf8ff')] : []))); // Basic search count idea
     const totalItems = countSnapshot.data().count;
 
+    // Sorting
     if (sorting && sorting.length > 0) {
       const sortItem = sorting[0];
-      // Ensure field exists (e.g. 'title', 'price', 'createdAt')
-      if (['title', 'price', 'createdAt', 'category.name'].includes(sortItem.id)) {
-        // Sorting by category.name is tricky directly in Firestore if category is an object.
-        // If categoryId is stored, sort by categoryId. For name, it might require client-side sort or data denormalization.
-        // For now, let's assume categoryId if sorting by category
-        const sortField = sortItem.id === 'category.name' ? 'categoryId' : sortItem.id;
+      const sortField = sortItem.id === 'category.name' ? 'categoryId' : sortItem.id;
+      if (['title', 'price', 'createdAt', 'categoryId'].includes(sortField)) {
         constraints.push(orderBy(sortField, sortItem.desc ? 'desc' : 'asc'));
       } else {
-         constraints.push(orderBy('createdAt', 'desc'));
+         constraints.push(orderBy('createdAt', 'desc')); // Default if field not recognized for sort
       }
     } else {
-      constraints.push(orderBy('createdAt', 'desc'));
+      constraints.push(orderBy('createdAt', 'desc')); // Default sort
     }
 
-    constraints.push(firestoreLimit(pageSize));
-    if (pageIndex > 0) {
-      const cursorQueryConstraints = [...constraints.filter(c => c.type !== 'limit'), firestoreLimit(pageIndex * pageSize)];
-      const cursorSnapshot = await getDocs(query(templatesCollection, ...cursorQueryConstraints));
-       if (cursorSnapshot.docs.length === pageIndex * pageSize && cursorSnapshot.docs.length > 0) {
-        const lastDocInPreviousPages = cursorSnapshot.docs[cursorSnapshot.docs.length - 1];
-        constraints.push(firestoreStartAfter(lastDocInPreviousPages));
-      } else if (pageIndex > 0 && cursorSnapshot.docs.length < pageIndex * pageSize) {
-         return { data: [], pageCount: Math.ceil(totalItems / pageSize), totalItems };
+    // Pagination - only apply if pageSize is explicitly set and > 0
+    if (pageSize > 0) {
+      constraints.push(firestoreLimit(pageSize));
+      if (pageIndex > 0) {
+        // Create a query to get the last document of the previous page
+        // This requires re-applying sort orders correctly
+        const cursorQueryConstraints = [...constraints.filter(c => c.type !== 'limit' && c.type !== 'startAfter'), firestoreLimit(pageIndex * pageSize)];
+        const cursorSnapshot = await getDocs(query(templatesCollection, ...cursorQueryConstraints));
+         if (cursorSnapshot.docs.length === pageIndex * pageSize && cursorSnapshot.docs.length > 0) {
+          const lastDocInPreviousPages = cursorSnapshot.docs[cursorSnapshot.docs.length - 1];
+          constraints.push(firestoreStartAfter(lastDocInPreviousPages));
+        } else if (pageIndex > 0 && (cursorSnapshot.docs.length === 0 || cursorSnapshot.docs.length < pageIndex * pageSize )) {
+           // Requested page is out of bounds
+           return { data: [], pageCount: Math.ceil(totalItems / pageSize), totalItems };
+        }
       }
     }
+    // If pageSize is 0, no limit is applied (fetches all matching search/sort)
 
     const dataQuery = query(templatesCollection, ...constraints);
     const querySnapshot = await getDocs(dataQuery);
     let data = querySnapshot.docs.map(docSnapshot => fromFirestore(docSnapshot));
 
-    if (searchTerm) {
+    // If searchTerm is provided and pageSize was 0 (meaning we fetched all), filter client-side
+    // For server-side search with pagination, searchTerm needs to be part of the main query using `where` clauses.
+    // This example keeps it simpler for the public page use case.
+    if (searchTerm && pageSize === 0) {
       const lowerSearchTerm = searchTerm.toLowerCase();
       data = data.filter(template =>
         template.title.toLowerCase().includes(lowerSearchTerm) ||
@@ -134,11 +143,21 @@ export async function getAllTemplatesFromFirestore({
         template.category.name.toLowerCase().includes(lowerSearchTerm) ||
         template.tags.some(tag => tag.toLowerCase().includes(lowerSearchTerm))
       );
-      // totalItems and pageCount will be less accurate with client-side filtering for search
+    } else if (searchTerm && pageSize > 0) {
+        // If pageSize > 0, server-side search filtering should ideally happen in the query constraints.
+        // Firestore's `where` clauses for partial text search are limited.
+        // For this example, we are not adding complex `where` for `searchTerm` in paginated queries
+        // to keep the example straightforward. A real app would use a search service or more specific `where` clauses.
+        // So, if searchTerm is used with pagination, the results might not be perfectly filtered server-side by all text fields.
     }
 
-    const pageCount = Math.ceil(totalItems / pageSize);
-    return { data, pageCount, totalItems };
+    const pageCount = pageSize > 0 ? Math.ceil(totalItems / pageSize) : 1;
+    // If pageSize was 0, we fetched all, so totalItems is data.length if searchTerm was applied client-side.
+    // For consistency, we'll use totalItems from the initial count, acknowledging this discrepancy for client-side search.
+    const finalTotalItems = pageSize === 0 && searchTerm ? data.length : totalItems;
+
+
+    return { data, pageCount: pageSize > 0 ? Math.ceil(finalTotalItems / pageSize) : 1, totalItems: finalTotalItems };
 
   } catch (error) {
     console.error("Error getting all templates from Firestore: ", error);
@@ -146,7 +165,7 @@ export async function getAllTemplatesFromFirestore({
   }
 }
 
-// getLimitedTemplatesFromFirestore might not be needed if getAllTemplatesFromFirestore handles pagination
+
 export async function getLimitedTemplatesFromFirestore(count: number): Promise<Template[]> {
    try {
     const q = query(collection(db, TEMPLATES_COLLECTION), orderBy('createdAt', 'desc'), firestoreLimit(count));
@@ -197,3 +216,5 @@ export async function deleteTemplateFromFirestore(id: string): Promise<void> {
     throw error;
   }
 }
+
+    

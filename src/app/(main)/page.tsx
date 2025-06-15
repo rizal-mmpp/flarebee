@@ -40,8 +40,9 @@ export default function HomePage() {
     async function fetchTemplates() {
       setIsLoading(true);
       try {
-        const templates = await getAllTemplatesFromFirestore();
-        setAllTemplates(templates);
+        // Call with empty object to use default params (fetch all for homepage)
+        const result = await getAllTemplatesFromFirestore({}); 
+        setAllTemplates(result.data);
       } catch (error) {
         console.error("Failed to fetch templates for public page:", error);
       } finally {
