@@ -29,24 +29,28 @@ export function DataTablePagination<TData>({
         {table.getFilteredRowModel().rows.length} row(s) selected.
       </div>
       <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
-        <div className="flex items-center space-x-2">
-          <p className="whitespace-nowrap text-sm font-medium">Rows per page</p>
-          {pageSizeOptions.map((pageSize) => (
-            <Button
-              key={pageSize}
-              variant={currentTablePageSize === pageSize ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => table.setPageSize(Number(pageSize))}
-              className={cn(
-                "h-8 w-10 p-0",
-                 currentTablePageSize === pageSize 
-                   ? "bg-primary text-primary-foreground" 
-                   : "text-muted-foreground"
+        <div className="flex items-center space-x-1">
+          <span className="text-sm font-medium text-muted-foreground">(</span>
+          {pageSizeOptions.map((pageSize, index) => (
+            <React.Fragment key={pageSize}>
+              <Button
+                variant="link"
+                onClick={() => table.setPageSize(Number(pageSize))}
+                className={cn(
+                  "h-auto p-1 text-sm font-medium",
+                  currentTablePageSize === pageSize
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {pageSize}
+              </Button>
+              {index < pageSizeOptions.length - 1 && (
+                <span className="text-sm font-medium text-muted-foreground">|</span>
               )}
-            >
-              {pageSize}
-            </Button>
+            </React.Fragment>
           ))}
+          <span className="text-sm font-medium text-muted-foreground">)</span>
         </div>
         <div className="flex w-[100px] items-center justify-center text-sm font-medium">
           Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount() > 0 ? table.getPageCount() : 1}
@@ -96,4 +100,3 @@ export function DataTablePagination<TData>({
     </div>
   );
 }
-

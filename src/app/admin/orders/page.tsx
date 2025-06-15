@@ -1,17 +1,16 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { getAllOrdersFromFirestore } from '@/lib/firebase/firestoreOrders';
-import { getUserProfile } from '@/lib/firebase/firestore'; // To fetch user profiles
+import { getUserProfile } from '@/lib/firebase/firestore';
 import type { Order, UserProfile } from '@/lib/types';
-import { ShoppingCart, Eye, Loader2, MoreHorizontal, RefreshCw } from 'lucide-react'; // Removed User icon as it's not directly used
+import { ShoppingCart, Eye, Loader2, MoreHorizontal, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-// Avatar components are no longer needed here
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { ColumnDef, SortingState, ColumnFiltersState, PaginationState, VisibilityState } from '@tanstack/react-table';
@@ -26,7 +25,6 @@ import {
 
 interface DisplayOrder extends Order {
   userDisplayName?: string;
-  // userPhotoURL is no longer needed for this component's direct display
 }
 
 const formatIDR = (amount: number) => {
@@ -60,7 +58,7 @@ export default function AdminOrdersPage() {
 
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }]);
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 }); // Default pageSize 20
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({ items: false, customer: true });
   const [pageCount, setPageCount] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
@@ -72,14 +70,16 @@ export default function AdminOrdersPage() {
       const result = await getAllOrdersFromFirestore({
         pageIndex: pagination.pageIndex,
         pageSize: pagination.pageSize,
-        searchTerm,
-        // Sorting is client-side for this table
+        searchTerm: searchTerm, // Pass search term for server-side primary search
+        // Sorting is now client-side for this table
       });
 
       const userIds = Array.from(new Set(result.data.map(order => order.userId).filter(uid => !!uid)));
       const userProfilesMap = new Map<string, UserProfile>();
 
       if (userIds.length > 0) {
+        // Fetch profiles for the current page's orders
+        // Consider batching if userIds array becomes very large, though pagination limits this
         const profilePromises = userIds.map(uid => getUserProfile(uid));
         const profiles = await Promise.all(profilePromises);
         profiles.forEach(profile => {
@@ -94,7 +94,6 @@ export default function AdminOrdersPage() {
         return {
           ...order,
           userDisplayName: profile?.displayName || order.userEmail || 'Unknown User',
-          // No longer need userPhotoURL here
         };
       });
 
@@ -129,7 +128,7 @@ export default function AdminOrdersPage() {
     },
     {
       id: "customer",
-      accessorFn: row => row.userDisplayName, // Use accessorFn for sorting/filtering if needed
+      accessorFn: row => row.userDisplayName,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Customer" />,
       cell: ({ row }) => {
         const order = row.original;
@@ -139,7 +138,7 @@ export default function AdminOrdersPage() {
           </Link>
         );
       },
-      enableHiding: true,
+      enableHiding: true, // Keep ability to hide/show
     },
     {
       accessorKey: "totalAmount",
@@ -151,7 +150,7 @@ export default function AdminOrdersPage() {
       header: ({ column }) => <DataTableColumnHeader column={column} title="Items Qty" />,
       cell: ({ row }) => row.original.items.length,
       enableSorting: false, 
-      enableHiding: true,
+      enableHiding: true, // Keep ability to hide/show
     },
     {
       accessorKey: "createdAt",
@@ -232,18 +231,18 @@ export default function AdminOrdersPage() {
             onColumnFiltersChange={setColumnFilters}
             onColumnVisibilityChange={setColumnVisibility}
             initialState={{
-                pagination,
+                pagination, // uses the state variable which has pageSize: 20
                 sorting,
                 columnFilters,
-                columnVisibility,
+                columnVisibility, // Default is { items: false, customer: true }
             }}
             manualPagination={true} 
-            manualSorting={false}   
-            manualFiltering={true}  
+            manualSorting={false}   // Client-side sorting
+            manualFiltering={true}  // Server-side primary search
             isLoading={isLoading}
             searchColumnId="orderId" 
-            searchPlaceholder="Search by Order ID..." 
-            pageSizeOptions={[20,50,100]}
+            searchPlaceholder="Search by Order ID or Email..." 
+            pageSizeOptions={[20, 50, 100]} // Explicitly pass page size options
           />
         </CardContent>
       </Card>

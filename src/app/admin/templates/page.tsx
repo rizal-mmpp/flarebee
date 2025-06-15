@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { getAllTemplatesFromFirestore } from '@/lib/firebase/firestoreTemplates';
 import type { Template } from '@/lib/types';
@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+
 const formatIDR = (amount: number) => {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -41,7 +42,6 @@ const formatIDR = (amount: number) => {
   }).format(amount);
 };
 
-// Options for the "Search by" dropdown
 const searchByTemplateOptions = [
   { value: 'title', label: 'Title' },
   { value: 'category.name', label: 'Category' },
@@ -56,30 +56,28 @@ export default function AdminTemplatesPage() {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // State for the "Search by" dropdown
   const [selectedSearchField, setSelectedSearchField] = useState<string>('title');
   
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([{ id: 'title', desc: false }]);
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 }); // Default pageSize 20
   const [pageCount, setPageCount] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<Template | null>(null);
   
-  const searchColumnId = 'title'; // This ID is used by the toolbar to store the filter string
+  const searchColumnId = 'title'; 
 
   const fetchTemplates = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Server-side only handles pagination, not search or full sorting for this page.
+      // Server-side simplified: only handles pagination. Search term is not passed.
       const result = await getAllTemplatesFromFirestore({
         pageIndex: pagination.pageIndex,
         pageSize: pagination.pageSize,
-        // No searchTerm or specific sorting passed here for server-side.
       });
-      setAllFetchedTemplates(result.data);
+      setAllFetchedTemplates(result.data); 
       setPageCount(result.pageCount);
       setTotalItems(result.totalItems);
     } catch (error: any) {
@@ -96,7 +94,7 @@ export default function AdminTemplatesPage() {
 
   useEffect(() => {
     fetchTemplates();
-  }, [fetchTemplates]);
+  }, [fetchTemplates]); // fetchTemplates is memoized with pagination
 
   // Client-side filtering logic based on selectedSearchField
   useEffect(() => {
@@ -105,7 +103,7 @@ export default function AdminTemplatesPage() {
 
     if (currentSearchTerm) {
       const filtered = allFetchedTemplates.filter(template => {
-        const lowerSearchTerm = currentSearchTerm; // Already lowercased
+        const lowerSearchTerm = currentSearchTerm;
         switch (selectedSearchField) {
           case 'title':
             return template.title.toLowerCase().includes(lowerSearchTerm);
@@ -231,7 +229,7 @@ export default function AdminTemplatesPage() {
         </div>
       ),
     },
-  ], [isDeleting, fetchTemplates]); // Added fetchTemplates to dependencies
+  ], [isDeleting, fetchTemplates]);
 
 
   return (
@@ -275,19 +273,19 @@ export default function AdminTemplatesPage() {
             onSortingChange={setSorting} 
             onColumnFiltersChange={setColumnFilters} 
             initialState={{
-              pagination,
+              pagination, // uses the state variable which has pageSize: 20
               sorting, 
               columnFilters,
             }}
             manualPagination={true} 
-            manualSorting={false}   
-            manualFiltering={true} 
+            manualSorting={false}   // Client-side sorting
+            manualFiltering={true}  // Search bar filter is managed by parent
             isLoading={isLoading}
             searchColumnId={searchColumnId} 
-            searchByOptions={searchByTemplateOptions} // Pass the options
-            selectedSearchBy={selectedSearchField} // Pass the selected field state
-            onSelectedSearchByChange={setSelectedSearchField} // Pass the state updater
-            // searchPlaceholder is now dynamic, handled by DataTableToolbar
+            searchByOptions={searchByTemplateOptions}
+            selectedSearchBy={selectedSearchField}
+            onSelectedSearchByChange={setSelectedSearchField}
+            pageSizeOptions={[20, 50, 100]} // Explicitly pass page size options
           />
         </CardContent>
       </Card>

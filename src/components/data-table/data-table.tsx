@@ -34,19 +34,22 @@ interface DataTableProps<TData, TValue> {
   onPaginationChange: (pagination: PaginationState) => void; 
   onSortingChange: (sorting: SortingState) => void;
   onColumnFiltersChange: (filters: ColumnFiltersState) => void;
-  onColumnVisibilityChange?: (visibility: VisibilityState) => void; // Made optional
+  onColumnVisibilityChange?: (visibility: VisibilityState) => void;
   initialState?: { 
     pagination?: PaginationState;
     sorting?: SortingState;
     columnFilters?: ColumnFiltersState;
     columnVisibility?: VisibilityState;
   };
+  manualPagination?: boolean; // Prop to control if pagination is server-side
+  manualSorting?: boolean;   // Prop to control if sorting is server-side
+  manualFiltering?: boolean; // Prop to control if filtering is server-side
   isLoading?: boolean;
   searchColumnId?: string;
   searchPlaceholder?: string;
-  searchByOptions?: { value: string; label: string }[]; // New prop for search by options
-  selectedSearchBy?: string; // New prop for selected search field
-  onSelectedSearchByChange?: (value: string) => void; // New prop for changing search field
+  searchByOptions?: { value: string; label: string }[];
+  selectedSearchBy?: string;
+  onSelectedSearchByChange?: (value: string) => void;
   pageSizeOptions?: number[];
 }
 
@@ -60,18 +63,20 @@ export function DataTable<TData, TValue>({
   onColumnFiltersChange,
   onColumnVisibilityChange,
   initialState,
+  manualPagination = true, // Default to server-side pagination
+  manualSorting = true,   // Default to server-side sorting
+  manualFiltering = true, // Default to server-side filtering
   isLoading = false,
   searchColumnId,
   searchPlaceholder,
-  searchByOptions, // Added
-  selectedSearchBy, // Added
-  onSelectedSearchByChange, // Added
+  searchByOptions,
+  selectedSearchBy,
+  onSelectedSearchByChange,
   pageSizeOptions,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({});
   
-  // Ensure initialState parts are defaulted if not fully provided
-  const tablePagination = initialState?.pagination ?? { pageIndex: 0, pageSize: pageSizeOptions?.[0] ?? 10 };
+  const tablePagination = initialState?.pagination ?? { pageIndex: 0, pageSize: pageSizeOptions?.[0] ?? 20 }; // Fallback to 20
   const tableSorting = initialState?.sorting ?? [];
   const tableColumnFilters = initialState?.columnFilters ?? [];
   const tableColumnVisibility = initialState?.columnVisibility ?? {};
@@ -88,9 +93,9 @@ export function DataTable<TData, TValue>({
       columnFilters: tableColumnFilters,
     },
     enableRowSelection: true,
-    manualPagination: true,
-    manualSorting: false, // Sorting is client-side
-    manualFiltering: true, 
+    manualPagination,
+    manualSorting,
+    manualFiltering,
     onRowSelectionChange: setRowSelection,
     onSortingChange: onSortingChange, 
     onColumnFiltersChange: onColumnFiltersChange, 
@@ -107,14 +112,14 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="w-full space-y-3 overflow-auto">
-      {searchColumnId && ( // Toolbar is rendered if searchColumnId is provided
+      {searchColumnId && (
          <DataTableToolbar 
             table={table} 
             searchColumnId={searchColumnId} 
             searchPlaceholder={searchPlaceholder}
-            searchByOptions={searchByOptions} // Pass through
-            selectedSearchBy={selectedSearchBy} // Pass through
-            onSelectedSearchByChange={onSelectedSearchByChange} // Pass through
+            searchByOptions={searchByOptions}
+            selectedSearchBy={selectedSearchBy}
+            onSelectedSearchByChange={onSelectedSearchByChange}
         />
       )}
       <div className="rounded-md border">

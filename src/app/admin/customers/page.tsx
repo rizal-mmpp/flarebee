@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { getAllUserProfiles } from '@/lib/firebase/firestoreAdmin';
 import type { UserProfile } from '@/lib/types';
@@ -21,7 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { getOrdersByUserIdFromFirestore } from '@/lib/firebase/firestoreOrders'; // To fetch order data
+import { getOrdersByUserIdFromFirestore } from '@/lib/firebase/firestoreOrders';
 
 interface CustomerRowData extends UserProfile {
   orderCount: number;
@@ -50,8 +50,8 @@ export default function AdminCustomersPage() {
 
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 }); // Default to 20
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({}); // Added for column visibility
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 }); // Default pageSize 20
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({ email: false });
   const [pageCount, setPageCount] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
 
@@ -62,8 +62,8 @@ export default function AdminCustomersPage() {
       const result = await getAllUserProfiles({
         pageIndex: pagination.pageIndex,
         pageSize: pagination.pageSize,
-        sorting,
-        searchTerm,
+        searchTerm: searchTerm, // Pass search term for server-side primary search
+        // Sorting is now client-side for this table
       });
 
       const customersWithOrderStats: CustomerRowData[] = await Promise.all(
@@ -98,8 +98,7 @@ export default function AdminCustomersPage() {
     } finally {
       setIsLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagination, sorting, columnFilters, toast]); 
+  }, [pagination, columnFilters, toast]); 
 
   useEffect(() => {
     fetchCustomers();
@@ -127,7 +126,7 @@ export default function AdminCustomersPage() {
         </Link>
       ),
     },
-    { // Keep email column for hiding/showing
+    { 
       accessorKey: "email",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Email" />,
       cell: ({ row }) => row.original.email,
@@ -142,13 +141,13 @@ export default function AdminCustomersPage() {
       accessorKey: "orderCount",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Orders" />,
       cell: ({ row }) => row.original.orderCount,
-      enableSorting: false, // Disabled server-side sorting for this calculated field
+      enableSorting: true, // Client-side sortable
     },
     {
       accessorKey: "totalSpent",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Total Spent" />,
       cell: ({ row }) => formatIDR(row.original.totalSpent),
-      enableSorting: false, // Disabled server-side sorting for this calculated field
+      enableSorting: true, // Client-side sortable
     },
     {
       id: "actions",
@@ -206,17 +205,20 @@ export default function AdminCustomersPage() {
             onPaginationChange={setPagination}
             onSortingChange={setSorting}
             onColumnFiltersChange={setColumnFilters}
-            onColumnVisibilityChange={setColumnVisibility} // Added prop
-            initialState={{ // Added to manage initial visibility
-                pagination,
+            onColumnVisibilityChange={setColumnVisibility}
+            initialState={{ 
+                pagination, // uses the state variable which has pageSize: 20
                 sorting,
                 columnFilters,
-                columnVisibility: { email: false }, // Hide email by default
+                columnVisibility: { email: false },
             }}
+            manualPagination={true}
+            manualSorting={false} // Client-side sorting
+            manualFiltering={true} // Server-side primary search
             isLoading={isLoading}
             searchColumnId="displayName" 
             searchPlaceholder="Search by name or email..."
-            pageSizeOptions={[20,50,100]} // Pass new page size options
+            pageSizeOptions={[20, 50, 100]} // Explicitly pass page size options
           />
         </CardContent>
       </Card>
