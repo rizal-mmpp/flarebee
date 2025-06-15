@@ -22,6 +22,8 @@ interface DataTableToolbarProps<TData> {
   selectedSearchBy?: string;
   onSelectedSearchByChange?: (value: string) => void;
   isDateSearch?: boolean;
+  isStatusSearch?: boolean;
+  statusOptions?: string[];
 }
 
 export function DataTableToolbar<TData>({
@@ -32,63 +34,97 @@ export function DataTableToolbar<TData>({
   selectedSearchBy,
   onSelectedSearchByChange,
   isDateSearch = false,
+  isStatusSearch = false,
+  statusOptions = [],
 }: DataTableToolbarProps<TData>) {
-  const [localSearchInput, setLocalSearchInput] = useState<string>('');
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   const currentTableFilterValue = (table.getColumn(searchColumnId)?.getFilterValue() as string) ?? '';
 
-  useEffect(() => {
-    if (currentTableFilterValue === '') {
-      setLocalSearchInput('');
-      setSelectedDate(undefined);
-    } else if (isDateSearch) {
-      // When table filter value changes and it's a date search, try to parse and set the date
-      const parsedDate = parseISO(currentTableFilterValue);
-      if (isValid(parsedDate)) {
-        setSelectedDate(parsedDate);
-        setLocalSearchInput(format(parsedDate, 'PPP')); // Update local input for display if needed
-      } else {
-        // If currentTableFilterValue is not a valid ISO date, clear the local date state
-        setSelectedDate(undefined);
-        setLocalSearchInput(''); // Or set to currentTableFilterValue if it might be partial input
-      }
+  const handleValueChange = (value: string | undefined) => {
+    table.getColumn(searchColumnId)?.setFilterValue(value);
+  };
+  
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      handleValueChange(format(date, 'yyyy-MM-dd'));
     } else {
-      setLocalSearchInput(currentTableFilterValue);
+      handleValueChange(undefined);
     }
-  }, [currentTableFilterValue, searchColumnId, isDateSearch]);
-
-  const handleSearch = () => {
-    if (isDateSearch) {
-      if (selectedDate) {
-        table.getColumn(searchColumnId)?.setFilterValue(format(selectedDate, 'yyyy-MM-dd'));
-      } else {
-        table.getColumn(searchColumnId)?.setFilterValue('');
-      }
-      setIsDatePickerOpen(false);
-    } else {
-      table.getColumn(searchColumnId)?.setFilterValue(localSearchInput);
-    }
+    setIsDatePickerOpen(false);
   };
 
   const handleReset = () => {
-    setLocalSearchInput('');
-    setSelectedDate(undefined);
-    table.getColumn(searchColumnId)?.setFilterValue('');
-    if (isDateSearch) {
-      setIsDatePickerOpen(false);
-    }
+    handleValueChange(undefined); // Clears the filter for the current searchColumnId
+    if (isDateSearch) setIsDatePickerOpen(false);
   };
 
-  const isInputOrDateFilled = localSearchInput !== '' || selectedDate !== undefined;
-  const isTableFiltered = currentTableFilterValue !== '';
+  const isInputOrFilterActive = currentTableFilterValue !== '';
 
-  const dynamicPlaceholder = 
+  const dynamicPlaceholder =
     isDateSearch ? 'Select a date...' :
+    isStatusSearch ? 'Select status...' :
     (searchByOptions?.find(opt => opt.value === selectedSearchBy)?.label
       ? `Search by ${searchByOptions.find(opt => opt.value === selectedSearchBy)!.label.toLowerCase()}...`
       : searchPlaceholder);
+
+  const renderSearchInput = () => {
+    if (isDateSearch) {
+      const selectedDateValue = currentTableFilterValue ? parseISO(currentTableFilterValue) : undefined;
+      const displayDate = selectedDateValue && isValid(selectedDateValue) ? format(selectedDateValue, "PPP") : "Pick a date";
+
+      return (
+        <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant={"outline"}
+              className={cn(
+                "h-9 w-full justify-start text-left font-normal rounded-md",
+                !currentTableFilterValue && "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {displayDate}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={selectedDateValue && isValid(selectedDateValue) ? selectedDateValue : undefined}
+              onSelect={handleDateSelect}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+      );
+    } else if (isStatusSearch) {
+      return (
+        <Select
+          value={currentTableFilterValue}
+          onValueChange={(value) => handleValueChange(value === "all-statuses" ? undefined : value)}
+        >
+          <SelectTrigger className="h-9 rounded-md">
+            <SelectValue placeholder={dynamicPlaceholder} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all-statuses">All Statuses</SelectItem>
+            {statusOptions.map(option => (
+              <SelectItem key={option} value={option}>{option}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    } else {
+      return (
+        <Input
+          placeholder={dynamicPlaceholder}
+          value={currentTableFilterValue}
+          onChange={(event) => handleValueChange(event.target.value)}
+          className="h-9 w-full rounded-md"
+        />
+      );
+    }
+  };
 
   return (
     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-1">
@@ -99,8 +135,9 @@ export function DataTableToolbar<TData>({
               Search by:
             </Label>
             <Select value={selectedSearchBy} onValueChange={(value) => {
-              onSelectedSearchByChange(value);
-              handleReset(); // Reset search term when search field changes
+              if (onSelectedSearchByChange) onSelectedSearchByChange(value);
+              // Reset filter when search field changes
+              handleValueChange(undefined); 
             }}>
               <SelectTrigger id="search-by-select" className="h-9 min-w-[120px] sm:w-auto rounded-md">
                 <SelectValue placeholder="Select field" />
@@ -117,73 +154,45 @@ export function DataTableToolbar<TData>({
         )}
         
         <div className="relative flex-grow flex items-center">
-          {isDateSearch ? (
-            <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "h-9 w-full justify-start text-left font-normal rounded-md",
-                    !selectedDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(date) => {
-                    setSelectedDate(date);
-                  }}
-                  initialFocus
-                />
-                 <Button onClick={() => { handleSearch(); setIsDatePickerOpen(false); }} className="w-full rounded-t-none">
-                    Apply Date
-                </Button>
-              </PopoverContent>
-            </Popover>
-          ) : (
-            <Input
-              placeholder={dynamicPlaceholder}
-              value={localSearchInput}
-              onChange={(event) => setLocalSearchInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  handleSearch();
-                }
-              }}
-              className="h-9 w-full rounded-md" 
-            />
+          {renderSearchInput()}
+          {!isDateSearch && !isStatusSearch && ( // Only show explicit search/reset for text input
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+              <Button
+                  aria-label="Search"
+                  variant="default"
+                  size="icon"
+                  className="h-7 w-7 p-0 shrink-0 rounded-full"
+                  onClick={() => { /* For text input, search is onType. This button can be a visual cue or removed */ }}
+              >
+                  <SearchIcon className="h-4 w-4" />
+              </Button>
+              {isInputOrFilterActive && (
+                  <Button
+                  aria-label="Reset search"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                  onClick={handleReset}
+                  >
+                  <XIcon className="h-4 w-4" />
+                  </Button>
+              )}
+            </div>
           )}
-          <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
-            <Button
-                aria-label="Search"
-                variant="default" // Changed to default for primary background
-                size="icon"
-                className="h-7 w-7 p-0 shrink-0 rounded-full" 
-                onClick={handleSearch}
-            >
-                <SearchIcon className="h-4 w-4" />
-            </Button>
-            {(isInputOrDateFilled || isTableFiltered) && (
-                <Button
-                aria-label="Reset search"
+          {(isDateSearch || isStatusSearch) && isInputOrFilterActive && ( // Show reset for Date/Status if a filter is active
+             <Button
+                aria-label="Reset filter"
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground ml-1"
                 onClick={handleReset}
-                >
+              >
                 <XIcon className="h-4 w-4" />
-                </Button>
-            )}
-          </div>
+              </Button>
+          )}
         </div>
       </div>
       <DataTableViewOptions table={table} />
     </div>
   );
 }
-

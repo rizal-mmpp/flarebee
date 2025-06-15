@@ -41,9 +41,9 @@ interface DataTableProps<TData, TValue> {
     columnFilters?: ColumnFiltersState;
     columnVisibility?: VisibilityState;
   };
-  manualPagination?: boolean; // Prop to control if pagination is server-side
-  manualSorting?: boolean;   // Prop to control if sorting is server-side
-  manualFiltering?: boolean; // Prop to control if filtering is server-side
+  manualPagination?: boolean; 
+  manualSorting?: boolean;   
+  manualFiltering?: boolean; 
   isLoading?: boolean;
   searchColumnId?: string;
   searchPlaceholder?: string;
@@ -51,6 +51,9 @@ interface DataTableProps<TData, TValue> {
   selectedSearchBy?: string;
   onSelectedSearchByChange?: (value: string) => void;
   pageSizeOptions?: number[];
+  isDateSearch?: boolean; // New prop for date search type
+  isStatusSearch?: boolean; // New prop for status search type
+  statusOptions?: string[]; // New prop for status options
 }
 
 export function DataTable<TData, TValue>({
@@ -63,9 +66,9 @@ export function DataTable<TData, TValue>({
   onColumnFiltersChange,
   onColumnVisibilityChange,
   initialState,
-  manualPagination = true, // Default to server-side pagination
-  manualSorting = true,   // Default to server-side sorting
-  manualFiltering = true, // Default to server-side filtering
+  manualPagination = true, 
+  manualSorting = true,   
+  manualFiltering = true, 
   isLoading = false,
   searchColumnId,
   searchPlaceholder,
@@ -73,10 +76,13 @@ export function DataTable<TData, TValue>({
   selectedSearchBy,
   onSelectedSearchByChange,
   pageSizeOptions,
+  isDateSearch,
+  isStatusSearch,
+  statusOptions,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({});
   
-  const tablePagination = initialState?.pagination ?? { pageIndex: 0, pageSize: pageSizeOptions?.[0] ?? 20 }; // Fallback to 20
+  const tablePagination = initialState?.pagination ?? { pageIndex: 0, pageSize: pageSizeOptions?.[0] ?? 20 }; 
   const tableSorting = initialState?.sorting ?? [];
   const tableColumnFilters = initialState?.columnFilters ?? [];
   const tableColumnVisibility = initialState?.columnVisibility ?? {};
@@ -120,6 +126,9 @@ export function DataTable<TData, TValue>({
             searchByOptions={searchByOptions}
             selectedSearchBy={selectedSearchBy}
             onSelectedSearchByChange={onSelectedSearchByChange}
+            isDateSearch={isDateSearch}
+            isStatusSearch={isStatusSearch}
+            statusOptions={statusOptions}
         />
       )}
       <div className="rounded-md border">

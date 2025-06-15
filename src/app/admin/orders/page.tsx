@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { getAllOrdersFromFirestore } from '@/lib/firebase/firestoreOrders';
 import { getUserProfile } from '@/lib/firebase/firestore';
 import type { Order, UserProfile } from '@/lib/types';
-import { ShoppingCart, Eye, Loader2, MoreHorizontal, RefreshCw, CalendarIcon } from 'lucide-react';
+import { ShoppingCart, Eye, Loader2, MoreHorizontal, RefreshCw } from 'lucide-react'; // CalendarIcon removed as it's in toolbar
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,8 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
+// Popover and Calendar imports are now primarily handled by DataTableToolbar
 
 
 interface DisplayOrder extends Order {
@@ -40,15 +39,22 @@ const formatIDR = (amount: number) => {
 };
 
 const getStatusBadgeVariant = (status?: string) => {
-  switch (status?.toLowerCase()) {
-    case 'completed':
-    case 'paid':
+  // Consistent with Xendit statuses (usually uppercase) or our desired display
+  switch (status?.toUpperCase()) {
+    case 'PAID':
+    case 'COMPLETED': // if we map internal 'completed' to 'PAID' for display
+    case 'SETTLED':
       return 'bg-green-500/20 text-green-400 border-green-500/30';
-    case 'pending':
+    case 'PENDING':
+    case 'UNPAID': // if 'UNPAID' is a desired display status for PENDING
       return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-    case 'failed':
-    case 'expired':
+    case 'FAILED':
+    case 'EXPIRED':
       return 'bg-red-500/20 text-red-400 border-red-500/30';
+    case 'ACTIVE': // For subscriptions or other active states if applicable
+      return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+    case 'STOPPED':
+      return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
     default:
       return 'bg-muted text-muted-foreground border-border';
   }
@@ -59,10 +65,13 @@ const searchByOrderOptions = [
   { value: 'customer', label: 'Customer' },
   { value: 'amount', label: 'Amount' },
   { value: 'date', label: 'Date' },
-  { value: 'status', label: 'Status (Xendit)' },
+  { value: 'status', label: 'Status' }, // Label changed
 ];
 
-const SEARCH_FILTER_ID = "orderId"; 
+const orderStatusFilterOptions = ["Unpaid", "Paid", "Settled", "Expired", "Active", "Stopped"];
+
+
+const SEARCH_FILTER_ID = "orderId"; // Using an existing column for generic filter storage
 
 export default function AdminOrdersPage() {
   const [allFetchedOrders, setAllFetchedOrders] = useState<DisplayOrder[]>([]);
@@ -91,6 +100,8 @@ export default function AdminOrdersPage() {
       const userProfilesMap = new Map<string, UserProfile>();
 
       if (userIds.length > 0) {
+        // Batch fetch user profiles if many, or individual if few.
+        // For simplicity, individual fetches here:
         const profilePromises = userIds.map(uid => getUserProfile(uid));
         const profiles = await Promise.all(profilePromises);
         profiles.forEach(profile => {
@@ -108,7 +119,7 @@ export default function AdminOrdersPage() {
         };
       });
 
-      setAllFetchedOrders(enrichedOrders);
+      setAllFetchedOrders(enrichedOrders); // Store all fetched orders
       setPageCount(result.pageCount);
       setTotalItems(result.totalItems);
     } catch (error) {
@@ -127,6 +138,7 @@ export default function AdminOrdersPage() {
     fetchOrders();
   }, [fetchOrders]);
 
+  // Client-side filtering based on columnFilters (which gets search term from toolbar)
   useEffect(() => {
     const filter = columnFilters.find(f => f.id === SEARCH_FILTER_ID);
     const currentSearchTerm = typeof filter?.value === 'string' ? filter.value : '';
@@ -141,14 +153,13 @@ export default function AdminOrdersPage() {
             return (order.userDisplayName && order.userDisplayName.toLowerCase().includes(lowerSearchTerm)) ||
                    (order.userEmail && order.userEmail.toLowerCase().includes(lowerSearchTerm));
           case 'amount':
-            // Search by exact amount or if amount string contains the search term
-            return String(order.totalAmount) === currentSearchTerm || String(order.totalAmount).includes(currentSearchTerm);
+            return String(order.totalAmount).toLowerCase().includes(lowerSearchTerm);
           case 'date':
-            if (!currentSearchTerm) return true; // currentSearchTerm for date is "yyyy-MM-dd"
+            // currentSearchTerm for date is "yyyy-MM-dd"
             const orderDate = format(new Date(order.createdAt), "yyyy-MM-dd");
-            return orderDate === currentSearchTerm;
+            return orderDate === currentSearchTerm; // currentSearchTerm should be already yyyy-MM-dd
           case 'status': // Search by Xendit Status
-            return order.xenditPaymentStatus?.toLowerCase().includes(lowerSearchTerm);
+            return order.xenditPaymentStatus?.toLowerCase() === lowerSearchTerm;
           default:
             return true;
         }
@@ -182,7 +193,7 @@ export default function AdminOrdersPage() {
           </Link>
         );
       },
-      enableHiding: true, // Keep this, as columnVisibility state handles default visibility
+      enableHiding: true,
     },
     {
       accessorKey: "totalAmount",
@@ -190,11 +201,11 @@ export default function AdminOrdersPage() {
       cell: ({ row }) => formatIDR(row.original.totalAmount),
     },
     {
-      accessorKey: "items", // This key might be used by DataTableViewOptions if not for direct display
+      accessorKey: "items",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Items Qty" />,
       cell: ({ row }) => row.original.items.length,
       enableSorting: false, 
-      enableHiding: true, // Keep this, as columnVisibility state handles default visibility
+      enableHiding: true,
     },
     {
       accessorKey: "createdAt",
@@ -202,8 +213,8 @@ export default function AdminOrdersPage() {
       cell: ({ row }) => format(new Date(row.original.createdAt), "PP"),
     },
     {
-      id: "status", 
-      accessorFn: row => row.xenditPaymentStatus, 
+      id: "status", // Used for filtering target, accessorFn gets the Xendit status
+      accessorFn: row => row.xenditPaymentStatus, // Important for sorting/filtering
       header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
       cell: ({ row }) => {
         const xenditStatus = row.original.xenditPaymentStatus;
@@ -239,6 +250,14 @@ export default function AdminOrdersPage() {
       ),
     },
   ], []);
+  
+  const handleSelectedSearchByChange = (value: string) => {
+    setSelectedSearchField(value);
+    // When search field changes, clear existing filter value from the table state
+    const currentFilters = columnFilters.filter(f => f.id !== SEARCH_FILTER_ID);
+    setColumnFilters(currentFilters); 
+  };
+
 
   return (
     <div className="space-y-8">
@@ -266,12 +285,12 @@ export default function AdminOrdersPage() {
         <CardContent>
           <DataTable
             columns={columns}
-            data={displayedOrders}
-            pageCount={pageCount}
-            totalItems={totalItems}
+            data={displayedOrders} // Use client-side filtered data
+            pageCount={pageCount} // Still from server for overall pagination
+            totalItems={totalItems} // Still from server
             onPaginationChange={setPagination}
             onSortingChange={setSorting} 
-            onColumnFiltersChange={setColumnFilters}
+            onColumnFiltersChange={setColumnFilters} // Manages the shared filter input
             onColumnVisibilityChange={setColumnVisibility}
             initialState={{
                 pagination,
@@ -280,15 +299,17 @@ export default function AdminOrdersPage() {
                 columnVisibility, 
             }}
             manualPagination={true} 
-            manualSorting={false}
-            manualFiltering={true}
+            manualSorting={false} // Sorting is client-side on the current page's data
+            manualFiltering={false} // Filtering is client-side based on selectedSearchField
             isLoading={isLoading}
-            searchColumnId={SEARCH_FILTER_ID}
+            searchColumnId={SEARCH_FILTER_ID} 
             searchPlaceholder="Enter search term..." 
             searchByOptions={searchByOrderOptions}
             selectedSearchBy={selectedSearchField}
-            onSelectedSearchByChange={setSelectedSearchField}
+            onSelectedSearchByChange={handleSelectedSearchByChange}
             isDateSearch={selectedSearchField === 'date'}
+            isStatusSearch={selectedSearchField === 'status'}
+            statusOptions={orderStatusFilterOptions}
             pageSizeOptions={[20, 50, 100]}
           />
         </CardContent>
