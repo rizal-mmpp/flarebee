@@ -20,6 +20,8 @@ export function DataTablePagination<TData>({
   table,
   pageSizeOptions = [20, 50, 100], // Default to new button values
 }: DataTablePaginationProps<TData>) {
+  const currentTablePageSize = table.getState().pagination?.pageSize;
+
   return (
     <div className="flex w-full flex-col items-center justify-between gap-4 overflow-auto px-2 py-1 sm:flex-row sm:gap-8">
       <div className="flex-1 whitespace-nowrap text-sm text-muted-foreground">
@@ -32,12 +34,12 @@ export function DataTablePagination<TData>({
           {pageSizeOptions.map((pageSize) => (
             <Button
               key={pageSize}
-              variant={table.getState().pagination.pageSize === pageSize ? 'default' : 'outline'}
+              variant={currentTablePageSize === pageSize ? 'default' : 'outline'}
               size="sm"
               onClick={() => table.setPageSize(Number(pageSize))}
               className={cn(
                 "h-8 w-10 p-0",
-                 table.getState().pagination.pageSize === pageSize 
+                 currentTablePageSize === pageSize 
                    ? "bg-primary text-primary-foreground" 
                    : "text-muted-foreground"
               )}
@@ -94,3 +96,4 @@ export function DataTablePagination<TData>({
     </div>
   );
 }
+
