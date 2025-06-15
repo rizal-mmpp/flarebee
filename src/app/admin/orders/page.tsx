@@ -62,7 +62,7 @@ const searchByOrderOptions = [
   { value: 'status', label: 'Status (Xendit)' },
 ];
 
-const SEARCH_FILTER_ID = "orderId"; // Changed from "globalFilterValue" to an existing column ID
+const SEARCH_FILTER_ID = "orderId"; 
 
 export default function AdminOrdersPage() {
   const [allFetchedOrders, setAllFetchedOrders] = useState<DisplayOrder[]>([]);
@@ -91,8 +91,6 @@ export default function AdminOrdersPage() {
       const userProfilesMap = new Map<string, UserProfile>();
 
       if (userIds.length > 0) {
-        // Batch fetching user profiles can be very slow if there are many unique userIds.
-        // Consider optimizing this if performance becomes an issue (e.g., fetching only for visible rows, or a more complex batching system).
         const profilePromises = userIds.map(uid => getUserProfile(uid));
         const profiles = await Promise.all(profilePromises);
         profiles.forEach(profile => {
@@ -143,14 +141,14 @@ export default function AdminOrdersPage() {
             return (order.userDisplayName && order.userDisplayName.toLowerCase().includes(lowerSearchTerm)) ||
                    (order.userEmail && order.userEmail.toLowerCase().includes(lowerSearchTerm));
           case 'amount':
-            return String(order.totalAmount).includes(currentSearchTerm); 
+            // Search by exact amount or if amount string contains the search term
+            return String(order.totalAmount) === currentSearchTerm || String(order.totalAmount).includes(currentSearchTerm);
           case 'date':
-            if (!currentSearchTerm) return true;
-            // currentSearchTerm is "yyyy-MM-dd" from the date picker
+            if (!currentSearchTerm) return true; // currentSearchTerm for date is "yyyy-MM-dd"
             const orderDate = format(new Date(order.createdAt), "yyyy-MM-dd");
             return orderDate === currentSearchTerm;
-          case 'status':
-            return order.xenditPaymentStatus?.toLowerCase().includes(lowerSearchTerm) || order.status.toLowerCase().includes(lowerSearchTerm);
+          case 'status': // Search by Xendit Status
+            return order.xenditPaymentStatus?.toLowerCase().includes(lowerSearchTerm);
           default:
             return true;
         }
@@ -184,7 +182,7 @@ export default function AdminOrdersPage() {
           </Link>
         );
       },
-      enableHiding: true,
+      enableHiding: true, // Keep this, as columnVisibility state handles default visibility
     },
     {
       accessorKey: "totalAmount",
@@ -192,11 +190,11 @@ export default function AdminOrdersPage() {
       cell: ({ row }) => formatIDR(row.original.totalAmount),
     },
     {
-      accessorKey: "items",
+      accessorKey: "items", // This key might be used by DataTableViewOptions if not for direct display
       header: ({ column }) => <DataTableColumnHeader column={column} title="Items Qty" />,
       cell: ({ row }) => row.original.items.length,
       enableSorting: false, 
-      enableHiding: true,
+      enableHiding: true, // Keep this, as columnVisibility state handles default visibility
     },
     {
       accessorKey: "createdAt",
@@ -204,21 +202,19 @@ export default function AdminOrdersPage() {
       cell: ({ row }) => format(new Date(row.original.createdAt), "PP"),
     },
     {
-      id: "status",
-      accessorFn: row => row.xenditPaymentStatus || row.status, // Prioritize Xendit status for sorting/filtering
+      id: "status", 
+      accessorFn: row => row.xenditPaymentStatus, 
       header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
-      cell: ({ row }) => (
-        <div className="flex flex-col items-start gap-0.5">
-            {row.original.xenditPaymentStatus && (
-                 <Badge variant="outline" className={cn("capitalize text-xs", getStatusBadgeVariant(row.original.xenditPaymentStatus))}>
-                    X: {row.original.xenditPaymentStatus}
-                </Badge>
-            )}
-             <Badge variant="outline" className={cn("capitalize text-xs", getStatusBadgeVariant(row.original.status))}>
-                Doc: {row.original.status}
-            </Badge>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const xenditStatus = row.original.xenditPaymentStatus;
+        return xenditStatus ? (
+          <Badge variant="outline" className={cn("capitalize text-xs", getStatusBadgeVariant(xenditStatus))}>
+            {xenditStatus}
+          </Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">N/A</span>
+        );
+      },
     },
     {
       id: "actions",
@@ -281,7 +277,7 @@ export default function AdminOrdersPage() {
                 pagination,
                 sorting,
                 columnFilters,
-                columnVisibility,
+                columnVisibility, 
             }}
             manualPagination={true} 
             manualSorting={false}
@@ -300,5 +296,4 @@ export default function AdminOrdersPage() {
     </div>
   );
 }
-
     
