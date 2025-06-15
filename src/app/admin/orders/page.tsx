@@ -4,12 +4,14 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { getAllOrdersFromFirestore } from '@/lib/firebase/firestoreOrders';
-import type { Order } from '@/lib/types';
-import { ShoppingCart, Eye, Loader2, MoreHorizontal, RefreshCw } from 'lucide-react';
+import { getUserProfile } from '@/lib/firebase/firestore'; // To fetch user profiles
+import type { Order, UserProfile } from '@/lib/types';
+import { ShoppingCart, Eye, Loader2, MoreHorizontal, RefreshCw, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { ColumnDef, SortingState, ColumnFiltersState, PaginationState, VisibilityState } from '@tanstack/react-table';
@@ -21,6 +23,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+
+interface DisplayOrder extends Order {
+  userDisplayName?: string;
+  userPhotoURL?: string | null;
+}
 
 const formatIDR = (amount: number) => {
   return new Intl.NumberFormat('id-ID', {
@@ -46,30 +53,59 @@ const getStatusBadgeVariant = (status?: string) => {
   }
 };
 
+const getAvatarFallback = (displayName: string | null | undefined) => {
+  if (!displayName) return "U";
+  const initials = displayName.split(' ').map(name => name[0]).join('').toUpperCase();
+  return initials || "U";
+};
+
 export default function AdminOrdersPage() {
-  const [ordersData, setOrdersData] = useState<Order[]>([]);
+  const [ordersData, setOrdersData] = useState<DisplayOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }]);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({ userEmail: false });
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({ items: false, customer: true }); // Updated default visibility
   const [pageCount, setPageCount] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
 
   const fetchOrders = useCallback(async () => {
     setIsLoading(true);
     try {
-      // The search term is derived from the filter set on the 'orderId' column by the DataTableToolbar
       const searchTerm = columnFilters.find(f => f.id === 'orderId')?.value as string | undefined;
       const result = await getAllOrdersFromFirestore({
         pageIndex: pagination.pageIndex,
         pageSize: pagination.pageSize,
-        sorting,
-        searchTerm, // This searchTerm will be used by the backend to search across orderId and userEmail
+        // Sorting is client-side, so not passed to server fetch
+        searchTerm,
       });
-      setOrdersData(result.data);
+
+      // Fetch user profiles for the orders
+      const userIds = Array.from(new Set(result.data.map(order => order.userId).filter(uid => !!uid)));
+      const userProfilesMap = new Map<string, UserProfile>();
+
+      if (userIds.length > 0) {
+        const profilePromises = userIds.map(uid => getUserProfile(uid));
+        const profiles = await Promise.all(profilePromises);
+        profiles.forEach(profile => {
+          if (profile) {
+            userProfilesMap.set(profile.uid, profile);
+          }
+        });
+      }
+      
+      const enrichedOrders: DisplayOrder[] = result.data.map(order => {
+        const profile = userProfilesMap.get(order.userId);
+        return {
+          ...order,
+          userDisplayName: profile?.displayName || order.userEmail || 'Unknown User',
+          userPhotoURL: profile?.photoURL,
+        };
+      });
+
+      setOrdersData(enrichedOrders);
       setPageCount(result.pageCount);
       setTotalItems(result.totalItems);
     } catch (error) {
@@ -82,13 +118,13 @@ export default function AdminOrdersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [pagination, sorting, columnFilters, toast]);
+  }, [pagination, columnFilters, toast]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
 
-  const columns = useMemo<ColumnDef<Order, any>[]>(() => [
+  const columns = useMemo<ColumnDef<DisplayOrder, any>[]>(() => [
     {
       accessorKey: "orderId",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Order ID" />,
@@ -99,9 +135,21 @@ export default function AdminOrdersPage() {
       ),
     },
     {
-      accessorKey: "userEmail",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="User Email" />,
-      cell: ({ row }) => row.original.userEmail || 'N/A',
+      id: "customer", // New ID for the customer column
+      accessorKey: "userId", // We use userId to link, but display name
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Customer" />,
+      cell: ({ row }) => {
+        const order = row.original;
+        return (
+          <Link href={`/admin/customers/${order.userId}`} className="hover:underline text-primary font-medium flex items-center gap-2">
+            <Avatar className="h-7 w-7 text-xs">
+              <AvatarImage src={order.userPhotoURL || undefined} alt={order.userDisplayName || 'User'} />
+              <AvatarFallback>{getAvatarFallback(order.userDisplayName)}</AvatarFallback>
+            </Avatar>
+            {order.userDisplayName}
+          </Link>
+        );
+      },
       enableHiding: true,
     },
     {
@@ -111,9 +159,10 @@ export default function AdminOrdersPage() {
     },
     {
       accessorKey: "items",
-      header: "Items",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Items Qty" />,
       cell: ({ row }) => row.original.items.length,
-      enableSorting: false,
+      enableSorting: false, // Typically, item count might not be server-sortable unless pre-calculated
+      enableHiding: true,
     },
     {
       accessorKey: "createdAt",
@@ -190,18 +239,21 @@ export default function AdminOrdersPage() {
             pageCount={pageCount}
             totalItems={totalItems}
             onPaginationChange={setPagination}
-            onSortingChange={setSorting}
+            onSortingChange={setSorting} // Client-side sorting, DataTable handles state
             onColumnFiltersChange={setColumnFilters}
             onColumnVisibilityChange={setColumnVisibility}
             initialState={{
                 pagination,
                 sorting,
                 columnFilters,
-                columnVisibility,
+                columnVisibility, // Use the updated columnVisibility state
             }}
+            manualPagination={true} // Server-side pagination
+            manualSorting={false}   // Client-side sorting
+            manualFiltering={true}  // Server-side primary search
             isLoading={isLoading}
-            searchColumnId="orderId" // Toolbar search input will filter the 'orderId' column
-            searchPlaceholder="Search by Order ID or Email..." // Placeholder text remains informative
+            searchColumnId="orderId" 
+            searchPlaceholder="Search by Order ID..." 
             pageSizeOptions={[20,50,100]}
           />
         </CardContent>
@@ -209,3 +261,4 @@ export default function AdminOrdersPage() {
     </div>
   );
 }
+
