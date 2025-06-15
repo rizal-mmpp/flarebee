@@ -2,7 +2,7 @@
 'use client';
 
 import type { Table } from '@tanstack/react-table';
-import { ColumnsIcon } from 'lucide-react';
+import { Settings } from 'lucide-react'; // Changed from ColumnsIcon
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -22,13 +22,13 @@ export function DataTableViewOptions<TData>({ table }: DataTableViewOptionsProps
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          aria-label="Toggle columns"
+          aria-label="Toggle column visibility" // Updated aria-label for clarity
           variant="outline"
-          size="sm"
-          className="ml-auto hidden h-8 lg:flex"
+          size="icon" // Changed to icon size
+          className="ml-auto hidden h-8 w-8 lg:flex" // Ensured size consistency
         >
-          <ColumnsIcon className="mr-2 size-4" />
-          View
+          <Settings className="size-4" /> {/* Icon only, no margin needed */}
+          <span className="sr-only">Toggle Columns</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[150px]">
