@@ -10,6 +10,7 @@ export interface Category {
 export interface Template {
   id: string; // Firestore document ID
   title: string;
+  title_lowercase?: string; // For case-insensitive search
   description: string;
   longDescription?: string;
   category: Category;
@@ -79,3 +80,16 @@ export type OrderInputData = Omit<Order, 'id' | 'createdAt' | 'updatedAt'> & {
   updatedAt?: any; // Allows for Firestore serverTimestamp
 };
 
+export interface FetchTemplatesParams {
+  pageIndex?: number;
+  pageSize?: number;
+  sorting?: { id: string; desc: boolean }[];
+  searchTerm?: string;
+  // categorySlug?: string; // Future use for server-side category filtering if needed
+}
+
+export interface FetchTemplatesResult {
+  data: Template[];
+  pageCount: number;
+  totalItems: number;
+}

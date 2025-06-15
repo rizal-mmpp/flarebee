@@ -40,8 +40,8 @@ export default function HomePage() {
     async function fetchTemplates() {
       setIsLoading(true);
       try {
-        // Call with empty object to use default params (fetch all for homepage)
-        const result = await getAllTemplatesFromFirestore({}); 
+        // Fetch all for client-side filtering on public page (can be paginated later if needed)
+        const result = await getAllTemplatesFromFirestore({ pageSize: 0 }); 
         setAllTemplates(result.data);
       } catch (error) {
         console.error("Failed to fetch templates for public page:", error);
@@ -56,7 +56,7 @@ export default function HomePage() {
     const categoryFromQuery = searchParams.get('category');
     if (categoryFromQuery && CATEGORIES.some(cat => cat.slug === categoryFromQuery)) {
       setSelectedCategory(categoryFromQuery);
-    } else if (!categoryFromQuery) { // Only reset if no category query param
+    } else if (!categoryFromQuery) { 
       setSelectedCategory(null);
     }
   }, [searchParams]);
@@ -100,13 +100,19 @@ export default function HomePage() {
   };
   
   const filteredTemplates = useMemo(() => {
+    const lowerSearchTerm = searchTerm.toLowerCase();
     return allTemplates.filter((template) => {
       const categoryMatch = selectedCategory ? template.category.slug === selectedCategory : true;
-      const searchMatch = searchTerm
-        ? template.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          template.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          template.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-        : true;
+      
+      let searchMatch = true;
+      if (lowerSearchTerm) {
+        const titleMatch = template.title.toLowerCase().includes(lowerSearchTerm);
+        const descriptionMatch = template.description.toLowerCase().includes(lowerSearchTerm);
+        const categoryNameMatch = template.category.name.toLowerCase().includes(lowerSearchTerm);
+        const tagsMatch = template.tags.some(tag => tag.toLowerCase().includes(lowerSearchTerm));
+        searchMatch = titleMatch || descriptionMatch || categoryNameMatch || tagsMatch;
+      }
+      
       return categoryMatch && searchMatch;
     });
   }, [selectedCategory, searchTerm, allTemplates]);
@@ -133,12 +139,12 @@ export default function HomePage() {
           <Input 
             ref={inputRef}
             type="text"
-            placeholder="Search for templates..."
+            placeholder="Search templates by title, category, tags..."
             value={searchTerm}
             onFocus={() => setIsSearchActive(true)}
             onChange={(e) => setSearchTerm(e.target.value)}
             className={cn(
-              "pl-10 pr-10 text-base h-12 transition-all duration-150 ease-in-out w-full rounded-full", // Added pr-10 for X icon space
+              "pl-10 pr-10 text-base h-12 transition-all duration-150 ease-in-out w-full rounded-full",
               isSearchActive 
                 ? "bg-background border border-primary focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0" 
                 : "bg-muted border-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
@@ -185,8 +191,6 @@ export default function HomePage() {
                         <li
                         key={template.id}
                         onClick={() => {
-                            // Navigate to template page or fill search, depending on desired UX
-                            // For now, let's fill search and close suggestions
                             setSearchTerm(template.title);
                             setIsSearchActive(false);
                             router.push(`/templates/${template.id}`);
