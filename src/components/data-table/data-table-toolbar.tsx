@@ -44,13 +44,15 @@ export function DataTableToolbar<TData>({
       setLocalSearchInput('');
       setSelectedDate(undefined);
     } else if (isDateSearch) {
+      // When table filter value changes and it's a date search, try to parse and set the date
       const parsedDate = parseISO(currentTableFilterValue);
       if (isValid(parsedDate)) {
         setSelectedDate(parsedDate);
-        setLocalSearchInput(format(parsedDate, 'PPP')); 
+        setLocalSearchInput(format(parsedDate, 'PPP')); // Update local input for display if needed
       } else {
+        // If currentTableFilterValue is not a valid ISO date, clear the local date state
         setSelectedDate(undefined);
-        setLocalSearchInput('');
+        setLocalSearchInput(''); // Or set to currentTableFilterValue if it might be partial input
       }
     } else {
       setLocalSearchInput(currentTableFilterValue);
@@ -98,7 +100,7 @@ export function DataTableToolbar<TData>({
             </Label>
             <Select value={selectedSearchBy} onValueChange={(value) => {
               onSelectedSearchByChange(value);
-              handleReset();
+              handleReset(); // Reset search term when search field changes
             }}>
               <SelectTrigger id="search-by-select" className="h-9 min-w-[120px] sm:w-auto rounded-md">
                 <SelectValue placeholder="Select field" />
@@ -121,7 +123,7 @@ export function DataTableToolbar<TData>({
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "h-9 w-full justify-start text-left font-normal rounded-md pr-10", 
+                    "h-9 w-full justify-start text-left font-normal rounded-md pr-10", // Added pr-10 for icon space
                     !selectedDate && "text-muted-foreground"
                   )}
                 >
@@ -135,9 +137,19 @@ export function DataTableToolbar<TData>({
                   selected={selectedDate}
                   onSelect={(date) => {
                     setSelectedDate(date);
+                    // Optionally trigger search immediately on date select, or wait for search button
+                    // if (date) {
+                    //   table.getColumn(searchColumnId)?.setFilterValue(format(date, 'yyyy-MM-dd'));
+                    // } else {
+                    //   table.getColumn(searchColumnId)?.setFilterValue('');
+                    // }
+                    // setIsDatePickerOpen(false);
                   }}
                   initialFocus
                 />
+                 <Button onClick={() => { handleSearch(); setIsDatePickerOpen(false); }} className="w-full rounded-t-none">
+                    Apply Date
+                </Button>
               </PopoverContent>
             </Popover>
           ) : (
@@ -150,15 +162,15 @@ export function DataTableToolbar<TData>({
                   handleSearch();
                 }
               }}
-              className="h-9 w-full rounded-md pr-20"
+              className="h-9 w-full rounded-md pr-20" // Increased pr for two icons
             />
           )}
           <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
             <Button
                 aria-label="Search"
-                variant="outline"
+                variant="secondary" // Changed to secondary for background
                 size="icon"
-                className="h-7 w-7 p-0 shrink-0 rounded-full"
+                className="h-7 w-7 p-0 shrink-0 rounded-full" // Kept size
                 onClick={handleSearch}
             >
                 <SearchIcon className="h-4 w-4" />
@@ -166,7 +178,7 @@ export function DataTableToolbar<TData>({
             {(isInputOrDateFilled || isTableFiltered) && (
                 <Button
                 aria-label="Reset search"
-                variant="ghost"
+                variant="ghost" // Kept as ghost
                 size="icon"
                 className="h-7 w-7 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
                 onClick={handleReset}
