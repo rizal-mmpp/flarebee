@@ -62,7 +62,7 @@ const searchByOrderOptions = [
   { value: 'status', label: 'Status (Xendit)' },
 ];
 
-const SEARCH_FILTER_ID = "globalFilterValue"; // Single ID for the filter state
+const SEARCH_FILTER_ID = "orderId"; // Changed from "globalFilterValue" to an existing column ID
 
 export default function AdminOrdersPage() {
   const [allFetchedOrders, setAllFetchedOrders] = useState<DisplayOrder[]>([]);
@@ -82,17 +82,17 @@ export default function AdminOrdersPage() {
   const fetchOrders = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Server-side fetch is now simplified, only handling pagination
       const result = await getAllOrdersFromFirestore({
         pageIndex: pagination.pageIndex,
         pageSize: pagination.pageSize,
-        // Server-side sorting is still createdAt desc
       });
 
       const userIds = Array.from(new Set(result.data.map(order => order.userId).filter(uid => !!uid)));
       const userProfilesMap = new Map<string, UserProfile>();
 
       if (userIds.length > 0) {
+        // Batch fetching user profiles can be very slow if there are many unique userIds.
+        // Consider optimizing this if performance becomes an issue (e.g., fetching only for visible rows, or a more complex batching system).
         const profilePromises = userIds.map(uid => getUserProfile(uid));
         const profiles = await Promise.all(profilePromises);
         profiles.forEach(profile => {
@@ -110,7 +110,7 @@ export default function AdminOrdersPage() {
         };
       });
 
-      setAllFetchedOrders(enrichedOrders); // Store all fetched for client-side filtering
+      setAllFetchedOrders(enrichedOrders);
       setPageCount(result.pageCount);
       setTotalItems(result.totalItems);
     } catch (error) {
@@ -129,7 +129,6 @@ export default function AdminOrdersPage() {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Client-side filtering logic
   useEffect(() => {
     const filter = columnFilters.find(f => f.id === SEARCH_FILTER_ID);
     const currentSearchTerm = typeof filter?.value === 'string' ? filter.value : '';
@@ -144,14 +143,14 @@ export default function AdminOrdersPage() {
             return (order.userDisplayName && order.userDisplayName.toLowerCase().includes(lowerSearchTerm)) ||
                    (order.userEmail && order.userEmail.toLowerCase().includes(lowerSearchTerm));
           case 'amount':
-            return String(order.totalAmount).includes(currentSearchTerm); // Amount might not need lowercase
+            return String(order.totalAmount).includes(currentSearchTerm); 
           case 'date':
-            // currentSearchTerm for date is expected to be "yyyy-MM-dd"
-            if (!currentSearchTerm) return true; // No date filter
+            if (!currentSearchTerm) return true;
+            // currentSearchTerm is "yyyy-MM-dd" from the date picker
             const orderDate = format(new Date(order.createdAt), "yyyy-MM-dd");
             return orderDate === currentSearchTerm;
           case 'status':
-            return order.xenditPaymentStatus?.toLowerCase().includes(lowerSearchTerm);
+            return order.xenditPaymentStatus?.toLowerCase().includes(lowerSearchTerm) || order.status.toLowerCase().includes(lowerSearchTerm);
           default:
             return true;
         }
@@ -174,7 +173,7 @@ export default function AdminOrdersPage() {
       ),
     },
     {
-      id: "customer", // Keep using 'customer' as id for consistency if visibility state refers to it
+      id: "customer", 
       accessorFn: row => row.userDisplayName,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Customer" />,
       cell: ({ row }) => {
@@ -205,21 +204,19 @@ export default function AdminOrdersPage() {
       cell: ({ row }) => format(new Date(row.original.createdAt), "PP"),
     },
     {
-      id: "status", // Explicit ID for status column
-      accessorFn: row => row.xenditPaymentStatus, // Sort/filter by Xendit status
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Status (Xendit)" />,
+      id: "status",
+      accessorFn: row => row.xenditPaymentStatus || row.status, // Prioritize Xendit status for sorting/filtering
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
       cell: ({ row }) => (
-        <div className="flex flex-col items-start">
-            {/* Primary display is Xendit status if available */}
-            {row.original.xenditPaymentStatus ? (
+        <div className="flex flex-col items-start gap-0.5">
+            {row.original.xenditPaymentStatus && (
                  <Badge variant="outline" className={cn("capitalize text-xs", getStatusBadgeVariant(row.original.xenditPaymentStatus))}>
-                    {row.original.xenditPaymentStatus}
-                </Badge>
-            ) : (
-                 <Badge variant="outline" className={cn("capitalize text-xs", getStatusBadgeVariant(row.original.status))}>
-                    {row.original.status} (Internal)
+                    X: {row.original.xenditPaymentStatus}
                 </Badge>
             )}
+             <Badge variant="outline" className={cn("capitalize text-xs", getStatusBadgeVariant(row.original.status))}>
+                Doc: {row.original.status}
+            </Badge>
         </div>
       ),
     },
@@ -273,7 +270,7 @@ export default function AdminOrdersPage() {
         <CardContent>
           <DataTable
             columns={columns}
-            data={displayedOrders} // Use client-side filtered data
+            data={displayedOrders}
             pageCount={pageCount}
             totalItems={totalItems}
             onPaginationChange={setPagination}
@@ -287,10 +284,10 @@ export default function AdminOrdersPage() {
                 columnVisibility,
             }}
             manualPagination={true} 
-            manualSorting={false}   // Client-side sorting
-            manualFiltering={true}  // Toolbar manages filter state, parent applies it
+            manualSorting={false}
+            manualFiltering={true}
             isLoading={isLoading}
-            searchColumnId={SEARCH_FILTER_ID} 
+            searchColumnId={SEARCH_FILTER_ID}
             searchPlaceholder="Enter search term..." 
             searchByOptions={searchByOrderOptions}
             selectedSearchBy={selectedSearchField}
@@ -303,3 +300,5 @@ export default function AdminOrdersPage() {
     </div>
   );
 }
+
+    
