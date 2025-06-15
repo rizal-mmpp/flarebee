@@ -6,12 +6,12 @@ import Link from 'next/link';
 import { getAllOrdersFromFirestore } from '@/lib/firebase/firestoreOrders';
 import { getUserProfile } from '@/lib/firebase/firestore'; // To fetch user profiles
 import type { Order, UserProfile } from '@/lib/types';
-import { ShoppingCart, Eye, Loader2, MoreHorizontal, RefreshCw, User } from 'lucide-react';
+import { ShoppingCart, Eye, Loader2, MoreHorizontal, RefreshCw } from 'lucide-react'; // Removed User icon as it's not directly used
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+// Avatar components are no longer needed here
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { ColumnDef, SortingState, ColumnFiltersState, PaginationState, VisibilityState } from '@tanstack/react-table';
@@ -26,7 +26,7 @@ import {
 
 interface DisplayOrder extends Order {
   userDisplayName?: string;
-  userPhotoURL?: string | null;
+  // userPhotoURL is no longer needed for this component's direct display
 }
 
 const formatIDR = (amount: number) => {
@@ -53,12 +53,6 @@ const getStatusBadgeVariant = (status?: string) => {
   }
 };
 
-const getAvatarFallback = (displayName: string | null | undefined) => {
-  if (!displayName) return "U";
-  const initials = displayName.split(' ').map(name => name[0]).join('').toUpperCase();
-  return initials || "U";
-};
-
 export default function AdminOrdersPage() {
   const [ordersData, setOrdersData] = useState<DisplayOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -67,7 +61,7 @@ export default function AdminOrdersPage() {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }]);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({ items: false, customer: true }); // Updated default visibility
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({ items: false, customer: true });
   const [pageCount, setPageCount] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
 
@@ -78,11 +72,10 @@ export default function AdminOrdersPage() {
       const result = await getAllOrdersFromFirestore({
         pageIndex: pagination.pageIndex,
         pageSize: pagination.pageSize,
-        // Sorting is client-side, so not passed to server fetch
         searchTerm,
+        // Sorting is client-side for this table
       });
 
-      // Fetch user profiles for the orders
       const userIds = Array.from(new Set(result.data.map(order => order.userId).filter(uid => !!uid)));
       const userProfilesMap = new Map<string, UserProfile>();
 
@@ -101,7 +94,7 @@ export default function AdminOrdersPage() {
         return {
           ...order,
           userDisplayName: profile?.displayName || order.userEmail || 'Unknown User',
-          userPhotoURL: profile?.photoURL,
+          // No longer need userPhotoURL here
         };
       });
 
@@ -135,17 +128,13 @@ export default function AdminOrdersPage() {
       ),
     },
     {
-      id: "customer", // New ID for the customer column
-      accessorKey: "userId", // We use userId to link, but display name
+      id: "customer",
+      accessorFn: row => row.userDisplayName, // Use accessorFn for sorting/filtering if needed
       header: ({ column }) => <DataTableColumnHeader column={column} title="Customer" />,
       cell: ({ row }) => {
         const order = row.original;
         return (
-          <Link href={`/admin/customers/${order.userId}`} className="hover:underline text-primary font-medium flex items-center gap-2">
-            <Avatar className="h-7 w-7 text-xs">
-              <AvatarImage src={order.userPhotoURL || undefined} alt={order.userDisplayName || 'User'} />
-              <AvatarFallback>{getAvatarFallback(order.userDisplayName)}</AvatarFallback>
-            </Avatar>
+          <Link href={`/admin/customers/${order.userId}`} className="hover:underline text-primary font-medium">
             {order.userDisplayName}
           </Link>
         );
@@ -161,7 +150,7 @@ export default function AdminOrdersPage() {
       accessorKey: "items",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Items Qty" />,
       cell: ({ row }) => row.original.items.length,
-      enableSorting: false, // Typically, item count might not be server-sortable unless pre-calculated
+      enableSorting: false, 
       enableHiding: true,
     },
     {
@@ -239,18 +228,18 @@ export default function AdminOrdersPage() {
             pageCount={pageCount}
             totalItems={totalItems}
             onPaginationChange={setPagination}
-            onSortingChange={setSorting} // Client-side sorting, DataTable handles state
+            onSortingChange={setSorting} 
             onColumnFiltersChange={setColumnFilters}
             onColumnVisibilityChange={setColumnVisibility}
             initialState={{
                 pagination,
                 sorting,
                 columnFilters,
-                columnVisibility, // Use the updated columnVisibility state
+                columnVisibility,
             }}
-            manualPagination={true} // Server-side pagination
-            manualSorting={false}   // Client-side sorting
-            manualFiltering={true}  // Server-side primary search
+            manualPagination={true} 
+            manualSorting={false}   
+            manualFiltering={true}  
             isLoading={isLoading}
             searchColumnId="orderId" 
             searchPlaceholder="Search by Order ID..." 
@@ -261,4 +250,3 @@ export default function AdminOrdersPage() {
     </div>
   );
 }
-
