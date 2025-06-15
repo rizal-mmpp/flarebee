@@ -44,17 +44,15 @@ export function DataTableToolbar<TData>({
       setLocalSearchInput('');
       setSelectedDate(undefined);
     } else if (isDateSearch) {
-      // If it's a date search and there's a filter value, try to parse it
       const parsedDate = parseISO(currentTableFilterValue);
       if (isValid(parsedDate)) {
         setSelectedDate(parsedDate);
-        setLocalSearchInput(format(parsedDate, 'PPP')); // Display formatted date
+        setLocalSearchInput(format(parsedDate, 'PPP')); 
       } else {
-        setSelectedDate(undefined); // Clear if not a valid date string for date search
+        setSelectedDate(undefined);
         setLocalSearchInput('');
       }
     } else {
-      // For non-date search, sync local input with table filter
       setLocalSearchInput(currentTableFilterValue);
     }
   }, [currentTableFilterValue, searchColumnId, isDateSearch]);
@@ -64,9 +62,9 @@ export function DataTableToolbar<TData>({
       if (selectedDate) {
         table.getColumn(searchColumnId)?.setFilterValue(format(selectedDate, 'yyyy-MM-dd'));
       } else {
-        table.getColumn(searchColumnId)?.setFilterValue(''); // Clear filter if no date selected
+        table.getColumn(searchColumnId)?.setFilterValue('');
       }
-      setIsDatePickerOpen(false); // Close picker on search
+      setIsDatePickerOpen(false);
     } else {
       table.getColumn(searchColumnId)?.setFilterValue(localSearchInput);
     }
@@ -77,7 +75,6 @@ export function DataTableToolbar<TData>({
     setSelectedDate(undefined);
     table.getColumn(searchColumnId)?.setFilterValue('');
     if (isDateSearch) {
-      // If it was a date search, and we reset, close the picker if it was open
       setIsDatePickerOpen(false);
     }
   };
@@ -101,7 +98,7 @@ export function DataTableToolbar<TData>({
             </Label>
             <Select value={selectedSearchBy} onValueChange={(value) => {
               onSelectedSearchByChange(value);
-              handleReset(); // Reset search term when changing search field
+              handleReset();
             }}>
               <SelectTrigger id="search-by-select" className="h-9 min-w-[120px] sm:w-auto rounded-md">
                 <SelectValue placeholder="Select field" />
@@ -116,6 +113,7 @@ export function DataTableToolbar<TData>({
             </Select>
           </div>
         )}
+        
         <div className="relative flex-grow flex items-center">
           {isDateSearch ? (
             <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
@@ -123,7 +121,7 @@ export function DataTableToolbar<TData>({
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "h-9 w-full justify-start text-left font-normal rounded-md",
+                    "h-9 w-full justify-start text-left font-normal rounded-md pr-10", // Added pr-10 for potential icon space
                     !selectedDate && "text-muted-foreground"
                   )}
                 >
@@ -137,13 +135,6 @@ export function DataTableToolbar<TData>({
                   selected={selectedDate}
                   onSelect={(date) => {
                     setSelectedDate(date);
-                    // Optionally apply filter immediately or wait for search button
-                    // if (date) {
-                    //   table.getColumn(searchColumnId)?.setFilterValue(format(date, 'yyyy-MM-dd'));
-                    // } else {
-                    //   table.getColumn(searchColumnId)?.setFilterValue('');
-                    // }
-                    // setIsDatePickerOpen(false); // Close picker on select
                   }}
                   initialFocus
                 />
@@ -159,23 +150,16 @@ export function DataTableToolbar<TData>({
                   handleSearch();
                 }
               }}
-              className="h-9 w-full rounded-md pr-16 sm:pr-20"
+              className="h-9 w-full rounded-md pr-20" // Increased padding for two icons
             />
           )}
-          <div className={cn(
-            "absolute top-1/2 -translate-y-1/2 flex items-center",
-             isDateSearch ? "right-[calc(1rem+2*2.25rem)]" : "right-1" // Adjust position based on whether date picker is shown
-          )}>
-             {/* Search and Reset buttons are always visible next to the input/datepicker space */}
-          </div>
-        </div>
-         {/* Search and Reset buttons moved outside the input's relative container for consistent positioning */}
-        <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Search and Reset buttons container */}
+          <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
             <Button
                 aria-label="Search"
-                variant="default"
+                variant="ghost" // Changed to ghost to blend better
                 size="icon"
-                className="h-9 w-9 shrink-0 rounded-md"
+                className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
                 onClick={handleSearch}
             >
                 <SearchIcon className="h-4 w-4" />
@@ -185,12 +169,13 @@ export function DataTableToolbar<TData>({
                 aria-label="Reset search"
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 shrink-0 rounded-md"
+                className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
                 onClick={handleReset}
                 >
                 <XIcon className="h-4 w-4" />
                 </Button>
             )}
+          </div>
         </div>
       </div>
       <DataTableViewOptions table={table} />
