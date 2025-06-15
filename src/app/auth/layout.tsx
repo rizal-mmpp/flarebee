@@ -12,7 +12,7 @@ export default function AuthLayout({
       <div className="absolute top-6 left-6 md:top-8 md:left-8">
         <Link href="/" className="flex items-center gap-2 group">
           <Hexagon className="h-8 w-8 text-primary transition-transform duration-300 ease-in-out group-hover:rotate-[30deg]" />
-          <span className="text-xl font-bold text-foreground">RIO</span>
+          <span className="text-lg font-bold text-foreground">RAGAM INOVASI OPTIMA</span>
         </Link>
       </div>
       <div className="w-full max-w-md">
