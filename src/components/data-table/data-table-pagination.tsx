@@ -25,10 +25,8 @@ export function DataTablePagination<TData>({
 
   return (
     <div className="flex w-full flex-col items-center justify-between gap-4 overflow-auto px-2 py-1 sm:flex-row sm:gap-8">
-      <div className="flex-1 whitespace-nowrap text-sm text-muted-foreground">
-        {table.getFilteredSelectedRowModel().rows.length} of{' '}
-        {table.getFilteredRowModel().rows.length} row(s) selected.
-      </div>
+      {/* Removed the row selection count display */}
+      <div className="flex-1"></div> {/* This div can be removed if no other left-aligned content is planned, or kept for future use */}
       <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
         <div className="inline-flex rounded-md shadow-sm" role="group">
           {pageSizeOptions.map((pageSize, index) => (
