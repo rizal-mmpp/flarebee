@@ -6,12 +6,12 @@ import Link from 'next/link';
 import { getAllOrdersFromFirestore } from '@/lib/firebase/firestoreOrders';
 import { getUserProfile } from '@/lib/firebase/firestore';
 import type { Order, UserProfile } from '@/lib/types';
-import { ShoppingCart, Eye, Loader2, MoreHorizontal, RefreshCw } from 'lucide-react';
+import { ShoppingCart, Eye, Loader2, MoreHorizontal, RefreshCw, CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { ColumnDef, SortingState, ColumnFiltersState, PaginationState, VisibilityState } from '@tanstack/react-table';
 import { DataTable } from '@/components/data-table/data-table';
@@ -22,6 +22,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+
 
 interface DisplayOrder extends Order {
   userDisplayName?: string;
@@ -51,14 +54,27 @@ const getStatusBadgeVariant = (status?: string) => {
   }
 };
 
+const searchByOrderOptions = [
+  { value: 'orderId', label: 'Order ID' },
+  { value: 'customer', label: 'Customer' },
+  { value: 'amount', label: 'Amount' },
+  { value: 'date', label: 'Date' },
+  { value: 'status', label: 'Status (Xendit)' },
+];
+
+const SEARCH_FILTER_ID = "globalFilterValue"; // Single ID for the filter state
+
 export default function AdminOrdersPage() {
-  const [ordersData, setOrdersData] = useState<DisplayOrder[]>([]);
+  const [allFetchedOrders, setAllFetchedOrders] = useState<DisplayOrder[]>([]);
+  const [displayedOrders, setDisplayedOrders] = useState<DisplayOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
+  const [selectedSearchField, setSelectedSearchField] = useState<string>('orderId');
+  
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }]);
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 }); // Default pageSize 20
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({ items: false, customer: true });
   const [pageCount, setPageCount] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
@@ -66,20 +82,17 @@ export default function AdminOrdersPage() {
   const fetchOrders = useCallback(async () => {
     setIsLoading(true);
     try {
-      const searchTerm = columnFilters.find(f => f.id === 'orderId')?.value as string | undefined;
+      // Server-side fetch is now simplified, only handling pagination
       const result = await getAllOrdersFromFirestore({
         pageIndex: pagination.pageIndex,
         pageSize: pagination.pageSize,
-        searchTerm: searchTerm, // Pass search term for server-side primary search
-        // Sorting is now client-side for this table
+        // Server-side sorting is still createdAt desc
       });
 
       const userIds = Array.from(new Set(result.data.map(order => order.userId).filter(uid => !!uid)));
       const userProfilesMap = new Map<string, UserProfile>();
 
       if (userIds.length > 0) {
-        // Fetch profiles for the current page's orders
-        // Consider batching if userIds array becomes very large, though pagination limits this
         const profilePromises = userIds.map(uid => getUserProfile(uid));
         const profiles = await Promise.all(profilePromises);
         profiles.forEach(profile => {
@@ -97,7 +110,7 @@ export default function AdminOrdersPage() {
         };
       });
 
-      setOrdersData(enrichedOrders);
+      setAllFetchedOrders(enrichedOrders); // Store all fetched for client-side filtering
       setPageCount(result.pageCount);
       setTotalItems(result.totalItems);
     } catch (error) {
@@ -110,11 +123,45 @@ export default function AdminOrdersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [pagination, columnFilters, toast]);
+  }, [pagination, toast]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  // Client-side filtering logic
+  useEffect(() => {
+    const filter = columnFilters.find(f => f.id === SEARCH_FILTER_ID);
+    const currentSearchTerm = typeof filter?.value === 'string' ? filter.value : '';
+
+    if (currentSearchTerm) {
+      const lowerSearchTerm = currentSearchTerm.toLowerCase();
+      const filtered = allFetchedOrders.filter(order => {
+        switch (selectedSearchField) {
+          case 'orderId':
+            return order.orderId.toLowerCase().includes(lowerSearchTerm);
+          case 'customer':
+            return (order.userDisplayName && order.userDisplayName.toLowerCase().includes(lowerSearchTerm)) ||
+                   (order.userEmail && order.userEmail.toLowerCase().includes(lowerSearchTerm));
+          case 'amount':
+            return String(order.totalAmount).includes(currentSearchTerm); // Amount might not need lowercase
+          case 'date':
+            // currentSearchTerm for date is expected to be "yyyy-MM-dd"
+            if (!currentSearchTerm) return true; // No date filter
+            const orderDate = format(new Date(order.createdAt), "yyyy-MM-dd");
+            return orderDate === currentSearchTerm;
+          case 'status':
+            return order.xenditPaymentStatus?.toLowerCase().includes(lowerSearchTerm);
+          default:
+            return true;
+        }
+      });
+      setDisplayedOrders(filtered);
+    } else {
+      setDisplayedOrders(allFetchedOrders);
+    }
+  }, [allFetchedOrders, columnFilters, selectedSearchField]);
+
 
   const columns = useMemo<ColumnDef<DisplayOrder, any>[]>(() => [
     {
@@ -127,7 +174,7 @@ export default function AdminOrdersPage() {
       ),
     },
     {
-      id: "customer",
+      id: "customer", // Keep using 'customer' as id for consistency if visibility state refers to it
       accessorFn: row => row.userDisplayName,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Customer" />,
       cell: ({ row }) => {
@@ -138,7 +185,7 @@ export default function AdminOrdersPage() {
           </Link>
         );
       },
-      enableHiding: true, // Keep ability to hide/show
+      enableHiding: true,
     },
     {
       accessorKey: "totalAmount",
@@ -150,7 +197,7 @@ export default function AdminOrdersPage() {
       header: ({ column }) => <DataTableColumnHeader column={column} title="Items Qty" />,
       cell: ({ row }) => row.original.items.length,
       enableSorting: false, 
-      enableHiding: true, // Keep ability to hide/show
+      enableHiding: true,
     },
     {
       accessorKey: "createdAt",
@@ -158,16 +205,19 @@ export default function AdminOrdersPage() {
       cell: ({ row }) => format(new Date(row.original.createdAt), "PP"),
     },
     {
-      accessorKey: "status",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+      id: "status", // Explicit ID for status column
+      accessorFn: row => row.xenditPaymentStatus, // Sort/filter by Xendit status
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Status (Xendit)" />,
       cell: ({ row }) => (
         <div className="flex flex-col items-start">
-            <Badge variant="outline" className={cn("capitalize text-xs", getStatusBadgeVariant(row.original.status))}>
-                {row.original.status}
-            </Badge>
-            {row.original.xenditPaymentStatus && row.original.xenditPaymentStatus.toUpperCase() !== row.original.status.toUpperCase() && (
-                <Badge variant="outline" className={cn("capitalize text-xs mt-1", getStatusBadgeVariant(row.original.xenditPaymentStatus))}>
-                X: {row.original.xenditPaymentStatus}
+            {/* Primary display is Xendit status if available */}
+            {row.original.xenditPaymentStatus ? (
+                 <Badge variant="outline" className={cn("capitalize text-xs", getStatusBadgeVariant(row.original.xenditPaymentStatus))}>
+                    {row.original.xenditPaymentStatus}
+                </Badge>
+            ) : (
+                 <Badge variant="outline" className={cn("capitalize text-xs", getStatusBadgeVariant(row.original.status))}>
+                    {row.original.status} (Internal)
                 </Badge>
             )}
         </div>
@@ -223,7 +273,7 @@ export default function AdminOrdersPage() {
         <CardContent>
           <DataTable
             columns={columns}
-            data={ordersData}
+            data={displayedOrders} // Use client-side filtered data
             pageCount={pageCount}
             totalItems={totalItems}
             onPaginationChange={setPagination}
@@ -231,18 +281,22 @@ export default function AdminOrdersPage() {
             onColumnFiltersChange={setColumnFilters}
             onColumnVisibilityChange={setColumnVisibility}
             initialState={{
-                pagination, // uses the state variable which has pageSize: 20
+                pagination,
                 sorting,
                 columnFilters,
-                columnVisibility, // Default is { items: false, customer: true }
+                columnVisibility,
             }}
             manualPagination={true} 
             manualSorting={false}   // Client-side sorting
-            manualFiltering={true}  // Server-side primary search
+            manualFiltering={true}  // Toolbar manages filter state, parent applies it
             isLoading={isLoading}
-            searchColumnId="orderId" 
-            searchPlaceholder="Search by Order ID or Email..." 
-            pageSizeOptions={[20, 50, 100]} // Explicitly pass page size options
+            searchColumnId={SEARCH_FILTER_ID} 
+            searchPlaceholder="Enter search term..." 
+            searchByOptions={searchByOrderOptions}
+            selectedSearchBy={selectedSearchField}
+            onSelectedSearchByChange={setSelectedSearchField}
+            isDateSearch={selectedSearchField === 'date'}
+            pageSizeOptions={[20, 50, 100]}
           />
         </CardContent>
       </Card>
