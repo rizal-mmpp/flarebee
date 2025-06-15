@@ -13,25 +13,20 @@ import {
   QueryConstraint,
   DocumentData,
   QueryDocumentSnapshot,
-  where,
-  documentId, // Import documentId
-  FieldPath, // Import FieldPath
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
+  // where, // No longer using where for server-side search in this simplified version
+  documentId, 
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Template, FetchTemplatesParams, FetchTemplatesResult } from '@/lib/types';
 import { CATEGORIES } from '@/lib/constants';
-import type { TemplateFirestoreData } from '@/lib/actions/template.actions'; // Use the Firestore-specific type
+import type { TemplateFirestoreData } from '@/lib/actions/template.actions';
 
 const TEMPLATES_COLLECTION = 'templates';
 
 // Helper to convert Firestore doc to Template object
 const fromFirestore = (docSnapshot: QueryDocumentSnapshot<DocumentData>): Template => {
   const data = docSnapshot.data();
-  const category = CATEGORIES.find(c => c.id === data.categoryId) || CATEGORIES[0]; // Fallback to first category
+  const category = CATEGORIES.find(c => c.id === data.categoryId) || CATEGORIES[0];
   return {
     id: docSnapshot.id,
     title: data.title,
@@ -54,50 +49,22 @@ const fromFirestore = (docSnapshot: QueryDocumentSnapshot<DocumentData>): Templa
   };
 };
 
-
+// Simplified version: Only paginates by createdAt. Search will be client-side in AdminTemplatesPage.
 export async function getAllTemplatesFromFirestore({
   pageIndex = 0,
   pageSize = 10,
-  sorting = [{ id: 'createdAt', desc: true }], // Default sort
-  searchTerm,
+  // searchTerm is no longer used for server-side filtering in this simplified version
 }: FetchTemplatesParams = {}): Promise<FetchTemplatesResult> {
   try {
     const templatesCollection = collection(db, TEMPLATES_COLLECTION);
     const dataQueryConstraints: QueryConstraint[] = [];
-    const countQueryConstraints: QueryConstraint[] = [];
-
-    const effectiveSearchTerm = searchTerm?.trim();
-    const primarySearchField = 'title_lowercase'; // Always search this for templates
-
-    if (effectiveSearchTerm) {
-      const lowerSearchTerm = effectiveSearchTerm.toLowerCase();
-      countQueryConstraints.push(where(primarySearchField, '>=', lowerSearchTerm));
-      countQueryConstraints.push(where(primarySearchField, '<=', lowerSearchTerm + '\uf8ff'));
-
-      dataQueryConstraints.push(where(primarySearchField, '>=', lowerSearchTerm));
-      dataQueryConstraints.push(where(primarySearchField, '<=', lowerSearchTerm + '\uf8ff'));
-      dataQueryConstraints.push(orderBy(primarySearchField, 'asc'));
-    } else {
-      // Default sort or user-defined sort if no search term
-      if (sorting && sorting.length > 0) {
-        const sortItem = sorting[0];
-        // Ensure sortItem.id is a valid field in Template for Firestore sorting
-        // For client-side sorting, this part is less critical for the DB query if not searching
-         if (['title', 'price', 'createdAt'].includes(sortItem.id)) {
-             dataQueryConstraints.push(orderBy(sortItem.id === 'title' ? 'title_lowercase' : sortItem.id, sortItem.desc ? 'desc' : 'asc'));
-         } else {
-            dataQueryConstraints.push(orderBy('createdAt', 'desc')); // Fallback default sort
-         }
-      } else {
-        dataQueryConstraints.push(orderBy('createdAt', 'desc'));
-      }
-    }
-    // Always add secondary sort for stable pagination
+    
+    // Default sort: createdAt descending, then by document ID for stable pagination
+    dataQueryConstraints.push(orderBy('createdAt', 'desc'));
     dataQueryConstraints.push(orderBy(documentId(), 'asc'));
 
-
-    // Count total items matching filters
-    const countQuery = query(templatesCollection, ...countQueryConstraints);
+    // Count total items in the collection (no search filter here)
+    const countQuery = query(templatesCollection);
     const countSnapshot = await getCountFromServer(countQuery);
     const totalItems = countSnapshot.data().count;
 
@@ -109,50 +76,50 @@ export async function getAllTemplatesFromFirestore({
 
     // Handle pagination cursor
     if (pageSize > 0 && pageIndex > 0) {
-      const cursorDocLimit = pageIndex * pageSize;
-      const cursorDocQuery = query(
-        templatesCollection,
-        ...dataQueryConstraints.filter(c => c.type !== 'limit' && c.type !== 'startAfter'), // Exclude previous pagination constraints
-        firestoreLimit(cursorDocLimit)
-      );
-      const cursorSnapshot = await getDocs(cursorDocQuery);
+      const docsToSkip = pageIndex * pageSize;
+      
+      // Base cursor query constraints (sorting)
+      const cursorDeterminingQueryConstraints: QueryConstraint[] = [
+        orderBy('createdAt', 'desc'),
+        orderBy(documentId(), 'asc'),
+        firestoreLimit(docsToSkip)
+      ];
+      
+      const cursorSnapshot = await getDocs(query(templatesCollection, ...cursorDeterminingQueryConstraints));
 
-      if (cursorSnapshot.docs.length === cursorDocLimit && cursorSnapshot.docs.length > 0) {
-        const lastDocSnapshot = cursorSnapshot.docs[cursorSnapshot.docs.length - 1];
-        
-        // Construct correct startAfter arguments based on current primary sort field
-        const primarySortField = effectiveSearchTerm ? primarySearchField : (sorting[0]?.id === 'title' ? 'title_lowercase' : sorting[0]?.id || 'createdAt');
-        const primarySortValue = lastDocSnapshot.data()[primarySortField];
-
-        if (primarySortValue !== undefined) {
-          dataQueryConstraints.push(startAfter(primarySortValue, lastDocSnapshot.id));
-        } else {
-          // Fallback if primary sort value is undefined on the doc (shouldn't happen with good data)
-          dataQueryConstraints.push(startAfter(lastDocSnapshot));
-        }
-      } else if (cursorSnapshot.docs.length < cursorDocLimit) {
-        return { data: [], pageCount, totalItems };
+      if (cursorSnapshot.docs.length === docsToSkip && cursorSnapshot.docs.length > 0) {
+        const lastVisibleDoc = cursorSnapshot.docs[cursorSnapshot.docs.length - 1];
+        dataQueryConstraints.push(startAfter(lastVisibleDoc)); // Simplified startAfter
+      } else if (cursorSnapshot.docs.length < docsToSkip) {
+        return { data: [], pageCount, totalItems }; // Requested page is out of bounds
       }
     }
 
     // Add final limit for the current page
-    if (pageSize > 0) {
-      dataQueryConstraints.push(firestoreLimit(pageSize));
+    // Remove any previous limit before adding the new one
+    const existingLimitIndex = dataQueryConstraints.findIndex(c => c.type === 'limit');
+    if (existingLimitIndex !== -1) {
+        dataQueryConstraints.splice(existingLimitIndex, 1);
     }
-
+    if (pageSize > 0) {
+        dataQueryConstraints.push(firestoreLimit(pageSize));
+    }
+    
     const finalDataQuery = query(templatesCollection, ...dataQueryConstraints);
     const dataSnapshot = await getDocs(finalDataQuery);
     const data = dataSnapshot.docs.map(doc => fromFirestore(doc));
-
+    
     return { data, pageCount, totalItems };
+
   } catch (error: any) {
-    console.error("Error getting all templates from Firestore: ", error);
+    console.error("Error getting all templates from Firestore (simplified): ", error);
     if (error.code === 'failed-precondition') {
-      console.error("Firestore 'failed-precondition' error. This usually indicates a missing or incomplete index. Please check your Firestore indexes.", error.message);
-      // To help debug, log the constraints that caused the issue.
-      // This might require passing constraints back or logging them here.
-      // For now, a generic message.
-      throw new Error(`Firestore query requires an index. Please ensure indexes cover the query. Original error: ${error.message}`);
+       const queryDescription = dataQueryConstraints.map(c => {
+        // @ts-ignore
+        return `${c._op || c.type} on ${c._field?.segments?.join('/') || 'ID'} ${c._value !== undefined ? `val: ${c._value}` : ''} ${c._direction || ''}`;
+      }).join('; ');
+      console.error("Firestore 'failed-precondition'. Index missing? Query details: ", queryDescription);
+      throw new Error(`Firestore query requires an index. Expected: (createdAt DESC, __name__ ASC). Original error: ${error.message}`);
     }
     throw error;
   }
@@ -170,48 +137,6 @@ export async function getTemplateByIdFromFirestore(id: string): Promise<Template
     }
   } catch (error) {
     console.error("Error getting template by ID from Firestore: ", error);
-    throw error;
-  }
-}
-
-// Re-adding the basic CRUD operations that might have been in template.actions.ts,
-// but are direct Firestore interactions.
-// The actions file should ideally call these.
-
-export async function addTemplateToFirestore(templateData: TemplateFirestoreData): Promise<Template> {
-  try {
-    const docRef = await addDoc(collection(db, TEMPLATES_COLLECTION), {
-      ...templateData,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    const newTemplateSnapshot = await getDoc(docRef);
-    return fromFirestore(newTemplateSnapshot as QueryDocumentSnapshot<DocumentData>);
-  } catch (error) {
-    console.error("Error adding template to Firestore: ", error);
-    throw error;
-  }
-}
-
-export async function updateTemplateInFirestore(id: string, data: Partial<TemplateFirestoreData>): Promise<void> {
-  try {
-    const docRef = doc(db, TEMPLATES_COLLECTION, id);
-    await updateDoc(docRef, {
-        ...data,
-        updatedAt: serverTimestamp(),
-    });
-  } catch (error) {
-    console.error("Error updating template in Firestore: ", error);
-    throw error;
-  }
-}
-
-export async function deleteTemplateFromFirestore(id: string): Promise<void> {
-  try {
-    const docRef = doc(db, TEMPLATES_COLLECTION, id);
-    await deleteDoc(docRef);
-  } catch (error) {
-    console.error("Error deleting template from Firestore: ", error);
     throw error;
   }
 }

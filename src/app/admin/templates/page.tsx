@@ -43,13 +43,16 @@ const formatIDR = (amount: number) => {
 };
 
 export default function AdminTemplatesPage() {
-  const [templatesData, setTemplatesData] = useState<Template[]>([]);
+  const [allFetchedTemplates, setAllFetchedTemplates] = useState<Template[]>([]); // Holds data from server for current page
+  const [displayedTemplates, setDisplayedTemplates] = useState<Template[]>([]); // Holds client-side filtered data
   const [isLoading, setIsLoading] = useState(true);
-  const [isDeleting, setIsDeleting] = useState<string | null>(null); // For delete spinner
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const { toast } = useToast();
 
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }]);
+  // Sorting is now client-side, so TanStack Table will manage its state internally if manualSorting is false.
+  // We keep this state here to potentially pass to table if needed, but it won't trigger server refetch for sort.
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'title', desc: false }]); // Default client sort
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [pageCount, setPageCount] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
@@ -60,32 +63,47 @@ export default function AdminTemplatesPage() {
   const fetchTemplates = useCallback(async () => {
     setIsLoading(true);
     try {
-      const searchTerm = columnFilters.find(f => f.id === 'title')?.value as string | undefined;
+      // Server fetch does not use searchTerm for templates anymore
       const result = await getAllTemplatesFromFirestore({
         pageIndex: pagination.pageIndex,
         pageSize: pagination.pageSize,
-        sorting,
-        searchTerm,
+        // No sorting or searchTerm passed for server-side in this simplified version
       });
-      setTemplatesData(result.data);
+      setAllFetchedTemplates(result.data); // Store all fetched for potential client filtering
       setPageCount(result.pageCount);
       setTotalItems(result.totalItems);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch templates:", error);
       toast({
         title: "Error Fetching Templates",
-        description: "Could not load templates.",
+        description: error.message || "Could not load templates.",
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagination, sorting, columnFilters, toast]);
+  }, [pagination, toast]); // Removed columnFilters from dependency to avoid re-fetching on client search typing
 
   useEffect(() => {
     fetchTemplates();
   }, [fetchTemplates]);
+
+  // Client-side filtering based on search term
+  useEffect(() => {
+    const titleFilter = columnFilters.find(f => f.id === 'title');
+    const currentSearchTerm = typeof titleFilter?.value === 'string' ? titleFilter.value.toLowerCase() : '';
+
+    if (currentSearchTerm) {
+      const filtered = allFetchedTemplates.filter(template =>
+        template.title.toLowerCase().includes(currentSearchTerm)
+      );
+      setDisplayedTemplates(filtered);
+    } else {
+      setDisplayedTemplates(allFetchedTemplates);
+    }
+  }, [allFetchedTemplates, columnFilters]);
+
 
   const handleDeleteClick = (template: Template) => {
     setTemplateToDelete(template);
@@ -98,7 +116,7 @@ export default function AdminTemplatesPage() {
       const result = await deleteTemplateAction(templateToDelete.id);
       if (result.success) {
         toast({ title: "Template Deleted", description: result.message });
-        fetchTemplates(); // Refresh the list
+        fetchTemplates(); 
       } else {
         toast({ title: "Error Deleting Template", description: result.error, variant: "destructive" });
       }
@@ -130,7 +148,7 @@ export default function AdminTemplatesPage() {
       cell: ({ row }) => <span className="font-medium">{row.original.title}</span>,
     },
     {
-      accessorKey: "category.name", // Access nested property
+      accessorKey: "category.name",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Category" />,
       cell: ({ row }) => row.original.category.name,
     },
@@ -192,7 +210,7 @@ export default function AdminTemplatesPage() {
         </div>
       ),
     },
-  ], [isDeleting]);
+  ], [isDeleting, fetchTemplates]); // Added fetchTemplates to dependencies
 
 
   return (
@@ -204,7 +222,7 @@ export default function AdminTemplatesPage() {
             Manage Templates
           </h1>
           <p className="text-muted-foreground mt-1">
-            Add, edit, or remove templates. Total: {totalItems}
+            Add, edit, or remove templates. Total: {totalItems} (before client-side search)
           </p>
         </div>
         <div className="flex gap-2 flex-col sm:flex-row">
@@ -229,18 +247,25 @@ export default function AdminTemplatesPage() {
         <CardContent>
           <DataTable
             columns={columns}
-            data={templatesData}
-            pageCount={pageCount}
-            totalItems={totalItems}
+            data={displayedTemplates} // Use client-side filtered data
+            pageCount={pageCount} // Server-side page count
+            totalItems={totalItems} // Server-side total items
             onPaginationChange={setPagination}
-            onSortingChange={setSorting}
-            onColumnFiltersChange={setColumnFilters}
-            initialPagination={pagination}
-            initialSorting={sorting}
-            initialColumnFilters={columnFilters}
+            // Sorting is now client-side, TanStack table handles its own sorting state
+            onSortingChange={setSorting} // Keep to update local sort state for table header indicators
+            onColumnFiltersChange={setColumnFilters} // This will trigger client-side filtering
+            initialState={{
+              pagination,
+              sorting, // Pass initial sort state
+              columnFilters,
+              // No columnVisibility passed, defaults to all visible
+            }}
+            manualPagination={true} // Pagination is server-side
+            manualSorting={false}   // Sorting is client-side
+            manualFiltering={false} // Primary filtering is now client-side for this table
             isLoading={isLoading}
-            searchColumnId="title" // Example: search by title
-            searchPlaceholder="Search by title, category, tags..."
+            searchColumnId="title" 
+            searchPlaceholder="Search by title..."
           />
         </CardContent>
       </Card>
