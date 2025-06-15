@@ -24,7 +24,13 @@ import {
 import type { ColumnDef, SortingState, ColumnFiltersState, PaginationState } from '@tanstack/react-table';
 import { DataTable } from '@/components/data-table/data-table';
 import { DataTableColumnHeader } from '@/components/data-table/data-table-column-header';
-
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'; // Added this import
 
 const formatIDR = (amount: number) => {
   return new Intl.NumberFormat('id-ID', {
@@ -64,12 +70,13 @@ export default function AdminTemplatesPage() {
   const fetchTemplates = useCallback(async () => {
     setIsLoading(true);
     try {
+      // Since search is client-side, we fetch all and then filter
       const result = await getAllTemplatesFromFirestore({
         pageIndex: pagination.pageIndex,
         pageSize: pagination.pageSize,
-        // searchTerm is removed as search is client-side for this table
+        // No searchTerm here, client-side filtering applies to allFetchedTemplates
       });
-      setAllFetchedTemplates(result.data);
+      setAllFetchedTemplates(result.data); // Store all fetched for current pagination settings
       setPageCount(result.pageCount);
       setTotalItems(result.totalItems);
     } catch (error: any) {
@@ -82,7 +89,7 @@ export default function AdminTemplatesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [pagination, toast]);
+  }, [pagination, toast]); // Removed searchTerm from dependency
 
   useEffect(() => {
     fetchTemplates();
@@ -113,7 +120,7 @@ export default function AdminTemplatesPage() {
     } else {
       setDisplayedTemplates(allFetchedTemplates);
     }
-  }, [allFetchedTemplates, columnFilters, selectedSearchField]);
+  }, [allFetchedTemplates, columnFilters, selectedSearchField, searchColumnId]);
 
 
   const handleDeleteClick = (template: Template) => {
@@ -233,7 +240,7 @@ export default function AdminTemplatesPage() {
             Manage Templates
           </h1>
           <p className="text-muted-foreground mt-1">
-            Add, edit, or remove templates. Total fetched: {totalItems} (client-side search applied on this set).
+            Add, edit, or remove templates. Total available on server: {totalItems}.
           </p>
         </div>
         <div className="flex gap-2 flex-col sm:flex-row">
@@ -262,22 +269,21 @@ export default function AdminTemplatesPage() {
             pageCount={pageCount} 
             totalItems={totalItems} 
             onPaginationChange={setPagination}
-            onSortingChange={setSorting} 
-            onColumnFiltersChange={setColumnFilters} 
+            onSortingChange={setSorting} // Client-side sorting, DataTable manages internal state
+            onColumnFiltersChange={setColumnFilters} // For search input
             initialState={{
               pagination,
               sorting, 
               columnFilters,
             }}
-            manualPagination={true} 
-            manualSorting={false}   
-            manualFiltering={true} // Toolbar filter sets table state, page filters client-side
+            manualPagination={true} // Server handles pagination
+            manualSorting={false}   // Client handles sorting
+            manualFiltering={true}  // Toolbar filter sets table state, page filters client-side
             isLoading={isLoading}
             searchColumnId={searchColumnId} // Tells toolbar which filter key to use
             searchByOptions={searchByTemplateOptions}
             selectedSearchBy={selectedSearchField}
             onSelectedSearchByChange={setSelectedSearchField}
-            // searchPlaceholder is now dynamic in the toolbar
           />
         </CardContent>
       </Card>
@@ -308,3 +314,4 @@ export default function AdminTemplatesPage() {
     </div>
   );
 }
+
