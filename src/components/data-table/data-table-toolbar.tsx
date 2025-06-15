@@ -18,7 +18,7 @@ export function DataTableToolbar<TData>({
   searchColumnId,
   searchPlaceholder = 'Filter...',
 }: DataTableToolbarProps<TData>) {
-  const isFiltered = table.getState().columnFilters.length > 0;
+  const isFiltered = (table.getState().columnFilters ?? []).length > 0;
   const filterValue = (table.getColumn(searchColumnId)?.getFilterValue() as string) ?? '';
 
   return (
@@ -46,3 +46,4 @@ export function DataTableToolbar<TData>({
     </div>
   );
 }
+
