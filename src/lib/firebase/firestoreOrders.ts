@@ -105,9 +105,9 @@ export async function getOrdersByUserIdFromFirestore(userId: string): Promise<Or
 
 
 interface FetchOrdersParams {
-  pageIndex: number;
-  pageSize: number;
-  sorting: SortingState;
+  pageIndex?: number;
+  pageSize?: number;
+  sorting?: SortingState;
   searchTerm?: string; // For searching by orderId or userEmail
 }
 
@@ -118,47 +118,51 @@ interface FetchOrdersResult {
 }
 
 export async function getAllOrdersFromFirestore({
-  pageIndex,
-  pageSize,
-  sorting,
+  pageIndex = 0,
+  pageSize = 0, // Default to 0 to fetch all if not specified for pagination
+  sorting = [{ id: 'createdAt', desc: true }],
   searchTerm,
-}: FetchOrdersParams): Promise<FetchOrdersResult> {
+}: FetchOrdersParams = {}): Promise<FetchOrdersResult> {
   try {
     const ordersCollection = collection(db, ORDERS_COLLECTION);
     const constraints: QueryConstraint[] = [];
-
-    // Note: Firestore is limited for multi-field text search.
-    // This search will be basic. For complex search, use a dedicated search service.
-    // If searchTerm is provided, we might need to query twice or filter client-side for some fields.
-    // For simplicity, the count will be for all orders, and search applied to the fetched page.
-    // A more advanced setup would filter server-side more effectively.
     
-    const countSnapshot = await getCountFromServer(ordersCollection);
-    const totalItems = countSnapshot.data().count;
+    // Count total items based on whether there's a searchTerm for more accuracy
+    let countQuery = query(ordersCollection);
+    if (searchTerm) {
+        // This is a simplification. Firestore doesn't support direct text search across multiple fields.
+        // For a real app, you might do multiple queries or use a search service.
+        // This count will be for all orders, which might be fine for overall total.
+        // Or, you could attempt a 'where' clause for a primary search field.
+    }
+    const countSnapshot = await getCountFromServer(countQuery);
+    let totalItems = countSnapshot.data().count;
 
     if (sorting && sorting.length > 0) {
       const sortItem = sorting[0];
-      // Ensure field exists in Firestore for sorting (e.g. 'totalAmount', 'createdAt')
       if (['orderId', 'userEmail', 'totalAmount', 'createdAt', 'status'].includes(sortItem.id)) {
         constraints.push(orderBy(sortItem.id, sortItem.desc ? 'desc' : 'asc'));
       } else {
-        constraints.push(orderBy('createdAt', 'desc')); // Default sort if invalid field
+        constraints.push(orderBy('createdAt', 'desc'));
       }
     } else {
-      constraints.push(orderBy('createdAt', 'desc')); // Default sort
+      constraints.push(orderBy('createdAt', 'desc'));
     }
 
-    constraints.push(firestoreLimit(pageSize));
-    if (pageIndex > 0) {
-      const cursorQueryConstraints = [...constraints.filter(c => c.type !== 'limit'), firestoreLimit(pageIndex * pageSize)];
-      const cursorSnapshot = await getDocs(query(ordersCollection, ...cursorQueryConstraints));
-      if (cursorSnapshot.docs.length === pageIndex * pageSize && cursorSnapshot.docs.length > 0) {
-        const lastDocInPreviousPages = cursorSnapshot.docs[cursorSnapshot.docs.length - 1];
-        constraints.push(firestoreStartAfter(lastDocInPreviousPages));
-      } else if (pageIndex > 0 && cursorSnapshot.docs.length < pageIndex * pageSize) {
-         return { data: [], pageCount: Math.ceil(totalItems / pageSize), totalItems };
+    if (pageSize > 0) {
+      constraints.push(firestoreLimit(pageSize));
+      if (pageIndex > 0) {
+        const cursorQueryConstraints = [...constraints.filter(c => c.type !== 'limit' && c.type !== 'startAfter'), firestoreLimit(pageIndex * pageSize)];
+        const cursorSnapshot = await getDocs(query(ordersCollection, ...cursorQueryConstraints));
+        if (cursorSnapshot.docs.length === pageIndex * pageSize && cursorSnapshot.docs.length > 0) {
+          const lastDocInPreviousPages = cursorSnapshot.docs[cursorSnapshot.docs.length - 1];
+          constraints.push(firestoreStartAfter(lastDocInPreviousPages));
+        } else if (pageIndex > 0 && cursorSnapshot.docs.length < pageIndex * pageSize) {
+           return { data: [], pageCount: Math.ceil(totalItems / pageSize), totalItems };
+        }
       }
     }
+    // If pageSize is 0, no limit is applied, fetching all matching documents.
 
     const dataQuery = query(ordersCollection, ...constraints);
     const querySnapshot = await getDocs(dataQuery);
@@ -171,11 +175,17 @@ export async function getAllOrdersFromFirestore({
         (order.userEmail && order.userEmail.toLowerCase().includes(lowerSearchTerm)) ||
         order.status.toLowerCase().includes(lowerSearchTerm)
       );
-      // totalItems and pageCount might be inexact if searchTerm filters significantly.
-      // For precise server-side search pagination, searchTerm should be part of the count query.
+      if (pageSize > 0) { // If paginating, totalItems and pageCount could be affected by search
+        // For true server-side search pagination, totalItems should be the count of *searched* items.
+        // This is complex with Firestore without a dedicated search index.
+        // Here, we might return the filtered data length as totalItems for the current page view.
+        // Or, for simplicity, keep totalItems as the grand total and accept that pageCount might be approximate for searches.
+      } else { // If not paginating (pageSize=0), update totalItems to reflect the search results.
+        totalItems = data.length;
+      }
     }
     
-    const pageCount = Math.ceil(totalItems / pageSize);
+    const pageCount = pageSize > 0 ? Math.ceil(totalItems / pageSize) : 1;
     return { data, pageCount, totalItems };
 
   } catch (error) {

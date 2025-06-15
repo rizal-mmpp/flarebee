@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getAllTemplatesFromFirestore } from '@/lib/firebase/firestoreTemplates';
 import { getAllOrdersFromFirestore } from '@/lib/firebase/firestoreOrders';
-import { getAllUserProfiles } from '@/lib/firebase/firestoreAdmin'; // New function
+import { getAllUserProfiles } from '@/lib/firebase/firestoreAdmin'; 
 import type { Template, Order, UserProfile } from '@/lib/types';
 import { BarChart3, LayoutGrid, FileText, Users, DollarSign, ShoppingCart, Activity, Banknote, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -40,15 +40,16 @@ export default function AdminDashboardPage() {
     setIsLoadingUsers(true);
     setIsLoadingBalance(true);
     try {
-      const [fetchedTemplates, fetchedOrders, fetchedUsers, balanceResult] = await Promise.all([
-        getAllTemplatesFromFirestore(),
-        getAllOrdersFromFirestore(),
-        getAllUserProfiles(),
+      // Pass empty object {} to use default parameters (fetch all)
+      const [templatesResult, ordersResult, usersResult, balanceResult] = await Promise.all([
+        getAllTemplatesFromFirestore({}), // Fetch all templates
+        getAllOrdersFromFirestore({}),    // Fetch all orders
+        getAllUserProfiles({}),          // Fetch all users
         getXenditBalance(),
       ]);
-      setTemplates(fetchedTemplates);
-      setOrders(fetchedOrders);
-      setUsers(fetchedUsers);
+      setTemplates(templatesResult.data);
+      setOrders(ordersResult.data);
+      setUsers(usersResult.data);
       setXenditBalance(balanceResult);
 
     } catch (error) {
