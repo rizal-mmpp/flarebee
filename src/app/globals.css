@@ -5,98 +5,98 @@
 
 @layer base {
   :root {
-    --background: 45 85% 94%; /* #FEF3E2 - Very Light Cream */
-    --foreground: 45 10% 20%; /* Dark Warm Gray, for good contrast on light background */
+    --background: 228 100% 98%; /* #F4F6FF - Very Light Blue */
+    --foreground: 210 70% 21%; /* #10375C - Dark Blue */
 
-    --card: 45 75% 96%; /* Slightly brighter/whiter than background */
-    --card-foreground: 45 10% 20%;
+    --card: 228 100% 99%; /* Slightly brighter than background */
+    --card-foreground: 210 70% 21%; /* Dark Blue */
 
-    --popover: 45 80% 97%; /* Even brighter version of background */
-    --popover-foreground: 45 10% 20%;
+    --popover: 228 100% 99%;
+    --popover-foreground: 210 70% 21%;
 
     --primary: 50 90% 55%; /* #F3C623 - Yellow */
-    --primary-foreground: 50 90% 15%; /* Dark Yellow/Brown for contrast on yellow */
+    --primary-foreground: 50 90% 15%; /* Dark Yellow/Brown for contrast */
 
-    --secondary: 39 100% 65%; /* #FFB22C - Golden Orange as Secondary (original accent becomes main accent below) */
-    --secondary-foreground: 39 80% 15%; /* Dark Orange/Brown */
+    --secondary: 30 84% 51%; /* #EB8317 - Orange (using Accent as Secondary too for vibrancy) */
+    --secondary-foreground: 30 80% 10%; /* Dark Orange/Brown */
 
-    --muted: 45 60% 90%; /* Muted version of background */
-    --muted-foreground: 45 30% 50%; /* Muted Dark Beige */
+    --muted: 228 60% 94%; /* Muted version of background */
+    --muted-foreground: 210 30% 45%; /* Muted Dark Blue/Gray */
 
-    --accent: 39 100% 58%; /* #FFB22C - Golden Orange (using this as the main Accent now) */
-    --accent-foreground: 39 80% 15%; /* Dark Orange/Brown for contrast on golden orange */
+    --accent: 30 84% 51%; /* #EB8317 - Orange */
+    --accent-foreground: 30 80% 10%; /* Dark Orange/Brown */
     
-    --destructive: 18 95% 60%; /* #FA812F - Orange, leaning towards destructive/warning */
-    --destructive-foreground: 18 80% 98%; /* Very Light Orange/White */
+    --destructive: 0 72% 51%; /* Standard Red for destructive actions */
+    --destructive-foreground: 0 0% 98%; /* Light color for destructive text */
 
-    --border: 45 50% 85%; /* Muted Beige Border */
-    --input: 45 60% 92%; /* Slightly Lighter Input Border/BG, derived from background */
+    --border: 228 30% 90%; /* Muted Light Blue Border */
+    --input: 228 40% 96%; /* Slightly Lighter Input Border/BG */
     --ring: 50 90% 58%; /* Primary for Focus Rings */
 
     --radius: 1rem;
 
-    /* Charts - using the new palette */
-    --chart-1: 50 90% 55%;  /* Primary - #F3C623 */
-    --chart-2: 39 100% 58%; /* Accent - #FFB22C */
-    --chart-3: 18 95% 60%;  /* #FA812F */
-    --chart-4: 45 40% 70%;  /* Lighter version of muted */
-    --chart-5: 45 20% 50%;  /* Medium Warm Gray */
+    /* Charts */
+    --chart-1: 50 90% 55%;  /* Primary - Yellow */
+    --chart-2: 30 84% 51%;  /* Accent - Orange */
+    --chart-3: 210 70% 45%; /* A lighter shade of Dark Blue */
+    --chart-4: 228 20% 70%; /* Lighter version of muted */
+    --chart-5: 210 15% 55%; /* Medium Blue/Gray */
 
-    /* Sidebar Specific Variables - derived from the new palette */
-    --sidebar-background: 45 80% 95%; /* Similar to popover for light sidebar */
-    --sidebar-foreground: 45 10% 25%;
-    --sidebar-primary: 50 90% 55%;
+    /* Sidebar Specific Variables */
+    --sidebar-background: 228 90% 97%; /* Very light blue, similar to card */
+    --sidebar-foreground: 210 70% 25%; /* Dark blue */
+    --sidebar-primary: 50 90% 55%; /* Yellow */
     --sidebar-primary-foreground: 50 90% 15%;
-    --sidebar-accent: 39 100% 65%; /* Lighter accent for hover on light sidebar */
-    --sidebar-accent-foreground: 39 80% 15%;
-    --sidebar-border: 45 50% 88%;
+    --sidebar-accent: 30 80% 60%; /* Slightly lighter orange for hover */
+    --sidebar-accent-foreground: 30 80% 10%;
+    --sidebar-border: 228 30% 88%;
     --sidebar-ring: 50 90% 58%;
   }
 
   .dark {
-    --background: 220 25% 12%; /* #1A202C - Dark Blue (Kept from original PRD for contrast) */
-    --foreground: 45 60% 85%; /* Light Cream/Beige for readability */
+    --background: 210 70% 21%; /* #10375C - Dark Blue */
+    --foreground: 228 100% 98%; /* #F4F6FF - Very Light Blue */
 
-    --card: 220 25% 15%; /* Slightly lighter than dark BG */
-    --card-foreground: 45 60% 85%;
+    --card: 210 70% 24%; /* Slightly lighter than dark BG */
+    --card-foreground: 228 100% 98%;
 
-    --popover: 220 25% 15%;
-    --popover-foreground: 45 60% 85%;
+    --popover: 210 70% 24%;
+    --popover-foreground: 228 100% 98%;
 
-    --primary: 50 90% 60%; /* #F3C623, slightly brightened for dark mode */
+    --primary: 50 90% 60%; /* #F3C623, slightly brightened Yellow for dark mode */
     --primary-foreground: 50 90% 15%; 
 
-    --secondary: 39 100% 68%; /* #FFB22C, slightly brightened */
-    --secondary-foreground: 39 80% 15%;
+    --secondary: 30 84% 55%; /* #EB8317, slightly brightened Orange */
+    --secondary-foreground: 30 80% 10%;
 
-    --muted: 220 20% 20%; /* Darker Muted Blue/Gray */
-    --muted-foreground: 220 15% 65%; 
+    --muted: 210 60% 30%; /* Darker Muted Blue */
+    --muted-foreground: 210 25% 75%; /* Lighter Muted Blue/Gray */
 
-    --accent: 39 100% 62%; /* #FFB22C, slightly brightened for dark BG */
-    --accent-foreground: 39 80% 15%; 
+    --accent: 30 84% 55%; /* #EB8317, slightly brightened Orange */
+    --accent-foreground: 30 80% 10%; 
     
-    --destructive: 18 95% 63%; /* #FA812F, slightly brightened */
-    --destructive-foreground: 18 80% 98%;
+    --destructive: 0 70% 55%; /* Standard Red, slightly brightened */
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 220 15% 25%; /* Dark Border */
-    --input: 220 15% 22%; /* Dark Input */
-    --ring: 50 90% 62%; /* Primary Ring, slightly brighter */
+    --border: 210 50% 35%; /* Dark Blue Border */
+    --input: 210 60% 28%; /* Dark Blue Input */
+    --ring: 50 90% 62%; /* Primary Ring, slightly brighter Yellow */
     
     /* Charts */
-    --chart-1: 50 90% 60%;  /* Primary - #F3C623 */
-    --chart-2: 39 100% 62%; /* Accent - #FFB22C */
-    --chart-3: 18 95% 63%;  /* #FA812F */
-    --chart-4: 220 15% 50%; /* Muted Dark Blue/Gray */
-    --chart-5: 45 30% 70%;  /* Light Cream/Beige */
+    --chart-1: 50 90% 60%;  /* Primary - Yellow */
+    --chart-2: 30 84% 55%;  /* Accent - Orange */
+    --chart-3: 228 80% 70%; /* A lighter shade of Light Blue for contrast */
+    --chart-4: 210 25% 50%; /* Muted Dark Blue */
+    --chart-5: 228 30% 80%;  /* Light Blue/Gray */
 
     /* Sidebar Specific Variables for Dark Mode */
-    --sidebar-background: 220 25% 10%; /* Even darker for sidebar */
-    --sidebar-foreground: 45 60% 80%;
-    --sidebar-primary: 50 90% 60%;
+    --sidebar-background: 210 70% 18%; /* Even darker blue for sidebar */
+    --sidebar-foreground: 228 100% 95%;
+    --sidebar-primary: 50 90% 60%; /* Yellow */
     --sidebar-primary-foreground: 50 90% 15%;
-    --sidebar-accent: 39 80% 30%; /* Darker accent for hover on dark sidebar */
-    --sidebar-accent-foreground: 39 100% 70%; /* Brighter text for dark accent */
-    --sidebar-border: 220 15% 20%;
+    --sidebar-accent: 30 80% 35%; /* Darker orange for hover on dark sidebar */
+    --sidebar-accent-foreground: 30 90% 75%; /* Brighter text for dark orange accent */
+    --sidebar-border: 210 50% 30%;
     --sidebar-ring: 50 90% 62%;
   }
 }
