@@ -5,80 +5,99 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%; /* White */
-    --foreground: 220 15% 20%; /* Dark Gray */
+    --background: 44 82% 89%; /* #FAEDCA - Light Beige/Cream */
+    --foreground: 20 10% 15%; /* Dark Warm Gray */
 
-    --card: 0 0% 100%; /* White */
-    --card-foreground: 220 15% 20%; /* Dark Gray */
+    --card: 44 70% 92%; /* Slightly desaturated/darker #FAEDCA for cards */
+    --card-foreground: 20 10% 15%; /* Dark Warm Gray */
 
-    --popover: 0 0% 100%; /* White */
-    --popover-foreground: 220 15% 20%; /* Dark Gray */
+    --popover: 44 80% 95%; /* Brighter card - Light Beige/Cream */
+    --popover-foreground: 20 10% 15%; /* Dark Warm Gray */
 
-    --primary: 45 100% 58%; /* Yellow #FFC72C */
-    --primary-foreground: 45 100% 10%; /* Dark Brown/Black for yellow bg #332800 */
+    --primary: 15 99% 57%; /* #FE5D26 - Vibrant Orange-Red */
+    --primary-foreground: 15 80% 97%; /* Very Light Orange-White */
 
-    --secondary: 220 20% 94%; /* Very Light Gray #E9ECF2 */
-    --secondary-foreground: 220 15% 30%; /* Medium Dark Gray #404859 */
+    --secondary: 35 70% 80%; /* Lighter, less saturated #F2C078 - Peach */
+    --secondary-foreground: 35 60% 25%; /* Darker Peach/Brown */
 
-    --muted: 220 20% 96%; /* Even Lighter Gray #F0F2F5 */
-    --muted-foreground: 220 10% 45%; /* Medium Gray #6A737D */
+    --muted: 44 50% 93%; /* Muted version of background - Light Beige */
+    --muted-foreground: 40 25% 50%; /* Muted Dark Beige */
 
-    --accent: 33 90% 44%; /* Darker Orange #D97706 */
-    --accent-foreground: 0 0% 98%; /* Off-white #FAFAFA */
+    --accent: 35 82% 71%; /* #F2C078 - Warm Light Orange/Peach */
+    --accent-foreground: 35 70% 20%; /* Dark Peach/Brown */
     
-    --destructive: 0 72% 51%; /* Red #E53E3E */
-    --destructive-foreground: 0 0% 98%; /* Off-white for red bg #F8FAFC */
+    --destructive: 0 75% 55%; /* Standard Red */
+    --destructive-foreground: 0 0% 100%; /* White */
 
-    --border: 220 15% 80%; /* #C4C9D4 - Made slightly darker for light theme */
-    --input: 220 15% 80%; /* Using the same as border for input borders on light theme */
-    --ring: 45 100% 58%; /* Yellow for focus rings #FFC72C */
+    --border: 40 40% 80%; /* Muted Beige Border */
+    --input: 40 50% 85%; /* Slightly Lighter Input Border/BG */
+    --ring: 15 99% 60%; /* Primary for Focus Rings */
 
-    --radius: 1rem; /* Increased for more pronounced rounding, e.g. rounded-xl */
+    --radius: 1rem;
 
-    /* Charts will use these, colors defined based on light background */
-    --chart-1: 45 100% 50%;
-    --chart-2: 33 100% 45%;
-    --chart-3: 220 15% 45%; 
-    --chart-4: 210 40% 60%;
-    --chart-5: 220 10% 55%; 
+    /* Charts */
+    --chart-1: 15 99% 57%;  /* Primary - #FE5D26 */
+    --chart-2: 35 82% 71%;  /* Accent - #F2C078 */
+    --chart-3: 99 30% 80%;  /* Muted Green - #C1DBB3 */
+    --chart-4: 44 50% 75%;  /* Lighter Beige from Palette */
+    --chart-5: 20 10% 60%;   /* Medium Warm Gray */
+
+    /* Sidebar Specific Variables */
+    --sidebar-background: 44 80% 96%;
+    --sidebar-foreground: 20 10% 25%;
+    --sidebar-primary: 15 99% 57%;
+    --sidebar-primary-foreground: 15 80% 97%;
+    --sidebar-accent: 35 82% 78%; /* Slightly lighter than main accent for hover */
+    --sidebar-accent-foreground: 35 70% 20%;
+    --sidebar-border: 40 40% 85%;
+    --sidebar-ring: 15 99% 60%;
   }
 
   .dark {
-    --background: 220 26% 14%; /* Original Dark: #1A202C */
-    --foreground: 210 40% 98%; /* Original Dark: #F8FAFC */
+    --background: 25 20% 12%; /* Dark Warm Brown/Gray */
+    --foreground: 44 50% 85%; /* Light Beige, less saturated */
 
-    --card: 220 26% 17%; /* Original Dark: #222A3A */
-    --card-foreground: 210 40% 98%; /* Original Dark: #F8FAFC */
+    --card: 25 20% 15%; /* Slightly lighter than dark BG */
+    --card-foreground: 44 50% 85%;
 
-    --popover: 220 26% 17%; /* Original Dark: #222A3A */
-    --popover-foreground: 210 40% 98%; /* Original Dark: #F8FAFC */
+    --popover: 25 20% 15%; /* Dark Warm Brown/Gray */
+    --popover-foreground: 44 50% 85%; /* Light Beige */
 
-    --primary: 45 100% 58%; /* Original Dark: #FFC72C */
-    --primary-foreground: 45 100% 10%; /* Original Dark: #332800 */
+    --primary: 15 99% 60%; /* #FE5D26, slightly brightened */
+    --primary-foreground: 15 80% 97%; /* Very Light Orange-White */
 
-    --secondary: 220 15% 30%; /* Original Dark: #404859 */
-    --secondary-foreground: 210 40% 90%; /* Original Dark: #D9E2EC */
+    --secondary: 35 50% 30%; /* Darker Muted Peach */
+    --secondary-foreground: 35 80% 85%; /* Light Peach */
 
-    --muted: 220 15% 25%; /* Original Dark: #353C4C */
-    --muted-foreground: 220 10% 65%; /* Original Dark: #98A0B3 */
+    --muted: 25 15% 20%; /* Darker Muted */
+    --muted-foreground: 40 30% 65%; /* Lighter Muted Beige */
 
-    --accent: 33 90% 44%; /* Darker Orange #D97706 */
-    --accent-foreground: 0 0% 98%; /* Off-white #FAFAFA */
+    --accent: 35 82% 65%; /* #F2C078, slightly desaturated/darker for dark BG */
+    --accent-foreground: 35 70% 15%; /* Very Dark Peach/Brown */
     
-    --destructive: 0 72% 51%; /* Original Dark: #E53E3E */
-    --destructive-foreground: 0 0% 98%; /* Original Dark: #F8FAFC */
+    --destructive: 0 65% 50%; /* Slightly darker red for dark mode */
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 220 15% 25%; /* Original Dark: #353C4C */
-    --input: 220 15% 20%; /* Original Dark: #2A303C */
-    --ring: 45 100% 58%; /* Original Dark: #FFC72C */
+    --border: 30 15% 25%; /* Dark Border */
+    --input: 30 15% 22%; /* Dark Input */
+    --ring: 15 99% 62%; /* Primary Ring, slightly brighter */
     
-    --radius: 1rem; /* Consistent with light theme */
+    /* Charts */
+    --chart-1: 15 99% 60%;
+    --chart-2: 35 82% 70%;
+    --chart-3: 99 35% 70%; /* Muted Green for Dark */
+    --chart-4: 44 40% 60%; 
+    --chart-5: 20 10% 70%; 
 
-    --chart-1: 45 100% 58%;
-    --chart-2: 33 100% 50%;
-    --chart-3: 220 15% 50%;
-    --chart-4: 210 40% 70%;
-    --chart-5: 220 10% 65%;
+    /* Sidebar Specific Variables */
+    --sidebar-background: 25 20% 10%;
+    --sidebar-foreground: 44 50% 80%;
+    --sidebar-primary: 15 99% 60%;
+    --sidebar-primary-foreground: 15 80% 97%;
+    --sidebar-accent: 35 60% 25%; /* Darker accent for hover on dark */
+    --sidebar-accent-foreground: 35 80% 80%;
+    --sidebar-border: 30 15% 20%;
+    --sidebar-ring: 15 99% 62%;
   }
 }
 
