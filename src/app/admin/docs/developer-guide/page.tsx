@@ -120,7 +120,7 @@ export default function DeveloperGuidePage() {
             <li>The admin panel uses Firestore for data storage (templates, users, orders).</li>
             <li>Server Actions in <code>src/lib/actions</code> handle CUD operations for templates and other admin tasks.</li>
             <li>Authentication uses Firebase Auth, and user roles ('admin', 'user') are stored in the Firestore 'users' collection.</li>
-            <li>Ensure paths in `<change><file>` tags are absolute when modifying files.</li>
+            <li>Ensure paths in `&lt;change&gt;&lt;file&gt;` tags are absolute when modifying files.</li>
           </ul>
         </CardContent>
       </Card>
