@@ -14,15 +14,15 @@ import type { TemplateFormValues } from './TemplateFormTypes';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import { ImageIcon } from 'lucide-react';
-import { CustomDropzone } from '@/components/ui/custom-dropzone'; // Import CustomDropzone
+import { CustomDropzone } from '@/components/ui/custom-dropzone';
 
 interface TemplateUploadFormProps {
   control: Control<TemplateFormValues>;
   register: UseFormRegister<TemplateFormValues>;
   errors: FieldErrors<TemplateFormValues>;
-  currentImageUrl?: string | null; // For image preview
-  onFileChange: (file: File | null) => void; // Callback for when a file is selected/cleared
-  selectedFileName?: string | null; // Name of the currently selected/existing file
+  currentImageUrl?: string | null; 
+  onFileChange: (file: File | null) => void; 
+  selectedFileName?: string | null; 
 }
 
 export function TemplateUploadForm({
@@ -34,6 +34,8 @@ export function TemplateUploadForm({
   selectedFileName, 
 }: TemplateUploadFormProps) {
   
+  const MAX_FILE_SIZE_BYTES = 0.95 * 1024 * 1024; // Approx 0.95MB
+
   return (
     <Card>
       <CardContent className="pt-6 space-y-6">
@@ -106,11 +108,10 @@ export function TemplateUploadForm({
           <CustomDropzone
             onFileChange={onFileChange}
             currentFileName={selectedFileName}
-            accept={{ 'image/*': ['.png', '.jpeg', '.jpg', '.gif', '.webp', '.avif'] }} // Standard image types
-            maxSize={5 * 1024 * 1024} // 5MB limit
+            accept={{ 'image/*': ['.png', '.jpeg', '.jpg', '.gif', '.webp', '.avif'] }}
+            maxSize={MAX_FILE_SIZE_BYTES} // Pass the stricter limit
             className="mt-1"
           />
-          {/* previewImageUrl is set by parent page after Blob upload */}
           <input type="hidden" {...register('previewImageUrl')} />
            {errors.previewImageUrl && <p className="text-sm text-destructive mt-1">{errors.previewImageUrl.message}</p>}
         </div>

@@ -11,7 +11,7 @@ interface CustomDropzoneProps {
   onFileChange: (file: File | null) => void;
   accept?: Accept;
   maxSize?: number; // in bytes
-  currentFileName?: string | null; // To display if a file is already set from parent
+  currentFileName?: string | null; 
   disabled?: boolean;
   className?: string;
 }
@@ -19,23 +19,36 @@ interface CustomDropzoneProps {
 export function CustomDropzone({
   onFileChange,
   accept = { 'image/*': ['.png', '.jpeg', '.jpg', '.gif', '.webp', '.avif'] },
-  maxSize = 5 * 1024 * 1024, // 5MB default
+  maxSize = 0.95 * 1024 * 1024, // Default to ~0.95MB
   currentFileName,
   disabled = false,
   className,
 }: CustomDropzoneProps) {
   const [internalFileName, setInternalFileName] = useState<string | null>(null);
   const [isRejectedLocal, setIsRejectedLocal] = useState(false);
+  const [rejectionMessage, setRejectionMessage] = useState<string | null>(null);
 
   const handleDrop = useCallback(
     (acceptedFiles: File[], fileRejections: any[]) => {
-      setIsRejectedLocal(false); // Reset rejection state on new drop attempt
+      setIsRejectedLocal(false); 
+      setRejectionMessage(null);
       if (fileRejections.length > 0) {
         console.error('File rejected by react-dropzone:', fileRejections);
         onFileChange(null);
         setInternalFileName(null);
         setIsRejectedLocal(true);
-        // You might want to show a toast here for user feedback
+        const firstRejection = fileRejections[0];
+        if (firstRejection.errors && firstRejection.errors.length > 0) {
+            if (firstRejection.errors[0].code === 'file-too-large') {
+                 setRejectionMessage(`File is too large. Max size: ${(maxSize / (1024 * 1024)).toFixed(2)}MB.`);
+            } else if (firstRejection.errors[0].code === 'file-invalid-type') {
+                 setRejectionMessage('Invalid file type.');
+            } else {
+                 setRejectionMessage(firstRejection.errors[0].message || 'File rejected.');
+            }
+        } else {
+            setRejectionMessage('File rejected.');
+        }
         return;
       }
       if (acceptedFiles.length > 0) {
@@ -43,12 +56,11 @@ export function CustomDropzone({
         onFileChange(file);
         setInternalFileName(file.name);
       } else {
-        // This case might occur if drop is cancelled or empty
         onFileChange(null);
         setInternalFileName(null);
       }
     },
-    [onFileChange]
+    [onFileChange, maxSize]
   );
 
   const { getRootProps, getInputProps, isDragActive, isDragAccept, isDragReject, open } =
@@ -64,10 +76,11 @@ export function CustomDropzone({
     onFileChange(null);
     setInternalFileName(null);
     setIsRejectedLocal(false);
+    setRejectionMessage(null);
   };
 
-  // Show internalFileName if a new file is selected, otherwise show currentFileName (from parent)
   const effectiveFileName = internalFileName || currentFileName;
+  const displayMaxSizeMB = (maxSize / (1024 * 1024)).toFixed(2);
 
   const dropzoneBaseStyle = "border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2";
   const dropzoneActiveStyle = "border-primary bg-primary/10";
@@ -89,9 +102,7 @@ export function CustomDropzone({
         {...getRootProps()}
         className={dropzoneClasses}
         onClick={(e) => {
-          // Allows clicking the dropzone to open the file dialog even if a file is selected
-          // If you want to force using the "Change File" button, you could add:
-          // if (effectiveFileName && !disabled) { e.stopPropagation(); }
+          // Allow clicking to open file dialog
         }}
       >
         <input {...getInputProps()} />
@@ -123,10 +134,10 @@ export function CustomDropzone({
             </p>
           )}
           <p className="text-xs text-muted-foreground/80">
-            Accepted: PNG, JPG, GIF, WEBP, AVIF (Max {maxSize / (1024 * 1024)}MB)
+            Accepted: PNG, JPG, GIF, WEBP, AVIF (Max {displayMaxSizeMB}MB)
           </p>
-          {(isDragReject || isRejectedLocal) && !disabled && (
-             <p className="text-xs text-destructive mt-1 font-medium">File type not accepted or file is too large.</p>
+          {(isDragReject || isRejectedLocal) && !disabled && rejectionMessage && (
+             <p className="text-xs text-destructive mt-1 font-medium">{rejectionMessage}</p>
           )}
         </div>
       </div>
