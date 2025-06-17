@@ -106,22 +106,19 @@ export function CustomFileUpload({
         <input
           {...api.hiddenInputProps}
           type="file"
-          className="sr-only" // Ensure it's visually hidden
+          className="sr-only" 
           disabled={disabled}
         />
         {!api.isDragging && (
              <Button
                 type="button"
                 variant="link"
-                {...api.triggerProps} // Spread triggerProps here
                 className="mt-1 text-sm text-primary hover:text-primary/80 disabled:text-muted-foreground/70"
                 disabled={disabled}
-                onClick={(e) => {
-                    if(disabled) {
-                      e.preventDefault();
-                    } else if (api.triggerProps) { // Check if triggerProps exists
-                      api.triggerProps.onClick?.(e);
-                    }
+                onClick={() => { // Use api.open() to trigger file dialog
+                  if (!disabled && api.open) {
+                    api.open();
+                  }
                 }}
             >
                 Or select a file
