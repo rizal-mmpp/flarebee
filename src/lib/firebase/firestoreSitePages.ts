@@ -1,5 +1,5 @@
 
-'use client'; // Or 'use server' if only used in server actions/components that are server-only
+// Removed 'use client'; directive
 
 import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
