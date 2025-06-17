@@ -39,7 +39,7 @@ const fromFirestore = (docSnapshot: QueryDocumentSnapshot<DocumentData>): Templa
     techStack: data.techStack || [],
     imageUrl: data.imageUrl || 'https://placehold.co/600x400.png',
     dataAiHint: data.dataAiHint || '',
-    previewUrl: data.previewUrl || '#',
+    previewUrl: data.previewUrl || '', // Changed from '#' to ''
     screenshots: data.screenshots || [],
     downloadZipUrl: data.downloadZipUrl || '#',
     githubUrl: data.githubUrl || '',

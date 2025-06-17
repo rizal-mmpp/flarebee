@@ -15,6 +15,8 @@ import { db } from '@/lib/firebase/firebase';
 import { CATEGORIES } from '../constants';
 import { uploadFileToVercelBlob } from './vercelBlob.actions'; // Import the action
 
+const TEMPLATES_COLLECTION = 'templates'; // Define the constant here
+
 export interface TemplateFirestoreData {
   title: string;
   title_lowercase: string;
@@ -44,8 +46,6 @@ function parseStringToArray(str?: string | null): string[] {
 export async function saveTemplateAction(formData: FormData): Promise<{ success: boolean; message?: string; error?: string; templateId?: string }> {
   console.log('saveTemplateAction: Action started.');
   try {
-    // Note: The selectedFile itself is handled by the page and uploadFileToVercelBlob action.
-    // Here we expect 'previewImageUrl' to be the URL from Vercel Blob.
     const imageUrlFromBlob = formData.get('previewImageUrl') as string;
     if (!imageUrlFromBlob) {
       console.error('saveTemplateAction: Preview image URL from Vercel Blob is missing.');
@@ -93,8 +93,8 @@ export async function saveTemplateAction(formData: FormData): Promise<{ success:
     const dataAiHintValue = (formData.get('dataAiHint') as string)?.trim();
     if (dataAiHintValue) dataToSave.dataAiHint = dataAiHintValue;
 
-    const previewUrlValue = (formData.get('previewUrl') as string)?.trim();
-    if (previewUrlValue) dataToSave.previewUrl = previewUrlValue;
+    const previewUrlRaw = formData.get('previewUrl') as string | null;
+    dataToSave.previewUrl = previewUrlRaw ? previewUrlRaw.trim() : '';
     
     const githubUrlValue = (formData.get('githubUrl') as string)?.trim();
     if (githubUrlValue) dataToSave.githubUrl = githubUrlValue;
@@ -121,7 +121,7 @@ export async function saveTemplateAction(formData: FormData): Promise<{ success:
 export async function updateTemplateAction(id: string, formData: FormData): Promise<{ success: boolean; message?: string; error?: string; templateId?: string }> {
   console.log(`updateTemplateAction: Action started for template ID: ${id}`);
   try {
-    const imageUrlFromBlob = formData.get('previewImageUrl') as string; // This URL is from Vercel Blob or existing
+    const imageUrlFromBlob = formData.get('previewImageUrl') as string; 
     if (!imageUrlFromBlob) {
       console.error('updateTemplateAction: Preview image URL from Vercel Blob is missing.');
       return { success: false, error: "Preview image URL from Vercel Blob is required." };
@@ -145,7 +145,7 @@ export async function updateTemplateAction(id: string, formData: FormData): Prom
         return { success: false, error: "Invalid category." };
     }
 
-    const dataToUpdate: Partial<TemplateFirestoreData> = { // Use Partial for flexibility
+    const dataToUpdate: Partial<TemplateFirestoreData> = { 
       title,
       title_lowercase: title.toLowerCase(),
       description,
@@ -167,8 +167,8 @@ export async function updateTemplateAction(id: string, formData: FormData): Prom
     const dataAiHintValue = (formData.get('dataAiHint') as string)?.trim();
     dataToUpdate.dataAiHint = dataAiHintValue ? dataAiHintValue : null;
 
-    const previewUrlValue = (formData.get('previewUrl') as string)?.trim();
-    dataToUpdate.previewUrl = previewUrlValue ? previewUrlValue : null;
+    const previewUrlRaw = formData.get('previewUrl') as string | null;
+    dataToUpdate.previewUrl = previewUrlRaw ? previewUrlRaw.trim() : '';
     
     const githubUrlValue = (formData.get('githubUrl') as string)?.trim();
     dataToUpdate.githubUrl = githubUrlValue ? githubUrlValue : null;
