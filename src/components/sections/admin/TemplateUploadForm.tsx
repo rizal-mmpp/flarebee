@@ -14,12 +14,13 @@ import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import { ImageIcon, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { CustomFileUpload } from '@/components/ui/custom-file-upload'; // Import the new component
 
 interface TemplateUploadFormProps {
   control: Control<TemplateFormValues>;
   register: UseFormRegister<TemplateFormValues>;
   errors: FieldErrors<TemplateFormValues>;
-  currentImageUrl?: string | null; // For displaying existing or newly selected image preview
+  currentImageUrl?: string | null; 
   onFileChange: (file: File | null) => void;
   selectedFileName?: string | null;
 }
@@ -33,13 +34,7 @@ export function TemplateUploadForm({
   selectedFileName,
 }: TemplateUploadFormProps) {
   
-  const handleFileClear = () => {
-    const fileInput = document.getElementById('previewImageFile') as HTMLInputElement | null;
-    if (fileInput) {
-        fileInput.value = ''; // Clear the file input
-    }
-    onFileChange(null); // Notify parent
-  };
+  // The handleFileClear logic is now managed within CustomFileUpload or by onFileChange(null)
 
   return (
     <Card>
@@ -59,6 +54,7 @@ export function TemplateUploadForm({
         <div>
           <Label htmlFor="longDescription">Long Description (Optional)</Label>
           <Textarea id="longDescription" {...register('longDescription')} rows={5} className="mt-1" />
+           {errors.longDescription && <p className="text-sm text-destructive mt-1">{errors.longDescription.message}</p>}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -89,7 +85,7 @@ export function TemplateUploadForm({
             {errors.categoryId && <p className="text-sm text-destructive mt-1">{errors.categoryId.message}</p>}
           </div>
           <div>
-            <Label htmlFor="price">Price (IDR)</Label> {/* Changed label from $ to IDR */}
+            <Label htmlFor="price">Price (IDR)</Label>
             <Input id="price" type="number" step="1" {...register('price')} className="mt-1" />
             {errors.price && <p className="text-sm text-destructive mt-1">{errors.price.message}</p>}
           </div>
@@ -104,46 +100,40 @@ export function TemplateUploadForm({
         <div>
           <Label htmlFor="techStack">Tech Stack (comma-separated, Optional)</Label>
           <Input id="techStack" {...register('techStack')} className="mt-1" placeholder="e.g., React, Node.js, MongoDB" />
+           {errors.techStack && <p className="text-sm text-destructive mt-1">{errors.techStack.message}</p>}
         </div>
         
         <div>
           <Label htmlFor="previewImageFile">Main Preview Image</Label>
-          <Input 
-            id="previewImageFile" 
-            type="file" 
+          <CustomFileUpload
+            onFileChange={onFileChange}
             accept="image/png, image/jpeg, image/gif, image/webp, image/avif"
-            onChange={(e) => onFileChange(e.target.files ? e.target.files[0] : null)} 
-            className="mt-1 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+            maxFiles={1}
+            maxSize={5 * 1024 * 1024} // 5MB
+            currentFileName={selectedFileName} // Pass the name of the file managed by parent
+            label="Drag 'n' drop new preview image here, or click to select"
           />
-          {selectedFileName && (
-            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-              <span>Selected: {selectedFileName}</span>
-              <Button variant="ghost" size="icon" type="button" onClick={handleFileClear} className="h-6 w-6 text-destructive hover:text-destructive/80">
-                <XCircle className="h-4 w-4" />
-                <span className="sr-only">Clear selected file</span>
-              </Button>
-            </div>
-          )}
+          {/* Preview of current/newly selected image */}
           {currentImageUrl && (
-            <div className="mt-3 p-2 border border-border rounded-md bg-muted/50 max-w-xs">
+            <div className="mt-3 p-2 border border-border rounded-lg bg-muted/50 max-w-xs">
               <p className="text-xs text-muted-foreground mb-1">Current/New Preview:</p>
               <Image 
                 src={currentImageUrl} 
                 alt="Preview image" 
                 width={200} 
-                height={120} // Adjusted height for better aspect ratio if 600x400 is common
+                height={120} 
                 className="rounded-md object-contain max-h-[120px]"
                 data-ai-hint="template image preview"
               />
             </div>
           )}
-           {!currentImageUrl && !selectedFileName && (
-             <div className="mt-3 p-4 border border-dashed rounded-md bg-muted/30 text-center text-muted-foreground max-w-xs">
+           {!currentImageUrl && !selectedFileName && ( // Show placeholder if no current image URL and no file selected via custom component
+             <div className="mt-3 p-4 border border-dashed border-input rounded-lg bg-muted/30 text-center text-muted-foreground max-w-xs">
                 <ImageIcon className="mx-auto h-8 w-8 mb-1" />
                 <p className="text-xs">No image selected or uploaded yet.</p>
             </div>
            )}
-          {/* Hidden input to carry the previewImageUrl for react-hook-form if needed, though now managed by parent state */}
+          {/* Hidden input to carry the previewImageUrl for react-hook-form, populated by parent after Blob upload */}
           <input type="hidden" {...register('previewImageUrl')} />
            {errors.previewImageUrl && <p className="text-sm text-destructive mt-1">{errors.previewImageUrl.message}</p>}
         </div>
@@ -162,8 +152,8 @@ export function TemplateUploadForm({
         </div>
 
         <div>
-          <Label htmlFor="downloadZipUrl">Download ZIP URL</Label>
-          <Input id="downloadZipUrl" type="url" {...register('downloadZipUrl')} className="mt-1" placeholder="https://example.com/template.zip or #" />
+          <Label htmlFor="downloadZipUrl">Download ZIP URL (Optional, defaults to #)</Label>
+          <Input id="downloadZipUrl" type="url" {...register('downloadZipUrl')} className="mt-1" placeholder="https://example.com/template.zip or leave blank for #" />
           {errors.downloadZipUrl && <p className="text-sm text-destructive mt-1">{errors.downloadZipUrl.message}</p>}
         </div>
 
