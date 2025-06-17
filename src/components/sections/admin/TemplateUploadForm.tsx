@@ -3,7 +3,7 @@
 
 import type { Control, FieldErrors, UseFormRegister } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
-import React from 'react'; // Import React for useRef
+import React from 'react'; 
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -13,16 +13,16 @@ import { CATEGORIES } from '@/lib/constants';
 import type { TemplateFormValues } from './TemplateFormTypes';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { ImageIcon, XCircle, UploadCloud } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ImageIcon } from 'lucide-react';
+import { CustomDropzone } from '@/components/ui/custom-dropzone'; // Import CustomDropzone
 
 interface TemplateUploadFormProps {
   control: Control<TemplateFormValues>;
   register: UseFormRegister<TemplateFormValues>;
   errors: FieldErrors<TemplateFormValues>;
-  currentImageUrl?: string | null;
-  onFileChange: (file: File | null) => void;
-  selectedFileName?: string | null;
+  currentImageUrl?: string | null; // For image preview
+  onFileChange: (file: File | null) => void; // Callback for when a file is selected/cleared
+  selectedFileName?: string | null; // Name of the currently selected/existing file
 }
 
 export function TemplateUploadForm({
@@ -31,18 +31,9 @@ export function TemplateUploadForm({
   errors,
   currentImageUrl,
   onFileChange,
-  selectedFileName,
+  selectedFileName, 
 }: TemplateUploadFormProps) {
   
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  const handleFileClear = () => {
-    onFileChange(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""; // Reset the native file input
-    }
-  };
-
   return (
     <Card>
       <CardContent className="pt-6 space-y-6">
@@ -111,70 +102,38 @@ export function TemplateUploadForm({
         </div>
         
         <div>
-          <Label htmlFor="previewImageFile">Main Preview Image</Label>
-          <div className="mt-1 flex flex-col sm:flex-row sm:items-center gap-3">
-            <input
-              id="previewImageFile"
-              type="file"
-              accept="image/png, image/jpeg, image/gif, image/webp, image/avif"
-              onChange={(e) => onFileChange(e.target.files ? e.target.files[0] : null)}
-              ref={fileInputRef}
-              className="sr-only" // Visually hide the actual input
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              className="shrink-0 group w-full sm:w-auto"
-            >
-              <UploadCloud className="mr-2 h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-              Choose File
-            </Button>
-            <div className="flex items-center gap-2 min-w-0 flex-grow">
-                {selectedFileName ? (
-                    <span className="text-sm text-muted-foreground truncate" title={selectedFileName}>
-                        {selectedFileName}
-                    </span>
-                ) : (
-                    <span className="text-sm text-muted-foreground">No file selected</span>
-                )}
-                {selectedFileName && (
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleFileClear}
-                    className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0 ml-auto sm:ml-1"
-                    aria-label="Clear selected file"
-                >
-                    <XCircle className="h-4 w-4" />
-                </Button>
-                )}
-            </div>
-          </div>
-          
-          {currentImageUrl && (
-            <div className="mt-3 p-2 border border-border rounded-lg bg-muted/50 max-w-xs">
-              <p className="text-xs text-muted-foreground mb-1">Current/New Preview:</p>
-              <Image
-                src={currentImageUrl}
-                alt="Preview image"
-                width={200}
-                height={120}
-                className="rounded-md object-contain max-h-[120px]"
-                data-ai-hint="template image preview"
-              />
-            </div>
-          )}
-           {!currentImageUrl && !selectedFileName && (
-             <div className="mt-3 p-4 border border-dashed border-input rounded-lg bg-muted/30 text-center text-muted-foreground max-w-xs">
-                <ImageIcon className="mx-auto h-8 w-8 mb-1" />
-                <p className="text-xs">No image selected or upload a new one.</p>
-            </div>
-           )}
+          <Label>Main Preview Image</Label>
+          <CustomDropzone
+            onFileChange={onFileChange}
+            currentFileName={selectedFileName}
+            accept={{ 'image/*': ['.png', '.jpeg', '.jpg', '.gif', '.webp', '.avif'] }} // Standard image types
+            maxSize={5 * 1024 * 1024} // 5MB limit
+            className="mt-1"
+          />
+          {/* previewImageUrl is set by parent page after Blob upload */}
           <input type="hidden" {...register('previewImageUrl')} />
            {errors.previewImageUrl && <p className="text-sm text-destructive mt-1">{errors.previewImageUrl.message}</p>}
         </div>
+
+        {currentImageUrl && (
+          <div className="mt-3 p-2 border border-border rounded-lg bg-muted/50 max-w-xs">
+            <p className="text-xs text-muted-foreground mb-1">Current/New Preview:</p>
+            <Image
+              src={currentImageUrl}
+              alt="Preview image"
+              width={200}
+              height={120}
+              className="rounded-md object-contain max-h-[120px]"
+              data-ai-hint="template image preview"
+            />
+          </div>
+        )}
+         {!currentImageUrl && !selectedFileName && (
+           <div className="mt-3 p-4 border border-dashed border-input rounded-lg bg-muted/30 text-center text-muted-foreground max-w-xs">
+              <ImageIcon className="mx-auto h-8 w-8 mb-1" />
+              <p className="text-xs">Upload an image or it will default to a placeholder.</p>
+           </div>
+         )}
 
         <div>
           <Label htmlFor="dataAiHint">AI Hint for Image (Optional, 1-2 keywords)</Label>
