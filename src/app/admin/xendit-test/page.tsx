@@ -183,7 +183,7 @@ export default function XenditTestPage() {
             {/* Balance Check Section */}
             <AccordionItem value="balance-check">
               <AccordionTrigger className="text-lg font-semibold text-foreground hover:no-underline p-4 bg-muted/30 rounded-t-lg">
-                <div className="flex items-center">
+                <div className="flex items-center text-left"> 
                   <span className="mr-2"><Banknote className="h-5 w-5 text-primary/80" /></span>
                   1. Check Xendit Account Balance (GET /balance)
                 </div>
@@ -222,7 +222,7 @@ export default function XenditTestPage() {
             {/* Payment Request Simulation Section */}
             <AccordionItem value="payment-request">
               <AccordionTrigger className="text-lg font-semibold text-foreground hover:no-underline p-4 bg-muted/30 rounded-t-lg">
-                <div className="flex items-center">
+                <div className="flex items-center text-left"> 
                   <span className="mr-2"><CreditCard className="h-5 w-5 text-primary/80" /></span>
                   2. Simulate Payment Request (POST /payment_requests - QR Code DANA)
                 </div>
@@ -274,7 +274,7 @@ export default function XenditTestPage() {
             {/* Invoice Creation Section */}
             <AccordionItem value="invoice-creation">
               <AccordionTrigger className="text-lg font-semibold text-foreground hover:no-underline p-4 bg-muted/30 rounded-t-lg">
-                <div className="flex items-center">
+                <div className="flex items-center text-left"> 
                   <span className="mr-2"><FileText className="h-5 w-5 text-primary/80" /></span>
                   3. Create Test Invoice (POST /v2/invoices)
                 </div>
@@ -315,7 +315,7 @@ export default function XenditTestPage() {
             {/* Get Invoice Details Section */}
             <AccordionItem value="get-invoice">
               <AccordionTrigger className="text-lg font-semibold text-foreground hover:no-underline p-4 bg-muted/30 rounded-t-lg">
-                <div className="flex items-center">
+                <div className="flex items-center text-left"> 
                   <span className="mr-2"><Search className="h-5 w-5 text-primary/80" /></span>
                   4. Get Invoice Details (GET /v2/invoices/:invoice_id)
                 </div>
@@ -347,7 +347,7 @@ export default function XenditTestPage() {
             {/* Simulate Invoice Payment Section */}
             <AccordionItem value="simulate-invoice-payment">
               <AccordionTrigger className="text-lg font-semibold text-foreground hover:no-underline p-4 bg-muted/30 rounded-t-lg">
-                <div className="flex items-center">
+                <div className="flex items-center text-left"> 
                   <span className="mr-2"><Send className="h-5 w-5 text-primary/80" /></span>
                   5. Simulate Invoice Payment (POST /v2/invoices/:invoice_id/simulate_payment)
                 </div>
@@ -380,7 +380,7 @@ export default function XenditTestPage() {
             {/* Simulate Direct VA Payment Section */}
              <AccordionItem value="simulate-va-payment">
               <AccordionTrigger className="text-lg font-semibold text-foreground hover:no-underline p-4 bg-muted/30 rounded-t-lg">
-                <div className="flex items-center">
+                <div className="flex items-center text-left"> 
                   <span className="mr-2"><Landmark className="h-5 w-5 text-primary/80" /></span>
                   6. Simulate Direct Virtual Account (VA) Payment (POST /pool_virtual_accounts/simulate_payment)
                 </div>
