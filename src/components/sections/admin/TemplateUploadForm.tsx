@@ -14,7 +14,6 @@ import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import { ImageIcon, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { CustomFileUpload } from '@/components/ui/custom-file-upload'; // Import the new component
 
 interface TemplateUploadFormProps {
   control: Control<TemplateFormValues>;
@@ -34,7 +33,12 @@ export function TemplateUploadForm({
   selectedFileName,
 }: TemplateUploadFormProps) {
   
-  // The handleFileClear logic is now managed within CustomFileUpload or by onFileChange(null)
+  const handleFileClear = () => {
+    onFileChange(null);
+    // If you have a ref to the file input, you can reset it:
+    // fileInputRef.current.value = ""; 
+    // Or, manage this by re-rendering the input with a new key if needed.
+  };
 
   return (
     <Card>
@@ -105,15 +109,22 @@ export function TemplateUploadForm({
         
         <div>
           <Label htmlFor="previewImageFile">Main Preview Image</Label>
-          <CustomFileUpload
-            onFileChange={onFileChange}
+          <Input 
+            id="previewImageFile"
+            type="file"
             accept="image/png, image/jpeg, image/gif, image/webp, image/avif"
-            maxFiles={1}
-            maxSize={5 * 1024 * 1024} // 5MB
-            currentFileName={selectedFileName} // Pass the name of the file managed by parent
-            label="Drag 'n' drop new preview image here, or click to select"
+            onChange={(e) => onFileChange(e.target.files ? e.target.files[0] : null)}
+            className="mt-1 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
           />
-          {/* Preview of current/newly selected image */}
+          {selectedFileName && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Selected: {selectedFileName}</span>
+              <Button type="button" variant="ghost" size="icon" onClick={handleFileClear} className="h-6 w-6 text-destructive hover:bg-destructive/10">
+                <XCircle className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+
           {currentImageUrl && (
             <div className="mt-3 p-2 border border-border rounded-lg bg-muted/50 max-w-xs">
               <p className="text-xs text-muted-foreground mb-1">Current/New Preview:</p>
@@ -127,13 +138,12 @@ export function TemplateUploadForm({
               />
             </div>
           )}
-           {!currentImageUrl && !selectedFileName && ( // Show placeholder if no current image URL and no file selected via custom component
+           {!currentImageUrl && !selectedFileName && (
              <div className="mt-3 p-4 border border-dashed border-input rounded-lg bg-muted/30 text-center text-muted-foreground max-w-xs">
                 <ImageIcon className="mx-auto h-8 w-8 mb-1" />
-                <p className="text-xs">No image selected or uploaded yet.</p>
+                <p className="text-xs">No image selected or upload a new one.</p>
             </div>
            )}
-          {/* Hidden input to carry the previewImageUrl for react-hook-form, populated by parent after Blob upload */}
           <input type="hidden" {...register('previewImageUrl')} />
            {errors.previewImageUrl && <p className="text-sm text-destructive mt-1">{errors.previewImageUrl.message}</p>}
         </div>
