@@ -12,7 +12,7 @@ export const templateFormSchema = z.object({
   price: z.coerce.number().min(0, 'Price must be a positive number'),
   tags: z.string().min(1, 'Tags are required (comma-separated)'),
   techStack: z.string().optional(), // Comma-separated
-  previewImageUrl: z.string().url('Must be a valid URL for main image').or(z.literal('')).optional(),
+  previewImageUrl: z.string().min(1, 'Preview image path/URL is required.').or(z.literal('')).optional(), // Changed from .url() to .string()
   dataAiHint: z.string().optional(),
   previewUrl: z.string().url('Must be a valid URL for live preview').or(z.literal('')).optional(),
   downloadZipUrl: z.string().url('Must be a valid URL for ZIP download').or(z.literal('#')).or(z.literal('')),
