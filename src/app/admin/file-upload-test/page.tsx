@@ -228,7 +228,7 @@ export default function FileUploadTestPage() {
             ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-4">
                     {imageBlobs.map((blob) => (
-                        <div key={blob.pathname} className="group relative border rounded-lg overflow-hidden aspect-square bg-muted">
+                        <div key={blob.url} className="group relative border rounded-lg overflow-hidden aspect-square bg-muted">
                             <Image
                                 src={blob.url}
                                 alt={blob.pathname}
