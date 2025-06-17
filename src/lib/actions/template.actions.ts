@@ -11,36 +11,34 @@ import {
   updateDoc,
   deleteDoc,
   Timestamp,
-  QueryDocumentSnapshot,
-  DocumentData,
+  // QueryDocumentSnapshot, // Not used directly in these server actions
+  // DocumentData, // Not used directly in these server actions
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
-import type { Template } from '@/lib/types';
+import type { Template } from '@/lib/types'; // Using Template for return, TemplateFirestoreData for internal
 import { CATEGORIES } from '../constants';
 
 const TEMPLATES_COLLECTION = 'templates';
 
 
-// This type is for data going INTO Firestore.
-// It's slightly different from the Template type which includes the resolved Category object.
 export interface TemplateFirestoreData {
   title: string;
   title_lowercase: string;
   description: string;
   longDescription?: string;
-  categoryId: string; // Store category ID
+  categoryId: string; 
   price: number;
   tags: string[];
   techStack?: string[];
-  imageUrl: string;
+  imageUrl: string; // This will now store the Vercel Blob URL
   dataAiHint?: string;
   previewUrl?: string;
   screenshots?: string[];
   downloadZipUrl: string;
   githubUrl?: string;
   author?: string;
-  createdAt?: Timestamp; // For serverTimestamp
-  updatedAt?: Timestamp; // For serverTimestamp
+  createdAt?: Timestamp; 
+  updatedAt?: Timestamp; 
 }
 
 
@@ -49,7 +47,9 @@ function parseStringToArray(str?: string | null): string[] {
   return str.split(',').map(item => item.trim()).filter(item => item.length > 0);
 }
 
-export async function saveTemplateAction(formData: FormData): Promise<{ success: boolean; message?: string; error?: string; template?: Template }> {
+// Note: The `previewImageUrl` from FormData is the Vercel Blob URL.
+// It's saved as `imageUrl` in Firestore.
+export async function saveTemplateAction(formData: FormData): Promise<{ success: boolean; message?: string; error?: string; templateId?: string }> {
   try {
     const title = formData.get('title') as string;
     const description = formData.get('description') as string;
@@ -58,14 +58,14 @@ export async function saveTemplateAction(formData: FormData): Promise<{ success:
     const price = parseFloat(formData.get('price') as string);
     const tags = parseStringToArray(formData.get('tags') as string | null);
     const techStack = parseStringToArray(formData.get('techStack') as string | null);
-    const imageUrl = formData.get('previewImageUrl') as string || 'https://placehold.co/600x400.png';
+    const imageUrlFromBlob = formData.get('previewImageUrl') as string; // This is the Vercel Blob URL
     const dataAiHint = formData.get('dataAiHint') as string || undefined;
     const previewUrl = formData.get('previewUrl') as string || undefined;
     const downloadZipUrl = formData.get('downloadZipUrl') as string || '#';
     const githubUrl = formData.get('githubUrl') as string || undefined;
 
-    if (!title || !description || !categoryId || isNaN(price) || !downloadZipUrl) {
-      return { success: false, error: "Missing required fields (Title, Description, Category, Price, Download URL) or invalid price." };
+    if (!title || !description || !categoryId || isNaN(price) || !downloadZipUrl || !imageUrlFromBlob) {
+      return { success: false, error: "Missing required fields (Title, Description, Category, Price, Download URL, Image URL) or invalid price." };
     }
     
     const category = CATEGORIES.find(c => c.id === categoryId);
@@ -82,12 +82,11 @@ export async function saveTemplateAction(formData: FormData): Promise<{ success:
       price,
       tags,
       techStack,
-      imageUrl,
+      imageUrl: imageUrlFromBlob, // Use the Vercel Blob URL here
       dataAiHint,
       previewUrl,
       downloadZipUrl,
       githubUrl,
-      // createdAt and updatedAt will be set by serverTimestamp
     };
 
     const docRef = await addDoc(collection(db, TEMPLATES_COLLECTION), {
@@ -96,32 +95,19 @@ export async function saveTemplateAction(formData: FormData): Promise<{ success:
       updatedAt: serverTimestamp(),
     });
     
-    // To return the full Template object, we fetch it back (or construct it carefully)
-    const newTemplateSnapshot = await getDoc(docRef);
-    const newTemplateData = newTemplateSnapshot.data();
-
-    const newTemplate: Template = {
-        id: docRef.id,
-        ...templateData,
-        category, // Use the resolved category object
-        // Convert Timestamps to ISO strings for the Template type
-        createdAt: (newTemplateData?.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
-        updatedAt: (newTemplateData?.updatedAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
-    };
-    
-    revalidatePath('/admin/dashboard');
     revalidatePath('/admin/templates');
+    revalidatePath('/admin/dashboard');
     revalidatePath('/templates');
     revalidatePath('/'); 
 
-    return { success: true, message: `Template "${newTemplate.title}" created successfully.`, template: newTemplate };
+    return { success: true, message: `Template "${title}" created successfully.`, templateId: docRef.id };
   } catch (error: any) {
     console.error("Error in saveTemplateAction: ", error);
     return { success: false, error: error.message || "Failed to create template." };
   }
 }
 
-export async function updateTemplateAction(id: string, formData: FormData): Promise<{ success: boolean; message?: string; error?: string; template?: Partial<TemplateFirestoreData> }> {
+export async function updateTemplateAction(id: string, formData: FormData): Promise<{ success: boolean; message?: string; error?: string; templateId?: string }> {
   try {
     const title = formData.get('title') as string;
     const description = formData.get('description') as string;
@@ -130,15 +116,15 @@ export async function updateTemplateAction(id: string, formData: FormData): Prom
     const price = parseFloat(formData.get('price') as string);
     const tags = parseStringToArray(formData.get('tags') as string | null);
     const techStack = parseStringToArray(formData.get('techStack') as string | null);
-    const imageUrl = formData.get('previewImageUrl') as string || undefined; 
+    const imageUrlFromBlob = formData.get('previewImageUrl') as string; // This is the Vercel Blob URL (new or existing)
     const dataAiHint = formData.get('dataAiHint') as string || undefined;
     const previewUrl = formData.get('previewUrl') as string || undefined;
     const downloadZipUrl = formData.get('downloadZipUrl') as string || '#';
     const githubUrl = formData.get('githubUrl') as string || undefined;
 
 
-    if (!id || !title || !description || !categoryId || isNaN(price) || !downloadZipUrl) {
-      return { success: false, error: "Missing required fields (Title, Description, Category, Price, Download URL) or invalid price." };
+    if (!id || !title || !description || !categoryId || isNaN(price) || !downloadZipUrl || !imageUrlFromBlob) {
+      return { success: false, error: "Missing required fields (Title, Description, Category, Price, Download URL, Image URL) or invalid price." };
     }
     
     const category = CATEGORIES.find(c => c.id === categoryId);
@@ -146,6 +132,8 @@ export async function updateTemplateAction(id: string, formData: FormData): Prom
         return { success: false, error: "Invalid category." };
     }
 
+    // Construct update data, only including imageUrl if it's explicitly provided
+    // (which it always will be now, either new from blob or existing passed through)
     const updateData: Partial<TemplateFirestoreData> = {
       title,
       title_lowercase: title.toLowerCase(),
@@ -155,13 +143,12 @@ export async function updateTemplateAction(id: string, formData: FormData): Prom
       price,
       tags,
       techStack,
+      imageUrl: imageUrlFromBlob, // Always use the URL passed in formData
       dataAiHint,
       previewUrl,
       downloadZipUrl,
       githubUrl,
-      // updatedAt will be set by serverTimestamp
     };
-    if (imageUrl) updateData.imageUrl = imageUrl;
 
     const docRef = doc(db, TEMPLATES_COLLECTION, id);
     await updateDoc(docRef, {
@@ -169,13 +156,13 @@ export async function updateTemplateAction(id: string, formData: FormData): Prom
         updatedAt: serverTimestamp(),
     });
 
-    revalidatePath('/admin/dashboard');
     revalidatePath('/admin/templates');
+    revalidatePath('/admin/dashboard');
     revalidatePath(`/templates/${id}`);
     revalidatePath('/templates');
     revalidatePath('/');
 
-    return { success: true, message: `Template "${title}" updated successfully.`, template: updateData };
+    return { success: true, message: `Template "${title}" updated successfully.`, templateId: id };
   } catch (error: any) {
     console.error("Error in updateTemplateAction: ", error);
     return { success: false, error: error.message || "Failed to update template." };
@@ -187,10 +174,12 @@ export async function deleteTemplateAction(id: string): Promise<{ success: boole
     if (!id) {
       return { success: false, error: "Template ID is required for deletion." };
     }
+    // Note: This does not delete the image from Vercel Blob.
+    // You might want to implement a separate mechanism for that if needed.
     await deleteDoc(doc(db, TEMPLATES_COLLECTION, id));
 
-    revalidatePath('/admin/dashboard');
     revalidatePath('/admin/templates');
+    revalidatePath('/admin/dashboard');
     revalidatePath('/templates');
     revalidatePath('/');
 

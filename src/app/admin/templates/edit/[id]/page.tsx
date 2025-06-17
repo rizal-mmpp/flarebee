@@ -9,6 +9,7 @@ import { TemplateUploadForm } from '@/components/sections/admin/TemplateUploadFo
 import { type TemplateFormValues, templateFormSchema } from '@/components/sections/admin/TemplateFormTypes';
 import { getTemplateByIdFromFirestore } from '@/lib/firebase/firestoreTemplates';
 import { updateTemplateAction } from '@/lib/actions/template.actions';
+import { uploadFileToVercelBlob } from '@/lib/actions/vercelBlob.actions';
 import type { Template } from '@/lib/types';
 import { CATEGORIES } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
@@ -26,8 +27,12 @@ export default function EditTemplatePage() {
   const [template, setTemplate] = useState<Template | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
-  const { register, handleSubmit, control, formState: { errors }, setValue } = useForm<TemplateFormValues>({
+
+  const { register, handleSubmit, control, formState: { errors }, setValue, watch } = useForm<TemplateFormValues>({
     resolver: zodResolver(templateFormSchema),
     defaultValues: {
       title: '',
@@ -37,13 +42,16 @@ export default function EditTemplatePage() {
       price: 0,
       tags: '',
       techStack: '',
-      previewImageUrl: '',
+      previewImageUrl: '', // Will be populated by Vercel Blob URL or existing
       dataAiHint: '',
       previewUrl: '',
       downloadZipUrl: '#',
       githubUrl: '',
     }
   });
+  
+  // Watch the previewImageUrl from react-hook-form state (stores existing URL)
+  const watchedImageUrl = watch('previewImageUrl');
 
   useEffect(() => {
     if (id) {
@@ -61,7 +69,8 @@ export default function EditTemplatePage() {
             setValue('price', fetchedTemplate.price);
             setValue('tags', fetchedTemplate.tags.join(', '));
             setValue('techStack', fetchedTemplate.techStack?.join(', ') || '');
-            setValue('previewImageUrl', fetchedTemplate.imageUrl);
+            setValue('previewImageUrl', fetchedTemplate.imageUrl); // Store existing URL in form state
+            setImagePreviewUrl(fetchedTemplate.imageUrl); // Set initial preview
             setValue('dataAiHint', fetchedTemplate.dataAiHint || '');
             setValue('previewUrl', fetchedTemplate.previewUrl || '');
             setValue('downloadZipUrl', fetchedTemplate.downloadZipUrl || '#');
@@ -80,20 +89,72 @@ export default function EditTemplatePage() {
     }
   }, [id, setValue]);
 
+  useEffect(() => {
+    let objectUrl: string | undefined;
+    if (selectedFile) {
+      objectUrl = URL.createObjectURL(selectedFile);
+      setImagePreviewUrl(objectUrl);
+    } else if (watchedImageUrl) { // If no new file, show existing/watched URL
+      setImagePreviewUrl(watchedImageUrl);
+    } else {
+        setImagePreviewUrl(null);
+    }
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [selectedFile, watchedImageUrl]);
+
+  const handleFileChange = (file: File | null) => {
+    setSelectedFile(file);
+    if (!file && template) {
+        // If file is cleared, revert preview to original template image URL
+        setImagePreviewUrl(template.imageUrl);
+        setValue('previewImageUrl', template.imageUrl); // also update form state
+    }
+  };
+
   const onSubmit: SubmitHandler<TemplateFormValues> = (data) => {
     if (!template) return;
     startTransition(async () => {
-      const formData = new FormData();
+      let finalImageUrl = data.previewImageUrl || ''; // Start with existing or form value
+
+      if (selectedFile) {
+        const blobFormData = new FormData();
+        blobFormData.append('file', selectedFile);
+        const uploadResult = await uploadFileToVercelBlob(blobFormData);
+
+        if (!uploadResult.success || !uploadResult.data?.url) {
+          toast({
+            title: 'Image Upload Failed',
+            description: uploadResult.error || 'Could not upload the new preview image.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        finalImageUrl = uploadResult.data.url;
+      } else if (!finalImageUrl && template.imageUrl) {
+        // This case handles if the form's previewImageUrl was cleared but no new file selected,
+        // revert to original template image URL
+        finalImageUrl = template.imageUrl;
+      }
+
+
+      const templateActionFormData = new FormData();
       (Object.keys(data) as Array<keyof TemplateFormValues>).forEach(key => {
         const value = data[key];
-         if (value !== undefined && value !== null) {
-          formData.append(key, String(value));
+        if (key === 'previewImageUrl') {
+          // Skip here, will be set explicitly with finalImageUrl
+        } else if (value !== undefined && value !== null) {
+          templateActionFormData.append(key, String(value));
         } else if (key === 'downloadZipUrl') {
-            formData.append(key, '#');
+            templateActionFormData.append(key, '#');
         }
       });
+      templateActionFormData.set('previewImageUrl', finalImageUrl);
       
-      const result = await updateTemplateAction(template.id, formData);
+      const result = await updateTemplateAction(template.id, templateActionFormData);
 
       if (result.error) {
          toast({
@@ -106,13 +167,13 @@ export default function EditTemplatePage() {
           title: 'Template Updated Successfully',
           description: result.message || 'The template details have been updated.',
         });
-        router.push('/admin/dashboard');
+        router.push('/admin/templates'); // Changed to go to template list
       }
     });
   };
 
   const handleCancel = () => {
-    router.push('/admin/dashboard');
+    router.push('/admin/templates'); // Changed to go to template list
   };
 
   if (isLoading) {
@@ -131,9 +192,9 @@ export default function EditTemplatePage() {
         <h2 className="text-2xl font-semibold text-destructive mb-2">Error Loading Template</h2>
         <p className="text-muted-foreground mb-6">{error}</p>
         <Button variant="outline" asChild className="group">
-          <Link href="/admin/dashboard">
+          <Link href="/admin/templates">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
+            Back to Templates
           </Link>
         </Button>
       </div>
@@ -145,9 +206,9 @@ export default function EditTemplatePage() {
       <div className="container mx-auto px-4 py-12 text-center">
         <p className="text-muted-foreground mb-6">Template data could not be loaded or template does not exist.</p>
         <Button variant="outline" asChild className="group">
-          <Link href="/admin/dashboard">
+          <Link href="/admin/templates">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
+            Back to Templates
           </Link>
         </Button>
       </div>
@@ -157,13 +218,11 @@ export default function EditTemplatePage() {
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <div className="space-y-8">
-        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
             <Edit3 className="mr-3 h-8 w-8 text-primary" />
-            Edit Template
+            Edit Template: {template.title}
           </h1>
-          {/* Action Buttons Group */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
             <Button variant="outline" type="button" onClick={handleCancel} className="w-full sm:w-auto group">
                 <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
@@ -175,8 +234,14 @@ export default function EditTemplatePage() {
             </Button>
           </div>
         </div>
-        {/* Form Component */}
-        <TemplateUploadForm control={control} register={register} errors={errors} />
+        <TemplateUploadForm 
+            control={control} 
+            register={register} 
+            errors={errors}
+            currentImageUrl={imagePreviewUrl} // Pass the state for preview
+            onFileChange={handleFileChange}
+            selectedFileName={selectedFile?.name}
+        />
       </div>
     </form>
   );

@@ -9,18 +9,40 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { CATEGORIES } from '@/lib/constants';
-import type { TemplateFormValues } from './TemplateFormTypes'; // Assuming you'll create this
+import type { TemplateFormValues } from './TemplateFormTypes';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
+import { ImageIcon, XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface TemplateUploadFormProps {
   control: Control<TemplateFormValues>;
   register: UseFormRegister<TemplateFormValues>;
   errors: FieldErrors<TemplateFormValues>;
+  currentImageUrl?: string | null; // For displaying existing or newly selected image preview
+  onFileChange: (file: File | null) => void;
+  selectedFileName?: string | null;
 }
 
-export function TemplateUploadForm({ control, register, errors }: TemplateUploadFormProps) {
+export function TemplateUploadForm({
+  control,
+  register,
+  errors,
+  currentImageUrl,
+  onFileChange,
+  selectedFileName,
+}: TemplateUploadFormProps) {
+  
+  const handleFileClear = () => {
+    const fileInput = document.getElementById('previewImageFile') as HTMLInputElement | null;
+    if (fileInput) {
+        fileInput.value = ''; // Clear the file input
+    }
+    onFileChange(null); // Notify parent
+  };
+
   return (
-    <Card> {/* Removed shadow-lg */}
+    <Card>
       <CardContent className="pt-6 space-y-6">
         <div>
           <Label htmlFor="title">Title</Label>
@@ -67,8 +89,8 @@ export function TemplateUploadForm({ control, register, errors }: TemplateUpload
             {errors.categoryId && <p className="text-sm text-destructive mt-1">{errors.categoryId.message}</p>}
           </div>
           <div>
-            <Label htmlFor="price">Price ($)</Label>
-            <Input id="price" type="number" step="0.01" {...register('price')} className="mt-1" />
+            <Label htmlFor="price">Price (IDR)</Label> {/* Changed label from $ to IDR */}
+            <Input id="price" type="number" step="1" {...register('price')} className="mt-1" />
             {errors.price && <p className="text-sm text-destructive mt-1">{errors.price.message}</p>}
           </div>
         </div>
@@ -85,10 +107,47 @@ export function TemplateUploadForm({ control, register, errors }: TemplateUpload
         </div>
         
         <div>
-          <Label htmlFor="previewImageUrl">Main Preview Image URL</Label>
-          <Input id="previewImageUrl" type="url" {...register('previewImageUrl')} className="mt-1" placeholder="https://example.com/main-image.png" />
-          {errors.previewImageUrl && <p className="text-sm text-destructive mt-1">{errors.previewImageUrl.message}</p>}
+          <Label htmlFor="previewImageFile">Main Preview Image</Label>
+          <Input 
+            id="previewImageFile" 
+            type="file" 
+            accept="image/png, image/jpeg, image/gif, image/webp, image/avif"
+            onChange={(e) => onFileChange(e.target.files ? e.target.files[0] : null)} 
+            className="mt-1 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+          />
+          {selectedFileName && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Selected: {selectedFileName}</span>
+              <Button variant="ghost" size="icon" type="button" onClick={handleFileClear} className="h-6 w-6 text-destructive hover:text-destructive/80">
+                <XCircle className="h-4 w-4" />
+                <span className="sr-only">Clear selected file</span>
+              </Button>
+            </div>
+          )}
+          {currentImageUrl && (
+            <div className="mt-3 p-2 border border-border rounded-md bg-muted/50 max-w-xs">
+              <p className="text-xs text-muted-foreground mb-1">Current/New Preview:</p>
+              <Image 
+                src={currentImageUrl} 
+                alt="Preview image" 
+                width={200} 
+                height={120} // Adjusted height for better aspect ratio if 600x400 is common
+                className="rounded-md object-contain max-h-[120px]"
+                data-ai-hint="template image preview"
+              />
+            </div>
+          )}
+           {!currentImageUrl && !selectedFileName && (
+             <div className="mt-3 p-4 border border-dashed rounded-md bg-muted/30 text-center text-muted-foreground max-w-xs">
+                <ImageIcon className="mx-auto h-8 w-8 mb-1" />
+                <p className="text-xs">No image selected or uploaded yet.</p>
+            </div>
+           )}
+          {/* Hidden input to carry the previewImageUrl for react-hook-form if needed, though now managed by parent state */}
+          <input type="hidden" {...register('previewImageUrl')} />
+           {errors.previewImageUrl && <p className="text-sm text-destructive mt-1">{errors.previewImageUrl.message}</p>}
         </div>
+
 
         <div>
           <Label htmlFor="dataAiHint">AI Hint for Image (Optional, 1-2 keywords)</Label>
