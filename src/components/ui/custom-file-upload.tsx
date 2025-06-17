@@ -52,12 +52,9 @@ export function CustomFileUpload({
         if (api.files && api.files.length === 0 && !currentFileName) {
           setInternalFileName(null);
         }
-        onFileChange(null); // Ensure parent is notified of cleared/rejected selection
+        onFileChange(null); 
       },
       onFileChange: (details) => {
-         // This callback can be used if you need to react to any file change,
-         // including additions or removals from Zag's internal state.
-         // For simplicity, we primarily rely on onFileAccept and manual clearing.
         if (details.files && details.files.length === 0 && !currentFileName) {
             setInternalFileName(null);
         } else if (details.files && details.files.length > 0) {
@@ -70,12 +67,11 @@ export function CustomFileUpload({
   const api = fileUpload.connect(state, send, normalizeProps);
 
   const handleClearFile = () => {
-    api.clearFiles(); // Clears Zag's internal file state
+    api.clearFiles(); 
     setInternalFileName(null);
-    onFileChange(null); // Notifies parent
+    onFileChange(null); 
   };
 
-  // Determine what file name to display
   const displayFileName = internalFileName || currentFileName;
   const fileToShow = api.files && api.files.length > 0 ? api.files[0] : null;
 
@@ -107,7 +103,13 @@ export function CustomFileUpload({
         >
           {api.isDragging ? "Drop image here" : label}
         </p>
-        <input {...api.hiddenInputProps} disabled={disabled} />
+        {/* Ensure the hidden input is actually hidden and correctly typed */}
+        <input
+          {...api.hiddenInputProps}
+          type="file"
+          className="sr-only"
+          disabled={disabled}
+        />
         {!api.isDragging && (
              <Button
                 type="button"
