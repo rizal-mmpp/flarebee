@@ -49,7 +49,7 @@ export function CustomFileUpload({
           description: rejectionReason,
           variant: "destructive",
         });
-        if (api.files.length === 0 && !currentFileName) {
+        if (api.files && api.files.length === 0 && !currentFileName) {
           setInternalFileName(null);
         }
         onFileChange(null); // Ensure parent is notified of cleared/rejected selection
@@ -58,9 +58,9 @@ export function CustomFileUpload({
          // This callback can be used if you need to react to any file change,
          // including additions or removals from Zag's internal state.
          // For simplicity, we primarily rely on onFileAccept and manual clearing.
-        if (details.files.length === 0 && !currentFileName) {
+        if (details.files && details.files.length === 0 && !currentFileName) {
             setInternalFileName(null);
-        } else if (details.files.length > 0) {
+        } else if (details.files && details.files.length > 0) {
             setInternalFileName(details.files[0].name);
         }
       }
@@ -77,7 +77,7 @@ export function CustomFileUpload({
 
   // Determine what file name to display
   const displayFileName = internalFileName || currentFileName;
-  const fileToShow = api.files.length > 0 ? api.files[0] : null;
+  const fileToShow = api.files && api.files.length > 0 ? api.files[0] : null;
 
   return (
     <div {...api.rootProps} className="space-y-3">
