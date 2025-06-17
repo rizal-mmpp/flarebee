@@ -14,6 +14,7 @@ import {
   CreditCard,
   TestTube2, // For Xendit Tests
   UploadCloud, // For File Upload Test
+  LibraryBig, // For Documentation
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,7 @@ const adminNavItems = [
   { href: '/admin/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/admin/customers', label: 'Customers', icon: Users },
   { href: '/admin/pages', label: 'Site Pages', icon: FileText },
+  { href: '/admin/docs', label: 'Documentation', icon: LibraryBig },
   { href: '/admin/xendit-test', label: 'Xendit Tests', icon: TestTube2 },
   { href: '/admin/file-upload-test', label: 'File Upload Test', icon: UploadCloud },
   // { href: '/admin/settings', label: 'Settings', icon: Settings }, // Placeholder
