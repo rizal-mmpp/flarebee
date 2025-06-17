@@ -2,35 +2,42 @@
 'use client';
 
 import Link from 'next/link';
-import { FileText, Eye, Edit, PlusCircle, ExternalLink } from 'lucide-react';
+import { FileText, Eye, Edit, ExternalLink } from 'lucide-react'; // Removed PlusCircle for now
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 
-interface SitePage {
-  id: string;
-  title: string;
-  path: string;
-  status: 'Published' | 'Draft';
-  type: 'Static' | 'Dynamic (Placeholder)';
+interface ManagedSitePage {
+  id: string; // e.g., "privacy-policy"
+  title: string; // Display title
+  path: string; // Public path
+  status: 'Published' | 'Draft'; // Could be expanded later
+  type: 'Content-Managed' | 'Static (Code)';
 }
 
-const sitePages: SitePage[] = [
-  { id: 'home', title: 'Homepage', path: '/', status: 'Published', type: 'Static' },
-  { id: 'templates-listing', title: 'Templates Listing', path: '/#templates', status: 'Published', type: 'Static' },
-  { id: 'privacy', title: 'Privacy Policy', path: '/privacy', status: 'Published', type: 'Static' },
-  { id: 'terms', title: 'Terms of Service', path: '/terms', status: 'Published', type: 'Static' },
-  { id: 'checkout', title: 'Checkout Page', path: '/checkout', status: 'Published', type: 'Static' },
-  { id: 'login', title: 'Login Page', path: '/auth/login', status: 'Published', type: 'Static' },
-  { id: 'signup', title: 'Signup Page', path: '/auth/signup', status: 'Published', type: 'Static' },
-  // Add more pages as needed
+// This list defines which pages are content-manageable via the admin panel.
+// Other pages (like dynamic template listings) are handled by their own components.
+const managedSitePages: ManagedSitePage[] = [
+  { id: 'privacy-policy', title: 'Privacy Policy', path: '/privacy', status: 'Published', type: 'Content-Managed' },
+  { id: 'terms-of-service', title: 'Terms of Service', path: '/terms', status: 'Published', type: 'Content-Managed' },
+  // Add more pages here as they become content-manageable
+  // { id: 'about-us', title: 'About Us', path: '/about', status: 'Draft', type: 'Content-Managed' },
 ];
 
+// These pages are still primarily code-driven and not directly editable as "content blocks" here
+const staticCodePages: ManagedSitePage[] = [
+    { id: 'home', title: 'Homepage', path: '/', status: 'Published', type: 'Static (Code)' },
+    { id: 'templates-listing', title: 'Templates Listing (Part of Homepage)', path: '/#templates', status: 'Published', type: 'Static (Code)' },
+    { id: 'checkout', title: 'Checkout Page', path: '/checkout', status: 'Published', type: 'Static (Code)' },
+    { id: 'login', title: 'Login Page', path: '/auth/login', status: 'Published', type: 'Static (Code)' },
+    { id: 'signup', title: 'Signup Page', path: '/auth/signup', status: 'Published', type: 'Static (Code)' },
+];
+
+
 export default function AdminSitePagesPage() {
-  // Placeholder for future state management if pages become dynamic
-  // const [pages, setPages] = useState<SitePage[]>(sitePages);
-  // const [isLoading, setIsLoading] = useState(false);
+
+  const allDisplayPages = [...managedSitePages, ...staticCodePages];
 
   return (
     <div className="space-y-8">
@@ -41,25 +48,27 @@ export default function AdminSitePagesPage() {
             Site Pages Management
           </h1>
           <p className="text-muted-foreground mt-1">
-            View and manage important pages on your website. (CRUD operations are placeholders for static pages).
+            View and manage key informational pages on your website.
           </p>
         </div>
-        <Button asChild disabled>
-          {/* Placeholder for adding new dynamic pages in the future */}
+        {/* Button to add new pages can be added later if a generic page creation system is built */}
+        {/* <Button asChild disabled> 
           <Link href="/admin/pages/new">
             <PlusCircle className="mr-2 h-4 w-4" />
             Add New Page (Future)
           </Link>
-        </Button>
+        </Button> */}
       </header>
 
       <Card>
         <CardHeader>
           <CardTitle>Website Pages</CardTitle>
-          <CardDescription>A list of key informational and functional pages.</CardDescription>
+          <CardDescription>
+            List of key pages. &quot;Content-Managed&quot; pages can be edited. &quot;Static (Code)&quot; pages are part of the application&apos;s core structure.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {sitePages.length === 0 ? (
+          {allDisplayPages.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">No pages configured.</p>
           ) : (
             <Table>
@@ -73,7 +82,7 @@ export default function AdminSitePagesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sitePages.map((page) => (
+                {allDisplayPages.map((page) => (
                   <TableRow key={page.id}>
                     <TableCell className="font-medium">{page.title}</TableCell>
                     <TableCell className="hidden sm:table-cell">
@@ -82,7 +91,9 @@ export default function AdminSitePagesPage() {
                         </Link>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      <Badge variant={page.type === 'Static' ? 'secondary' : 'outline'}>{page.type}</Badge>
+                      <Badge variant={page.type === 'Content-Managed' ? 'default' : 'secondary'} className={page.type === 'Content-Managed' ? 'bg-primary/80' : ''}>
+                        {page.type}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant={page.status === 'Published' ? 'default' : 'outline'} className={page.status === 'Published' ? 'bg-green-500/20 text-green-700 border-green-500/30' : ''}>
@@ -96,29 +107,20 @@ export default function AdminSitePagesPage() {
                           <span className="sr-only">View Page</span>
                         </Link>
                       </Button>
-                      <Button variant="ghost" size="icon" asChild title={`Edit ${page.title} (Placeholder)`}>
-                        <Link href={`/admin/pages/edit/${page.id}`}>
-                            <Edit className="h-4 w-4" />
-                            <span className="sr-only">Edit Page</span>
-                        </Link>
-                      </Button>
+                      {page.type === 'Content-Managed' && (
+                        <Button variant="ghost" size="icon" asChild title={`Edit ${page.title}`}>
+                          <Link href={`/admin/pages/edit/${page.id}`}>
+                              <Edit className="h-4 w-4" />
+                              <span className="sr-only">Edit Page</span>
+                          </Link>
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           )}
-        </CardContent>
-      </Card>
-      <Card className="mt-6">
-        <CardHeader>
-            <CardTitle className="text-lg">Note on Page Management</CardTitle>
-        </CardHeader>
-        <CardContent>
-            <p className="text-sm text-muted-foreground">
-                Currently, this section lists predefined static pages. Full Content Management System (CMS) capabilities for creating, editing, and deleting dynamic page content
-                are a feature planned for future development. The &quot;Edit&quot; functionality for these static pages is a placeholder.
-            </p>
         </CardContent>
       </Card>
     </div>

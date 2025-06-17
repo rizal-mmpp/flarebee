@@ -93,3 +93,10 @@ export interface FetchTemplatesResult {
   pageCount: number;
   totalItems: number;
 }
+
+export interface SitePage {
+  id: string; // e.g., "privacy-policy"
+  title: string;
+  content: string; // Markdown content
+  updatedAt?: any; // Firestore Timestamp
+}
