@@ -103,23 +103,25 @@ export function CustomFileUpload({
         >
           {api.isDragging ? "Drop image here" : label}
         </p>
-        {/* Ensure the hidden input is actually hidden and correctly typed */}
         <input
           {...api.hiddenInputProps}
           type="file"
-          className="sr-only"
+          className="sr-only" // Ensure it's visually hidden
           disabled={disabled}
         />
         {!api.isDragging && (
              <Button
                 type="button"
                 variant="link"
-                {...api.triggerProps}
+                {...api.triggerProps} // Spread triggerProps here
                 className="mt-1 text-sm text-primary hover:text-primary/80 disabled:text-muted-foreground/70"
                 disabled={disabled}
                 onClick={(e) => {
-                    if(disabled) e.preventDefault();
-                    else api.triggerProps.onClick?.(e);
+                    if(disabled) {
+                      e.preventDefault();
+                    } else if (api.triggerProps) { // Check if triggerProps exists
+                      api.triggerProps.onClick?.(e);
+                    }
                 }}
             >
                 Or select a file
