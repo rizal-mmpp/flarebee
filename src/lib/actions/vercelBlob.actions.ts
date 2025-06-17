@@ -5,28 +5,35 @@ import { put, list, type PutBlobResult, type ListBlobResult } from '@vercel/blob
 import { NextResponse } from 'next/server';
 
 export async function uploadFileToVercelBlob(formData: FormData): Promise<{ success: boolean; data?: PutBlobResult; error?: string }> {
+  console.log('uploadFileToVercelBlob: Action started.');
   const file = formData.get('file') as File;
 
   if (!file) {
+    console.error('uploadFileToVercelBlob: No file provided.');
     return { success: false, error: 'No file provided.' };
   }
   
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    console.error('uploadFileToVercelBlob: BLOB_READ_WRITE_TOKEN not configured.');
     return { success: false, error: 'Vercel Blob environment variable not configured.' };
   }
 
-  try {
-    // Ensure a unique filename, or use user-provided name if desired (be cautious with user input)
-    // For simplicity, using original filename. Consider adding a unique prefix/suffix in production.
-    const blob = await put(file.name, file, {
-      access: 'public', // Make the blob publicly accessible
-      // Optionally, add a folder structure: `pathname: templates/${file.name}`
-    });
+  console.log(`uploadFileToVercelBlob: Attempting to upload file "${file.name}" of size ${file.size} bytes.`);
 
+  try {
+    const blob = await put(file.name, file, {
+      access: 'public',
+    });
+    console.log('uploadFileToVercelBlob: File uploaded successfully. URL:', blob.url);
     return { success: true, data: blob };
   } catch (error: any) {
-    console.error('Error uploading to Vercel Blob:', error);
-    // Check for specific Vercel Blob error structure if available
+    console.error('Detailed error in uploadFileToVercelBlob:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    if (error.cause) {
+      console.error('Error cause:', error.cause);
+    }
     let errorMessage = 'Failed to upload file.';
     if (error.message) {
         errorMessage = error.message;
@@ -40,11 +47,10 @@ export async function listVercelBlobFiles(options?: { limit?: number; cursor?: s
     return { success: false, error: 'Vercel Blob environment variable not configured.' };
   }
   try {
-    const result = await list({ // Pass options directly to the list call
+    const result = await list({ 
         limit: options?.limit,
         cursor: options?.cursor,
         prefix: options?.prefix,
-        // mode: 'folded', // To group files in "folders" if prefix is used. Optional.
     });
     return { success: true, data: result };
   } catch (error: any) {

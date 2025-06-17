@@ -6,37 +6,31 @@ import {
   addDoc,
   collection,
   doc,
-  // getDoc, // No longer used directly here, getTemplateByIdFromFirestore is used by pages
   serverTimestamp,
   updateDoc,
   deleteDoc,
   type Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
-// Template type is used for return types or general reference, not for direct Firestore data structure here.
-// import type { Template } from '@/lib/types'; 
 import { CATEGORIES } from '../constants';
+import { uploadFileToVercelBlob } from './vercelBlob.actions'; // Import the action
 
-const TEMPLATES_COLLECTION = 'templates';
-
-// This interface defines the structure of data as it's being prepared to be sent to Firestore.
-// Optional fields are marked with '?'
 export interface TemplateFirestoreData {
   title: string;
   title_lowercase: string;
   description: string;
-  longDescription?: string; // Optional
+  longDescription?: string | null;
   categoryId: string; 
   price: number;
   tags: string[];
-  techStack?: string[]; // Optional
+  techStack?: string[] | null; 
   imageUrl: string;
-  dataAiHint?: string; // Optional
-  previewUrl?: string; // Optional
-  screenshots?: string[]; // Optional, not managed by this form directly
-  downloadZipUrl: string; // Will default to '#' if not provided
-  githubUrl?: string; // Optional
-  author?: string; // Optional, not managed by this form
+  dataAiHint?: string | null;
+  previewUrl?: string | null;
+  screenshots?: string[]; 
+  downloadZipUrl: string;
+  githubUrl?: string | null;
+  author?: string;
   createdAt?: Timestamp; 
   updatedAt?: Timestamp; 
 }
@@ -48,100 +42,35 @@ function parseStringToArray(str?: string | null): string[] {
 }
 
 export async function saveTemplateAction(formData: FormData): Promise<{ success: boolean; message?: string; error?: string; templateId?: string }> {
+  console.log('saveTemplateAction: Action started.');
   try {
+    // Note: The selectedFile itself is handled by the page and uploadFileToVercelBlob action.
+    // Here we expect 'previewImageUrl' to be the URL from Vercel Blob.
+    const imageUrlFromBlob = formData.get('previewImageUrl') as string;
+    if (!imageUrlFromBlob) {
+      console.error('saveTemplateAction: Preview image URL from Vercel Blob is missing.');
+      return { success: false, error: "Preview image URL from Vercel Blob is required." };
+    }
+
     const title = formData.get('title') as string;
     const description = formData.get('description') as string;
     const categoryId = formData.get('categoryId') as string;
     const price = parseFloat(formData.get('price') as string);
     const tagsInput = formData.get('tags') as string | null;
-    const imageUrlFromBlob = formData.get('previewImageUrl') as string; // This is the Vercel Blob URL
     const downloadZipUrlInput = (formData.get('downloadZipUrl') as string)?.trim() || '#';
 
-
-    if (!title || !description || !categoryId || isNaN(price) || !tagsInput || !imageUrlFromBlob) {
-      return { success: false, error: "Missing required fields (Title, Description, Category, Price, Tags, Image URL)." };
+    if (!title || !description || !categoryId || isNaN(price) || !tagsInput) {
+      console.error('saveTemplateAction: Missing required fields.');
+      return { success: false, error: "Missing required fields (Title, Description, Category, Price, Tags)." };
     }
     
     const category = CATEGORIES.find(c => c.id === categoryId);
     if (!category) {
+        console.error('saveTemplateAction: Invalid category selected.');
         return { success: false, error: "Invalid category." };
     }
 
-    const dataToSave: Partial<TemplateFirestoreData> = { // Use Partial because not all fields from interface are set initially
-      title,
-      title_lowercase: title.toLowerCase(),
-      description,
-      categoryId,
-      price,
-      tags: parseStringToArray(tagsInput),
-      imageUrl: imageUrlFromBlob,
-      downloadZipUrl: downloadZipUrlInput, // Will be '#' or a URL
-    };
-
-    const longDescriptionValue = (formData.get('longDescription') as string)?.trim();
-    if (longDescriptionValue) {
-      dataToSave.longDescription = longDescriptionValue;
-    }
-
-    const techStackValue = formData.get('techStack') as string | null;
-    const parsedTechStack = parseStringToArray(techStackValue);
-    if (parsedTechStack.length > 0) {
-      dataToSave.techStack = parsedTechStack;
-    }
-    
-    const dataAiHintValue = (formData.get('dataAiHint') as string)?.trim();
-    if (dataAiHintValue) {
-      dataToSave.dataAiHint = dataAiHintValue;
-    }
-
-    const previewUrlValue = (formData.get('previewUrl') as string)?.trim();
-    if (previewUrlValue) {
-      dataToSave.previewUrl = previewUrlValue;
-    }
-    
-    const githubUrlValue = (formData.get('githubUrl') as string)?.trim();
-    if (githubUrlValue) {
-      dataToSave.githubUrl = githubUrlValue;
-    }
-
-    const docRef = await addDoc(collection(db, TEMPLATES_COLLECTION), {
-      ...dataToSave, // Spread the conditionally built object
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    
-    revalidatePath('/admin/templates');
-    revalidatePath('/admin/dashboard');
-    revalidatePath('/templates');
-    revalidatePath('/'); 
-
-    return { success: true, message: `Template "${title}" created successfully.`, templateId: docRef.id };
-  } catch (error: any) {
-    console.error("Error in saveTemplateAction: ", error);
-    return { success: false, error: error.message || "Failed to create template." };
-  }
-}
-
-export async function updateTemplateAction(id: string, formData: FormData): Promise<{ success: boolean; message?: string; error?: string; templateId?: string }> {
-  try {
-    const title = formData.get('title') as string;
-    const description = formData.get('description') as string;
-    const categoryId = formData.get('categoryId') as string;
-    const price = parseFloat(formData.get('price') as string);
-    const tagsInput = formData.get('tags') as string | null;
-    const imageUrlFromBlob = formData.get('previewImageUrl') as string; 
-    const downloadZipUrlInput = (formData.get('downloadZipUrl') as string)?.trim() || '#';
-
-    if (!id || !title || !description || !categoryId || isNaN(price) || !tagsInput || !imageUrlFromBlob) {
-      return { success: false, error: "Missing required fields (Title, Description, Category, Price, Tags, Image URL)." };
-    }
-    
-    const category = CATEGORIES.find(c => c.id === categoryId);
-    if (!category) {
-        return { success: false, error: "Invalid category." };
-    }
-
-    const dataToUpdate: Partial<TemplateFirestoreData> = {
+    const dataToSave: TemplateFirestoreData = {
       title,
       title_lowercase: title.toLowerCase(),
       description,
@@ -150,53 +79,103 @@ export async function updateTemplateAction(id: string, formData: FormData): Prom
       tags: parseStringToArray(tagsInput),
       imageUrl: imageUrlFromBlob,
       downloadZipUrl: downloadZipUrlInput,
+      createdAt: serverTimestamp() as Timestamp,
+      updatedAt: serverTimestamp() as Timestamp,
     };
 
     const longDescriptionValue = (formData.get('longDescription') as string)?.trim();
-    if (longDescriptionValue !== undefined) { // Check for undefined to allow clearing the field
-      dataToUpdate.longDescription = longDescriptionValue || null; // Set to null if empty string, to remove field or set as null
-    }
-
+    if (longDescriptionValue) dataToSave.longDescription = longDescriptionValue;
 
     const techStackValue = formData.get('techStack') as string | null;
     const parsedTechStack = parseStringToArray(techStackValue);
-    // For updates, if parsedTechStack is empty, we might want to store an empty array to clear previous stack
-    dataToUpdate.techStack = parsedTechStack; 
+    if (parsedTechStack.length > 0) dataToSave.techStack = parsedTechStack;
     
     const dataAiHintValue = (formData.get('dataAiHint') as string)?.trim();
-     if (dataAiHintValue !== undefined) {
-      dataToUpdate.dataAiHint = dataAiHintValue || null;
-    }
+    if (dataAiHintValue) dataToSave.dataAiHint = dataAiHintValue;
 
     const previewUrlValue = (formData.get('previewUrl') as string)?.trim();
-    if (previewUrlValue !== undefined) {
-      dataToUpdate.previewUrl = previewUrlValue || null;
-    }
+    if (previewUrlValue) dataToSave.previewUrl = previewUrlValue;
     
     const githubUrlValue = (formData.get('githubUrl') as string)?.trim();
-    if (githubUrlValue !== undefined) {
-      dataToUpdate.githubUrl = githubUrlValue || null;
+    if (githubUrlValue) dataToSave.githubUrl = githubUrlValue;
+
+    console.log('saveTemplateAction: Data to save to Firestore:', dataToSave);
+    const docRef = await addDoc(collection(db, TEMPLATES_COLLECTION), dataToSave);
+    
+    revalidatePath('/admin/templates');
+    revalidatePath('/admin/dashboard');
+    revalidatePath('/templates');
+    revalidatePath('/'); 
+
+    console.log(`saveTemplateAction: Template "${title}" created successfully with ID: ${docRef.id}`);
+    return { success: true, message: `Template "${title}" created successfully.`, templateId: docRef.id };
+  } catch (error: any) {
+    console.error("Detailed error in saveTemplateAction: ", error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    return { success: false, error: error.message || "Failed to create template." };
+  }
+}
+
+export async function updateTemplateAction(id: string, formData: FormData): Promise<{ success: boolean; message?: string; error?: string; templateId?: string }> {
+  console.log(`updateTemplateAction: Action started for template ID: ${id}`);
+  try {
+    const imageUrlFromBlob = formData.get('previewImageUrl') as string; // This URL is from Vercel Blob or existing
+    if (!imageUrlFromBlob) {
+      console.error('updateTemplateAction: Preview image URL from Vercel Blob is missing.');
+      return { success: false, error: "Preview image URL from Vercel Blob is required." };
+    }
+
+    const title = formData.get('title') as string;
+    const description = formData.get('description') as string;
+    const categoryId = formData.get('categoryId') as string;
+    const price = parseFloat(formData.get('price') as string);
+    const tagsInput = formData.get('tags') as string | null;
+    const downloadZipUrlInput = (formData.get('downloadZipUrl') as string)?.trim() || '#';
+
+    if (!id || !title || !description || !categoryId || isNaN(price) || !tagsInput) {
+      console.error('updateTemplateAction: Missing required fields.');
+      return { success: false, error: "Missing required fields (Title, Description, Category, Price, Tags)." };
     }
     
-    // Filter out null properties before sending to Firestore if you prefer fields to be absent vs. null
-    // For example:
-    // Object.keys(dataToUpdate).forEach(key => 
-    //   (dataToUpdate as any)[key] === null && delete (dataToUpdate as any)[key]
-    // );
-    // However, sending explicit nulls is also fine and can be meaningful to clear a field.
-    // Firestore does not store `undefined` values, but it does store `null`.
-    // If a field is set to `null`, it exists in the document. If omitted, it doesn't.
-    // Let's be explicit with null for clearing fields, or omit if it's truly optional and should be absent.
-    // For simplicity and to match Firestore's behavior with `undefined` (which is to strip it),
-    // we can rely on JavaScript's behavior or explicitly delete keys if their value is empty string and should be omitted.
-    // The current approach (assigning empty string or null if intended to clear) is fine.
-    // The primary fix was not passing `undefined` from `|| undefined` for longDescription.
+    const category = CATEGORIES.find(c => c.id === categoryId);
+    if (!category) {
+        console.error('updateTemplateAction: Invalid category selected.');
+        return { success: false, error: "Invalid category." };
+    }
 
+    const dataToUpdate: Partial<TemplateFirestoreData> = { // Use Partial for flexibility
+      title,
+      title_lowercase: title.toLowerCase(),
+      description,
+      categoryId,
+      price,
+      tags: parseStringToArray(tagsInput),
+      imageUrl: imageUrlFromBlob,
+      downloadZipUrl: downloadZipUrlInput,
+      updatedAt: serverTimestamp() as Timestamp,
+    };
+
+    const longDescriptionValue = (formData.get('longDescription') as string)?.trim();
+    dataToUpdate.longDescription = longDescriptionValue ? longDescriptionValue : null;
+
+    const techStackValue = formData.get('techStack') as string | null;
+    const parsedTechStack = parseStringToArray(techStackValue);
+    dataToUpdate.techStack = parsedTechStack.length > 0 ? parsedTechStack : null;
+    
+    const dataAiHintValue = (formData.get('dataAiHint') as string)?.trim();
+    dataToUpdate.dataAiHint = dataAiHintValue ? dataAiHintValue : null;
+
+    const previewUrlValue = (formData.get('previewUrl') as string)?.trim();
+    dataToUpdate.previewUrl = previewUrlValue ? previewUrlValue : null;
+    
+    const githubUrlValue = (formData.get('githubUrl') as string)?.trim();
+    dataToUpdate.githubUrl = githubUrlValue ? githubUrlValue : null;
+    
+    console.log('updateTemplateAction: Data to update in Firestore:', dataToUpdate);
     const docRef = doc(db, TEMPLATES_COLLECTION, id);
-    await updateDoc(docRef, {
-        ...dataToUpdate,
-        updatedAt: serverTimestamp(),
-    });
+    await updateDoc(docRef, dataToUpdate);
 
     revalidatePath('/admin/templates');
     revalidatePath('/admin/dashboard');
@@ -204,16 +183,22 @@ export async function updateTemplateAction(id: string, formData: FormData): Prom
     revalidatePath('/templates');
     revalidatePath('/');
 
+    console.log(`updateTemplateAction: Template "${title}" (ID: ${id}) updated successfully.`);
     return { success: true, message: `Template "${title}" updated successfully.`, templateId: id };
   } catch (error: any) {
-    console.error("Error in updateTemplateAction: ", error);
+    console.error(`Detailed error in updateTemplateAction for ID ${id}: `, error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     return { success: false, error: error.message || "Failed to update template." };
   }
 }
 
 export async function deleteTemplateAction(id: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  console.log(`deleteTemplateAction: Action started for template ID: ${id}`);
   try {
     if (!id) {
+      console.error('deleteTemplateAction: Template ID is required.');
       return { success: false, error: "Template ID is required for deletion." };
     }
     await deleteDoc(doc(db, TEMPLATES_COLLECTION, id));
@@ -223,9 +208,13 @@ export async function deleteTemplateAction(id: string): Promise<{ success: boole
     revalidatePath('/templates');
     revalidatePath('/');
 
+    console.log(`deleteTemplateAction: Template with ID ${id} deleted successfully.`);
     return { success: true, message: `Template with ID ${id} deleted successfully.` };
   } catch (error: any) {
-    console.error("Error in deleteTemplateAction: ", error);
+    console.error(`Detailed error in deleteTemplateAction for ID ${id}: `, error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     return { success: false, error: error.message || "Failed to delete template." };
   }
 }
