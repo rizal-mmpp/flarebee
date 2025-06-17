@@ -22,17 +22,13 @@ export default function FileUploadTestPage() {
   const [listedBlobs, setListedBlobs] = useState<ListBlobResultBlob[]>([]);
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
-  // const [listCursor, setListCursor] = useState<string | undefined>(undefined); // For future pagination
-  // const [listHasMore, setListHasMore] = useState(false); // For future pagination
 
   const handleFetchListedFiles = useCallback(async () => {
     setIsLoadingList(true);
     setListError(null);
-    const result = await listVercelBlobFiles({ limit: 50 }); // Fetching up to 50 items for test page
+    const result = await listVercelBlobFiles({ limit: 50 });
     if (result.success && result.data) {
       setListedBlobs(result.data.blobs);
-      // setListCursor(result.data.cursor); // For future pagination
-      // setListHasMore(result.data.hasMore); // For future pagination
     } else {
       setListError(result.error || 'Failed to fetch file list.');
       setListedBlobs([]);
@@ -73,12 +69,40 @@ export default function FileUploadTestPage() {
 
     if (result.success) {
       setFile(null); 
-      (event.target as HTMLFormElement).reset(); // Visually reset file input
-      handleFetchListedFiles(); // Refresh list after successful upload
+      (event.target as HTMLFormElement).reset(); 
+      handleFetchListedFiles(); 
     }
   };
 
-  const imageBlobs = listedBlobs.filter(blob => blob.contentType?.startsWith('image/'));
+  const imageBlobs = listedBlobs.filter(blob => {
+    const knownImageContentTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'image/svg+xml',
+      'image/avif',
+    ];
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.avif'];
+
+    const lcContentType = blob.contentType?.toLowerCase();
+    const lcPathname = blob.pathname.toLowerCase();
+
+    // Check against known content types first
+    if (lcContentType && knownImageContentTypes.includes(lcContentType)) {
+      return true;
+    }
+    // Fallback: If content type is missing or not in the known list, check by extension
+    if (imageExtensions.some(ext => lcPathname.endsWith(ext))) {
+      return true;
+    }
+    // Broader check for any image/* if content type exists but wasn't in the known list and extension didn't match
+    if (lcContentType && lcContentType.startsWith('image/')) {
+        return true;
+    }
+    
+    return false;
+  });
 
   return (
     <div className="space-y-8">
@@ -222,10 +246,6 @@ export default function FileUploadTestPage() {
                     ))}
                 </div>
             )}
-             {/* Basic pagination info - can be expanded later */}
-            {/* {result.data && result.data.hasMore && (
-                <p className="text-sm text-muted-foreground mt-4">More files available. Implement pagination to see all.</p>
-            )} */}
         </CardContent>
       </Card>
     </div>
