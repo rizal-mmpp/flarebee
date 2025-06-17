@@ -15,7 +15,7 @@ export const templateFormSchema = z.object({
   previewImageUrl: z.string().optional(), // This will store the URL from Vercel Blob or an existing URL
   dataAiHint: z.string().optional(),
   previewUrl: z.string().url('Must be a valid URL for live preview').or(z.literal('')).optional(),
-  downloadZipUrl: z.string().url('Must be a valid URL for ZIP download').or(z.literal('#')).or(z.literal('')),
+  downloadZipUrl: z.string().url('Must be a valid URL for ZIP download').or(z.literal('#')).or(z.literal('')).optional().default('#'),
   githubUrl: z.string().url('Must be a valid GitHub URL').or(z.literal('')).optional(),
 });
 
