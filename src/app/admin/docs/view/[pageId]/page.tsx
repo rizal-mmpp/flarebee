@@ -8,7 +8,7 @@ import ReactMarkdown from 'react-markdown';
 import { getSitePageContent } from '@/lib/firebase/firestoreSitePages';
 import type { SitePage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Edit, Loader2, AlertTriangle, Info, Lightbulb, Wrench, FileText } from 'lucide-react';
 
 // Helper to get appropriate icon based on pageId
