@@ -1,7 +1,7 @@
 
 'use server';
 
-import CryptoJS from 'crypto-js'; // Import crypto-js
+import CryptoJS from 'crypto-js';
 import { headers } from 'next/headers';
 import { randomUUID } from 'crypto';
 
@@ -63,24 +63,20 @@ export interface IpaymuTransactionStatusResult {
   rawResponse?: any;
 }
 
-function getCurrentFormattedTimestamp(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = (now.getMonth() + 1).toString().padStart(2, '0');
-  const day = now.getDate().toString().padStart(2, '0');
-  const hours = now.getHours().toString().padStart(2, '0');
-  const minutes = now.getMinutes().toString().padStart(2, '0');
-  const seconds = now.getSeconds().toString().padStart(2, '0');
-  return `${year}${month}${day}${hours}${minutes}${seconds}`;
+function getCurrentUnixTimestampString(): string {
+  return Math.floor(new Date().getTime() / 1000).toString();
 }
 
-// Generate iPaymu signature using the raw JSON body string
-function generateIpaymuSignature(httpMethod: 'POST' | 'GET', requestBodyJsonString: string): string {
+// Generate iPaymu signature using the HASHED JSON body string
+function generateIpaymuSignature(httpMethod: 'POST' | 'GET', requestBody: Record<string, any>): string {
   if (!IPAYMU_VA || !IPAYMU_API_KEY) {
     throw new Error('iPaymu VA or API Key is not configured.');
   }
-  // The string to sign uses the raw JSON body string for these specific endpoints
-  const stringToSign = `${httpMethod.toUpperCase()}:${IPAYMU_VA}:${requestBodyJsonString}:${IPAYMU_API_KEY}`;
+  
+  const bodyJsonString = JSON.stringify(requestBody);
+  const bodyEncrypt = CryptoJS.SHA256(bodyJsonString).toString(CryptoJS.enc.Hex);
+  const stringToSign = `${httpMethod.toUpperCase()}:${IPAYMU_VA}:${bodyEncrypt}:${IPAYMU_API_KEY}`;
+  
   return CryptoJS.enc.Hex.stringify(CryptoJS.HmacSHA256(stringToSign, IPAYMU_API_KEY));
 }
 
@@ -101,34 +97,39 @@ export async function createIpaymuRedirectPayment(args: CreateIpaymuPaymentArgs)
 
   const requestBody = {
     product: args.items.map(item => item.name),
-    qty: args.items.map(item => String(item.quantity)), // Ensure qty items are strings
-    price: args.items.map(item => String(item.price)),   // Ensure price items are strings
+    qty: args.items.map(item => String(item.quantity)),
+    price: args.items.map(item => String(item.price)),
     amount: String(args.totalAmount),
     returnUrl: `${appBaseUrl}/admin/ipaymu-test?status=success&ref_id=${internalReferenceId}`,
     cancelUrl: `${appBaseUrl}/admin/ipaymu-test?status=cancelled&ref_id=${internalReferenceId}`,
-    notifyUrl: `${appBaseUrl}/api/webhooks/ipaymu`,
+    notifyUrl: `${appBaseUrl}/api/webhooks/ipaymu`, // Ensure this webhook is set up
     referenceId: internalReferenceId,
     buyerName: args.buyerName,
     buyerEmail: args.buyerEmail,
     buyerPhone: args.buyerPhone,
   };
 
-  const requestBodyJsonString = JSON.stringify(requestBody);
-  const signature = generateIpaymuSignature('POST', requestBodyJsonString);
-  const timestamp = getCurrentFormattedTimestamp();
-  const endpoint = `${IPAYMU_BASE_URL}/payment`;
+  const signature = generateIpaymuSignature('POST', requestBody);
+  const timestamp = getCurrentUnixTimestampString();
+  const endpoint = `${IPAYMU_BASE_URL}/payment`; // This is the redirect payment endpoint
 
   try {
-    console.log("Sending to iPaymu:", endpoint, "Body:", requestBodyJsonString, "Signature:", signature, "Timestamp:", timestamp);
+    console.log("Sending to iPaymu (Redirect):", endpoint);
+    console.log("Request Body:", JSON.stringify(requestBody, null, 2));
+    console.log("VA:", IPAYMU_VA);
+    console.log("Signature:", signature);
+    console.log("Timestamp:", timestamp);
+
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         'va': IPAYMU_VA,
         'signature': signature,
         'timestamp': timestamp,
       },
-      body: requestBodyJsonString,
+      body: JSON.stringify(requestBody),
     });
 
     const responseData = await response.json();
@@ -170,22 +171,27 @@ export async function checkIpaymuTransaction(transactionId: string): Promise<Ipa
         transactionId: transactionId.trim(),
     };
 
-    const requestBodyJsonString = JSON.stringify(requestBody);
-    const signature = generateIpaymuSignature('POST', requestBodyJsonString);
-    const timestamp = getCurrentFormattedTimestamp();
+    const signature = generateIpaymuSignature('POST', requestBody);
+    const timestamp = getCurrentUnixTimestampString();
     const endpoint = `${IPAYMU_BASE_URL}/transaction`;
 
     try {
-        console.log("Checking iPaymu Transaction:", endpoint, "Body:", requestBodyJsonString, "Signature:", signature, "Timestamp:", timestamp);
+        console.log("Checking iPaymu Transaction:", endpoint);
+        console.log("Request Body:", JSON.stringify(requestBody, null, 2));
+        console.log("VA:", IPAYMU_VA);
+        console.log("Signature:", signature);
+        console.log("Timestamp:", timestamp);
+
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 'va': IPAYMU_VA,
                 'signature': signature,
                 'timestamp': timestamp,
             },
-            body: requestBodyJsonString,
+            body: JSON.stringify(requestBody),
         });
 
         const responseData = await response.json();
