@@ -63,7 +63,6 @@ export interface IpaymuTransactionStatusResult {
   rawResponse?: any;
 }
 
-// Helper to generate current timestamp in YYYYMMDDHHmmss format
 function getCurrentFormattedTimestamp(): string {
   const now = new Date();
   const year = now.getFullYear();
@@ -75,16 +74,13 @@ function getCurrentFormattedTimestamp(): string {
   return `${year}${month}${day}${hours}${minutes}${seconds}`;
 }
 
-// Helper to generate iPaymu signature by hashing the body first
-function generateIpaymuSignature(httpMethod: 'POST' | 'GET', requestBody: Record<string, any>): string {
+// Generate iPaymu signature using the raw JSON body string
+function generateIpaymuSignature(httpMethod: 'POST' | 'GET', requestBodyJsonString: string): string {
   if (!IPAYMU_VA || !IPAYMU_API_KEY) {
     throw new Error('iPaymu VA or API Key is not configured.');
   }
-  const requestBodyJsonString = JSON.stringify(requestBody);
-  // Hash the JSON string body using SHA256
-  const hashedBody = crypto.createHash('sha256').update(requestBodyJsonString).digest('hex');
-
-  const stringToSign = `${httpMethod.toUpperCase()}:${IPAYMU_VA}:${hashedBody}:${IPAYMU_API_KEY}`;
+  // The string to sign uses the raw JSON body string, not its hash, for these endpoints
+  const stringToSign = `${httpMethod.toUpperCase()}:${IPAYMU_VA}:${requestBodyJsonString}:${IPAYMU_API_KEY}`;
   return crypto.createHmac('sha256', IPAYMU_API_KEY).update(stringToSign).digest('hex');
 }
 
@@ -105,24 +101,27 @@ export async function createIpaymuRedirectPayment(args: CreateIpaymuPaymentArgs)
 
   const requestBody = {
     product: args.items.map(item => item.name),
-    qty: args.items.map(item => String(item.quantity)), // Ensure qty is string array as per some docs
-    price: args.items.map(item => String(item.price)), // Ensure price is string array
+    qty: args.items.map(item => String(item.quantity)),
+    price: args.items.map(item => String(item.price)),
     amount: String(args.totalAmount),
-    returnUrl: `${appBaseUrl}/admin/ipaymu-test?status=success&ref_id=${internalReferenceId}`,
-    cancelUrl: `${appBaseUrl}/admin/ipaymu-test?status=cancelled&ref_id=${internalReferenceId}`,
-    notifyUrl: `${appBaseUrl}/api/webhooks/ipaymu`,
+    returnUrl: `${appBaseUrl}/admin/ipaymu-test?status=success&ref_id=${internalReferenceId}`, // For testing, adjust as needed
+    cancelUrl: `${appBaseUrl}/admin/ipaymu-test?status=cancelled&ref_id=${internalReferenceId}`, // For testing
+    notifyUrl: `${appBaseUrl}/api/webhooks/ipaymu`, // Ensure this webhook is set up in iPaymu dashboard
     referenceId: internalReferenceId,
     buyerName: args.buyerName,
     buyerEmail: args.buyerEmail,
     buyerPhone: args.buyerPhone,
+    // paymentMethod: 'qris', // Example, can be omitted for iPaymu to show all options
+    // paymentChannel: 'qris', // Example
   };
 
-  const signature = generateIpaymuSignature('POST', requestBody);
+  const requestBodyJsonString = JSON.stringify(requestBody);
+  const signature = generateIpaymuSignature('POST', requestBodyJsonString);
   const timestamp = getCurrentFormattedTimestamp();
   const endpoint = `${IPAYMU_BASE_URL}/payment`;
 
   try {
-    console.log("Sending to iPaymu:", endpoint, "Body:", JSON.stringify(requestBody), "Signature:", signature, "Timestamp:", timestamp);
+    console.log("Sending to iPaymu:", endpoint, "Body:", requestBodyJsonString, "Signature:", signature, "Timestamp:", timestamp);
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -131,13 +130,13 @@ export async function createIpaymuRedirectPayment(args: CreateIpaymuPaymentArgs)
         'signature': signature,
         'timestamp': timestamp,
       },
-      body: JSON.stringify(requestBody),
+      body: requestBodyJsonString,
     });
 
     const responseData = await response.json();
     console.log("iPaymu Response:", responseData);
 
-    if (!response.ok || responseData.Status !== 200) { // iPaymu uses 'Status' field in response
+    if (!response.ok || responseData.Status !== 200) {
       const errorMessage = responseData.Message || `iPaymu API request failed with status ${response.status}`;
       return { success: false, message: errorMessage, rawResponse: responseData, error: errorMessage };
     }
@@ -170,15 +169,16 @@ export async function checkIpaymuTransaction(transactionId: string): Promise<Ipa
     }
 
     const requestBody = {
-        transactionId: transactionId.trim(),
+        transactionId: transactionId.trim(), // iPaymu expects trx_id or sid here usually
     };
 
-    const signature = generateIpaymuSignature('POST', requestBody);
+    const requestBodyJsonString = JSON.stringify(requestBody);
+    const signature = generateIpaymuSignature('POST', requestBodyJsonString);
     const timestamp = getCurrentFormattedTimestamp();
     const endpoint = `${IPAYMU_BASE_URL}/transaction`;
 
     try {
-        console.log("Checking iPaymu Transaction:", endpoint, "Body:", JSON.stringify(requestBody), "Signature:", signature, "Timestamp:", timestamp);
+        console.log("Checking iPaymu Transaction:", endpoint, "Body:", requestBodyJsonString, "Signature:", signature, "Timestamp:", timestamp);
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
@@ -187,13 +187,13 @@ export async function checkIpaymuTransaction(transactionId: string): Promise<Ipa
                 'signature': signature,
                 'timestamp': timestamp,
             },
-            body: JSON.stringify(requestBody),
+            body: requestBodyJsonString,
         });
 
         const responseData = await response.json();
         console.log("iPaymu Transaction Status Response:", responseData);
 
-        if (!response.ok || responseData.Status !== 200) { // iPaymu uses 'Status' field
+        if (!response.ok || responseData.Status !== 200) {
             const errorMessage = responseData.Message || `iPaymu API request failed with status ${response.status}`;
             return { success: false, message: errorMessage, rawResponse: responseData };
         }
@@ -202,21 +202,24 @@ export async function checkIpaymuTransaction(transactionId: string): Promise<Ipa
             return { success: false, message: "iPaymu transaction status response missing Data.", rawResponse: responseData };
         }
         
+        // Normalize status description
         let statusDesc = responseData.Data.StatusDesc || "Unknown";
-        if (responseData.Data.StatusCode === "00") statusDesc = "SUCCESS";
-        else if (responseData.Data.StatusCode === "01") statusDesc = "PENDING";
-        else if (responseData.Data.Status !== undefined) { 
+        if (responseData.Data.StatusCode === "00") statusDesc = "SUCCESS"; // success
+        else if (responseData.Data.StatusCode === "01") statusDesc = "PENDING"; // pending
+        // Add more mappings if needed based on iPaymu's Status/StatusCode values
+        else if (responseData.Data.Status !== undefined) { // Fallback to numeric status if StatusCode is not definitive
             if(responseData.Data.Status === 0) statusDesc = "SUCCESS";
             else if (responseData.Data.Status === 1 || responseData.Data.Status === -3 || responseData.Data.Status === -2) statusDesc = "PENDING";
-            else statusDesc = "FAILED";
+            else statusDesc = "FAILED"; // Or other appropriate status
         }
+
 
         return {
             success: true,
             message: `Transaction status: ${statusDesc}`,
             data: {
                 ...responseData.Data,
-                StatusDesc: statusDesc 
+                StatusDesc: statusDesc // Use the normalized status
             },
             rawResponse: responseData,
         };
