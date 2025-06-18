@@ -4,15 +4,15 @@
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { LibraryBig, Lightbulb, Wrench, ChevronRight, FileText, Info } from 'lucide-react'; // Added Info
+import { LibraryBig, Lightbulb, Wrench, Eye, Edit as EditIcon, Info } from 'lucide-react'; // Added Eye, EditIcon, Info
 
 const docSections = [
   {
     title: "About RIO",
     description: "Understand the vision, mission, services, and core concepts of Ragam Inovasi Optima.",
-    editHref: "/admin/pages/edit/about-rio", // Link to edit page
-    publicHref: "/about-rio", // Link to public view
-    icon: Info, // Changed Icon
+    editHref: "/admin/pages/edit/about-rio",
+    publicHref: "/about-rio",
+    icon: Info,
   },
   {
     title: "Business Model",
@@ -51,19 +51,17 @@ export default function AdminDocsPage() {
                 <section.icon className="h-7 w-7 text-primary" />
                 <CardTitle className="text-xl">{section.title}</CardTitle>
               </div>
-              <CardDescription className="text-sm min-h-[60px]">{section.description}</CardDescription> {/* Increased min-h for better alignment */}
+              <CardDescription className="text-sm min-h-[60px]">{section.description}</CardDescription>
             </CardHeader>
-            <CardContent className="mt-auto pt-0 flex flex-col md:flex-row gap-2"> {/* Changed sm:flex-row to md:flex-row */}
+            <CardContent className="mt-auto pt-0 flex flex-col md:flex-row gap-2">
               <Button variant="outline" asChild className="w-full group">
                 <Link href={section.publicHref} target="_blank" rel="noopener noreferrer">
-                  View Public Page
-                  <ChevronRight className="ml-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:translate-x-1" />
+                  <Eye className="mr-2 h-4 w-4" /> View
                 </Link>
               </Button>
                <Button variant="default" asChild className="w-full group bg-primary/80 hover:bg-primary/90">
                 <Link href={section.editHref}>
-                  Edit Content
-                  <ChevronRight className="ml-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:translate-x-1" />
+                  <EditIcon className="mr-2 h-4 w-4" /> Edit
                 </Link>
               </Button>
             </CardContent>
@@ -73,4 +71,3 @@ export default function AdminDocsPage() {
     </div>
   );
 }
-
