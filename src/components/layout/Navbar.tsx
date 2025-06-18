@@ -1,10 +1,10 @@
 
 'use client';
 import Link from 'next/link';
-import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, LayoutGrid, ShoppingCart, ChevronDown, Compass } from 'lucide-react'; // Added Compass
+import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, LayoutGrid, ShoppingCart, ChevronDown, Compass, Settings } from 'lucide-react'; // Added Settings
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -22,11 +22,30 @@ import { CustomMenuIcon } from '@/components/shared/CustomMenuIcon';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CATEGORIES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import { getSiteSettings } from '@/lib/actions/settings.actions'; 
+import { DEFAULT_SETTINGS } from '@/lib/constants'; // Updated import
+import type { SiteSettings } from '@/lib/types';
+import NextImage from 'next/image'; // Use NextImage for optimization
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, role, signOutUser, loading } = useAuth();
   const { cartItems } = useCart();
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
+
+  useEffect(() => {
+    async function fetchSettings() {
+      try {
+        const settings = await getSiteSettings();
+        setSiteSettings(settings);
+      } catch (error) {
+        console.error("Failed to fetch site settings for navbar:", error);
+        setSiteSettings(DEFAULT_SETTINGS); // Fallback to defaults
+      }
+    }
+    fetchSettings();
+  }, []);
+
 
   const getAvatarFallback = (displayName: string | null | undefined) => {
     if (!displayName) return <UserCircle className="h-6 w-6" />;
@@ -48,13 +67,19 @@ export function Navbar() {
   const desktopMenuItemClass = "text-sm text-foreground/80 transition-colors hover:text-foreground hover:font-medium";
   const desktopDropdownItemClass = "cursor-pointer text-sm";
 
+  const siteTitle = siteSettings?.siteTitle || DEFAULT_SETTINGS.siteTitle;
+  const logoUrl = siteSettings?.logoUrl;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
         <Link href="/" className="flex items-center gap-2 group mr-2 sm:mr-6 overflow-hidden">
-          <Hexagon className="h-8 w-8 text-primary transition-transform duration-300 ease-in-out group-hover:rotate-[30deg] flex-shrink-0" />
-          <span className="text-sm sm:text-base font-bold text-foreground whitespace-nowrap">RAGAM INOVASI OPTIMA</span>
+          {logoUrl ? (
+            <NextImage src={logoUrl} alt={`${siteTitle} Logo`} width={32} height={32} className="h-8 w-8 object-contain flex-shrink-0" />
+          ) : (
+            <Hexagon className="h-8 w-8 text-primary transition-transform duration-300 ease-in-out group-hover:rotate-[30deg] flex-shrink-0" />
+          )}
+          <span className="text-sm sm:text-base font-bold text-foreground whitespace-nowrap">{siteTitle}</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-4 text-sm ml-auto">
@@ -138,8 +163,13 @@ export function Navbar() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {/* Dashboard and Admin Panel links are removed from here for desktop view */}
-                  {/* They remain for consistency in the mobile menu logic below */}
+                   {role === 'admin' && (
+                     <DropdownMenuItem asChild className={desktopDropdownItemClass}>
+                        <Link href="/admin/settings">
+                          <Settings className="mr-2 h-4 w-4" /> Site Settings
+                        </Link>
+                      </DropdownMenuItem>
+                   )}
                   <DropdownMenuItem onClick={signOutUser} className={cn(desktopDropdownItemClass, "text-destructive focus:text-destructive")}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign Out</span>
@@ -165,8 +195,12 @@ export function Navbar() {
             <SheetContent side="right" className="w-[90vw] bg-card p-0 flex flex-col">
               <SheetHeader className="p-6 pb-4 border-b border-border">
                 <SheetTitle className="flex items-center gap-2 text-base font-semibold text-card-foreground">
-                   <Hexagon className="h-7 w-7 text-primary" />
-                   <span>RAGAM INOVASI OPTIMA</span>
+                  {logoUrl ? (
+                     <NextImage src={logoUrl} alt={`${siteTitle} Logo`} width={28} height={28} className="h-7 w-7 object-contain" />
+                  ) : (
+                     <Hexagon className="h-7 w-7 text-primary" />
+                  )}
+                   <span>{siteTitle}</span>
                 </SheetTitle>
               </SheetHeader>
               
@@ -249,16 +283,25 @@ export function Navbar() {
                 )}
 
                 {user && role === 'admin' && (
-                  <Link
-                    href="/admin/dashboard"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={mobileMenuMainItemClass}
-                  >
-                     <LayoutGrid className="mr-2 h-5 w-5" /> <span>Admin Panel</span>
-                  </Link>
+                  <>
+                    <Link
+                      href="/admin/dashboard"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={mobileMenuMainItemClass}
+                    >
+                       <LayoutGrid className="mr-2 h-5 w-5" /> <span>Admin Panel</span>
+                    </Link>
+                     <Link
+                      href="/admin/settings"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={mobileMenuMainItemClass}
+                    >
+                       <Settings className="mr-2 h-5 w-5" /> <span>Site Settings</span>
+                    </Link>
+                  </>
                 )}
                 
-                <div className="mt-auto pt-4 border-t border-border"> {/* Pushes sign out to bottom */}
+                <div className="mt-auto pt-4 border-t border-border"> 
                   {loading ? (
                     <div className="h-10 w-full animate-pulse rounded-md bg-muted"></div>
                   ) : user ? (

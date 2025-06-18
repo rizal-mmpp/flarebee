@@ -100,3 +100,14 @@ export interface SitePage {
   content: string; // Markdown content
   updatedAt?: any; // Firestore Timestamp
 }
+
+export interface SiteSettings {
+  id: 'main'; // Fixed ID for the single settings document
+  siteTitle: string;
+  logoUrl: string | null;
+  faviconUrl: string | null; // Placeholder for now, not fully implemented
+  themePrimaryColor: string; // HSL string e.g., "210 40% 98%"
+  themeAccentColor: string; // HSL string
+  themeBackgroundColor: string; // HSL string
+  updatedAt?: any; // Firestore Timestamp
+}
