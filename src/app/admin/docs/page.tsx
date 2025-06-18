@@ -51,9 +51,9 @@ export default function AdminDocsPage() {
                 <section.icon className="h-7 w-7 text-primary" />
                 <CardTitle className="text-xl">{section.title}</CardTitle>
               </div>
-              <CardDescription className="text-sm min-h-[40px]">{section.description}</CardDescription>
+              <CardDescription className="text-sm min-h-[60px]">{section.description}</CardDescription> {/* Increased min-h for better alignment */}
             </CardHeader>
-            <CardContent className="mt-auto pt-0 flex flex-col sm:flex-row gap-2">
+            <CardContent className="mt-auto pt-0 flex flex-col sm:flex-row gap-2"> {/* Applied responsive flex classes */}
               <Button variant="outline" asChild className="w-full group">
                 <Link href={section.publicHref} target="_blank" rel="noopener noreferrer">
                   View Public Page
