@@ -12,7 +12,8 @@ import { Label } from '@/components/ui/label';
 import { CustomDropzone } from '@/components/ui/custom-dropzone';
 import { Settings as SettingsIcon, Save, Loader2, Image as ImageIcon, Palette, Type, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getSiteSettings, updateSiteSettings, DEFAULT_SETTINGS } from '@/lib/actions/settings.actions';
+import { getSiteSettings, updateSiteSettings } from '@/lib/actions/settings.actions';
+import { DEFAULT_SETTINGS } from '@/lib/constants'; // Corrected import path
 import type { SiteSettings } from '@/lib/types';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
