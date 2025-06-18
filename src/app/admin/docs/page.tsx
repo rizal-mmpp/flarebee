@@ -53,7 +53,7 @@ export default function AdminDocsPage() {
               </div>
               <CardDescription className="text-sm min-h-[60px]">{section.description}</CardDescription> {/* Increased min-h for better alignment */}
             </CardHeader>
-            <CardContent className="mt-auto pt-0 flex flex-col sm:flex-row gap-2"> {/* Applied responsive flex classes */}
+            <CardContent className="mt-auto pt-0 flex flex-col md:flex-row gap-2"> {/* Changed sm:flex-row to md:flex-row */}
               <Button variant="outline" asChild className="w-full group">
                 <Link href={section.publicHref} target="_blank" rel="noopener noreferrer">
                   View Public Page
@@ -73,3 +73,4 @@ export default function AdminDocsPage() {
     </div>
   );
 }
+
