@@ -37,6 +37,7 @@ export interface IpaymuPaymentResult {
   message?: string;
   data?: IpaymuPaymentResponseData;
   rawResponse?: any;
+  error?: string; // Added for consistency
 }
 
 interface IpaymuTransactionStatusData {
@@ -69,6 +70,7 @@ function generateIpaymuSignature(httpMethod: 'POST' | 'GET', requestBodyJsonStri
   if (!IPAYMU_VA || !IPAYMU_API_KEY) {
     throw new Error('iPaymu VA or API Key is not configured.');
   }
+  // The requestBodyJsonString should be the exact JSON string representation of the body
   const stringToSign = `${httpMethod.toUpperCase()}:${IPAYMU_VA}:${requestBodyJsonString}:${IPAYMU_API_KEY}`;
   return crypto.createHmac('sha256', IPAYMU_API_KEY).update(stringToSign).digest('hex');
 }
@@ -105,13 +107,13 @@ export async function createIpaymuRedirectPayment(args: CreateIpaymuPaymentArgs)
     // paymentChannel: "bca", // Specific channel if paymentMethod is set
   };
 
-  // iPaymu requires requestBody to be stringified without spaces for signature generation
-  const requestBodyJsonString = JSON.stringify(requestBody).replace(/\s/g, "");
-  const signature = generateIpaymuSignature('POST', requestBodyJsonString);
+  // Use standard JSON string for signature calculation, consistent with Postman for /payment endpoint
+  const requestBodyJsonStringForSignature = JSON.stringify(requestBody);
+  const signature = generateIpaymuSignature('POST', requestBodyJsonStringForSignature);
   const endpoint = `${IPAYMU_BASE_URL}/payment`;
 
   try {
-    console.log("Sending to iPaymu:", endpoint, "Body:", requestBodyJsonString, "Signature:", signature);
+    console.log("Sending to iPaymu:", endpoint, "Body:", JSON.stringify(requestBody), "Signature:", signature);
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -120,7 +122,7 @@ export async function createIpaymuRedirectPayment(args: CreateIpaymuPaymentArgs)
         'signature': signature,
         'timestamp': new Date().toISOString().slice(0, 19).replace('T', ' '), // YYYY-MM-DD HH:mm:ss
       },
-      body: JSON.stringify(requestBody), // Send normal stringify here, not the one without spaces
+      body: JSON.stringify(requestBody), // Send standard stringified JSON
     });
 
     const responseData = await response.json();
@@ -146,7 +148,7 @@ export async function createIpaymuRedirectPayment(args: CreateIpaymuPaymentArgs)
     };
   } catch (error: any) {
     console.error('Error creating iPaymu redirect payment:', error);
-    return { success: false, message: error.message || 'An unexpected error occurred.', rawResponse: error };
+    return { success: false, error: error.message || 'An unexpected error occurred.', rawResponse: error };
   }
 }
 
@@ -163,7 +165,7 @@ export async function checkIpaymuTransaction(transactionId: string): Promise<Ipa
         transactionId: transactionId.trim(),
     };
 
-    const requestBodyJsonString = JSON.stringify(requestBody); // No space removal needed based on docs for transaction check
+    const requestBodyJsonString = JSON.stringify(requestBody); // Standard JSON string
     const signature = generateIpaymuSignature('POST', requestBodyJsonString);
     const endpoint = `${IPAYMU_BASE_URL}/transaction`;
 
