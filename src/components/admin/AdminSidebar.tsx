@@ -11,16 +11,16 @@ import {
   FileText,
   Settings,
   Hexagon,
-  CreditCard,
-  TestTube2, // For Xendit Tests
-  UploadCloud, // For File Upload Test
-  LibraryBig, // For Documentation
+  CreditCard, // General payment icon
+  TestTube2, 
+  UploadCloud, 
+  LibraryBig, 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 interface AdminSidebarProps {
-  onLinkClick?: () => void; // Optional: for closing mobile sidebar
+  onLinkClick?: () => void; 
 }
 
 const adminNavItems = [
@@ -31,8 +31,9 @@ const adminNavItems = [
   { href: '/admin/pages', label: 'Site Pages', icon: FileText },
   { href: '/admin/docs', label: 'Documentation', icon: LibraryBig },
   { href: '/admin/xendit-test', label: 'Xendit Tests', icon: TestTube2 },
+  { href: '/admin/ipaymu-test', label: 'iPaymu Tests', icon: CreditCard }, // Added iPaymu
   { href: '/admin/file-upload-test', label: 'File Upload Test', icon: UploadCloud },
-  // { href: '/admin/settings', label: 'Settings', icon: Settings }, // Placeholder
+  // { href: '/admin/settings', label: 'Settings', icon: Settings }, 
 ];
 
 export function AdminSidebar({ onLinkClick }: AdminSidebarProps) {
@@ -64,12 +65,6 @@ export function AdminSidebar({ onLinkClick }: AdminSidebarProps) {
           ))}
         </nav>
       </div>
-       {/* Optional Footer for settings or logout - can be added later */}
-       {/* <div className="mt-auto p-4 border-t">
-        <Button variant="outline" className="w-full">
-          <Settings className="mr-2 h-4 w-4" /> Settings
-        </Button>
-      </div> */}
     </div>
   );
 }
