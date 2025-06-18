@@ -1,7 +1,7 @@
 
 'use server';
 
-import crypto from 'crypto';
+import CryptoJS from 'crypto-js'; // Import crypto-js
 import { headers } from 'next/headers';
 import { randomUUID } from 'crypto';
 
@@ -79,9 +79,9 @@ function generateIpaymuSignature(httpMethod: 'POST' | 'GET', requestBodyJsonStri
   if (!IPAYMU_VA || !IPAYMU_API_KEY) {
     throw new Error('iPaymu VA or API Key is not configured.');
   }
-  // The string to sign uses the raw JSON body string, not its hash, for these endpoints
+  // The string to sign uses the raw JSON body string for these specific endpoints
   const stringToSign = `${httpMethod.toUpperCase()}:${IPAYMU_VA}:${requestBodyJsonString}:${IPAYMU_API_KEY}`;
-  return crypto.createHmac('sha256', IPAYMU_API_KEY).update(stringToSign).digest('hex');
+  return CryptoJS.enc.Hex.stringify(CryptoJS.HmacSHA256(stringToSign, IPAYMU_API_KEY));
 }
 
 export async function createIpaymuRedirectPayment(args: CreateIpaymuPaymentArgs): Promise<IpaymuPaymentResult> {
@@ -101,18 +101,16 @@ export async function createIpaymuRedirectPayment(args: CreateIpaymuPaymentArgs)
 
   const requestBody = {
     product: args.items.map(item => item.name),
-    qty: args.items.map(item => String(item.quantity)),
-    price: args.items.map(item => String(item.price)),
+    qty: args.items.map(item => String(item.quantity)), // Ensure qty items are strings
+    price: args.items.map(item => String(item.price)),   // Ensure price items are strings
     amount: String(args.totalAmount),
-    returnUrl: `${appBaseUrl}/admin/ipaymu-test?status=success&ref_id=${internalReferenceId}`, // For testing, adjust as needed
-    cancelUrl: `${appBaseUrl}/admin/ipaymu-test?status=cancelled&ref_id=${internalReferenceId}`, // For testing
-    notifyUrl: `${appBaseUrl}/api/webhooks/ipaymu`, // Ensure this webhook is set up in iPaymu dashboard
+    returnUrl: `${appBaseUrl}/admin/ipaymu-test?status=success&ref_id=${internalReferenceId}`,
+    cancelUrl: `${appBaseUrl}/admin/ipaymu-test?status=cancelled&ref_id=${internalReferenceId}`,
+    notifyUrl: `${appBaseUrl}/api/webhooks/ipaymu`,
     referenceId: internalReferenceId,
     buyerName: args.buyerName,
     buyerEmail: args.buyerEmail,
     buyerPhone: args.buyerPhone,
-    // paymentMethod: 'qris', // Example, can be omitted for iPaymu to show all options
-    // paymentChannel: 'qris', // Example
   };
 
   const requestBodyJsonString = JSON.stringify(requestBody);
@@ -169,7 +167,7 @@ export async function checkIpaymuTransaction(transactionId: string): Promise<Ipa
     }
 
     const requestBody = {
-        transactionId: transactionId.trim(), // iPaymu expects trx_id or sid here usually
+        transactionId: transactionId.trim(),
     };
 
     const requestBodyJsonString = JSON.stringify(requestBody);
@@ -202,24 +200,21 @@ export async function checkIpaymuTransaction(transactionId: string): Promise<Ipa
             return { success: false, message: "iPaymu transaction status response missing Data.", rawResponse: responseData };
         }
         
-        // Normalize status description
         let statusDesc = responseData.Data.StatusDesc || "Unknown";
-        if (responseData.Data.StatusCode === "00") statusDesc = "SUCCESS"; // success
-        else if (responseData.Data.StatusCode === "01") statusDesc = "PENDING"; // pending
-        // Add more mappings if needed based on iPaymu's Status/StatusCode values
-        else if (responseData.Data.Status !== undefined) { // Fallback to numeric status if StatusCode is not definitive
+        if (responseData.Data.StatusCode === "00") statusDesc = "SUCCESS"; 
+        else if (responseData.Data.StatusCode === "01") statusDesc = "PENDING"; 
+        else if (responseData.Data.Status !== undefined) { 
             if(responseData.Data.Status === 0) statusDesc = "SUCCESS";
             else if (responseData.Data.Status === 1 || responseData.Data.Status === -3 || responseData.Data.Status === -2) statusDesc = "PENDING";
-            else statusDesc = "FAILED"; // Or other appropriate status
+            else statusDesc = "FAILED"; 
         }
-
 
         return {
             success: true,
             message: `Transaction status: ${statusDesc}`,
             data: {
                 ...responseData.Data,
-                StatusDesc: statusDesc // Use the normalized status
+                StatusDesc: statusDesc 
             },
             rawResponse: responseData,
         };
