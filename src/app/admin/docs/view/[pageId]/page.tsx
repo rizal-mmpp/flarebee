@@ -8,7 +8,7 @@ import ReactMarkdown from 'react-markdown';
 import { getSitePageContent } from '@/lib/firebase/firestoreSitePages';
 import type { SitePage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ArrowLeft, Edit, Loader2, AlertTriangle, Info, Lightbulb, Wrench, FileText } from 'lucide-react';
 
 // Helper to get appropriate icon based on pageId
@@ -99,8 +99,7 @@ export default function ViewAdminDocPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">{isLoading ? "Loading content..." : "Page Content Preview"}</CardTitle>
-          <CardDescription>This is how the content, managed via the CMS, will appear. Use Markdown for formatting.</CardDescription>
+          {/* Intentionally left blank or could have a generic title like "Content" */}
         </CardHeader>
         <CardContent>
           {isLoading ? (
