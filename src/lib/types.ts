@@ -98,7 +98,7 @@ export interface SitePage {
   id: string; // e.g., "privacy-policy"
   title: string;
   content: string; // Markdown content
-  updatedAt?: any; // Firestore Timestamp
+  updatedAt?: string | null; // ISO date string or null
 }
 
 export interface SiteSettings {
@@ -109,5 +109,6 @@ export interface SiteSettings {
   themePrimaryColor: string; // HSL string e.g., "210 40% 98%"
   themeAccentColor: string; // HSL string
   themeBackgroundColor: string; // HSL string
-  updatedAt?: any; // Firestore Timestamp
+  updatedAt?: string | null; // ISO date string or null
 }
+

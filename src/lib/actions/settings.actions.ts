@@ -4,7 +4,7 @@
 import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import type { SiteSettings } from '@/lib/types';
-import { DEFAULT_SETTINGS } from '@/lib/constants'; // Updated import
+import { DEFAULT_SETTINGS } from '@/lib/constants';
 import { uploadFileToVercelBlob } from './vercelBlob.actions';
 import { revalidatePath } from 'next/cache';
 import fs from 'fs/promises';
@@ -13,8 +13,6 @@ import path from 'path';
 const SETTINGS_COLLECTION = 'siteSettings';
 const MAIN_SETTINGS_DOC_ID = 'main';
 
-// DEFAULT_SETTINGS constant moved to constants.ts
-
 export async function getSiteSettings(): Promise<SiteSettings> {
   try {
     const settingsRef = doc(db, SETTINGS_COLLECTION, MAIN_SETTINGS_DOC_ID);
@@ -22,6 +20,13 @@ export async function getSiteSettings(): Promise<SiteSettings> {
 
     if (settingsSnap.exists()) {
       const data = settingsSnap.data();
+      let updatedAtString: string | null = null;
+      if (data.updatedAt && typeof (data.updatedAt as Timestamp).toDate === 'function') {
+        updatedAtString = (data.updatedAt as Timestamp).toDate().toISOString();
+      } else if (typeof data.updatedAt === 'string') { // If it's already a string (e.g., from a previous save)
+        updatedAtString = data.updatedAt;
+      }
+
       return {
         id: MAIN_SETTINGS_DOC_ID,
         siteTitle: data.siteTitle || DEFAULT_SETTINGS.siteTitle,
@@ -30,15 +35,15 @@ export async function getSiteSettings(): Promise<SiteSettings> {
         themePrimaryColor: data.themePrimaryColor || DEFAULT_SETTINGS.themePrimaryColor,
         themeAccentColor: data.themeAccentColor || DEFAULT_SETTINGS.themeAccentColor,
         themeBackgroundColor: data.themeBackgroundColor || DEFAULT_SETTINGS.themeBackgroundColor,
-        updatedAt: (data.updatedAt as Timestamp)?.toDate()?.toISOString(),
-      } as SiteSettings;
+        updatedAt: updatedAtString,
+      };
     }
-    // If no settings document exists, return default settings
-    return DEFAULT_SETTINGS;
+    // If no settings document exists, return default settings (updatedAt will be null)
+    return { ...DEFAULT_SETTINGS, updatedAt: null };
   } catch (error) {
     console.error("Error getting site settings:", error);
     // Fallback to default settings on error
-    return DEFAULT_SETTINGS;
+    return { ...DEFAULT_SETTINGS, updatedAt: null };
   }
 }
 
@@ -67,10 +72,10 @@ export async function updateSiteSettings(
     const themeAccentColor = formData.get('themeAccentColor') as string || currentSettings.themeAccentColor;
     const themeBackgroundColor = formData.get('themeBackgroundColor') as string || currentSettings.themeBackgroundColor;
 
-    const updatedSettingsData: Partial<SiteSettings> = {
+    const settingsDataForFirestore: Omit<SiteSettings, 'id' | 'updatedAt'> & { updatedAt: any } = {
       siteTitle,
       logoUrl: newLogoUrl,
-      // faviconUrl handling can be added later if a separate upload is implemented
+      faviconUrl: currentSettings.faviconUrl, // Keep existing favicon, not managed in this form
       themePrimaryColor,
       themeAccentColor,
       themeBackgroundColor,
@@ -78,7 +83,7 @@ export async function updateSiteSettings(
     };
 
     const settingsRef = doc(db, SETTINGS_COLLECTION, MAIN_SETTINGS_DOC_ID);
-    await setDoc(settingsRef, updatedSettingsData, { merge: true });
+    await setDoc(settingsRef, settingsDataForFirestore, { merge: true });
 
     // Update globals.css
     try {
@@ -89,23 +94,18 @@ export async function updateSiteSettings(
       cssContent = cssContent.replace(/--accent:\s*[\d\s%]+;/g, `--accent: ${themeAccentColor};`);
       cssContent = cssContent.replace(/--background:\s*[\d\s%]+;/g, `--background: ${themeBackgroundColor};`);
       
-      // Also update dark mode variables if they exist, perhaps with a slightly modified version or the same.
-      // For simplicity, we'll update them to the same values for now, but you might want a different logic.
-      cssContent = cssContent.replace(/--primary:\s*[\d\s%]+;(\s*\/\*.*\*\/)?\s*}\s*\.dark\s*{/g, (match, p1, offset, string) => {
-          // This regex is complex. A simpler approach for dark theme might be needed if this fails.
-          // For now, let's assume we find and replace dark theme vars if they are clearly marked.
-          // This part is tricky and might need manual adjustment or a more robust CSS parsing/modification strategy.
-          // A simpler, more direct replacement for dark theme vars:
-          const darkBlockRegex = /\.dark\s*{[^}]*--primary:\s*[\d\s%]+;[^}]*}/s;
-          if (cssContent.match(darkBlockRegex)) {
-               cssContent = cssContent.replace(/(\.dark\s*{[^}]*?--primary:\s*)[\d\s%]+(;[^}]*})/s, `$1${themePrimaryColor}$2`);
-               cssContent = cssContent.replace(/(\.dark\s*{[^}]*?--accent:\s*)[\d\s%]+(;[^}]*})/s, `$1${themeAccentColor}$2`);
-               cssContent = cssContent.replace(/(\.dark\s*{[^}]*?--background:\s*)[\d\s%]+(;[^}]*})/s, `$1${themeBackgroundColor}$2`);
-          }
-          return match; // Fallback if complex regex fails
-      });
+      // Also update dark mode variables
+      const darkBlockRegex = /\.dark\s*{[^}]*?--primary:\s*[\d\s%]+;.*?--accent:\s*[\d\s%]+;.*?--background:\s*[\d\s%]+;[^}]*}/s;
+      const darkBlockMatch = cssContent.match(darkBlockRegex);
 
-
+      if (darkBlockMatch) {
+        let darkBlockContent = darkBlockMatch[0];
+        darkBlockContent = darkBlockContent.replace(/(--primary:\s*)[\d\s%]+(;)/g, `$1${themePrimaryColor}$2`);
+        darkBlockContent = darkBlockContent.replace(/(--accent:\s*)[\d\s%]+(;)/g, `$1${themeAccentColor}$2`);
+        darkBlockContent = darkBlockContent.replace(/(--background:\s*)[\d\s%]+(;)/g, `$1${themeBackgroundColor}$2`);
+        cssContent = cssContent.replace(darkBlockRegex, darkBlockContent);
+      }
+      
       await fs.writeFile(globalsCssPath, cssContent, 'utf-8');
     } catch (cssError) {
       console.error("Error updating globals.css:", cssError);
@@ -113,9 +113,21 @@ export async function updateSiteSettings(
     }
 
     revalidatePath('/admin/settings');
-    revalidatePath('/', 'layout'); // Revalidate all layouts that might use these settings
+    revalidatePath('/', 'layout'); 
 
-    return { success: true, data: { ...currentSettings, ...updatedSettingsData, id: 'main' } as SiteSettings };
+    // For the data returned to the client, ensure updatedAt is a string
+    const resultData: SiteSettings = {
+        id: MAIN_SETTINGS_DOC_ID,
+        siteTitle: settingsDataForFirestore.siteTitle,
+        logoUrl: settingsDataForFirestore.logoUrl,
+        faviconUrl: settingsDataForFirestore.faviconUrl,
+        themePrimaryColor: settingsDataForFirestore.themePrimaryColor,
+        themeAccentColor: settingsDataForFirestore.themeAccentColor,
+        themeBackgroundColor: settingsDataForFirestore.themeBackgroundColor,
+        updatedAt: new Date().toISOString(), // Provide an immediate, serializable timestamp
+    };
+
+    return { success: true, data: resultData };
   } catch (error: any) {
     console.error("Error updating site settings:", error);
     return { success: false, error: error.message || 'Failed to update site settings.' };

@@ -54,7 +54,7 @@
   }
 
   .dark {
-    --background: 210 70% 21%; /* #10375C - Dark Blue */
+    --background: 228 100% 98%; /* #10375C - Dark Blue */
     --foreground: 228 100% 98%; /* #F4F6FF - Very Light Blue */
 
     --card: 210 70% 24%; /* Slightly lighter than dark BG */
@@ -63,7 +63,7 @@
     --popover: 210 70% 24%;
     --popover-foreground: 228 100% 98%;
 
-    --primary: 50 90% 60%; /* #F3C623, slightly brightened Yellow for dark mode */
+    --primary: 50 90% 55%; /* #F3C623, slightly brightened Yellow for dark mode */
     --primary-foreground: 50 90% 15%; 
 
     --secondary: 30 84% 55%; /* #EB8317, slightly brightened Orange */
@@ -72,7 +72,7 @@
     --muted: 210 60% 30%; /* Darker Muted Blue */
     --muted-foreground: 210 25% 75%; /* Lighter Muted Blue/Gray */
 
-    --accent: 30 84% 55%; /* #EB8317, slightly brightened Orange */
+    --accent: 30 84% 51%; /* #EB8317, slightly brightened Orange */
     --accent-foreground: 30 80% 10%; 
     
     --destructive: 0 70% 55%; /* Standard Red, slightly brightened */
