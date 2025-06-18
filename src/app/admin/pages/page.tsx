@@ -2,30 +2,30 @@
 'use client';
 
 import Link from 'next/link';
-import { FileText, Eye, Edit, ExternalLink } from 'lucide-react'; // Removed PlusCircle for now
+import { FileText, Eye, Edit, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 
 interface ManagedSitePage {
-  id: string; // e.g., "privacy-policy"
-  title: string; // Display title
-  path: string; // Public path
-  status: 'Published' | 'Draft'; // Could be expanded later
+  id: string; 
+  title: string; 
+  path: string; 
+  status: 'Published' | 'Draft'; 
   type: 'Content-Managed' | 'Static (Code)';
 }
 
-// This list defines which pages are content-manageable via the admin panel.
-// Other pages (like dynamic template listings) are handled by their own components.
 const managedSitePages: ManagedSitePage[] = [
   { id: 'privacy-policy', title: 'Privacy Policy', path: '/privacy', status: 'Published', type: 'Content-Managed' },
   { id: 'terms-of-service', title: 'Terms of Service', path: '/terms', status: 'Published', type: 'Content-Managed' },
-  // Add more pages here as they become content-manageable
-  // { id: 'about-us', title: 'About Us', path: '/about', status: 'Draft', type: 'Content-Managed' },
+  { id: 'about-rio', title: 'About RIO', path: '/about-rio', status: 'Published', type: 'Content-Managed' },
+  { id: 'business-model', title: 'Business Model (Doc)', path: '/business-model', status: 'Published', type: 'Content-Managed' },
+  { id: 'developer-guide', title: 'Developer Guide (Doc)', path: '/developer-guide', status: 'Published', type: 'Content-Managed' },
 ];
 
-// These pages are still primarily code-driven and not directly editable as "content blocks" here
+// Static code pages are those not directly editable as "content blocks" through this interface.
+// This list can be kept for reference or for pages that won't be CMS-driven.
 const staticCodePages: ManagedSitePage[] = [
     { id: 'home', title: 'Homepage', path: '/', status: 'Published', type: 'Static (Code)' },
     { id: 'templates-listing', title: 'Templates Listing (Part of Homepage)', path: '/#templates', status: 'Published', type: 'Static (Code)' },
@@ -51,13 +51,6 @@ export default function AdminSitePagesPage() {
             View and manage key informational pages on your website.
           </p>
         </div>
-        {/* Button to add new pages can be added later if a generic page creation system is built */}
-        {/* <Button asChild disabled> 
-          <Link href="/admin/pages/new">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add New Page (Future)
-          </Link>
-        </Button> */}
       </header>
 
       <Card>
