@@ -7,7 +7,7 @@ import { AuthProvider } from '@/lib/firebase/AuthContext';
 import { CartProvider } from '@/context/CartContext'; 
 import { Happy_Monkey } from 'next/font/google';
 import { getSiteSettings } from '@/lib/actions/settings.actions';
-import { DEFAULT_SETTINGS } from '@/lib/constants'; // Updated import
+import { DEFAULT_SETTINGS } from '@/lib/constants';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -25,18 +25,13 @@ const happyMonkey = Happy_Monkey({
   subsets: ['latin'],
 });
 
-// export const metadata: Metadata = {
-//   title: 'Ragam Inovasi Optima', // Default title
-//   description: 'High-quality templates for your next project.',
-// };
-
 export async function generateMetadata(
   parent?: ResolvingMetadata
 ): Promise<Metadata> {
   try {
     const settings = await getSiteSettings();
     const siteTitle = settings.siteTitle || DEFAULT_SETTINGS.siteTitle;
-    // const faviconUrl = settings.faviconUrl || '/favicon.ico'; // Basic favicon handling
+    const faviconUrl = settings.logoUrl || settings.faviconUrl || '/favicon.ico'; // Use logoUrl as favicon if available
 
     return {
       title: {
@@ -44,9 +39,9 @@ export async function generateMetadata(
         template: `%s | ${siteTitle}`,
       },
       description: 'High-quality services and templates for your next project. Turn tech into your superpower.',
-      // icons: {
-      //   icon: faviconUrl, // For dynamic favicon, needs careful setup
-      // }
+      icons: {
+        icon: faviconUrl, 
+      }
     };
   } catch (error) {
     console.error("Error fetching settings for metadata, using defaults:", error);
@@ -56,9 +51,9 @@ export async function generateMetadata(
         template: `%s | ${DEFAULT_SETTINGS.siteTitle}`,
       },
       description: 'High-quality services and templates for your next project. Turn tech into your superpower.',
-      // icons: {
-      //   icon: '/favicon.ico',
-      // }
+      icons: {
+        icon: '/favicon.ico', // Fallback favicon
+      }
     };
   }
 }

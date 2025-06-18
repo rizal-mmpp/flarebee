@@ -11,16 +11,19 @@ import {
   FileText,
   Settings,
   Hexagon,
-  CreditCard, // General payment icon
+  CreditCard, 
   TestTube2, 
   UploadCloud, 
   LibraryBig, 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import NextImage from 'next/image'; // Import NextImage
+// Removed Button import as it's not used directly in this version of the component's nav items
 
 interface AdminSidebarProps {
   onLinkClick?: () => void; 
+  logoUrl?: string | null;
+  siteTitle?: string | null;
 }
 
 const adminNavItems = [
@@ -38,15 +41,20 @@ const adminNavItems = [
   { href: '/admin/file-upload-test', label: 'File Upload Test', icon: UploadCloud },
 ];
 
-export function AdminSidebar({ onLinkClick }: AdminSidebarProps) {
+export function AdminSidebar({ onLinkClick, logoUrl, siteTitle = "RIO" }: AdminSidebarProps) {
   const pathname = usePathname();
+  const displaySiteTitle = siteTitle || "RIO"; // Fallback
 
   return (
-    <div className="flex h-full max-h-screen flex-col gap-2 bg-sidebar text-sidebar-foreground"> {/* Use sidebar theme variables */}
+    <div className="flex h-full max-h-screen flex-col gap-2 bg-sidebar text-sidebar-foreground">
       <div className="flex h-14 items-center border-b border-sidebar-border px-4 lg:h-[60px] lg:px-6">
         <Link href="/admin/dashboard" className="flex items-center gap-2 font-semibold group text-sidebar-foreground" onClick={onLinkClick}>
-          <Hexagon className="h-7 w-7 text-sidebar-primary transition-transform duration-300 ease-in-out group-hover:rotate-[30deg]" />
-          <span className="text-lg">RIO Admin</span>
+          {logoUrl ? (
+            <NextImage src={logoUrl} alt={`${displaySiteTitle} Admin Logo`} width={28} height={28} className="h-7 w-7 object-contain" />
+          ) : (
+            <Hexagon className="h-7 w-7 text-sidebar-primary transition-transform duration-300 ease-in-out group-hover:rotate-[30deg]" />
+          )}
+          <span className="text-lg">{displaySiteTitle} Admin</span>
         </Link>
       </div>
       <div className="flex-1">
