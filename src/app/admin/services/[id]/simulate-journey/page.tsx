@@ -121,23 +121,23 @@ export default function SimulateJourneyPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
+      <div className="flex flex-col gap-4"> {/* Changed: Main header container now flex-col */}
+        <div> {/* Title and subtitle block */}
             <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
                 <Brain className="mr-3 h-8 w-8 text-primary" />
                 Customer Journey Simulation
             </h1>
             <p className="text-muted-foreground mt-1">For service: <span className="font-semibold text-foreground">{service.title}</span></p>
         </div>
-        <div className="flex gap-3 flex-col sm:flex-row">
-            <Button variant="outline" onClick={() => router.push(`/admin/services/${serviceId}`)} className="w-full sm:w-auto group">
+        <div className="flex flex-wrap items-center gap-3"> {/* Changed: Button group now uses flex-wrap */}
+            <Button variant="outline" onClick={() => router.push(`/admin/services/${serviceId}`)} className="group">
                 <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
                 Back to Service
             </Button>
-            <Button variant="outline" onClick={handleResetJourney} className="w-full sm:w-auto group">
+            <Button variant="outline" onClick={handleResetJourney} className="group">
                 <RotateCcw className="mr-2 h-4 w-4" /> Reset Notes
             </Button>
-            <Button onClick={handleSaveJourney} className="w-full sm:w-auto group bg-primary/80 hover:bg-primary/90">
+            <Button onClick={handleSaveJourney} className="group bg-primary/80 hover:bg-primary/90">
                 <Edit2 className="mr-2 h-4 w-4" /> Save Journey (Dev Log)
             </Button>
         </div>
