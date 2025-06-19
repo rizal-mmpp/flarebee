@@ -113,13 +113,15 @@ export default function ServiceDetailPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
-          <Briefcase className="mr-3 h-8 w-8 text-primary flex-shrink-0" />
-          <span className="truncate">{service.title}</span>
-        </h1>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+        <div className="flex-grow">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
+            <Briefcase className="mr-3 h-8 w-8 text-primary flex-shrink-0" />
+            <span className="truncate">{service.title}</span>
+          </h1>
+        </div>
         <TooltipProvider delayDuration={0}>
-          <div className="flex items-center gap-2 justify-start sm:justify-end w-full sm:w-auto">
+          <div className="flex items-center justify-start sm:justify-end gap-2 w-full sm:w-auto flex-shrink-0">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="outline" size="icon" onClick={() => router.push('/admin/services')}>
@@ -131,7 +133,7 @@ export default function ServiceDetailPage() {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => router.push(`/admin/services/${service.id}/simulate-journey`)}>
+                <Button variant="default" size="icon" onClick={() => router.push(`/admin/services/${service.id}/simulate-journey`)} className="bg-primary hover:bg-primary/90">
                   <Play className="h-4 w-4" />
                   <span className="sr-only">Simulate Customer Journey</span>
                 </Button>
@@ -140,7 +142,7 @@ export default function ServiceDetailPage() {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                 <Button variant="default" size="icon" onClick={() => router.push(`/admin/services/edit/${service.id}`)} className="bg-primary/80 hover:bg-primary/90">
+                 <Button variant="outline" size="icon" onClick={() => router.push(`/admin/services/edit/${service.id}`)}>
                   <Edit className="h-4 w-4" />
                   <span className="sr-only">Edit Service</span>
                 </Button>
