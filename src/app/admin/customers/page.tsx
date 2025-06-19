@@ -121,7 +121,7 @@ export default function AdminCustomersPage() {
       accessorKey: "displayName",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
       cell: ({ row }) => (
-        <Link href={`/admin/customers/${row.original.uid}`} className="hover:underline text-primary font-medium">
+        <Link href={`/admin/customers/${row.original.uid}`} className="text-foreground hover:text-primary hover:underline font-medium">
           {row.original.displayName || 'N/A'}
         </Link>
       ),
@@ -225,3 +225,4 @@ export default function AdminCustomersPage() {
     </div>
   );
 }
+

@@ -244,7 +244,7 @@ export default function TemplateDetailPage({ params: paramsPromise }: { params: 
             <h3 className="text-lg font-semibold text-foreground mb-2">Tags</h3>
             <div className="flex flex-wrap gap-2">
               {template.tags.map((tag) => (
-                <Badge key={tag} variant="default" className="bg-primary/20 text-primary hover:bg-primary/30 rounded-full">
+                <Badge key={tag} variant="outline" className="text-xs text-muted-foreground border-muted-foreground/40 rounded-full font-normal">
                   {tag}
                 </Badge>
               ))}
@@ -328,3 +328,4 @@ export default function TemplateDetailPage({ params: paramsPromise }: { params: 
     </div>
   );
 }
+

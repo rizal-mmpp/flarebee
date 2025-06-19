@@ -11,6 +11,7 @@ import { getOrdersByUserIdFromFirestore } from '@/lib/firebase/firestoreOrders';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 // Helper to format IDR currency
 const formatIDR = (amount: number) => {
@@ -22,16 +23,16 @@ const formatIDR = (amount: number) => {
   }).format(amount);
 };
 
-const getStatusBadgeVariant = (status: string) => {
+const getStatusBadgeVariant = (status?: string) => { // Added optional chaining for status
     switch (status?.toLowerCase()) {
       case 'completed':
       case 'paid':
-        return 'bg-green-500/20 text-green-400 border-green-500/30';
+        return 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30';
       case 'pending':
-        return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+        return 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30';
       case 'failed':
       case 'expired':
-        return 'bg-red-500/20 text-red-400 border-red-500/30';
+        return 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30';
       default:
         return 'bg-muted text-muted-foreground border-border';
     }
@@ -172,7 +173,7 @@ export default function UserDashboardPage() {
                       <CardTitle className="text-xl">Order ID: {order.orderId.substring(0, 18)}...</CardTitle>
                       <CardDescription>Placed on: {format(new Date(order.createdAt), "PPP")}</CardDescription>
                     </div>
-                    <Badge variant="outline" className={`capitalize text-sm px-3 py-1 ${getStatusBadgeVariant(order.status)}`}>
+                    <Badge variant="outline" className={cn("capitalize text-sm px-3 py-1", getStatusBadgeVariant(order.status))}>
                       Status: {order.status}
                     </Badge>
                   </div>
@@ -238,3 +239,4 @@ export default function UserDashboardPage() {
     </div>
   );
 }
+

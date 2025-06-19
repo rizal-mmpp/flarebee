@@ -30,12 +30,12 @@ const getStatusBadgeVariant = (status?: string) => {
   switch (status?.toLowerCase()) {
     case 'completed':
     case 'paid':
-      return 'bg-green-500/20 text-green-400 border-green-500/30';
+      return 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30';
     case 'pending':
-      return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+      return 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30';
     case 'failed':
     case 'expired':
-      return 'bg-red-500/20 text-red-400 border-red-500/30';
+      return 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30';
     default:
       return 'bg-muted text-muted-foreground border-border';
   }
@@ -201,8 +201,8 @@ export default function CustomerDetailPage() {
                 <TableBody>
                   {orders.map((order) => (
                     <TableRow key={order.id}>
-                      <TableCell className="font-medium">
-                         <Link href={`/admin/orders/${order.orderId}`} className="hover:underline text-primary">
+                      <TableCell>
+                         <Link href={`/admin/orders/${order.orderId}`} className="text-foreground hover:text-primary hover:underline font-medium">
                             {order.orderId.substring(0,15)}...
                         </Link>
                       </TableCell>

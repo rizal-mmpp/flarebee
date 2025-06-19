@@ -182,9 +182,9 @@ export default function AdminTemplatesPage() {
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1 max-w-xs">
           {row.original.tags.slice(0, 3).map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+            <Badge key={tag} variant="outline" className="text-xs font-normal text-muted-foreground">{tag}</Badge>
           ))}
-          {row.original.tags.length > 3 && <Badge variant="secondary" className="text-xs">...</Badge>}
+          {row.original.tags.length > 3 && <Badge variant="outline" className="text-xs font-normal text-muted-foreground">...</Badge>}
         </div>
       ),
       enableSorting: true, 

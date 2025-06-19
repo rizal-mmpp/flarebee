@@ -41,17 +41,17 @@ const getStatusBadgeVariant = (status?: string) => {
     case 'PAID':
     case 'COMPLETED':
     case 'SETTLED':
-      return 'bg-green-500/20 text-green-400 border-green-500/30';
+      return 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30';
     case 'PENDING':
     case 'UNPAID': 
-      return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+      return 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30';
     case 'FAILED':
     case 'EXPIRED':
-      return 'bg-red-500/20 text-red-400 border-red-500/30';
+      return 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30';
     case 'ACTIVE': 
-      return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      return 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30';
     case 'STOPPED':
-      return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      return 'bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30';
     default:
       return 'bg-muted text-muted-foreground border-border';
   }
@@ -179,7 +179,7 @@ export default function AdminOrdersPage() {
       accessorKey: "orderId",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Order ID" />,
       cell: ({ row }) => (
-        <Link href={`/admin/orders/${row.original.orderId}`} className="hover:underline text-primary font-medium">
+        <Link href={`/admin/orders/${row.original.orderId}`} className="text-foreground hover:text-primary hover:underline font-medium">
           {row.original.orderId.substring(0, 15)}...
         </Link>
       ),
@@ -191,7 +191,7 @@ export default function AdminOrdersPage() {
       cell: ({ row }) => {
         const order = row.original;
         return (
-          <Link href={`/admin/customers/${order.userId}`} className="hover:underline text-primary font-medium">
+          <Link href={`/admin/customers/${order.userId}`} className="text-foreground hover:text-primary hover:underline font-medium">
             {order.userDisplayName}
           </Link>
         );

@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FileText, Eye, Edit, ExternalLink } from 'lucide-react';
+import { FileText, Edit, ExternalLink } from 'lucide-react'; // Removed Eye
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -79,27 +79,24 @@ export default function AdminSitePagesPage() {
                   <TableRow key={page.id}>
                     <TableCell className="font-medium">{page.title}</TableCell>
                     <TableCell className="hidden sm:table-cell">
-                        <Link href={page.path} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary text-xs">
+                        <Link href={page.path} target="_blank" rel="noopener noreferrer" className="text-foreground hover:text-primary hover:underline text-xs font-medium">
                             {page.path} <ExternalLink className="inline-block ml-1 h-3 w-3" />
                         </Link>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      <Badge variant={page.type === 'Content-Managed' ? 'default' : 'secondary'} className={page.type === 'Content-Managed' ? 'bg-primary/80' : ''}>
+                      <Badge 
+                        variant={page.type === 'Content-Managed' ? 'default' : 'outline'} 
+                        className={page.type === 'Content-Managed' ? 'bg-primary/80' : 'border-dashed'}
+                      >
                         {page.type}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={page.status === 'Published' ? 'default' : 'outline'} className={page.status === 'Published' ? 'bg-green-500/20 text-green-700 border-green-500/30' : ''}>
+                      <Badge variant={page.status === 'Published' ? 'default' : 'outline'} className={page.status === 'Published' ? 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30' : ''}>
                         {page.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" asChild>
-                        <Link href={page.path} target="_blank" rel="noopener noreferrer" title={`View ${page.title} page`}>
-                          <Eye className="h-4 w-4" />
-                          <span className="sr-only">View Page</span>
-                        </Link>
-                      </Button>
                       {page.type === 'Content-Managed' && (
                         <Button variant="ghost" size="icon" asChild title={`Edit ${page.title}`}>
                           <Link href={`/admin/pages/edit/${page.id}`}>
@@ -108,6 +105,7 @@ export default function AdminSitePagesPage() {
                           </Link>
                         </Button>
                       )}
+                      {/* Removed redundant view button as path is clickable */}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -119,3 +117,4 @@ export default function AdminSitePagesPage() {
     </div>
   );
 }
+
