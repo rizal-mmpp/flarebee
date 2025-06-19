@@ -100,20 +100,20 @@ export function Navbar() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Link
-            href="/about"
-            className={desktopMenuItemClass}
-          >
-            About Us
-          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger className={cn(desktopMenuItemClass, "flex items-center gap-1 outline-none")}>
+              About <ChevronDown className="h-4 w-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56">
+              <DropdownMenuItem asChild className={desktopDropdownItemClass}>
+                <Link href="/about">About Us</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className={desktopDropdownItemClass}>
+                <Link href="/contact-us">Contact Us</Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           
-          <Link
-            href="/contact-us"
-            className={desktopMenuItemClass}
-          >
-            Contact Us
-          </Link>
-
           {user && (
             <Link
               href="/dashboard"
@@ -256,7 +256,7 @@ export function Navbar() {
                 )}
 
                 <Accordion type="multiple" collapsible className="w-full">
-                  <AccordionItem value="explore-categories" className="border-b-0">
+                  <AccordionItem value="explore-categories" className="border-b-0 mb-1">
                     <AccordionTrigger className={mobileMenuAccordionTriggerClass}>
                       <div className="flex items-center">
                         <Compass className="mr-2 h-5 w-5" />
@@ -283,25 +283,32 @@ export function Navbar() {
                       ))}
                     </AccordionContent>
                   </AccordionItem>
+
+                  <AccordionItem value="about-rio" className="border-b-0">
+                    <AccordionTrigger className={mobileMenuAccordionTriggerClass}>
+                      <div className="flex items-center">
+                        <Info className="mr-2 h-5 w-5" />
+                        About RIO
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pl-4 pt-1 pb-0 space-y-1">
+                      <Link
+                        href="/about"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={mobileMenuAccordionContentLinkClass}
+                      >
+                        About Us
+                      </Link>
+                      <Link
+                        href="/contact-us"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={mobileMenuAccordionContentLinkClass}
+                      >
+                        Contact Us
+                      </Link>
+                    </AccordionContent>
+                  </AccordionItem>
                 </Accordion>
-
-                <Link
-                  href="/about"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={mobileMenuMainItemClass}
-                >
-                  <Users className="mr-2 h-5 w-5" />
-                  <span>About Us</span>
-                </Link>
-
-                <Link
-                  href="/contact-us"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={mobileMenuMainItemClass}
-                >
-                  <Mail className="mr-2 h-5 w-5" /> {/* Using Mail icon for Contact Us */}
-                  <span>Contact Us</span>
-                </Link>
                 
                 {user && (
                   <Link

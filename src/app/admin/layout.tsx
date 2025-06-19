@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/firebase/AuthContext';
 import { Loader2, PanelLeft } from 'lucide-react';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'; // Added SheetTrigger
 import Link from 'next/link';
 import { Hexagon } from 'lucide-react';
 import NextImage from 'next/image';
@@ -68,7 +68,6 @@ export default function AdminLayout({
     );
   }
   
-  // siteTitle is used for the logo alt text
   const displaySiteTitleForLogo = siteSettings?.siteTitle || DEFAULT_SETTINGS.siteTitle;
   const displayLogoUrl = siteSettings?.logoUrl;
 
@@ -78,7 +77,7 @@ export default function AdminLayout({
         <AdminSidebar 
           onLinkClick={() => {}} 
           logoUrl={displayLogoUrl} 
-          siteTitle={displaySiteTitleForLogo} // Pass siteTitle for logo alt
+          siteTitle={displaySiteTitleForLogo} 
         />
       </aside>
       <div className="flex flex-1 flex-col sm:pl-64">
@@ -98,13 +97,13 @@ export default function AdminLayout({
                 <AdminSidebar 
                   onLinkClick={() => setMobileSidebarOpen(false)}
                   logoUrl={displayLogoUrl}
-                  siteTitle={displaySiteTitleForLogo} // Pass siteTitle for logo alt
+                  siteTitle={displaySiteTitleForLogo} 
                 />
               </SheetContent>
             </Sheet>
             <Link href="/admin/dashboard" className="flex items-center gap-2 group">
                 {displayLogoUrl ? (
-                  <NextImage src={displayLogoUrl} alt={`${displaySiteTitleForLogo} Logo`} width={28} height={28} className="h-7 w-7 object-contain" />
+                  <NextImage src={displayLogoUrl} alt="Admin Panel Logo" width={28} height={28} className="h-7 w-7 object-contain" />
                 ) : (
                   <Hexagon className="h-7 w-7 text-primary transition-transform duration-300 ease-in-out group-hover:rotate-[30deg]" />
                 )}
@@ -117,7 +116,7 @@ export default function AdminLayout({
         </main>
          <footer className="border-t bg-background text-center py-4 px-6">
             <p className="text-sm text-muted-foreground">
-                &copy; {new Date().getFullYear()} Admin Panel. {/* Removed dynamic site title here */}
+                &copy; {new Date().getFullYear()} Admin Panel.
             </p>
         </footer>
       </div>
