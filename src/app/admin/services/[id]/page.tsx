@@ -4,14 +4,14 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image'; // Added this import
+import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import { getServiceByIdFromFirestore } from '@/lib/firebase/firestoreServices';
 import type { Service } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, ServerCrash, Briefcase, Edit, Tag, Info, DollarSign, Clock, Users, LinkIcon, ExternalLink, ListChecks } from 'lucide-react';
+import { ArrowLeft, Loader2, ServerCrash, Briefcase, Edit, Tag, Info, DollarSign, Clock, Users, LinkIcon, ExternalLink, ListChecks, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -121,6 +121,9 @@ export default function ServiceDetailPage() {
             <Button variant="outline" onClick={() => router.push('/admin/services')} className="w-full sm:w-auto group">
                 <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
                 Back to Services
+            </Button>
+             <Button variant="outline" onClick={() => router.push(`/admin/services/${service.id}/simulate-journey`)} className="w-full sm:w-auto group">
+                <Brain className="mr-2 h-4 w-4" /> Simulate Journey
             </Button>
              <Button variant="default" onClick={() => router.push(`/admin/services/edit/${service.id}`)} className="w-full sm:w-auto group bg-primary/80 hover:bg-primary/90">
                 <Edit className="mr-2 h-4 w-4" /> Edit Service
