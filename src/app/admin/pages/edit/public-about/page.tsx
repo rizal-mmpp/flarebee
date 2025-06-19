@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Save, Loader2, Settings, Image as ImageIconLucide, Info, Users, Briefcase, Sparkles, ListChecks, PlusCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Settings, Info, Users, Briefcase, Sparkles, MessageCircle, Building, ListChecks, PlusCircle, Trash2 } from 'lucide-react'; // Added Building, ListChecks, MessageCircle, PlusCircle, Trash2
 import { useToast } from '@/hooks/use-toast';
 import { getSitePageContent } from '@/lib/firebase/firestoreSitePages';
 import { updateSitePageContentAction } from '@/lib/actions/sitePage.actions';
@@ -72,7 +72,7 @@ const publicAboutPageSchema = z.object({
     title: z.string().min(1, 'CTA title is required'),
     text: z.string().min(1, 'CTA text is required'),
     buttonText: z.string().min(1, 'CTA button text is required'),
-    buttonLink: z.string().url('Must be a valid URL or empty').or(z.literal('')).min(1, 'CTA button link is required'),
+    buttonLink: z.string().url({ message: "CTA button link must be a valid URL." }).min(1, 'CTA button link is required'),
   }),
 });
 
@@ -105,14 +105,13 @@ export default function EditPublicAboutPage() {
             heroSection: content.heroSection,
             historySection: content.historySection,
             founderSection: content.founderSection,
-            missionVisionSection: content.missionVisionSection || {}, // ensure object for optional section
-            servicesIntroSection: content.servicesIntroSection || { title: '', introText: ''}, // ensure object for optional section
+            missionVisionSection: content.missionVisionSection || { missionTitle: '', missionText: '', visionTitle: '', visionText: '' },
+            servicesIntroSection: content.servicesIntroSection || { title: '', introText: ''},
             servicesHighlights: content.servicesHighlights || [],
             companyOverviewSection: content.companyOverviewSection,
             callToActionSection: content.callToActionSection,
           });
         } else {
-          // This case should ideally not happen if getSitePageContent provides defaults
           toast({ title: 'Data Error', description: 'Failed to load specific page data, defaults may be shown.', variant: 'destructive' });
         }
       })
@@ -130,13 +129,14 @@ export default function EditPublicAboutPage() {
       const pageDataForAction: PublicAboutPageContent = {
         id: 'public-about',
         ...data,
+        // Ensure optional fields that might be undefined from form are handled correctly
+        missionVisionSection: data.missionVisionSection && (data.missionVisionSection.missionText || data.missionVisionSection.visionText) ? data.missionVisionSection : undefined,
+        servicesIntroSection: data.servicesIntroSection && data.servicesIntroSection.title ? data.servicesIntroSection : undefined,
+        servicesHighlights: data.servicesHighlights && data.servicesHighlights.length > 0 ? data.servicesHighlights : undefined,
       };
       const formData = new FormData();
       formData.append('pageDataJson', JSON.stringify(pageDataForAction));
-      // In a future step, handle file uploads:
-      // if (data.heroSection.imageFile?.[0]) formData.append('heroImageFile', data.heroSection.imageFile[0]);
-      // etc. for other image fields
-
+      
       const result = await updateSitePageContentAction('public-about', formData);
       if (result.success) {
         toast({ title: 'Page Saved', description: 'Public About Us page has been updated successfully.' });
