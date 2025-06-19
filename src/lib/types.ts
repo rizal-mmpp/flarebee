@@ -35,10 +35,10 @@ export interface ServiceCategory {
 }
 
 export interface JourneyStage {
-  id: string; // e.g., 'discovery', 'service-landing-page'
-  title: string; // e.g., 'Discovery', 'Service Landing Page' (this will be the label below the step number)
-  details: string[]; // Predefined key elements for this stage
-  placeholder?: string; // Placeholder for the notes textarea
+  id: string;
+  title: string;
+  details: string[]; // Array of strings for bullet points/key actions
+  placeholder?: string;
 }
 
 export interface Service {

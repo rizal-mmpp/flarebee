@@ -12,8 +12,8 @@ import {
   type Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
-import { SERVICE_CATEGORIES, PRICING_MODELS, SERVICE_STATUSES } from '../constants'; // Updated constants
-import type { Service } from '@/lib/types'; // Assuming Service type is defined in types.ts
+import { SERVICE_CATEGORIES, PRICING_MODELS, SERVICE_STATUSES } from '../constants'; 
+import type { Service, JourneyStage } from '@/lib/types'; 
 
 const SERVICES_COLLECTION = 'services'; 
 
@@ -35,6 +35,7 @@ export interface ServiceFirestoreData {
   targetAudience?: string[] | null;
   estimatedDuration?: string | null;
   portfolioLink?: string | null;
+  customerJourneyStages?: JourneyStage[]; 
   createdAt?: Timestamp; 
   updatedAt?: Timestamp; 
 }
@@ -47,7 +48,7 @@ function parseStringToArray(str?: string | null): string[] {
 export async function saveServiceAction(formData: FormData): Promise<{ success: boolean; message?: string; error?: string; serviceId?: string }> {
   console.log('saveServiceAction: Action started.');
   try {
-    const imageUrlFromBlob = formData.get('imageUrl') as string; // Changed from previewImageUrl
+    const imageUrlFromBlob = formData.get('imageUrl') as string; 
     if (!imageUrlFromBlob) {
       console.error('saveServiceAction: Image URL from Vercel Blob is missing.');
       return { success: false, error: "Service image URL from Vercel Blob is required." };
@@ -88,6 +89,7 @@ export async function saveServiceAction(formData: FormData): Promise<{ success: 
       tags: parseStringToArray(formData.get('tags') as string | null),
       imageUrl: imageUrlFromBlob,
       status,
+      customerJourneyStages: [], // Initialize with empty array
       createdAt: serverTimestamp() as Timestamp,
       updatedAt: serverTimestamp() as Timestamp,
     };
@@ -109,8 +111,8 @@ export async function saveServiceAction(formData: FormData): Promise<{ success: 
     
     revalidatePath('/admin/services');
     revalidatePath('/admin/dashboard');
-    // Add revalidation for public service pages if/when they exist
-    // revalidatePath('/services'); 
+    revalidatePath(`/admin/services/${docRef.id}/simulate-journey`);
+
 
     console.log(`saveServiceAction: Service "${title}" created successfully with ID: ${docRef.id}`);
     return { success: true, message: `Service "${title}" created successfully.`, serviceId: docRef.id };
@@ -155,7 +157,7 @@ export async function updateServiceAction(id: string, formData: FormData): Promi
     }
 
 
-    const dataToUpdate: Partial<ServiceFirestoreData> = { 
+    const dataToUpdate: Partial<Omit<ServiceFirestoreData, 'customerJourneyStages'>> & { updatedAt: Timestamp } = { 
       title,
       title_lowercase: title.toLowerCase(),
       shortDescription,
@@ -181,13 +183,17 @@ export async function updateServiceAction(id: string, formData: FormData): Promi
     dataToUpdate.portfolioLink = (formData.get('portfolioLink') as string)?.trim() || null;
     dataToUpdate.dataAiHint = (formData.get('dataAiHint') as string)?.trim() || null;
     
+    // Note: customerJourneyStages are updated separately by updateServiceJourneyStagesAction
+    
     console.log('updateServiceAction: Data to update in Firestore:', dataToUpdate);
     const docRef = doc(db, SERVICES_COLLECTION, id);
     await updateDoc(docRef, dataToUpdate);
 
     revalidatePath('/admin/services');
     revalidatePath('/admin/dashboard');
-    // revalidatePath(`/services/${id}`); // For public service detail page
+    revalidatePath(`/admin/services/${id}`);
+    revalidatePath(`/admin/services/${id}/simulate-journey`);
+
 
     console.log(`updateServiceAction: Service "${title}" (ID: ${id}) updated successfully.`);
     return { success: true, message: `Service "${title}" updated successfully.`, serviceId: id };
@@ -208,12 +214,41 @@ export async function deleteServiceAction(id: string): Promise<{ success: boolea
 
     revalidatePath('/admin/services');
     revalidatePath('/admin/dashboard');
-    // revalidatePath('/services');
+
 
     console.log(`deleteServiceAction: Service with ID ${id} deleted successfully.`);
     return { success: true, message: `Service with ID ${id} deleted successfully.` };
   } catch (error: any) {
     console.error(`Detailed error in deleteServiceAction for ID ${id}: `, error);
     return { success: false, error: error.message || "Failed to delete service." };
+  }
+}
+
+export async function updateServiceJourneyStagesAction(
+  serviceId: string,
+  stages: JourneyStage[]
+): Promise<{ success: boolean; error?: string }> {
+  if (!serviceId) {
+    return { success: false, error: 'Service ID is required.' };
+  }
+  if (!Array.isArray(stages)) {
+    return { success: false, error: 'Stages must be an array.' };
+  }
+
+  try {
+    const serviceRef = doc(db, SERVICES_COLLECTION, serviceId);
+    await updateDoc(serviceRef, {
+      customerJourneyStages: stages, // Ensure stages are serializable (no custom classes)
+      updatedAt: serverTimestamp(),
+    });
+
+    revalidatePath(`/admin/services/${serviceId}/simulate-journey`);
+    revalidatePath(`/admin/services/${serviceId}`); // Also revalidate the main service detail page
+
+    console.log(`Journey stages updated for service ${serviceId}`);
+    return { success: true };
+  } catch (error: any) {
+    console.error(`Error updating journey stages for service ${serviceId}:`, error);
+    return { success: false, error: error.message || 'Failed to update journey stages.' };
   }
 }
