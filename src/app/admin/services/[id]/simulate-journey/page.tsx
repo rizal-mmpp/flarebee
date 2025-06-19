@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Loader2, ServerCrash, Brain, CheckSquare, Edit2, MessageSquare, UserCheck, Users, ShieldQuestion, Sparkles, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Loader2, ServerCrash, Workflow, CheckSquare, Edit2, MessageSquare, UserCheck, Users, ShieldQuestion, Sparkles, RotateCcw, Briefcase } from 'lucide-react';
 
 const journeyStages = [
   { id: 'discovery', title: 'Discovery & Awareness', icon: Sparkles, placeholder: 'How do potential customers become aware of this service? What problems are they trying to solve? Keywords they might use?' },
@@ -116,15 +116,15 @@ export default function SimulateJourneyPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
-                <Brain className="mr-3 h-8 w-8 text-primary" />
+                <Workflow className="mr-3 h-8 w-8 text-primary" />
                 Customer Journey Simulation
             </h1>
             <p className="text-muted-foreground mt-1">For service: <span className="font-semibold text-foreground">{service.title}</span></p>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-3">
+        <div className="flex items-center justify-end gap-3 w-full md:w-auto flex-shrink-0">
             <Button variant="outline" onClick={() => router.push(`/admin/services/${serviceId}`)} className="group">
                 <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
                 Back to Service

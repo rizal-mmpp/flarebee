@@ -11,7 +11,7 @@ import type { Service } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, ServerCrash, Briefcase, Edit, Tag, Info, DollarSign, Clock, Users, LinkIcon, ExternalLink, ListChecks, Brain } from 'lucide-react';
+import { ArrowLeft, Loader2, ServerCrash, Briefcase, Edit, Tag, Info, DollarSign, Clock, Users, LinkIcon, ExternalLink, ListChecks, Workflow } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -112,20 +112,20 @@ export default function ServiceDetailPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
           <Briefcase className="mr-3 h-8 w-8 text-primary" />
           {service.title}
         </h1>
-        <div className="flex justify-end gap-3 flex-col sm:flex-row">
-            <Button variant="outline" onClick={() => router.push('/admin/services')} className="w-full sm:w-auto group">
+        <div className="flex items-center justify-end gap-3 w-full md:w-auto flex-shrink-0">
+            <Button variant="outline" onClick={() => router.push('/admin/services')} className="group">
                 <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
                 Back to Services
             </Button>
-             <Button variant="outline" onClick={() => router.push(`/admin/services/${service.id}/simulate-journey`)} className="w-full sm:w-auto group">
-                <Brain className="mr-2 h-4 w-4" /> Simulate Journey
+             <Button variant="outline" onClick={() => router.push(`/admin/services/${service.id}/simulate-journey`)} className="group">
+                <Workflow className="mr-2 h-4 w-4" /> Simulate Journey
             </Button>
-             <Button variant="default" onClick={() => router.push(`/admin/services/edit/${service.id}`)} className="w-full sm:w-auto group bg-primary/80 hover:bg-primary/90">
+             <Button variant="default" onClick={() => router.push(`/admin/services/edit/${service.id}`)} className="group bg-primary/80 hover:bg-primary/90">
                 <Edit className="mr-2 h-4 w-4" /> Edit Service
             </Button>
         </div>
