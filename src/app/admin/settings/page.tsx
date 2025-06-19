@@ -27,7 +27,7 @@ const hslColorStringRegex = /^\d{1,3}\s+\d{1,3}%\s+\d{1,3}%$/;
 
 const settingsFormSchema = z.object({
   siteTitle: z.string().min(3, 'Site title must be at least 3 characters.'),
-  logo: z.instanceof(File).optional().nullable(), 
+  logo: z.instanceof(File).optional().nullable(),
   themePrimaryColor: z.string().regex(hslColorStringRegex, 'Must be HSL (e.g., "210 40% 98%")'),
   themeAccentColor: z.string().regex(hslColorStringRegex, 'Must be HSL'),
   themeBackgroundColor: z.string().regex(hslColorStringRegex, 'Must be HSL'),
@@ -44,11 +44,11 @@ function hslStringToHex(hslString: string): string {
   if (!hslColorStringRegex.test(hslString)) return '#000000'; // Default or error color
   const parts = hslString.match(/(\d+)\s+(\d+)%\s+(\d+)%/);
   if (!parts) return '#000000';
-  
+
   const h = parseInt(parts[1], 10);
   const s = parseInt(parts[2], 10) / 100;
   const l = parseInt(parts[3], 10) / 100;
-  
+
   try {
     const color = new RcColor({ h, s, l, a: 1 });
     return color.toHexString();
@@ -136,7 +136,7 @@ export default function AdminSettingsPage() {
     setSelectedLogoFile(file);
     setValue('logo', file, { shouldValidate: true });
   };
-  
+
   const onSubmit: SubmitHandler<SettingsFormValues> = (data) => {
     startSaveTransition(async () => {
       const formData = new FormData();
@@ -147,7 +147,7 @@ export default function AdminSettingsPage() {
       formData.append('darkThemePrimaryColor', data.darkThemePrimaryColor);
       formData.append('darkThemeAccentColor', data.darkThemeAccentColor);
       formData.append('darkThemeBackgroundColor', data.darkThemeBackgroundColor);
-      
+
       if (selectedLogoFile) {
         formData.append('logo', selectedLogoFile);
       }
@@ -162,7 +162,7 @@ export default function AdminSettingsPage() {
         setCurrentLogoUrl(result.data.logoUrl);
         setLogoPreview(result.data.logoUrl);
         setSelectedLogoFile(null);
-        reset({ 
+        reset({
             siteTitle: result.data.siteTitle,
             logo: null,
             themePrimaryColor: result.data.themePrimaryColor,
@@ -190,7 +190,7 @@ export default function AdminSettingsPage() {
       </div>
     );
   }
-  
+
   const renderColorPickerField = (name: keyof SettingsFormValues, label: string) => (
     <div>
       <Label htmlFor={name}>{label}</Label>
@@ -200,7 +200,7 @@ export default function AdminSettingsPage() {
         render={({ field }) => {
           // Convert HSL string from form state to hex for ColorPicker's value
           const pickerColorValue = useMemo(() => hslStringToHex(field.value as string), [field.value]);
-          
+
           return (
             <ColorPicker
               value={pickerColorValue}
@@ -208,9 +208,7 @@ export default function AdminSettingsPage() {
                 // Convert ColorPicker's output Color object to HSL string for form state
                 field.onChange(rcColorToHslString(colorObject));
               }}
-              placement="bottomLeft"
               className="mt-1 w-full [&_.rc-color-picker-trigger]:h-10 [&_.rc-color-picker-trigger]:w-full [&_.rc-color-picker-trigger]:rounded-xl [&_.rc-color-picker-trigger]:border [&_.rc-color-picker-trigger]:border-input"
-              // destroyOnClose // Consider if panel state needs to be reset
             />
           );
         }}
@@ -254,10 +252,10 @@ export default function AdminSettingsPage() {
                 onFileChange={handleFileChange}
                 currentFileName={selectedLogoFile?.name}
                 accept={{ 'image/png': ['.png'], 'image/jpeg': ['.jpg', '.jpeg'], 'image/svg+xml': ['.svg'], 'image/webp': ['.webp'] }}
-                maxSize={1 * 1024 * 1024} 
+                maxSize={1 * 1024 * 1024}
                 className="mt-1"
             />
-            {errors.logo && <p className="text-sm text-destructive mt-1">{errors.logo.message}</p>}
+            {errors.logo && <p className="text-sm text-destructive mt-1">{errors.logo.message as string}</p>}
             {logoPreview && (
                 <div className="mt-4 p-3 border border-border rounded-lg bg-muted/50 inline-block">
                     <p className="text-xs text-muted-foreground mb-1.5">Logo Preview:</p>
@@ -312,7 +310,7 @@ export default function AdminSettingsPage() {
             </div>
         </CardContent>
       </Card>
-      
+
       <CardFooter className="pt-6 border-t border-border justify-end">
          <Button type="submit" className="w-full md:w-auto" disabled={isSaving}>
           {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
