@@ -11,13 +11,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { 
-  ArrowLeft, Loader2, ServerCrash, Play, CheckSquare, Edit2, MessageSquare, UserCheck, Users, 
-  ShieldQuestion, Sparkles, RotateCcw, Save, Briefcase, ChevronLeft, ChevronRight,
-  Search, Presentation, Wand2, UserPlus, LayoutDashboard, ShoppingBag, CreditCard, ListChecks, Rocket, Repeat
+  ArrowLeft, Loader2, ServerCrash, Play, Save, Briefcase, ChevronLeft, ChevronRight,
+  Search, Presentation, Wand2, UserPlus, LayoutDashboard, ShoppingBag, CreditCard, ListChecks, Rocket, Repeat, UploadCloud, Image as ImageIcon
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import Image from 'next/image';
+import NextImage from 'next/image'; // Renamed import to avoid conflict
+import { CustomDropzone } from '@/components/ui/custom-dropzone';
 
 const journeyStages = [
   { 
@@ -135,6 +135,8 @@ export default function SimulateJourneyPage() {
   
   const [currentStageIndex, setCurrentStageIndex] = useState(0);
   const [journeyNotes, setJourneyNotes] = useState<Record<string, string>>({});
+  const [stageImages, setStageImages] = useState<Record<string, string | null>>({}); // Stores object URLs for previews
+  const [selectedFiles, setSelectedFiles] = useState<Record<string, File | null>>({}); // Stores actual File objects
 
   useEffect(() => {
     if (serviceId) {
@@ -144,16 +146,15 @@ export default function SimulateJourneyPage() {
         .then((fetchedService) => {
           if (fetchedService) {
             setService(fetchedService);
-            // Initialize notes only if not already populated (e.g. from a previous load or state change)
-            setJourneyNotes(prevNotes => {
-              const initialNotes: Record<string, string> = {};
-              let notesChanged = false;
-              journeyStages.forEach(stage => {
-                initialNotes[stage.id] = prevNotes[stage.id] || '';
-                if (!prevNotes[stage.id]) notesChanged = true; // Check if we are truly initializing
-              });
-              return notesChanged ? initialNotes : prevNotes;
+            const initialNotes: Record<string, string> = {};
+            const initialImages: Record<string, string | null> = {};
+            journeyStages.forEach(stage => {
+              initialNotes[stage.id] = '';
+              initialImages[stage.id] = null;
             });
+            setJourneyNotes(initialNotes);
+            setStageImages(initialImages);
+            setSelectedFiles({});
           } else {
             setError('Service not found.');
           }
@@ -171,20 +172,27 @@ export default function SimulateJourneyPage() {
   const handleNoteChange = (stageId: string, value: string) => {
     setJourneyNotes(prev => ({ ...prev, [stageId]: value }));
   };
+  
+  const handleImageFileChange = (stageId: string, file: File | null) => {
+    // Revoke previous object URL if it exists for this stage
+    if (stageImages[stageId]) {
+      URL.revokeObjectURL(stageImages[stageId]!);
+    }
+
+    setSelectedFiles(prev => ({...prev, [stageId]: file }));
+    if (file) {
+      setStageImages(prev => ({ ...prev, [stageId]: URL.createObjectURL(file) }));
+    } else {
+      setStageImages(prev => ({ ...prev, [stageId]: null }));
+    }
+  };
 
   const handleSaveJourney = () => {
     console.log("Saving Journey Notes for Service ID:", serviceId, journeyNotes);
-    alert("Save functionality is not implemented yet. Notes logged to console.");
-    // Future: await saveJourneyNotesToFirestore(serviceId, journeyNotes);
+    console.log("Stage Images (selected files):", selectedFiles); 
+    alert("Save functionality is not implemented yet. Notes and file selections logged to console.");
   };
   
-  const handleResetJourney = () => {
-    const initialNotes: Record<string, string> = {};
-    journeyStages.forEach(stage => initialNotes[stage.id] = '');
-    setJourneyNotes(initialNotes);
-    alert("Journey notes reset on this page. No data was saved or deleted from a server.");
-  };
-
   const goToNextStage = () => {
     if (currentStageIndex < journeyStages.length - 1) {
       setCurrentStageIndex(currentStageIndex + 1);
@@ -198,6 +206,9 @@ export default function SimulateJourneyPage() {
   };
 
   const currentStage = journeyStages[currentStageIndex];
+  const currentStageImagePreview = stageImages[currentStage.id];
+  const currentSelectedFile = selectedFiles[currentStage.id];
+
 
   if (isLoading) {
     return (
@@ -237,140 +248,180 @@ export default function SimulateJourneyPage() {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-[calc(100vh-12rem)]">
-      <Card className="mb-6 rounded-xl border-0 shadow-none">
+    <div className="flex flex-col h-full min-h-[calc(100vh-8rem)] p-4 md:p-6 space-y-4 bg-muted/30">
+      {/* Top Header Section */}
+      <Card className="rounded-xl shadow-sm">
         <CardHeader className="pb-4">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center">
-                <Play className="mr-3 h-7 w-7 text-primary flex-shrink-0" />
-                Customer Journey Simulation
-              </h1>
-              <p className="text-muted-foreground text-sm ml-10">
-                For service: <span className="font-semibold text-foreground">{service.title}</span>
-              </p>
-            </div>
-            <TooltipProvider delayDuration={0}>
-              <div className="flex items-center justify-start md:justify-end gap-1.5 mt-2 md:mt-0 flex-shrink-0">
-                <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" onClick={handleResetJourney}><RotateCcw className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Reset All Notes</p></TooltipContent></Tooltip>
-              </div>
-            </TooltipProvider>
+          <div className="flex items-center gap-3">
+            <Play className="h-7 w-7 text-primary" />
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Customer Journey Simulation
+            </h1>
           </div>
+          <p className="text-sm text-muted-foreground ml-10">
+            For service: <span className="font-semibold text-foreground">{service.title}</span>
+          </p>
         </CardHeader>
-        <CardContent className="px-2 sm:px-6 pb-2">
-          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1 sm:gap-2 border-b border-border pb-4">
+      </Card>
+
+      {/* Stepper Bar */}
+      <Card className="rounded-xl shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between overflow-x-auto pb-2">
             {journeyStages.map((stage, index) => (
-              <button
-                key={stage.id}
-                onClick={() => setCurrentStageIndex(index)}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                  currentStageIndex === index
-                    ? "bg-primary text-primary-foreground shadow-md scale-105"
-                    : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <div className={cn("flex items-center justify-center h-6 w-6 rounded-full text-xs font-semibold",
-                  currentStageIndex === index ? "bg-primary-foreground text-primary" : "bg-border text-foreground/70"
-                )}>
-                  {String(index + 1).padStart(2, '0')}
+              <React.Fragment key={stage.id}>
+                <div className="flex flex-col items-center">
+                  <button
+                    onClick={() => setCurrentStageIndex(index)}
+                    className={cn(
+                      "flex flex-col items-center justify-center h-10 w-10 rounded-full text-xs font-semibold border-2 transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                      currentStageIndex === index
+                        ? "bg-primary border-primary text-primary-foreground scale-110"
+                        : "bg-card border-border text-muted-foreground hover:border-primary hover:text-primary"
+                    )}
+                    aria-current={currentStageIndex === index ? "step" : undefined}
+                  >
+                    {String(index + 1).padStart(2, '0')}
+                  </button>
+                  <span className={cn(
+                    "mt-1.5 text-xs text-center w-20 truncate",
+                    currentStageIndex === index ? "text-primary font-semibold" : "text-muted-foreground"
+                  )}>
+                    {stage.title.substring(stage.title.indexOf('.') + 1).trim()}
+                  </span>
                 </div>
-                <span className="hidden sm:inline-block">{stage.title.substring(stage.title.indexOf('.') + 1).trim()}</span>
-                <span className="sm:hidden">{String(index + 1).padStart(2, '0')}</span> 
-                {currentStageIndex === index && <stage.icon className="h-4 w-4 ml-auto hidden sm:inline-block" />}
-              </button>
+                {index < journeyStages.length - 1 && (
+                  <div className={cn(
+                    "flex-1 h-0.5 mt-5", // Align with center of circle
+                    currentStageIndex > index ? "bg-primary" : "bg-border"
+                  )}></div>
+                )}
+              </React.Fragment>
             ))}
           </div>
         </CardContent>
       </Card>
 
-      <div className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 rounded-xl flex flex-col">
-          <CardHeader>
-            <CardTitle className="text-xl flex items-center">
-              <currentStage.icon className="mr-3 h-6 w-6 text-primary" />
-              {currentStage.title}
-            </CardTitle>
-            <div className="text-sm text-muted-foreground space-y-2 pt-2">
-              {currentStage.details.map((detail, idx) => (
-                <p key={idx} className="leading-relaxed">{detail.startsWith('Touchpoints:') || detail.startsWith('Key Actions:') || detail.startsWith('Content:') || detail.startsWith('CTAs:') || detail.startsWith('Show project steps:') || detail.startsWith('Post-checkout dashboard shows:') || detail.startsWith('Confirmation Page:') || detail.startsWith('Client dashboard includes:') || detail.startsWith('Inline,') ? <strong>{detail.substring(0, detail.indexOf(':')+1)}</strong> : ''}{detail.startsWith('Touchpoints:') || detail.startsWith('Key Actions:') || detail.startsWith('Content:') || detail.startsWith('CTAs:') || detail.startsWith('Show project steps:') || detail.startsWith('Post-checkout dashboard shows:') || detail.startsWith('Confirmation Page:') || detail.startsWith('Client dashboard includes:') || detail.startsWith('Inline,') ? detail.substring(detail.indexOf(':')+1) : detail}</p>
-              ))}
-            </div>
-          </CardHeader>
-          <CardContent className="flex-grow flex flex-col pt-4">
-            <Label htmlFor={`notes-${currentStage.id}`} className="text-base font-medium text-foreground mb-2">
-              Visual Design & User Experience Notes for this Stage:
-            </Label>
-            <Textarea
-              id={`notes-${currentStage.id}`}
-              value={journeyNotes[currentStage.id] || ''}
-              onChange={(e) => handleNoteChange(currentStage.id, e.target.value)}
-              placeholder={currentStage.placeholder}
-              rows={10} 
-              className="bg-background flex-grow resize-none text-base"
-            />
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-1 rounded-xl">
-          <CardHeader>
-            <CardTitle className="text-xl">Service Context</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {service.imageUrl && (
-              <div className="relative w-full aspect-video rounded-lg overflow-hidden border bg-muted">
-                <Image
-                  src={service.imageUrl}
-                  alt={service.title}
-                  fill
-                  className="object-cover"
-                  data-ai-hint={service.dataAiHint || "service image"}
-                />
-              </div>
-            )}
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">{service.title}</h3>
-              <p className="text-sm text-muted-foreground mt-1 line-clamp-4">{service.shortDescription}</p>
-            </div>
-            <Button variant="outline" size="sm" asChild className="w-full">
-                <Link href={`/admin/services/${serviceId}`}>
-                    <Briefcase className="mr-2 h-4 w-4" /> View Full Service Details
-                </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="mt-6 rounded-xl border-0 shadow-none">
-        <CardFooter className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t">
-          <Button variant="outline" asChild className="w-full sm:w-auto group">
-            <Link href={`/admin/services/${serviceId}`}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Service Details
-            </Link>
-          </Button>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+      {/* Control Bar */}
+      <Card className="rounded-xl shadow-sm">
+        <CardContent className="p-3 flex items-center justify-between">
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={() => router.push(`/admin/services/${serviceId}`)}>
+                  <ArrowLeft className="h-5 w-5" />
+                  <span className="sr-only">Back to Service Details</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Back to Service Details</p></TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               onClick={goToPreviousStage}
               disabled={currentStageIndex === 0}
-              className="w-1/2 sm:w-auto"
+              className="h-9 px-3"
             >
-              <ChevronLeft className="mr-2 h-4 w-4" /> Previous
+              <ChevronLeft className="mr-1.5 h-4 w-4" /> Previous
             </Button>
             <Button
               variant="outline"
               onClick={goToNextStage}
               disabled={currentStageIndex === journeyStages.length - 1}
-              className="w-1/2 sm:w-auto"
+              className="h-9 px-3"
             >
-              Next <ChevronRight className="ml-2 h-4 w-4" />
+              Next <ChevronRight className="ml-1.5 h-4 w-4" />
             </Button>
           </div>
-          <Button onClick={handleSaveJourney} className="w-full sm:w-auto bg-primary hover:bg-primary/90">
-            <Save className="mr-2 h-4 w-4" /> Save Journey (Dev Log)
-          </Button>
-        </CardFooter>
+          
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="default" size="icon" onClick={handleSaveJourney} className="bg-primary hover:bg-primary/90">
+                  <Save className="h-5 w-5" />
+                  <span className="sr-only">Save Journey (Log)</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Save Journey (Log to Console)</p></TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </CardContent>
       </Card>
+
+      {/* Main Content Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-grow">
+        {/* Left Column: Stage Label & UI Preview */}
+        <Card className="lg:col-span-3 rounded-xl shadow-sm flex flex-col">
+          <CardHeader>
+            <CardTitle className="text-xl flex items-center">
+              <currentStage.icon className="mr-2 h-6 w-6 text-primary" />
+              {currentStage.title}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex-grow flex flex-col pt-2 space-y-4">
+            <Label htmlFor={`image-upload-${currentStage.id}`} className="text-base font-medium text-foreground">
+              Dynamic UI Preview/Mockup for this Stage:
+            </Label>
+            <div className="flex-grow flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-4 bg-background min-h-[300px]">
+              {currentStageImagePreview ? (
+                <div className="relative w-full max-w-full aspect-video">
+                  <NextImage
+                    src={currentStageImagePreview}
+                    alt={`Preview for ${currentStage.title}`}
+                    fill
+                    className="object-contain rounded-md"
+                  />
+                </div>
+              ) : (
+                <div className="text-center text-muted-foreground space-y-2">
+                  <ImageIcon className="h-12 w-12 mx-auto" />
+                  <p className="text-sm">No preview image uploaded for this stage.</p>
+                </div>
+              )}
+            </div>
+             <CustomDropzone
+                id={`image-upload-${currentStage.id}`}
+                onFileChange={(file) => handleImageFileChange(currentStage.id, file)}
+                currentFileName={currentSelectedFile?.name}
+                accept={{ 'image/*': ['.png', '.jpeg', '.jpg', '.gif', '.webp', '.avif'] }}
+                maxSize={2 * 1024 * 1024} // 2MB limit for stage previews
+              />
+          </CardContent>
+        </Card>
+
+        {/* Right Column: Stage Description & Notes */}
+        <Card className="lg:col-span-2 rounded-xl shadow-sm flex flex-col">
+          <CardHeader>
+            <CardTitle className="text-xl">Stage Details & Notes</CardTitle>
+          </CardHeader>
+          <CardContent className="flex-grow flex flex-col pt-2 space-y-4">
+            <div className="text-sm text-muted-foreground space-y-2 border-b pb-3 mb-3">
+              <h4 className="font-semibold text-foreground mb-1">Key Elements for this Stage:</h4>
+              {currentStage.details.map((detail, idx) => (
+                <p key={idx} className="leading-relaxed text-xs">
+                  {detail.startsWith('Touchpoints:') || detail.startsWith('Key Actions:') || detail.startsWith('Content:') || detail.startsWith('CTAs:') || detail.startsWith('Show project steps:') || detail.startsWith('Post-checkout dashboard shows:') || detail.startsWith('Confirmation Page:') || detail.startsWith('Client dashboard includes:') || detail.startsWith('Inline,') ? <strong>{detail.substring(0, detail.indexOf(':')+1)}</strong> : ''}{detail.startsWith('Touchpoints:') || detail.startsWith('Key Actions:') || detail.startsWith('Content:') || detail.startsWith('CTAs:') || detail.startsWith('Show project steps:') || detail.startsWith('Post-checkout dashboard shows:') || detail.startsWith('Confirmation Page:') || detail.startsWith('Client dashboard includes:') || detail.startsWith('Inline,') ? detail.substring(detail.indexOf(':')+1) : detail}
+                </p>
+              ))}
+            </div>
+            <div className="flex-grow flex flex-col">
+                <Label htmlFor={`notes-${currentStage.id}`} className="text-base font-medium text-foreground mb-1.5">
+                Your Design & UX Notes:
+                </Label>
+                <Textarea
+                id={`notes-${currentStage.id}`}
+                value={journeyNotes[currentStage.id] || ''}
+                onChange={(e) => handleNoteChange(currentStage.id, e.target.value)}
+                placeholder={currentStage.placeholder}
+                rows={10} 
+                className="bg-background flex-grow resize-none text-sm"
+                />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
+
