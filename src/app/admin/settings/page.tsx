@@ -111,20 +111,11 @@ const ColorPickerField: React.FC<ColorPickerFieldProps> = ({ name, label, contro
                   onChange={(newHslColor) => {
                     field.onChange(hslObjectToHslString(newHslColor));
                   }}
-                  className="!w-[280px] !h-auto"
+                  className="!w-[280px]"
                 />
               </PopoverContent>
             </Popover>
-            {/* The input field below is removed to reduce redundancy */}
-            {/* <Input
-              id={`${name}-input`}
-              value={field.value}
-              onChange={(e) => {
-                field.onChange(e.target.value);
-              }}
-              className="mt-2 text-sm text-center w-full"
-              placeholder="H S% L%"
-            /> */}
+            {/* Removed the redundant input field as per user feedback */}
           </>
         )}
       />
