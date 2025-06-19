@@ -46,6 +46,11 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   themeBackgroundColor: '228 100% 98%', 
   darkThemePrimaryColor: '50 90% 60%', 
   darkThemeAccentColor: '30 84% 55%', 
-  darkThemeBackgroundColor: '210 70% 18%', 
+  darkThemeBackgroundColor: '210 70% 18%',
+  contactPageImageUrl: null,
+  contactAddress: "Dusun Bonto Bunga, Kec. Moncongloe, Kab. Maros, Sul-Sel Indonesia",
+  contactPhone: "+62 822 3399 9510",
+  contactEmail: "r124ltech@gmail.com",
   updatedAt: null,
 };
+

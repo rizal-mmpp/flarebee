@@ -1,7 +1,7 @@
 
 'use client';
 import Link from 'next/link';
-import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, LayoutGrid, ShoppingCart, ChevronDown, Compass, Settings, Info, Users, Mail } from 'lucide-react'; // Added Info
+import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, LayoutGrid, ShoppingCart, ChevronDown, Compass, Settings, Info, Users, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useState, useEffect } from 'react';
@@ -101,10 +101,17 @@ export function Navbar() {
           </DropdownMenu>
 
           <Link
-            href="/about" // Direct link to new public about page
+            href="/about"
             className={desktopMenuItemClass}
           >
             About Us
+          </Link>
+          
+          <Link
+            href="/contact-us"
+            className={desktopMenuItemClass}
+          >
+            Contact Us
           </Link>
 
           {user && (
@@ -279,12 +286,21 @@ export function Navbar() {
                 </Accordion>
 
                 <Link
-                  href="/about" // Direct link to new public about page
+                  href="/about"
                   onClick={() => setMobileMenuOpen(false)}
                   className={mobileMenuMainItemClass}
                 >
-                  <Users className="mr-2 h-5 w-5" /> {/* Using Users icon for About Us */}
+                  <Users className="mr-2 h-5 w-5" />
                   <span>About Us</span>
+                </Link>
+
+                <Link
+                  href="/contact-us"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={mobileMenuMainItemClass}
+                >
+                  <Mail className="mr-2 h-5 w-5" /> {/* Using Mail icon for Contact Us */}
+                  <span>Contact Us</span>
                 </Link>
                 
                 {user && (
@@ -346,4 +362,3 @@ export function Navbar() {
     </header>
   );
 }
-

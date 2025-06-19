@@ -38,6 +38,10 @@ export async function getSiteSettings(): Promise<SiteSettings> {
         darkThemePrimaryColor: data.darkThemePrimaryColor || DEFAULT_SETTINGS.darkThemePrimaryColor,
         darkThemeAccentColor: data.darkThemeAccentColor || DEFAULT_SETTINGS.darkThemeAccentColor,
         darkThemeBackgroundColor: data.darkThemeBackgroundColor || DEFAULT_SETTINGS.darkThemeBackgroundColor,
+        contactPageImageUrl: data.contactPageImageUrl || null,
+        contactAddress: data.contactAddress || DEFAULT_SETTINGS.contactAddress,
+        contactPhone: data.contactPhone || DEFAULT_SETTINGS.contactPhone,
+        contactEmail: data.contactEmail || DEFAULT_SETTINGS.contactEmail,
         updatedAt: updatedAtString,
       };
     }
@@ -54,62 +58,72 @@ export async function updateSiteSettings(
   try {
     const currentSettings = await getSiteSettings();
     let newLogoUrl = currentSettings.logoUrl;
+    let newContactPageImageUrl = currentSettings.contactPageImageUrl;
 
     const logoFile = formData.get('logo') as File | null;
-
     if (logoFile && logoFile.size > 0) {
       const blobFormData = new FormData();
       blobFormData.append('file', logoFile);
       const uploadResult = await uploadFileToVercelBlob(blobFormData);
-
       if (!uploadResult.success || !uploadResult.data?.url) {
         return { success: false, error: uploadResult.error || 'Could not upload the new logo.' };
       }
       newLogoUrl = uploadResult.data.url;
     }
 
+    const contactImageFile = formData.get('contactPageImageFile') as File | null;
+    if (contactImageFile && contactImageFile.size > 0) {
+        const blobFormData = new FormData();
+        blobFormData.append('file', contactImageFile);
+        const uploadResult = await uploadFileToVercelBlob(blobFormData);
+        if (!uploadResult.success || !uploadResult.data?.url) {
+            return { success: false, error: uploadResult.error || 'Could not upload contact page image.' };
+        }
+        newContactPageImageUrl = uploadResult.data.url;
+    }
+
     const siteTitle = formData.get('siteTitle') as string || currentSettings.siteTitle;
-    // Light theme colors
     const themePrimaryColor = formData.get('themePrimaryColor') as string || currentSettings.themePrimaryColor;
     const themeAccentColor = formData.get('themeAccentColor') as string || currentSettings.themeAccentColor;
     const themeBackgroundColor = formData.get('themeBackgroundColor') as string || currentSettings.themeBackgroundColor;
-    // Dark theme colors
     const darkThemePrimaryColor = formData.get('darkThemePrimaryColor') as string || currentSettings.darkThemePrimaryColor;
     const darkThemeAccentColor = formData.get('darkThemeAccentColor') as string || currentSettings.darkThemeAccentColor;
     const darkThemeBackgroundColor = formData.get('darkThemeBackgroundColor') as string || currentSettings.darkThemeBackgroundColor;
+    
+    const contactAddress = formData.get('contactAddress') as string || currentSettings.contactAddress;
+    const contactPhone = formData.get('contactPhone') as string || currentSettings.contactPhone;
+    const contactEmail = formData.get('contactEmail') as string || currentSettings.contactEmail;
 
 
     const settingsDataForFirestore: Omit<SiteSettings, 'id' | 'updatedAt'> & { updatedAt: any } = {
       siteTitle,
       logoUrl: newLogoUrl,
-      faviconUrl: currentSettings.faviconUrl,
+      faviconUrl: currentSettings.faviconUrl, // Favicon management isn't part of this form for now
       themePrimaryColor,
       themeAccentColor,
       themeBackgroundColor,
       darkThemePrimaryColor,
       darkThemeAccentColor,
       darkThemeBackgroundColor,
+      contactPageImageUrl: newContactPageImageUrl,
+      contactAddress,
+      contactPhone,
+      contactEmail,
       updatedAt: serverTimestamp(),
     };
 
     const settingsRef = doc(db, SETTINGS_COLLECTION, MAIN_SETTINGS_DOC_ID);
     await setDoc(settingsRef, settingsDataForFirestore, { merge: true });
 
-    // Update globals.css
     try {
       const globalsCssPath = path.join(process.cwd(), 'src', 'app', 'globals.css');
       let cssContent = await fs.readFile(globalsCssPath, 'utf-8');
-
-      // Update :root (light theme) variables
       cssContent = cssContent.replace(/(:root\s*{[^}]*?--primary:\s*)[\d\s%]+(;)/s, `$1${themePrimaryColor}$2`);
       cssContent = cssContent.replace(/(:root\s*{[^}]*?--accent:\s*)[\d\s%]+(;)/s, `$1${themeAccentColor}$2`);
       cssContent = cssContent.replace(/(:root\s*{[^}]*?--background:\s*)[\d\s%]+(;)/s, `$1${themeBackgroundColor}$2`);
-      
-      // Update .dark variables
       cssContent = cssContent.replace(/(\.dark\s*{[^}]*?--primary:\s*)[\d\s%]+(;)/s, `$1${darkThemePrimaryColor}$2`);
       cssContent = cssContent.replace(/(\.dark\s*{[^}]*?--accent:\s*)[\d\s%]+(;)/s, `$1${darkThemeAccentColor}$2`);
       cssContent = cssContent.replace(/(\.dark\s*{[^}]*?--background:\s*)[\d\s%]+(;)/s, `$1${darkThemeBackgroundColor}$2`);
-      
       await fs.writeFile(globalsCssPath, cssContent, 'utf-8');
     } catch (cssError) {
       console.error("Error updating globals.css:", cssError);
@@ -117,6 +131,8 @@ export async function updateSiteSettings(
 
     revalidatePath('/admin/settings');
     revalidatePath('/', 'layout'); 
+    revalidatePath('/contact-us');
+
 
     const resultData: SiteSettings = {
         id: MAIN_SETTINGS_DOC_ID,
@@ -129,6 +145,10 @@ export async function updateSiteSettings(
         darkThemePrimaryColor: settingsDataForFirestore.darkThemePrimaryColor,
         darkThemeAccentColor: settingsDataForFirestore.darkThemeAccentColor,
         darkThemeBackgroundColor: settingsDataForFirestore.darkThemeBackgroundColor,
+        contactPageImageUrl: settingsDataForFirestore.contactPageImageUrl,
+        contactAddress: settingsDataForFirestore.contactAddress,
+        contactPhone: settingsDataForFirestore.contactPhone,
+        contactEmail: settingsDataForFirestore.contactEmail,
         updatedAt: new Date().toISOString(),
     };
 
@@ -138,4 +158,3 @@ export async function updateSiteSettings(
     return { success: false, error: error.message || 'Failed to update site settings.' };
   }
 }
-

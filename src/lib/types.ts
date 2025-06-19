@@ -221,6 +221,10 @@ export interface SiteSettings {
   darkThemePrimaryColor: string;
   darkThemeAccentColor: string;
   darkThemeBackgroundColor: string;
+  contactPageImageUrl?: string | null;
+  contactAddress?: string | null;
+  contactPhone?: string | null;
+  contactEmail?: string | null;
   updatedAt?: string | null;
 }
 
@@ -235,4 +239,12 @@ export interface FetchTemplatesResult {
   data: Template[];
   pageCount: number;
   totalItems: number;
+}
+
+export interface ContactFormValues {
+  name: string;
+  businessName?: string;
+  email: string;
+  phone?: string;
+  message: string;
 }

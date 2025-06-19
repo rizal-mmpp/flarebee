@@ -8,9 +8,10 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { CustomDropzone } from '@/components/ui/custom-dropzone';
-import { Settings as SettingsIcon, Save, Loader2, Image as ImageIcon, Palette, Type, AlertTriangle, Moon, Sun } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Loader2, Image as ImageIcon, Palette, Type, AlertTriangle, Moon, Sun, Contact } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getSiteSettings, updateSiteSettings } from '@/lib/actions/settings.actions';
 import { DEFAULT_SETTINGS } from '@/lib/constants';
@@ -32,11 +33,14 @@ const settingsFormSchema = z.object({
   darkThemePrimaryColor: z.string().regex(hslColorStringRegex, 'Must be HSL'),
   darkThemeAccentColor: z.string().regex(hslColorStringRegex, 'Must be HSL'),
   darkThemeBackgroundColor: z.string().regex(hslColorStringRegex, 'Must be HSL'),
+  contactPageImageFile: z.instanceof(File).optional().nullable(),
+  contactAddress: z.string().optional().nullable(),
+  contactPhone: z.string().optional().nullable(),
+  contactEmail: z.string().email("Invalid email format.").optional().nullable(),
 });
 
 type SettingsFormValues = z.infer<typeof settingsFormSchema>;
 
-// Helper to convert HSL string "H S% L%" to react-colorful HSL object {h, s, l} (s, l are 0-100)
 function hslStringToHslObject(hslString: string): HslColor {
   if (!hslColorStringRegex.test(hslString)) return { h: 0, s: 0, l: 0 };
   const parts = hslString.match(/(\d+)\s+(\d+)%\s+(\d+)%/);
@@ -48,14 +52,12 @@ function hslStringToHslObject(hslString: string): HslColor {
   };
 }
 
-// Helper to convert react-colorful HSL object {h, s, l} to HSL string "H S% L%"
 function hslObjectToHslString(hslObject: HslColor): string {
   return `${Math.round(hslObject.h)} ${Math.round(hslObject.s)}% ${Math.round(hslObject.l)}%`;
 }
 
-// Helper to convert HSL string "H S% L%" to CSS HSL functional notation "hsl(H, S%, L%)"
 function hslStringToCssHsl(hslString: string): string {
-  if (!hslColorStringRegex.test(hslString)) return 'hsl(0, 0%, 0%)'; // Default to black on error
+  if (!hslColorStringRegex.test(hslString)) return 'hsl(0, 0%, 0%)';
   const parts = hslString.match(/(\d+)\s+(\d+)%\s+(\d+)%/);
   if (!parts) return 'hsl(0, 0%, 0%)';
   return `hsl(${parts[1]}, ${parts[2]}%, ${parts[3]}%)`;
@@ -74,8 +76,6 @@ const ColorPickerField: React.FC<ColorPickerFieldProps> = ({ name, label, contro
   const colorForPicker = useMemo(() => hslStringToHslObject(formValue), [formValue]);
   const cssHslColor = useMemo(() => hslStringToCssHsl(formValue), [formValue]);
   const [popoverOpen, setPopoverOpen] = useState(false);
-
-  // Determine if the background color is dark to adjust text color
   const isDarkBg = colorForPicker.l < 50;
 
   return (
@@ -115,7 +115,6 @@ const ColorPickerField: React.FC<ColorPickerFieldProps> = ({ name, label, contro
                 />
               </PopoverContent>
             </Popover>
-            {/* Removed the redundant input field as per user feedback */}
           </>
         )}
       />
@@ -129,9 +128,15 @@ export default function AdminSettingsPage() {
   const { toast } = useToast();
   const [isSaving, startSaveTransition] = useTransition();
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null);
   const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+
+  const [currentContactPageImageUrl, setCurrentContactPageImageUrl] = useState<string | null>(null);
+  const [selectedContactPageImageFile, setSelectedContactPageImageFile] = useState<File | null>(null);
+  const [contactPageImagePreview, setContactPageImagePreview] = useState<string | null>(null);
+
 
   const { control, handleSubmit, setValue, reset, watch, formState: { errors } } = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsFormSchema),
@@ -144,6 +149,10 @@ export default function AdminSettingsPage() {
       darkThemePrimaryColor: DEFAULT_SETTINGS.darkThemePrimaryColor,
       darkThemeAccentColor: DEFAULT_SETTINGS.darkThemeAccentColor,
       darkThemeBackgroundColor: DEFAULT_SETTINGS.darkThemeBackgroundColor,
+      contactPageImageFile: null,
+      contactAddress: DEFAULT_SETTINGS.contactAddress,
+      contactPhone: DEFAULT_SETTINGS.contactPhone,
+      contactEmail: DEFAULT_SETTINGS.contactEmail,
     },
   });
 
@@ -162,9 +171,15 @@ export default function AdminSettingsPage() {
           darkThemePrimaryColor: settings.darkThemePrimaryColor,
           darkThemeAccentColor: settings.darkThemeAccentColor,
           darkThemeBackgroundColor: settings.darkThemeBackgroundColor,
+          contactPageImageFile: null,
+          contactAddress: settings.contactAddress,
+          contactPhone: settings.contactPhone,
+          contactEmail: settings.contactEmail,
         });
         setCurrentLogoUrl(settings.logoUrl);
         setLogoPreview(settings.logoUrl);
+        setCurrentContactPageImageUrl(settings.contactPageImageUrl);
+        setContactPageImagePreview(settings.contactPageImageUrl);
       } catch (error) {
         toast({
           title: 'Error Loading Settings',
@@ -191,10 +206,28 @@ export default function AdminSettingsPage() {
     };
   }, [selectedLogoFile, currentLogoUrl]);
 
+  useEffect(() => {
+    let objectUrl: string | undefined;
+    if (selectedContactPageImageFile) {
+      objectUrl = URL.createObjectURL(selectedContactPageImageFile);
+      setContactPageImagePreview(objectUrl);
+    } else {
+      setContactPageImagePreview(currentContactPageImageUrl);
+    }
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [selectedContactPageImageFile, currentContactPageImageUrl]);
 
-  const handleFileChange = (file: File | null) => {
+
+  const handleLogoFileChange = (file: File | null) => {
     setSelectedLogoFile(file);
     setValue('logo', file, { shouldValidate: true });
+  };
+
+  const handleContactFileChange = (file: File | null) => {
+    setSelectedContactPageImageFile(file);
+    setValue('contactPageImageFile', file, { shouldValidate: true });
   };
 
   const onSubmit: SubmitHandler<SettingsFormValues> = (data) => {
@@ -207,9 +240,15 @@ export default function AdminSettingsPage() {
       formData.append('darkThemePrimaryColor', data.darkThemePrimaryColor);
       formData.append('darkThemeAccentColor', data.darkThemeAccentColor);
       formData.append('darkThemeBackgroundColor', data.darkThemeBackgroundColor);
+      formData.append('contactAddress', data.contactAddress || '');
+      formData.append('contactPhone', data.contactPhone || '');
+      formData.append('contactEmail', data.contactEmail || '');
 
       if (selectedLogoFile) {
         formData.append('logo', selectedLogoFile);
+      }
+      if (selectedContactPageImageFile) {
+        formData.append('contactPageImageFile', selectedContactPageImageFile);
       }
 
       const result = await updateSiteSettings(formData);
@@ -222,15 +261,22 @@ export default function AdminSettingsPage() {
         setCurrentLogoUrl(result.data.logoUrl);
         setLogoPreview(result.data.logoUrl);
         setSelectedLogoFile(null);
-        reset({
+        setCurrentContactPageImageUrl(result.data.contactPageImageUrl);
+        setContactPageImagePreview(result.data.contactPageImageUrl);
+        setSelectedContactPageImageFile(null);
+        reset({ // Reset form with new data, ensuring file inputs are cleared
             siteTitle: result.data.siteTitle,
-            logo: null,
+            logo: null, // Clear file input from form state
             themePrimaryColor: result.data.themePrimaryColor,
             themeAccentColor: result.data.themeAccentColor,
             themeBackgroundColor: result.data.themeBackgroundColor,
             darkThemePrimaryColor: result.data.darkThemePrimaryColor,
             darkThemeAccentColor: result.data.darkThemeAccentColor,
             darkThemeBackgroundColor: result.data.darkThemeBackgroundColor,
+            contactPageImageFile: null, // Clear file input from form state
+            contactAddress: result.data.contactAddress,
+            contactPhone: result.data.contactPhone,
+            contactEmail: result.data.contactEmail,
         });
       } else {
         toast({
@@ -282,7 +328,7 @@ export default function AdminSettingsPage() {
           <div>
             <Label htmlFor="logo">Site Logo</Label>
             <CustomDropzone
-                onFileChange={handleFileChange}
+                onFileChange={handleLogoFileChange}
                 currentFileName={selectedLogoFile?.name}
                 accept={{ 'image/png': ['.png'], 'image/jpeg': ['.jpg', '.jpeg'], 'image/svg+xml': ['.svg'], 'image/webp': ['.webp'] }}
                 maxSize={1 * 1024 * 1024}
@@ -321,9 +367,7 @@ export default function AdminSettingsPage() {
               <ColorPickerField name="themeBackgroundColor" label="Background Color" control={control} errors={errors} watch={watch} />
             </div>
           </div>
-
           <Separator />
-
           <div>
             <h3 className="text-lg font-semibold mb-4 flex items-center text-foreground/90"><Moon className="mr-2 h-5 w-5 text-indigo-400"/>Dark Theme</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8">
@@ -337,6 +381,65 @@ export default function AdminSettingsPage() {
                 <span className="text-xs text-blue-700 dark:text-blue-400">
                     Note: Other theme colors like foregrounds, card colors, etc., are derived or set in <code className="bg-blue-200/50 px-0.5 rounded-sm">globals.css</code>. Adjust them there for finer control if needed.
                 </span>
+            </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+            <CardTitle className="flex items-center"><Contact className="mr-2 h-5 w-5 text-primary/80" />Contact Information & Page</CardTitle>
+            <CardDescription>Manage contact details shown in the footer and the image for the Contact Us page.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+            <div>
+                <Label htmlFor="contactPageImageFile">Contact Page Image</Label>
+                <CustomDropzone
+                    onFileChange={handleContactFileChange}
+                    currentFileName={selectedContactPageImageFile?.name}
+                    accept={{ 'image/*': ['.png', '.jpeg', '.jpg', '.webp'] }}
+                    maxSize={1 * 1024 * 1024} // 1MB
+                    className="mt-1"
+                />
+                {errors.contactPageImageFile && <p className="text-sm text-destructive mt-1">{errors.contactPageImageFile.message as string}</p>}
+                {contactPageImagePreview && (
+                    <div className="mt-4 p-3 border border-border rounded-lg bg-muted/50 inline-block">
+                        <p className="text-xs text-muted-foreground mb-1.5">Contact Page Image Preview:</p>
+                        <Image src={contactPageImagePreview} alt="Contact page image preview" width={200} height={150} className="rounded-md object-contain max-h-[150px]" />
+                    </div>
+                )}
+                 {!contactPageImagePreview && (
+                   <div className="mt-3 p-4 border border-dashed border-input rounded-lg bg-muted/30 text-center text-muted-foreground max-w-xs">
+                      <ImageIcon className="mx-auto h-8 w-8 mb-1" />
+                      <p className="text-xs">No contact page image uploaded. (Recommended: 600x800px flat/abstract style).</p>
+                   </div>
+                 )}
+            </div>
+            <div>
+                <Label htmlFor="contactAddress">Business Address</Label>
+                <Controller
+                    name="contactAddress"
+                    control={control}
+                    render={({ field }) => <Textarea {...field} value={field.value ?? ""} id="contactAddress" className="mt-1" placeholder="e.g., Jl. Inovasi No. 1, Jakarta" rows={3} />}
+                />
+                 {errors.contactAddress && <p className="text-sm text-destructive mt-1">{errors.contactAddress.message}</p>}
+            </div>
+            <div>
+                <Label htmlFor="contactPhone">Business Phone</Label>
+                 <Controller
+                    name="contactPhone"
+                    control={control}
+                    render={({ field }) => <Input {...field} value={field.value ?? ""} id="contactPhone" className="mt-1" placeholder="e.g., +62 812 3456 7890" />}
+                />
+                {errors.contactPhone && <p className="text-sm text-destructive mt-1">{errors.contactPhone.message}</p>}
+            </div>
+            <div>
+                <Label htmlFor="contactEmail">Business Email</Label>
+                 <Controller
+                    name="contactEmail"
+                    control={control}
+                    render={({ field }) => <Input {...field} value={field.value ?? ""} type="email" id="contactEmail" className="mt-1" placeholder="e.g., info@example.com" />}
+                />
+                 {errors.contactEmail && <p className="text-sm text-destructive mt-1">{errors.contactEmail.message}</p>}
             </div>
         </CardContent>
       </Card>
