@@ -267,7 +267,7 @@ export default function SimulateJourneyPage() {
     <TooltipProvider delayDuration={0}>
       <div className="flex flex-col h-full min-h-screen"> {/* Changed to min-h-screen to ensure footer is pushed down */}
         {/* NEW HEADER SECTION */}
-        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 p-4 md:p-6 rounded-xl border bg-card text-card-foreground shadow">
+        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <Play className="h-7 w-7 md:h-8 md:w-8 text-primary flex-shrink-0" />
             <div>
@@ -301,8 +301,8 @@ export default function SimulateJourneyPage() {
             ) : (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" onClick={() => setIsEditModeActive(true)} disabled={isSavingJourney}>
-                    <Edit2 className="h-5 w-5" />
+                  <Button variant="default" size="icon" onClick={() => setIsEditModeActive(true)} disabled={isSavingJourney}>
+                    <Edit className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent><p>Edit Journey</p></TooltipContent>
@@ -349,7 +349,7 @@ export default function SimulateJourneyPage() {
         </header>
 
         {/* Main Content Grid */}
-        <div className="flex-grow grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6"> {/* No outer padding for grid, using fixed width for stepper */}
+        <div className="flex-grow grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-6"> {/* No outer padding for grid, using fixed width for stepper */}
           {/* Left Column: Stage Content */}
           <Card className="rounded-xl shadow-sm flex flex-col">
             <CardContent className="p-4 md:p-6 space-y-4 flex-grow overflow-y-auto"> {/* Reduced space-y */}
@@ -365,19 +365,17 @@ export default function SimulateJourneyPage() {
                             size="sm"
                             onClick={() => setCurrentStageIndex(prev => prev !== null && prev > 0 ? prev - 1 : prev)}
                             disabled={currentStageIndex === 0 || currentStageIndex === null}
-                            className="h-9 px-4 group"
+                            className="h-9 group"
                             >
                             <ChevronLeft className="mr-1.5 h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
-                            Previous
                             </Button>
                             <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setCurrentStageIndex(prev => prev !== null && prev < journeyStages.length - 1 ? prev + 1 : prev)}
                             disabled={currentStageIndex === null || currentStageIndex === journeyStages.length - 1}
-                            className="h-9 px-4 group"
+                            className="h-9 group"
                             >
-                            Next
                             <ChevronRight className="ml-1.5 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                             </Button>
                         </div>
