@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FileText, Edit, ExternalLink } from 'lucide-react'; // Removed Eye
+import { FileText, Edit, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -19,13 +19,12 @@ interface ManagedSitePage {
 const managedSitePages: ManagedSitePage[] = [
   { id: 'privacy-policy', title: 'Privacy Policy', path: '/privacy', status: 'Published', type: 'Content-Managed' },
   { id: 'terms-of-service', title: 'Terms of Service', path: '/terms', status: 'Published', type: 'Content-Managed' },
+  { id: 'refund-policy', title: 'Refund Policy', path: '/refund-policy', status: 'Published', type: 'Content-Managed' },
   { id: 'about-rio', title: 'About RIO', path: '/about-rio', status: 'Published', type: 'Content-Managed' },
   { id: 'business-model', title: 'Business Model (Doc)', path: '/business-model', status: 'Published', type: 'Content-Managed' },
   { id: 'developer-guide', title: 'Developer Guide (Doc)', path: '/developer-guide', status: 'Published', type: 'Content-Managed' },
 ];
 
-// Static code pages are those not directly editable as "content blocks" through this interface.
-// This list can be kept for reference or for pages that won't be CMS-driven.
 const staticCodePages: ManagedSitePage[] = [
     { id: 'home', title: 'Homepage', path: '/', status: 'Published', type: 'Static (Code)' },
     { id: 'templates-listing', title: 'Templates Listing (Part of Homepage)', path: '/#templates', status: 'Published', type: 'Static (Code)' },
@@ -105,7 +104,6 @@ export default function AdminSitePagesPage() {
                           </Link>
                         </Button>
                       )}
-                      {/* Removed redundant view button as path is clickable */}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -117,4 +115,3 @@ export default function AdminSitePagesPage() {
     </div>
   );
 }
-
