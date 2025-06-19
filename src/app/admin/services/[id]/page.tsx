@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image'; // Added this import
 import ReactMarkdown from 'react-markdown';
 import { getServiceByIdFromFirestore } from '@/lib/firebase/firestoreServices';
 import type { Service } from '@/lib/types';
