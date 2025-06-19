@@ -11,14 +11,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Send, Mail, MessageSquare, User, Building, Phone, Info, AlertTriangle, MapPin, Facebook, Instagram } from 'lucide-react';
+import { Loader2, Send, Mail, MessageSquare, User, Building, Phone, Info, MapPin, ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import { getSiteSettings } from '@/lib/actions/settings.actions';
 import { DEFAULT_SETTINGS } from '@/lib/constants';
 import type { ContactFormValues, SiteSettings } from '@/lib/types';
 import { submitContactFormAction } from '@/lib/actions/contact.actions';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
 
 const contactFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
@@ -74,7 +73,7 @@ export default function ContactUsPage() {
   };
 
   const contactImageUrl = settings?.contactPageImageUrl || 'https://placehold.co/800x600.png';
-  const contactImageAiHint = "modern office workspace";
+  const contactImageAiHint = settings?.siteTitle ? `contact ${settings.siteTitle}` : "modern office contact";
   const siteTitle = settings?.siteTitle || DEFAULT_SETTINGS.siteTitle;
 
   return (
@@ -85,9 +84,10 @@ export default function ContactUsPage() {
           Back to Home
         </Link>
       </Button>
-      <div className="grid md:grid-cols-2 gap-12 lg:gap-16 items-start"> {/* Increased gap */}
+
+      <div className="grid md:grid-cols-2 gap-12 lg:gap-16 items-start">
         {/* Left Column: Contact Form */}
-        <Card className="w-full max-w-lg mx-auto md:mx-0 shadow-xl border-border/60">
+        <Card className="w-full shadow-xl border-border/60">
           <CardHeader className="text-center md:text-left">
             <div className="inline-flex justify-center md:justify-start mb-3">
                  <Mail className="h-10 w-10 text-primary p-2 bg-primary/10 rounded-full" />
@@ -99,26 +99,32 @@ export default function ContactUsPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              <div>
-                <Label htmlFor="name" className="flex items-center"><User className="mr-2 h-4 w-4 text-muted-foreground" />Name</Label>
-                <Input id="name" {...register('name')} placeholder="Your Full Name" className="mt-1" />
-                {errors.name && <p className="text-sm text-destructive mt-1">{errors.name.message}</p>}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
+                <div>
+                  <Label htmlFor="name" className="flex items-center"><User className="mr-2 h-4 w-4 text-muted-foreground" />Name *</Label>
+                  <Input id="name" {...register('name')} placeholder="Your Full Name" className="mt-1" />
+                  {errors.name && <p className="text-sm text-destructive mt-1">{errors.name.message}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="businessName" className="flex items-center"><Building className="mr-2 h-4 w-4 text-muted-foreground" />Business Name</Label>
+                  <Input id="businessName" {...register('businessName')} placeholder="Your Company's Name" className="mt-1" />
+                </div>
               </div>
-              <div>
-                <Label htmlFor="businessName" className="flex items-center"><Building className="mr-2 h-4 w-4 text-muted-foreground" />Business Name (Optional)</Label>
-                <Input id="businessName" {...register('businessName')} placeholder="Your Company's Name" className="mt-1" />
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
+                <div>
+                  <Label htmlFor="email" className="flex items-center"><Mail className="mr-2 h-4 w-4 text-muted-foreground" />Email Address *</Label>
+                  <Input id="email" type="email" {...register('email')} placeholder="you@example.com" className="mt-1" />
+                  {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="phone" className="flex items-center"><Phone className="mr-2 h-4 w-4 text-muted-foreground" />Phone / WhatsApp</Label>
+                  <Input id="phone" {...register('phone')} placeholder="+62 812 3456 789" className="mt-1" />
+                </div>
               </div>
+
               <div>
-                <Label htmlFor="email" className="flex items-center"><Mail className="mr-2 h-4 w-4 text-muted-foreground" />Email Address</Label>
-                <Input id="email" type="email" {...register('email')} placeholder="you@example.com" className="mt-1" />
-                {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
-              </div>
-              <div>
-                <Label htmlFor="phone" className="flex items-center"><Phone className="mr-2 h-4 w-4 text-muted-foreground" />Phone / WhatsApp (Optional)</Label>
-                <Input id="phone" {...register('phone')} placeholder="+62 812 3456 789" className="mt-1" />
-              </div>
-              <div>
-                <Label htmlFor="message" className="flex items-center"><MessageSquare className="mr-2 h-4 w-4 text-muted-foreground" />Your Message</Label>
+                <Label htmlFor="message" className="flex items-center"><MessageSquare className="mr-2 h-4 w-4 text-muted-foreground" />Your Message *</Label>
                 <Textarea id="message" {...register('message')} rows={5} placeholder="Tell us about your project or inquiry..." className="mt-1" />
                 {errors.message && <p className="text-sm text-destructive mt-1">{errors.message.message}</p>}
               </div>
@@ -133,57 +139,43 @@ export default function ContactUsPage() {
           </CardFooter>
         </Card>
 
-        {/* Right Column: Image & Contact Info */}
+        {/* Right Column: Contact Info & Image */}
         <div className="space-y-8">
           {isLoadingSettings ? (
-            <div className="flex flex-col items-center justify-center p-10 bg-muted rounded-xl min-h-[400px]">
+            <div className="flex flex-col items-center justify-center p-10 bg-muted rounded-xl min-h-[300px]">
                 <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
                 <p className="text-muted-foreground">Loading contact info...</p>
             </div>
           ) : settings ? (
             <>
-              <div className="relative pt-2"> {/* Added padding-top to make space for absolute social icons */}
-                <div className="absolute top-0 right-0 flex space-x-3">
-                  <Link href="#" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-muted-foreground hover:text-primary">
-                    <Facebook className="h-6 w-6" />
-                  </Link>
-                  <Link href="#" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-muted-foreground hover:text-primary">
-                    <Instagram className="h-6 w-6" />
-                  </Link>
-                </div>
-
-                <div className="space-y-5"> {/* Increased spacing for contact items */}
-                  {settings.contactAddress && (
-                    <div className="flex items-start">
-                      <MapPin className="h-5 w-5 mr-3 mt-0.5 text-primary flex-shrink-0" />
-                      <div>
-                        <p className="font-semibold text-foreground">{settings.contactAddress}</p>
-                        {/* Add more address lines here if they were part of SiteSettings in the future */}
-                        {/* <p className="text-xs text-muted-foreground">The 2nd Floor</p> 
-                        <p className="text-xs text-muted-foreground">*A wooden door, next to the Jewelry store</p> */}
-                      </div>
+              <div className="space-y-5">
+                {settings.contactAddress && (
+                  <div className="flex items-start">
+                    <MapPin className="h-5 w-5 mr-3 mt-0.5 text-primary flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold text-foreground">{settings.contactAddress}</p>
                     </div>
-                  )}
-                  {settings.contactPhone && (
-                    <div className="flex items-center">
-                      <Phone className="h-5 w-5 mr-3 text-primary flex-shrink-0" />
-                      <a href={`tel:${settings.contactPhone.replace(/\s/g, '')}`} className="text-foreground hover:text-primary">
-                        {settings.contactPhone}
-                      </a>
-                    </div>
-                  )}
-                  {settings.contactEmail && (
-                    <div className="flex items-center">
-                      <Mail className="h-5 w-5 mr-3 text-primary flex-shrink-0" />
-                      <a href={`mailto:${settings.contactEmail}`} className="text-foreground hover:text-primary">
-                        {settings.contactEmail}
-                      </a>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
+                {settings.contactPhone && (
+                  <div className="flex items-center">
+                    <Phone className="h-5 w-5 mr-3 text-primary flex-shrink-0" />
+                    <a href={`tel:${settings.contactPhone.replace(/\s/g, '')}`} className="text-foreground hover:text-primary">
+                      {settings.contactPhone}
+                    </a>
+                  </div>
+                )}
+                {settings.contactEmail && (
+                  <div className="flex items-center">
+                    <Mail className="h-5 w-5 mr-3 text-primary flex-shrink-0" />
+                    <a href={`mailto:${settings.contactEmail}`} className="text-foreground hover:text-primary">
+                      {settings.contactEmail}
+                    </a>
+                  </div>
+                )}
               </div>
               
-              <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl border-2 border-card">
+              <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden">
                   <Image
                       src={contactImageUrl}
                       alt={`Contact ${siteTitle}`}
@@ -206,4 +198,3 @@ export default function ContactUsPage() {
     </div>
   );
 }
-
