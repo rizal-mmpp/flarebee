@@ -40,12 +40,9 @@ export default function SimulateJourneyPage() {
         .then((fetchedService) => {
           if (fetchedService) {
             setService(fetchedService);
-            // Here you could potentially load saved journey notes if they existed
-            // For now, initialize empty notes
             const initialNotes: Record<string, string> = {};
             journeyStages.forEach(stage => initialNotes[stage.id] = '');
             setJourneyNotes(initialNotes);
-
           } else {
             setError('Service not found.');
           }
@@ -65,9 +62,7 @@ export default function SimulateJourneyPage() {
   };
 
   const handleSaveJourney = () => {
-    // Placeholder for saving logic
     console.log("Saving Journey Notes:", journeyNotes);
-    // In a real app, you would save `journeyNotes` associated with `serviceId` to Firestore
     alert("Save functionality is not implemented yet. Notes logged to console.");
   };
   
@@ -121,15 +116,15 @@ export default function SimulateJourneyPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4"> {/* Changed: Main header container now flex-col */}
-        <div> {/* Title and subtitle block */}
+      <div className="flex flex-col gap-4">
+        <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
                 <Brain className="mr-3 h-8 w-8 text-primary" />
                 Customer Journey Simulation
             </h1>
             <p className="text-muted-foreground mt-1">For service: <span className="font-semibold text-foreground">{service.title}</span></p>
         </div>
-        <div className="flex flex-wrap items-center gap-3"> {/* Changed: Button group now uses flex-wrap */}
+        <div className="flex flex-wrap items-center justify-end gap-3">
             <Button variant="outline" onClick={() => router.push(`/admin/services/${serviceId}`)} className="group">
                 <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
                 Back to Service
@@ -188,4 +183,3 @@ export default function SimulateJourneyPage() {
     </div>
   );
 }
-

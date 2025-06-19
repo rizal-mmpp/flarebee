@@ -112,12 +112,12 @@ export default function ServiceDetailPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
           <Briefcase className="mr-3 h-8 w-8 text-primary" />
           {service.title}
         </h1>
-        <div className="flex gap-3 flex-col sm:flex-row">
+        <div className="flex justify-end gap-3 flex-col sm:flex-row">
             <Button variant="outline" onClick={() => router.push('/admin/services')} className="w-full sm:w-auto group">
                 <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
                 Back to Services
