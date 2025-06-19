@@ -5,7 +5,7 @@ import { getAllServicesFromFirestore } from '@/lib/firebase/firestoreServices'; 
 import { getAllOrdersFromFirestore } from '@/lib/firebase/firestoreOrders';
 import { getAllUserProfiles } from '@/lib/firebase/firestoreAdmin'; 
 import type { Service, Order, UserProfile } from '@/lib/types'; // Updated type
-import { BarChart3, Briefcase, FileText, Users, DollarSign, ShoppingCart, Activity, Banknote, Loader2 } from 'lucide-react'; // Changed LayoutGrid to Briefcase
+import { LayoutDashboard, BarChart3, Briefcase, FileText, Users, DollarSign, ShoppingCart, Activity, Banknote, Loader2 } from 'lucide-react'; // Changed LayoutGrid to Briefcase, Added LayoutDashboard
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { getXenditBalance, type XenditBalanceResult } from '@/lib/actions/xenditAdmin.actions';
