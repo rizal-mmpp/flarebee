@@ -1,17 +1,16 @@
 
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { getAllTemplatesFromFirestore } from '@/lib/firebase/firestoreTemplates';
+import { getAllServicesFromFirestore } from '@/lib/firebase/firestoreServices'; // Updated import
 import { getAllOrdersFromFirestore } from '@/lib/firebase/firestoreOrders';
 import { getAllUserProfiles } from '@/lib/firebase/firestoreAdmin'; 
-import type { Template, Order, UserProfile } from '@/lib/types';
-import { BarChart3, LayoutGrid, FileText, Users, DollarSign, ShoppingCart, Activity, Banknote, Loader2 } from 'lucide-react';
+import type { Service, Order, UserProfile } from '@/lib/types'; // Updated type
+import { BarChart3, Briefcase, FileText, Users, DollarSign, ShoppingCart, Activity, Banknote, Loader2 } from 'lucide-react'; // Changed LayoutGrid to Briefcase
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { getXenditBalance, type XenditBalanceResult } from '@/lib/actions/xenditAdmin.actions';
 import { Button } from '@/components/ui/button';
 
-// Helper to format IDR currency
 const formatIDR = (amount: number) => {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -22,12 +21,12 @@ const formatIDR = (amount: number) => {
 };
 
 export default function AdminDashboardPage() {
-  const [templates, setTemplates] = useState<Template[]>([]);
+  const [services, setServices] = useState<Service[]>([]); // Updated state name and type
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [xenditBalance, setXenditBalance] = useState<XenditBalanceResult | null>(null);
   
-  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
+  const [isLoadingServices, setIsLoadingServices] = useState(true); // Updated state name
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
@@ -35,19 +34,18 @@ export default function AdminDashboardPage() {
   const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
-    setIsLoadingTemplates(true);
+    setIsLoadingServices(true); // Updated state name
     setIsLoadingOrders(true);
     setIsLoadingUsers(true);
     setIsLoadingBalance(true);
     try {
-      // Pass empty object {} to use default parameters (fetch all)
-      const [templatesResult, ordersResult, usersResult, balanceResult] = await Promise.all([
-        getAllTemplatesFromFirestore({}), // Fetch all templates
-        getAllOrdersFromFirestore({}),    // Fetch all orders
-        getAllUserProfiles({}),          // Fetch all users
+      const [servicesResult, ordersResult, usersResult, balanceResult] = await Promise.all([ // Updated variable name
+        getAllServicesFromFirestore({}), // Fetch all services
+        getAllOrdersFromFirestore({}),    
+        getAllUserProfiles({}),          
         getXenditBalance(),
       ]);
-      setTemplates(templatesResult.data);
+      setServices(servicesResult.data); // Updated state setter
       setOrders(ordersResult.data);
       setUsers(usersResult.data);
       setXenditBalance(balanceResult);
@@ -60,7 +58,7 @@ export default function AdminDashboardPage() {
         variant: "destructive",
       });
     } finally {
-      setIsLoadingTemplates(false);
+      setIsLoadingServices(false); // Updated state name
       setIsLoadingOrders(false);
       setIsLoadingUsers(false);
       setIsLoadingBalance(false);
@@ -75,16 +73,16 @@ export default function AdminDashboardPage() {
     .filter(order => order.status === 'completed' || order.xenditPaymentStatus === 'PAID')
     .reduce((sum, order) => sum + order.totalAmount, 0);
   const totalOrdersCount = orders.length;
-  const totalTemplatesCount = templates.length;
+  const totalServicesCount = services.length; // Updated variable name
   const totalUsersCount = users.length;
 
-  const isLoadingOverall = isLoadingTemplates || isLoadingOrders || isLoadingUsers || isLoadingBalance;
+  const isLoadingOverall = isLoadingServices || isLoadingOrders || isLoadingUsers || isLoadingBalance; // Updated state name
 
   return (
     <div className="space-y-8">
       <header className="mb-2">
         <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
-          <LayoutGrid className="mr-3 h-8 w-8 text-primary" />
+          <LayoutDashboard className="mr-3 h-8 w-8 text-primary" /> {/* Kept LayoutDashboard for overall admin */}
           Admin Overview
         </h1>
         <p className="text-muted-foreground">
@@ -140,13 +138,13 @@ export default function AdminDashboardPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Templates</CardTitle>
-              <FileText className="h-5 w-5 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Total Services</CardTitle> {/* Updated title */}
+              <Briefcase className="h-5 w-5 text-muted-foreground" /> {/* Changed icon */}
             </CardHeader>
             <CardContent>
-              {isLoadingTemplates ? <Loader2 className="h-7 w-7 animate-spin" /> : <div className="text-2xl font-bold">{totalTemplatesCount}</div>}
+              {isLoadingServices ? <Loader2 className="h-7 w-7 animate-spin" /> : <div className="text-2xl font-bold">{totalServicesCount}</div>} {/* Updated variable */}
               <p className="text-xs text-muted-foreground">
-                Live templates available.
+                Live services offered. {/* Updated description */}
               </p>
             </CardContent>
           </Card>
@@ -176,19 +174,6 @@ export default function AdminDashboardPage() {
           </Card>
         </div>
       </section>
-
-      {/* Placeholder for recent activity or charts - To be developed further */}
-      {/* <section className="mt-10">
-        <h2 className="text-2xl font-semibold text-foreground mb-4 flex items-center">
-          <BarChart3 className="mr-2 h-6 w-6 text-primary" />
-          Recent Activity
-        </h2>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-muted-foreground">Recent sales and user registrations chart will appear here.</p>
-          </CardContent>
-        </Card>
-      </section> */}
     </div>
   );
 }

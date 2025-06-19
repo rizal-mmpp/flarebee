@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
-  LayoutGrid,
   ShoppingCart,
   Users,
   FileText,
@@ -14,11 +13,11 @@ import {
   CreditCard, 
   TestTube2, 
   UploadCloud, 
-  LibraryBig, 
+  LibraryBig,
+  Briefcase, // Changed from LayoutGrid
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import NextImage from 'next/image'; // Import NextImage
-// Removed Button import as it's not used directly in this version of the component's nav items
+import NextImage from 'next/image';
 
 interface AdminSidebarProps {
   onLinkClick?: () => void; 
@@ -28,7 +27,7 @@ interface AdminSidebarProps {
 
 const adminNavItems = [
   { href: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { href: '/admin/templates', label: 'Templates', icon: LayoutGrid },
+  { href: '/admin/services', label: 'Services', icon: Briefcase }, // Changed from Templates
   { href: '/admin/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/admin/customers', label: 'Customers', icon: Users },
   { href: '/admin/pages', label: 'Site Pages', icon: FileText },
@@ -43,7 +42,7 @@ const adminNavItems = [
 
 export function AdminSidebar({ onLinkClick, logoUrl, siteTitle = "RIO" }: AdminSidebarProps) {
   const pathname = usePathname();
-  const displaySiteTitle = siteTitle || "RIO"; // Fallback
+  const displaySiteTitle = siteTitle || "RIO"; 
 
   return (
     <div className="flex h-full max-h-screen flex-col gap-2 bg-sidebar text-sidebar-foreground">
@@ -70,7 +69,7 @@ export function AdminSidebar({ onLinkClick, logoUrl, siteTitle = "RIO" }: AdminS
                 onClick={onLinkClick}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sidebar-foreground/80 transition-all hover:text-sidebar-primary hover:bg-sidebar-accent',
-                  (pathname === item.href || (item.href !== '/admin/dashboard' && pathname.startsWith(item.href))) && 'bg-sidebar-accent text-white font-semibold' // Changed text-sidebar-primary to text-white
+                  (pathname === item.href || (item.href !== '/admin/dashboard' && pathname.startsWith(item.href))) && 'bg-sidebar-accent text-white font-semibold'
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -83,4 +82,3 @@ export function AdminSidebar({ onLinkClick, logoUrl, siteTitle = "RIO" }: AdminS
     </div>
   );
 }
-
