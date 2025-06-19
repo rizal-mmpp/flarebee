@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CustomDropzone } from '@/components/ui/custom-dropzone';
-import { Settings as SettingsIcon, Save, Loader2, Image as ImageIcon, Palette, Type, AlertTriangle, Moon, Sun } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Loader2, Image as ImageIcon, Palette, Type, AlertTriangle, Moon, Sun, XIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getSiteSettings, updateSiteSettings } from '@/lib/actions/settings.actions';
 import { DEFAULT_SETTINGS } from '@/lib/constants';
@@ -18,6 +18,8 @@ import type { SiteSettings } from '@/lib/types';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 import { HslColorPicker, type HslColor } from 'react-colorful';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from '@/lib/utils';
 
 const hslColorStringRegex = /^\d{1,3}\s+\d{1,3}%\s+\d{1,3}%$/;
 
@@ -51,6 +53,14 @@ function hslObjectToHslString(hslObject: HslColor): string {
   return `${Math.round(hslObject.h)} ${Math.round(hslObject.s)}% ${Math.round(hslObject.l)}%`;
 }
 
+// Helper to convert HSL string "H S% L%" to CSS HSL functional notation "hsl(H, S%, L%)"
+function hslStringToCssHsl(hslString: string): string {
+  if (!hslColorStringRegex.test(hslString)) return 'hsl(0, 0%, 0%)'; // Default to black on error
+  const parts = hslString.match(/(\d+)\s+(\d+)%\s+(\d+)%/);
+  if (!parts) return 'hsl(0, 0%, 0%)';
+  return `hsl(${parts[1]}, ${parts[2]}%, ${parts[3]}%)`;
+}
+
 interface ColorPickerFieldProps {
   name: keyof SettingsFormValues;
   label: string;
@@ -62,32 +72,57 @@ interface ColorPickerFieldProps {
 const ColorPickerField: React.FC<ColorPickerFieldProps> = ({ name, label, control, errors, watch }) => {
   const formValue = watch(name) as string;
   const colorForPicker = useMemo(() => hslStringToHslObject(formValue), [formValue]);
+  const cssHslColor = useMemo(() => hslStringToCssHsl(formValue), [formValue]);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+
+  // Determine if the background color is dark to adjust text color
+  const isDarkBg = colorForPicker.l < 50;
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={name}>{label}</Label>
+      <Label htmlFor={`${name}-input`}>{label}</Label>
       <Controller
         name={name}
         control={control}
         render={({ field }) => (
-          <div className="flex flex-col items-center">
-            <HslColorPicker
-              color={colorForPicker}
-              onChange={(newHslColor) => {
-                field.onChange(hslObjectToHslString(newHslColor));
-              }}
-              className="!w-full !h-auto aspect-square max-w-[280px]"
-            />
+          <>
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal h-10"
+                  style={{
+                    backgroundColor: cssHslColor,
+                    color: isDarkBg ? 'white' : 'black',
+                    borderColor: isDarkBg ? 'hsla(0,0%,100%,0.2)' : 'hsla(0,0%,0%,0.2)',
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-sm border border-inherit" style={{ backgroundColor: cssHslColor }} />
+                    <span>{field.value || "Pick a color"}</span>
+                  </div>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 border-none shadow-xl" align="start">
+                <HslColorPicker
+                  color={colorForPicker}
+                  onChange={(newHslColor) => {
+                    field.onChange(hslObjectToHslString(newHslColor));
+                  }}
+                  className="!w-[280px] !h-auto"
+                />
+              </PopoverContent>
+            </Popover>
             <Input
-              id={name}
+              id={`${name}-input`}
               value={field.value}
               onChange={(e) => {
-                field.onChange(e.target.value); 
+                field.onChange(e.target.value);
               }}
-              className="mt-2 text-sm text-center w-full max-w-[280px]"
+              className="mt-2 text-sm text-center w-full"
               placeholder="H S% L%"
             />
-          </div>
+          </>
         )}
       />
       {errors[name] && <p className="text-sm text-destructive mt-1 text-center">{(errors[name] as any)?.message}</p>}
@@ -322,4 +357,3 @@ export default function AdminSettingsPage() {
     </form>
   );
 }
-
