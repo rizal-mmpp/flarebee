@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CustomDropzone } from '@/components/ui/custom-dropzone';
-import { Settings as SettingsIcon, Save, Loader2, Image as ImageIcon, Palette, Type, AlertTriangle, Moon, Sun, XIcon } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Loader2, Image as ImageIcon, Palette, Type, AlertTriangle, Moon, Sun } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getSiteSettings, updateSiteSettings } from '@/lib/actions/settings.actions';
 import { DEFAULT_SETTINGS } from '@/lib/constants';
@@ -80,7 +80,7 @@ const ColorPickerField: React.FC<ColorPickerFieldProps> = ({ name, label, contro
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={`${name}-input`}>{label}</Label>
+      <Label htmlFor={`${name}-button`}>{label}</Label>
       <Controller
         name={name}
         control={control}
@@ -89,6 +89,8 @@ const ColorPickerField: React.FC<ColorPickerFieldProps> = ({ name, label, contro
             <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
               <PopoverTrigger asChild>
                 <Button
+                  id={`${name}-button`}
+                  type="button"
                   variant="outline"
                   className="w-full justify-start text-left font-normal h-10"
                   style={{
@@ -98,7 +100,7 @@ const ColorPickerField: React.FC<ColorPickerFieldProps> = ({ name, label, contro
                   }}
                 >
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-sm border border-inherit" style={{ backgroundColor: cssHslColor }} />
+                    <div className="w-5 h-5 rounded-sm border border-inherit shadow-inner" style={{ backgroundColor: cssHslColor }} />
                     <span>{field.value || "Pick a color"}</span>
                   </div>
                 </Button>
@@ -113,7 +115,8 @@ const ColorPickerField: React.FC<ColorPickerFieldProps> = ({ name, label, contro
                 />
               </PopoverContent>
             </Popover>
-            <Input
+            {/* The input field below is removed to reduce redundancy */}
+            {/* <Input
               id={`${name}-input`}
               value={field.value}
               onChange={(e) => {
@@ -121,7 +124,7 @@ const ColorPickerField: React.FC<ColorPickerFieldProps> = ({ name, label, contro
               }}
               className="mt-2 text-sm text-center w-full"
               placeholder="H S% L%"
-            />
+            /> */}
           </>
         )}
       />
@@ -315,8 +318,7 @@ export default function AdminSettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center"><Palette className="mr-2 h-5 w-5 text-primary/80" />Theme Colors</CardTitle>
           <CardDescription>
-            Customize HSL values for light and dark themes (e.g., <code className="bg-muted text-muted-foreground px-1 py-0.5 rounded-sm text-xs">228 100% 98%</code>).
-            Changes apply to <code className="bg-muted text-muted-foreground px-1 py-0.5 rounded-sm text-xs">globals.css</code>.
+            Customize HSL values for light and dark themes (e.g., <code className="bg-muted text-muted-foreground px-1 py-0.5 rounded-sm text-xs">228 100% 98%</code>). Changes apply to <code className="bg-muted text-muted-foreground px-1 py-0.5 rounded-sm text-xs">globals.css</code>.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
