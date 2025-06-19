@@ -10,18 +10,118 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Loader2, ServerCrash, Play, CheckSquare, Edit2, MessageSquare, UserCheck, Users, ShieldQuestion, Sparkles, RotateCcw, Save, Briefcase, ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  ArrowLeft, Loader2, ServerCrash, Play, CheckSquare, Edit2, MessageSquare, UserCheck, Users, 
+  ShieldQuestion, Sparkles, RotateCcw, Save, Briefcase, ChevronLeft, ChevronRight,
+  Search, Presentation, Wand2, UserPlus, LayoutDashboard, ShoppingBag, CreditCard, ListChecks, Rocket, Repeat
+} from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
 const journeyStages = [
-  { id: 'discovery', title: 'Discovery & Awareness', icon: Sparkles, placeholder: 'How do potential customers become aware of this service? What problems are they trying to solve? Keywords they might use?' },
-  { id: 'evaluation', title: 'Evaluation & Consideration', icon: ShieldQuestion, placeholder: 'What are their criteria for choosing a solution? What questions do they ask? What are their concerns or objections?' },
-  { id: 'purchase', title: 'Purchase & Decision', icon: CheckSquare, placeholder: 'What triggers the decision to buy? What is the purchase process like? What information is crucial at this stage?' },
-  { id: 'onboarding', title: 'Onboarding & Initial Use', icon: UserCheck, placeholder: 'What is the experience like after purchase? First steps? Key touchpoints? Potential friction points?' },
-  { id: 'engagement', title: 'Engagement & Value Realization', icon: MessageSquare, placeholder: 'How do customers derive ongoing value? How do we maintain engagement? What are common support queries or feedback?' },
-  { id: 'advocacy', title: 'Advocacy & Retention', icon: Users, placeholder: 'What makes customers loyal? How can we encourage referrals or testimonials? What are opportunities for upselling or cross-selling?' },
+  { 
+    id: 'discovery', 
+    title: '1. Discovery', 
+    icon: Search,
+    details: [
+      "Touchpoints: Homepage → “Explore Our Services”, Services List → “Business Profile Website”, Paid Ads, Social Media, WhatsApp Campaigns",
+      "Key Actions: Click service card → open dedicated service landing page"
+    ],
+    placeholder: "Describe visual elements and user interactions for Discovery. What does the user see on the homepage? How is the service presented in lists/ads? What's the initial hook?"
+  },
+  { 
+    id: 'service-landing-page', 
+    title: '2. Service Landing Page', 
+    icon: Presentation,
+    details: [
+      "Content: Hero: “Professional Website for Your Business – Launch in Days”, Value props (e.g., Free subdomain, SEO ready, CMS), Demo links / client success stories",
+      "CTAs: “Start Now” (Primary), “Preview Demo”, “Chat First”"
+    ],
+    placeholder: "Detail the layout of the service landing page. Visual hierarchy? CTA displays? Demo preview look? How are value props communicated visually?"
+  },
+  { 
+    id: 'smart-onboarding', 
+    title: '3. Smart Onboarding (Pre-Login)', 
+    icon: Wand2,
+    details: [
+      "Inline, 3-step lightweight wizard: Business Name & Type, Domain options ('I have one', 'Search domain', 'Skip for now' → subdomain), Select preferred style/template (quick preview).",
+      "All fields optional. 'Continue' active if at least 1 field filled."
+    ],
+    placeholder: "Design the wizard steps. How are domain options presented? How does the style/template quick preview work visually? What's the feel of this onboarding?"
+  },
+  { 
+    id: 'sign-in-up', 
+    title: '4. Sign In / Sign Up', 
+    icon: UserPlus,
+    details: [
+      "Google OAuth & Email options.",
+      "Progress from onboarding is saved in session/local storage and applied post-login."
+    ],
+    placeholder: "Describe the sign-in/sign-up interface. How is the saved onboarding progress communicated or handled visually upon return?"
+  },
+  { 
+    id: 'dashboard-start-project', 
+    title: '5. Dashboard: Start Project', 
+    icon: LayoutDashboard,
+    details: [
+      "Now in authenticated project dashboard.",
+      "Auto-generated project draft based on onboarding.",
+      "Show project steps: ✅ Business Info, ✅ Domain, 🟨 Template Selection (edit or keep), 🟧 Package Plan, 🟩 Custom Feature (optional)."
+    ],
+    placeholder: "Visualize the initial project dashboard. How is the draft project presented? How are the project steps shown? How can users edit pre-filled info?"
+  },
+  { 
+    id: 'select-package-addons', 
+    title: '6. Select Package & Add-ons', 
+    icon: ShoppingBag,
+    details: [
+      "Show pricing tiers with visual comparison.",
+      "Add-ons (CMS, Blog, WhatsApp button, Form, SEO setup, etc.).",
+      "Upsell option for full custom dev."
+    ],
+    placeholder: "Design the package selection interface. How are tiers and add-ons visually distinct? How is the upsell presented without being intrusive?"
+  },
+  { 
+    id: 'checkout', 
+    title: '7. Checkout', 
+    icon: CreditCard,
+    details: [
+      "Transparent breakdown: Subscription (monthly/annual), Add-on costs (if any).",
+      "Payment options: card, VA, QRIS (Xendit).",
+      "Post-payment CTA: “Go to Dashboard”."
+    ],
+    placeholder: "Visualize the checkout page. How is the cost breakdown presented clearly? How are payment options displayed? What's the success confirmation look like?"
+  },
+  { 
+    id: 'project-status-tracker', 
+    title: '8. Project Status Tracker (Dashboard)', 
+    icon: ListChecks,
+    details: [
+      "Post-checkout dashboard shows: Project timeline (Planning → Development → Review → Launch), Chat with Dev team, Upload brand assets, Edit business info, Domain integration status, 'Invite teammate' (if relevant)."
+    ],
+    placeholder: "Design the project tracker. How is the timeline visualized? What does the chat interface look like? How are asset uploads and info editing handled?"
+  },
+  { 
+    id: 'launch-delivery', 
+    title: '9. Launch & Delivery', 
+    icon: Rocket,
+    details: [
+      "Final site preview, DNS guide or auto-config, “Go Live” button.",
+      "Confirmation Page: Success message, Analytics starter, CMS guide, Shareable link button."
+    ],
+    placeholder: "Visualize the final launch steps. What does the 'Go Live' confirmation look like? How are guides and success messages presented?"
+  },
+  { 
+    id: 'post-launch-retention', 
+    title: '10. Post-Launch & Retention', 
+    icon: Repeat,
+    details: [
+      "Regular performance emails: “Your site had 134 views this week”.",
+      "Client dashboard includes: CMS editor, Traffic stats (Google Analytics embed), Support ticket/chat, Plan management & renewals, Easy upgrade CTA: “Need More Pages?”."
+    ],
+    placeholder: "Design the post-launch dashboard elements. How are stats presented? What does the CMS editor access look like? How are upgrade CTAs integrated smoothly?"
+  },
 ];
 
 export default function SimulateJourneyPage() {
@@ -44,9 +144,16 @@ export default function SimulateJourneyPage() {
         .then((fetchedService) => {
           if (fetchedService) {
             setService(fetchedService);
-            const initialNotes: Record<string, string> = {};
-            journeyStages.forEach(stage => initialNotes[stage.id] = journeyNotes[stage.id] || ''); // Preserve existing notes if any
-            setJourneyNotes(initialNotes);
+            // Initialize notes only if not already populated (e.g. from a previous load or state change)
+            setJourneyNotes(prevNotes => {
+              const initialNotes: Record<string, string> = {};
+              let notesChanged = false;
+              journeyStages.forEach(stage => {
+                initialNotes[stage.id] = prevNotes[stage.id] || '';
+                if (!prevNotes[stage.id]) notesChanged = true; // Check if we are truly initializing
+              });
+              return notesChanged ? initialNotes : prevNotes;
+            });
           } else {
             setError('Service not found.');
           }
@@ -59,7 +166,7 @@ export default function SimulateJourneyPage() {
           setIsLoading(false);
         });
     }
-  }, [serviceId]); // Removed journeyNotes from dependencies to avoid loop on notes change
+  }, [serviceId]);
 
   const handleNoteChange = (stageId: string, value: string) => {
     setJourneyNotes(prev => ({ ...prev, [stageId]: value }));
@@ -68,6 +175,7 @@ export default function SimulateJourneyPage() {
   const handleSaveJourney = () => {
     console.log("Saving Journey Notes for Service ID:", serviceId, journeyNotes);
     alert("Save functionality is not implemented yet. Notes logged to console.");
+    // Future: await saveJourneyNotesToFirestore(serviceId, journeyNotes);
   };
   
   const handleResetJourney = () => {
@@ -129,11 +237,10 @@ export default function SimulateJourneyPage() {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-[calc(100vh-12rem)]"> {/* Adjust min-h based on your admin layout footer/header */}
-      {/* Top Bar: Title and Stepper */}
+    <div className="flex flex-col h-full min-h-[calc(100vh-12rem)]">
       <Card className="mb-6 rounded-xl border-0 shadow-none">
         <CardHeader className="pb-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center">
                 <Play className="mr-3 h-7 w-7 text-primary flex-shrink-0" />
@@ -144,7 +251,7 @@ export default function SimulateJourneyPage() {
               </p>
             </div>
             <TooltipProvider delayDuration={0}>
-              <div className="flex items-center gap-1.5 justify-start md:justify-end pt-2 md:pt-0">
+              <div className="flex items-center justify-start md:justify-end gap-1.5 mt-2 md:mt-0 flex-shrink-0">
                 <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" onClick={handleResetJourney}><RotateCcw className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Reset All Notes</p></TooltipContent></Tooltip>
               </div>
             </TooltipProvider>
@@ -168,7 +275,8 @@ export default function SimulateJourneyPage() {
                 )}>
                   {String(index + 1).padStart(2, '0')}
                 </div>
-                <span>{stage.title}</span>
+                <span className="hidden sm:inline-block">{stage.title.substring(stage.title.indexOf('.') + 1).trim()}</span>
+                <span className="sm:hidden">{String(index + 1).padStart(2, '0')}</span> 
                 {currentStageIndex === index && <stage.icon className="h-4 w-4 ml-auto hidden sm:inline-block" />}
               </button>
             ))}
@@ -176,33 +284,34 @@ export default function SimulateJourneyPage() {
         </CardContent>
       </Card>
 
-      {/* Main Content Area (Two Columns) */}
       <div className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Stage Configuration */}
         <Card className="lg:col-span-2 rounded-xl flex flex-col">
           <CardHeader>
             <CardTitle className="text-xl flex items-center">
               <currentStage.icon className="mr-3 h-6 w-6 text-primary" />
-              Step {String(currentStageIndex + 1).padStart(2, '0')}: {currentStage.title}
+              {currentStage.title}
             </CardTitle>
-            <CardDescription>{currentStage.placeholder}</CardDescription>
+            <div className="text-sm text-muted-foreground space-y-2 pt-2">
+              {currentStage.details.map((detail, idx) => (
+                <p key={idx} className="leading-relaxed">{detail.startsWith('Touchpoints:') || detail.startsWith('Key Actions:') || detail.startsWith('Content:') || detail.startsWith('CTAs:') || detail.startsWith('Show project steps:') || detail.startsWith('Post-checkout dashboard shows:') || detail.startsWith('Confirmation Page:') || detail.startsWith('Client dashboard includes:') || detail.startsWith('Inline,') ? <strong>{detail.substring(0, detail.indexOf(':')+1)}</strong> : ''}{detail.startsWith('Touchpoints:') || detail.startsWith('Key Actions:') || detail.startsWith('Content:') || detail.startsWith('CTAs:') || detail.startsWith('Show project steps:') || detail.startsWith('Post-checkout dashboard shows:') || detail.startsWith('Confirmation Page:') || detail.startsWith('Client dashboard includes:') || detail.startsWith('Inline,') ? detail.substring(detail.indexOf(':')+1) : detail}</p>
+              ))}
+            </div>
           </CardHeader>
-          <CardContent className="flex-grow flex flex-col">
-            <Label htmlFor={`notes-${currentStage.id}`} className="text-sm font-medium text-muted-foreground mb-2">
-              Notes & Simulation Details:
+          <CardContent className="flex-grow flex flex-col pt-4">
+            <Label htmlFor={`notes-${currentStage.id}`} className="text-base font-medium text-foreground mb-2">
+              Visual Design & User Experience Notes for this Stage:
             </Label>
             <Textarea
               id={`notes-${currentStage.id}`}
               value={journeyNotes[currentStage.id] || ''}
               onChange={(e) => handleNoteChange(currentStage.id, e.target.value)}
-              placeholder={`Enter your notes for the "${currentStage.title}" stage...`}
-              rows={15}
+              placeholder={currentStage.placeholder}
+              rows={10} 
               className="bg-background flex-grow resize-none text-base"
             />
           </CardContent>
         </Card>
 
-        {/* Right Column: Contextual Preview */}
         <Card className="lg:col-span-1 rounded-xl">
           <CardHeader>
             <CardTitle className="text-xl">Service Context</CardTitle>
@@ -232,7 +341,6 @@ export default function SimulateJourneyPage() {
         </Card>
       </div>
 
-      {/* Bottom Navigation Bar */}
       <Card className="mt-6 rounded-xl border-0 shadow-none">
         <CardFooter className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t">
           <Button variant="outline" asChild className="w-full sm:w-auto group">
@@ -266,5 +374,3 @@ export default function SimulateJourneyPage() {
     </div>
   );
 }
-
-    
