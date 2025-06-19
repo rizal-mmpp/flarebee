@@ -262,7 +262,7 @@ export default function SimulateJourneyPage() {
     <TooltipProvider delayDuration={0}>
       <div className="flex flex-col h-full min-h-[calc(100vh-theme(spacing.16))]">
         {/* New Header Bar */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 px-4 md:px-6 py-4 bg-card rounded-xl shadow">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-3">
                 <Play className="h-7 w-7 md:h-8 md:w-8 text-primary flex-shrink-0" />
                 <div>
@@ -350,7 +350,7 @@ export default function SimulateJourneyPage() {
 
 
         {/* Main Content Grid */}
-        <div className="flex-grow grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 p-0"> {/* Adjusted lg grid and removed padding */}
+        <div className="flex-grow grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-6 p-0"> {/* Adjusted lg grid and removed padding */}
           {/* Left Column: Stage Content */}
           <Card className="rounded-xl shadow-sm flex flex-col">
             <CardContent className="p-4 md:p-6 space-y-5 flex-grow overflow-y-auto">
