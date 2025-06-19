@@ -17,12 +17,13 @@ interface ManagedSitePage {
 }
 
 const managedSitePages: ManagedSitePage[] = [
+  { id: 'public-about', title: 'About Us (Public Page)', path: '/about', status: 'Published', type: 'Content-Managed' },
   { id: 'privacy-policy', title: 'Privacy Policy', path: '/privacy', status: 'Published', type: 'Content-Managed' },
   { id: 'terms-of-service', title: 'Terms of Service', path: '/terms', status: 'Published', type: 'Content-Managed' },
   { id: 'refund-policy', title: 'Refund Policy', path: '/refund-policy', status: 'Published', type: 'Content-Managed' },
-  { id: 'about-rio', title: 'About RIO', path: '/about-rio', status: 'Published', type: 'Content-Managed' },
-  { id: 'business-model', title: 'Business Model (Doc)', path: '/business-model', status: 'Published', type: 'Content-Managed' },
-  { id: 'developer-guide', title: 'Developer Guide (Doc)', path: '/developer-guide', status: 'Published', type: 'Content-Managed' },
+  { id: 'about-rio', title: 'About RIO (Admin Doc)', path: '/about-rio', status: 'Published', type: 'Content-Managed' },
+  { id: 'business-model', title: 'Business Model (Admin Doc)', path: '/business-model', status: 'Published', type: 'Content-Managed' },
+  { id: 'developer-guide', title: 'Developer Guide (Admin Doc)', path: '/developer-guide', status: 'Published', type: 'Content-Managed' },
 ];
 
 const staticCodePages: ManagedSitePage[] = [
@@ -115,3 +116,4 @@ export default function AdminSitePagesPage() {
     </div>
   );
 }
+

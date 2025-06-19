@@ -1,7 +1,7 @@
 
 'use client';
 import Link from 'next/link';
-import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, LayoutGrid, ShoppingCart, ChevronDown, Compass, Settings, Info, Lightbulb, Wrench } from 'lucide-react'; // Added Info, Lightbulb, Wrench
+import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, LayoutGrid, ShoppingCart, ChevronDown, Compass, Settings, Info, Users, Mail } from 'lucide-react'; // Added Info
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useState, useEffect } from 'react';
@@ -20,7 +20,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { CustomMenuIcon } from '@/components/shared/CustomMenuIcon';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { CATEGORIES, SERVICE_CATEGORIES } from '@/lib/constants'; // Assuming SERVICE_CATEGORIES might be used later for a services dropdown. For now, categories is for templates.
+import { CATEGORIES } from '@/lib/constants'; 
 import { cn } from '@/lib/utils';
 import { getSiteSettings } from '@/lib/actions/settings.actions'; 
 import { DEFAULT_SETTINGS } from '@/lib/constants';
@@ -70,12 +70,6 @@ export function Navbar() {
   const siteTitle = siteSettings?.siteTitle || DEFAULT_SETTINGS.siteTitle;
   const logoUrl = siteSettings?.logoUrl;
 
-  const aboutLinks = [
-    { href: '/about-rio', label: 'About RIO', icon: Info },
-    { href: '/business-model', label: 'Business Model', icon: Lightbulb },
-    { href: '/developer-guide', label: 'Developer Guide', icon: Wrench },
-  ];
-
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
@@ -106,21 +100,12 @@ export function Navbar() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger className={cn(desktopMenuItemClass, "flex items-center gap-1 outline-none")}>
-              About <ChevronDown className="h-4 w-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56">
-              {aboutLinks.map((link) => (
-                <DropdownMenuItem key={link.href} asChild className={desktopDropdownItemClass}>
-                  <Link href={link.href} className="flex items-center gap-2">
-                    <link.icon className="h-4 w-4 text-muted-foreground" />
-                    {link.label}
-                  </Link>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Link
+            href="/about" // Direct link to new public about page
+            className={desktopMenuItemClass}
+          >
+            About Us
+          </Link>
 
           {user && (
             <Link
@@ -291,28 +276,16 @@ export function Navbar() {
                       ))}
                     </AccordionContent>
                   </AccordionItem>
-                  <AccordionItem value="about-rio" className="border-b-0">
-                    <AccordionTrigger className={mobileMenuAccordionTriggerClass}>
-                      <div className="flex items-center">
-                        <Info className="mr-2 h-5 w-5" />
-                        About
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pl-4 pt-1 pb-0 space-y-1">
-                      {aboutLinks.map((link) => (
-                        <Link
-                          key={link.href}
-                          href={link.href}
-                          onClick={() => setMobileMenuOpen(false)}
-                          className={mobileMenuAccordionContentLinkClass}
-                        >
-                           <link.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-                           {link.label}
-                        </Link>
-                      ))}
-                    </AccordionContent>
-                  </AccordionItem>
                 </Accordion>
+
+                <Link
+                  href="/about" // Direct link to new public about page
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={mobileMenuMainItemClass}
+                >
+                  <Users className="mr-2 h-5 w-5" /> {/* Using Users icon for About Us */}
+                  <span>About Us</span>
+                </Link>
                 
                 {user && (
                   <Link
@@ -373,3 +346,4 @@ export function Navbar() {
     </header>
   );
 }
+

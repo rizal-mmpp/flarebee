@@ -24,16 +24,25 @@ export async function updateSitePageContentAction(
 
     // Revalidate paths where this content might be displayed
     revalidatePath(`/admin/pages/edit/${pageId}`);
-    // Assuming pageId might be used directly in public paths e.g. /privacy-policy
-    // If you have a mapping (e.g. pageId 'privacy-policy' maps to path '/privacy'), adjust accordingly.
-    // For now, let's assume a simple mapping or common paths.
+    
     if (pageId === 'privacy-policy') {
         revalidatePath('/privacy');
     } else if (pageId === 'terms-of-service') {
         revalidatePath('/terms');
+    } else if (pageId === 'refund-policy') {
+        revalidatePath('/refund-policy');
+    } else if (pageId === 'public-about') { // Revalidate the new public about page
+        revalidatePath('/about');
+    } else if (pageId === 'about-rio') {
+        revalidatePath('/about-rio');
+    } else if (pageId === 'business-model') {
+        revalidatePath('/business-model');
+    } else if (pageId === 'developer-guide') {
+        revalidatePath('/developer-guide');
     }
-    // General revalidation for admin pages list might also be good
-    revalidatePath('/admin/pages');
+    
+    revalidatePath('/admin/pages'); // General revalidation for admin pages list
+    revalidatePath('/admin/docs'); // Revalidate admin docs index if content from there is edited
 
 
     return { success: true };
@@ -42,3 +51,4 @@ export async function updateSitePageContentAction(
     return { success: false, error: error.message || 'Failed to update page content.' };
   }
 }
+
