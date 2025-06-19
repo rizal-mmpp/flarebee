@@ -11,7 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Loader2, ServerCrash, Workflow, CheckSquare, Edit2, MessageSquare, UserCheck, Users, ShieldQuestion, Sparkles, RotateCcw, Briefcase } from 'lucide-react';
+import { ArrowLeft, Loader2, ServerCrash, Play, CheckSquare, Edit2, MessageSquare, UserCheck, Users, ShieldQuestion, Sparkles, RotateCcw, Briefcase, Save } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const journeyStages = [
   { id: 'discovery', title: 'Discovery & Awareness', icon: Sparkles, placeholder: 'How do potential customers become aware of this service? What problems are they trying to solve? Keywords they might use?' },
@@ -116,26 +117,45 @@ export default function SimulateJourneyPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div className="flex-grow">
             <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
-                <Workflow className="mr-3 h-8 w-8 text-primary" />
-                Customer Journey Simulation
+                <Play className="mr-3 h-8 w-8 text-primary flex-shrink-0" />
+                <span className="truncate">Customer Journey Simulation</span>
             </h1>
-            <p className="text-muted-foreground mt-1">For service: <span className="font-semibold text-foreground">{service.title}</span></p>
+            <p className="text-muted-foreground mt-1 ml-11 sm:ml-0">For service: <span className="font-semibold text-foreground">{service.title}</span></p>
         </div>
-        <div className="flex items-center justify-end gap-3 w-full md:w-auto flex-shrink-0">
-            <Button variant="outline" onClick={() => router.push(`/admin/services/${serviceId}`)} className="group">
-                <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
-                Back to Service
-            </Button>
-            <Button variant="outline" onClick={handleResetJourney} className="group">
-                <RotateCcw className="mr-2 h-4 w-4" /> Reset Notes
-            </Button>
-            <Button onClick={handleSaveJourney} className="group bg-primary/80 hover:bg-primary/90">
-                <Edit2 className="mr-2 h-4 w-4" /> Save Journey (Dev Log)
-            </Button>
-        </div>
+        <TooltipProvider delayDuration={0}>
+            <div className="flex items-center gap-2 justify-start sm:justify-end w-full sm:w-auto">
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button variant="outline" size="icon" onClick={() => router.push(`/admin/services/${serviceId}`)}>
+                            <ArrowLeft className="h-4 w-4" />
+                            <span className="sr-only">Back to Service Details</span>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>Back to Service Details</p></TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button variant="outline" size="icon" onClick={handleResetJourney}>
+                            <RotateCcw className="h-4 w-4" />
+                             <span className="sr-only">Reset Notes</span>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>Reset Notes</p></TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button size="icon" onClick={handleSaveJourney} className="bg-primary/80 hover:bg-primary/90">
+                            <Save className="h-4 w-4" /> {/* Changed from Edit2 to Save icon */}
+                            <span className="sr-only">Save Journey Simulation</span>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>Save Journey Simulation (Dev Log)</p></TooltipContent>
+                </Tooltip>
+            </div>
+        </TooltipProvider>
       </div>
 
       <Card>
@@ -176,10 +196,13 @@ export default function SimulateJourneyPage() {
         </CardContent>
         <CardFooter className="flex justify-end pt-6 border-t">
              <Button onClick={handleSaveJourney} className="group bg-primary hover:bg-primary/90">
-                <Edit2 className="mr-2 h-4 w-4" /> Save Journey Simulation (Dev Log)
+                <Save className="mr-2 h-4 w-4" /> {/* Changed from Edit2 to Save icon */}
+                 Save Journey Simulation (Dev Log)
             </Button>
         </CardFooter>
       </Card>
     </div>
   );
 }
+
+    

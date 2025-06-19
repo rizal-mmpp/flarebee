@@ -11,9 +11,10 @@ import type { Service } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, ServerCrash, Briefcase, Edit, Tag, Info, DollarSign, Clock, Users, LinkIcon, ExternalLink, ListChecks, Workflow } from 'lucide-react';
+import { ArrowLeft, Loader2, ServerCrash, Briefcase, Edit, Tag, Info, DollarSign, Clock, Users, LinkIcon, ExternalLink, ListChecks, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const formatIDR = (amount?: number) => {
   if (amount === undefined || amount === null) return 'N/A';
@@ -112,23 +113,42 @@ export default function ServiceDetailPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
-          <Briefcase className="mr-3 h-8 w-8 text-primary" />
-          {service.title}
+          <Briefcase className="mr-3 h-8 w-8 text-primary flex-shrink-0" />
+          <span className="truncate">{service.title}</span>
         </h1>
-        <div className="flex items-center justify-end gap-3 w-full md:w-auto flex-shrink-0">
-            <Button variant="outline" onClick={() => router.push('/admin/services')} className="group">
-                <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
-                Back to Services
-            </Button>
-             <Button variant="outline" onClick={() => router.push(`/admin/services/${service.id}/simulate-journey`)} className="group">
-                <Workflow className="mr-2 h-4 w-4" /> Simulate Journey
-            </Button>
-             <Button variant="default" onClick={() => router.push(`/admin/services/edit/${service.id}`)} className="group bg-primary/80 hover:bg-primary/90">
-                <Edit className="mr-2 h-4 w-4" /> Edit Service
-            </Button>
-        </div>
+        <TooltipProvider delayDuration={0}>
+          <div className="flex items-center gap-2 justify-start sm:justify-end w-full sm:w-auto">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={() => router.push('/admin/services')}>
+                  <ArrowLeft className="h-4 w-4" />
+                  <span className="sr-only">Back to Services</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Back to Services</p></TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={() => router.push(`/admin/services/${service.id}/simulate-journey`)}>
+                  <Play className="h-4 w-4" />
+                  <span className="sr-only">Simulate Customer Journey</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Simulate Customer Journey</p></TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                 <Button variant="default" size="icon" onClick={() => router.push(`/admin/services/edit/${service.id}`)} className="bg-primary/80 hover:bg-primary/90">
+                  <Edit className="h-4 w-4" />
+                  <span className="sr-only">Edit Service</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Edit Service</p></TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
       </div>
 
       <Card>
@@ -245,3 +265,5 @@ export default function ServiceDetailPage() {
     </div>
   );
 }
+
+    
