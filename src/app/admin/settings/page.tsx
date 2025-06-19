@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition, useMemo } from 'react';
 import { useForm, type SubmitHandler, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -18,6 +18,11 @@ import type { SiteSettings } from '@/lib/types';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 
+import ColorPicker, { type Color } from '@rc-component/color-picker';
+import RcColor from 'rc-color'; // For converting HSL string to Color object/hex
+import '@rc-component/color-picker/assets/index.css';
+
+
 const hslColorStringRegex = /^\d{1,3}\s+\d{1,3}%\s+\d{1,3}%$/;
 
 const settingsFormSchema = z.object({
@@ -33,30 +38,31 @@ const settingsFormSchema = z.object({
 
 type SettingsFormValues = z.infer<typeof settingsFormSchema>;
 
-interface ColorPreviewBoxProps {
-  hslColor: string;
+
+// Helper to convert HSL string "H S% L%" to a hex string for ColorPicker
+function hslStringToHex(hslString: string): string {
+  if (!hslColorStringRegex.test(hslString)) return '#000000'; // Default or error color
+  const parts = hslString.match(/(\d+)\s+(\d+)%\s+(\d+)%/);
+  if (!parts) return '#000000';
+  
+  const h = parseInt(parts[1], 10);
+  const s = parseInt(parts[2], 10) / 100;
+  const l = parseInt(parts[3], 10) / 100;
+  
+  try {
+    const color = new RcColor({ h, s, l, a: 1 });
+    return color.toHexString();
+  } catch (e) {
+    console.error("Error converting HSL string to hex:", e);
+    return '#000000';
+  }
 }
 
-const ColorPreviewBox: React.FC<ColorPreviewBoxProps> = ({ hslColor }) => {
-  const [bgColor, setBgColor] = useState<string>('transparent');
-
-  useEffect(() => {
-    if (hslColorStringRegex.test(hslColor)) {
-      const parts = hslColor.split(' ');
-      setBgColor(`hsl(${parts[0]}, ${parts[1]}, ${parts[2]})`);
-    } else {
-      setBgColor('transparent'); // Or some error color
-    }
-  }, [hslColor]);
-
-  return (
-    <div
-      className="h-8 w-8 rounded-md border border-input ml-2 shrink-0"
-      style={{ backgroundColor: bgColor }}
-      title={bgColor === 'transparent' ? 'Invalid HSL' : `Preview: ${bgColor}`}
-    />
-  );
-};
+// Helper to convert rc-color Color object to HSL string "H S% L%"
+function rcColorToHslString(rcColorInstance: Color): string {
+  const hsl = rcColorInstance.toHsl(); // { h, s, l, a } with s, l as 0-1
+  return `${Math.round(hsl.h)} ${Math.round(hsl.s * 100)}% ${Math.round(hsl.l * 100)}%`;
+}
 
 
 export default function AdminSettingsPage() {
@@ -67,7 +73,7 @@ export default function AdminSettingsPage() {
   const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
-  const { register, handleSubmit, control, setValue, reset, watch, formState: { errors } } = useForm<SettingsFormValues>({
+  const { control, handleSubmit, setValue, reset, formState: { errors } } = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsFormSchema),
     defaultValues: {
       siteTitle: DEFAULT_SETTINGS.siteTitle,
@@ -81,12 +87,6 @@ export default function AdminSettingsPage() {
     },
   });
 
-  const watchedLightPrimary = watch('themePrimaryColor');
-  const watchedLightAccent = watch('themeAccentColor');
-  const watchedLightBackground = watch('themeBackgroundColor');
-  const watchedDarkPrimary = watch('darkThemePrimaryColor');
-  const watchedDarkAccent = watch('darkThemeAccentColor');
-  const watchedDarkBackground = watch('darkThemeBackgroundColor');
 
   useEffect(() => {
     async function loadSettings() {
@@ -190,6 +190,35 @@ export default function AdminSettingsPage() {
       </div>
     );
   }
+  
+  const renderColorPickerField = (name: keyof SettingsFormValues, label: string) => (
+    <div>
+      <Label htmlFor={name}>{label}</Label>
+      <Controller
+        name={name}
+        control={control}
+        render={({ field }) => {
+          // Convert HSL string from form state to hex for ColorPicker's value
+          const pickerColorValue = useMemo(() => hslStringToHex(field.value as string), [field.value]);
+          
+          return (
+            <ColorPicker
+              value={pickerColorValue}
+              onChange={(colorObject: Color) => {
+                // Convert ColorPicker's output Color object to HSL string for form state
+                field.onChange(rcColorToHslString(colorObject));
+              }}
+              placement="bottomLeft"
+              className="mt-1 w-full [&_.rc-color-picker-trigger]:h-10 [&_.rc-color-picker-trigger]:w-full [&_.rc-color-picker-trigger]:rounded-xl [&_.rc-color-picker-trigger]:border [&_.rc-color-picker-trigger]:border-input"
+              // destroyOnClose // Consider if panel state needs to be reset
+            />
+          );
+        }}
+      />
+      {errors[name] && <p className="text-sm text-destructive mt-1">{(errors[name] as any)?.message}</p>}
+    </div>
+  );
+
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
@@ -212,7 +241,11 @@ export default function AdminSettingsPage() {
         <CardContent className="space-y-6">
           <div>
             <Label htmlFor="siteTitle">Site Title</Label>
-            <Input id="siteTitle" {...register('siteTitle')} className="mt-1" />
+             <Controller
+                name="siteTitle"
+                control={control}
+                render={({ field }) => <Input {...field} id="siteTitle" className="mt-1" />}
+              />
             {errors.siteTitle && <p className="text-sm text-destructive mt-1">{errors.siteTitle.message}</p>}
           </div>
           <div>
@@ -254,30 +287,9 @@ export default function AdminSettingsPage() {
           <div>
             <h3 className="text-lg font-semibold mb-3 flex items-center text-foreground/90"><Sun className="mr-2 h-5 w-5 text-yellow-500"/>Light Theme</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
-              <div>
-                <Label htmlFor="themePrimaryColor">Primary Color (HSL)</Label>
-                <div className="flex items-center mt-1">
-                  <Input id="themePrimaryColor" {...register('themePrimaryColor')} placeholder="e.g., 50 90% 55%" />
-                  <ColorPreviewBox hslColor={watchedLightPrimary} />
-                </div>
-                {errors.themePrimaryColor && <p className="text-sm text-destructive mt-1">{errors.themePrimaryColor.message}</p>}
-              </div>
-              <div>
-                <Label htmlFor="themeAccentColor">Accent Color (HSL)</Label>
-                 <div className="flex items-center mt-1">
-                  <Input id="themeAccentColor" {...register('themeAccentColor')} placeholder="e.g., 30 84% 51%" />
-                  <ColorPreviewBox hslColor={watchedLightAccent} />
-                </div>
-                {errors.themeAccentColor && <p className="text-sm text-destructive mt-1">{errors.themeAccentColor.message}</p>}
-              </div>
-              <div>
-                <Label htmlFor="themeBackgroundColor">Background Color (HSL)</Label>
-                 <div className="flex items-center mt-1">
-                  <Input id="themeBackgroundColor" {...register('themeBackgroundColor')} placeholder="e.g., 228 100% 98%" />
-                  <ColorPreviewBox hslColor={watchedLightBackground} />
-                </div>
-                {errors.themeBackgroundColor && <p className="text-sm text-destructive mt-1">{errors.themeBackgroundColor.message}</p>}
-              </div>
+              {renderColorPickerField('themePrimaryColor', 'Primary Color')}
+              {renderColorPickerField('themeAccentColor', 'Accent Color')}
+              {renderColorPickerField('themeBackgroundColor', 'Background Color')}
             </div>
           </div>
 
@@ -287,30 +299,9 @@ export default function AdminSettingsPage() {
           <div>
             <h3 className="text-lg font-semibold mb-3 flex items-center text-foreground/90"><Moon className="mr-2 h-5 w-5 text-indigo-400"/>Dark Theme</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
-              <div>
-                <Label htmlFor="darkThemePrimaryColor">Primary Color (HSL)</Label>
-                 <div className="flex items-center mt-1">
-                  <Input id="darkThemePrimaryColor" {...register('darkThemePrimaryColor')} placeholder="e.g., 50 90% 60%" />
-                  <ColorPreviewBox hslColor={watchedDarkPrimary} />
-                </div>
-                {errors.darkThemePrimaryColor && <p className="text-sm text-destructive mt-1">{errors.darkThemePrimaryColor.message}</p>}
-              </div>
-              <div>
-                <Label htmlFor="darkThemeAccentColor">Accent Color (HSL)</Label>
-                 <div className="flex items-center mt-1">
-                  <Input id="darkThemeAccentColor" {...register('darkThemeAccentColor')} placeholder="e.g., 30 84% 55%" />
-                  <ColorPreviewBox hslColor={watchedDarkAccent} />
-                </div>
-                {errors.darkThemeAccentColor && <p className="text-sm text-destructive mt-1">{errors.darkThemeAccentColor.message}</p>}
-              </div>
-              <div>
-                <Label htmlFor="darkThemeBackgroundColor">Background Color (HSL)</Label>
-                <div className="flex items-center mt-1">
-                  <Input id="darkThemeBackgroundColor" {...register('darkThemeBackgroundColor')} placeholder="e.g., 210 70% 18%" />
-                  <ColorPreviewBox hslColor={watchedDarkBackground} />
-                </div>
-                {errors.darkThemeBackgroundColor && <p className="text-sm text-destructive mt-1">{errors.darkThemeBackgroundColor.message}</p>}
-              </div>
+              {renderColorPickerField('darkThemePrimaryColor', 'Primary Color')}
+              {renderColorPickerField('darkThemeAccentColor', 'Accent Color')}
+              {renderColorPickerField('darkThemeBackgroundColor', 'Background Color')}
             </div>
           </div>
            <div className="mt-2 p-3 border border-blue-500/30 bg-blue-500/5 rounded-md">
@@ -331,4 +322,3 @@ export default function AdminSettingsPage() {
     </form>
   );
 }
-
