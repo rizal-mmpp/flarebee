@@ -49,11 +49,16 @@ export default function EditSitePage() {
       setContentError(null);
       getSitePageContent(pageId)
         .then((data) => {
-          if (data) {
+          if (data && 'content' in data && 'title' in data) { // Ensure it's a standard page type
             setInitialPageData(data);
             setValue('title', data.title);
             setValue('content', data.content);
-          } else {
+          } else if (data && data.id === 'public-about') {
+            // This editor is not for public-about, redirect or show error
+            setContentError(`This editor is for standard pages. To edit the "Public About Us" page, please use its dedicated editor.`);
+            // router.push('/admin/pages/edit/public-about'); // Alternative: redirect
+          }
+          else {
             setContentError(`Content for page ID "${pageId}" not found or could not be loaded.`);
           }
         })
@@ -65,11 +70,15 @@ export default function EditSitePage() {
           setIsLoadingContent(false);
         });
     }
-  }, [pageId, setValue]);
+  }, [pageId, setValue, router]);
 
   const onSubmit: SubmitHandler<PageContentFormValues> = (data) => {
     startSaveTransition(async () => {
-      const result = await updateSitePageContentAction(pageId, data.title, data.content);
+      const formData = new FormData();
+      formData.append('title', data.title);
+      formData.append('content', data.content);
+
+      const result = await updateSitePageContentAction(pageId, formData);
       if (result.success) {
         toast({
           title: 'Content Saved',
