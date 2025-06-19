@@ -17,11 +17,10 @@ import { CustomDropzone } from '@/components/ui/custom-dropzone';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   ArrowLeft, Loader2, ServerCrash, Save, Play, ChevronLeft, ChevronRight, 
-  UploadCloud, Image as ImageIcon 
+  UploadCloud, Image as ImageIcon, FileText as StageDetailIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Default journey stages if not found in service data
 const DEFAULT_JOURNEY_STAGES: JourneyStage[] = [
   { id: 'discovery', title: 'Discovery', details: ["Touchpoints: Homepage → “Explore Our Services”, Services List → “Business Profile Website”, Paid Ads, Social Media, WhatsApp Campaigns", "Key Actions: Click service card → open dedicated service landing page"], placeholder: "Describe visual elements and user interactions for Discovery. What does the user see on the homepage? How is the service presented in lists/ads? What's the initial hook?" },
   { id: 'service-landing-page', title: 'Service Landing Page', details: ["Content: Hero: “Professional Website for Your Business – Launch in Days”, Value props (e.g., Free subdomain, SEO ready, CMS), Demo links / client success stories", "CTAs: “Start Now” (Primary), “Preview Demo”, “Chat First”"], placeholder: "Detail the layout of the service landing page. Visual hierarchy? CTA displays? Demo preview look? How are value props communicated visually?" },
@@ -95,7 +94,6 @@ export default function SimulateJourneyPage() {
   };
   
   const handleImageFileChange = useCallback((stageId: string, file: File | null) => {
-    // Revoke previous object URL if it exists for this stage
     if (stageImages[stageId]) {
       URL.revokeObjectURL(stageImages[stageId]!);
     }
@@ -167,10 +165,10 @@ export default function SimulateJourneyPage() {
   }
   
   return (
-    <div className="flex flex-col h-full min-h-[calc(100vh-theme(spacing.24))] bg-background"> {/* Adjusted min-height */}
+    <div className="flex flex-col h-full min-h-[calc(100vh-theme(spacing.16))]"> {/* Reduced overall top/bottom padding */}
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-30 flex items-center justify-between p-3 md:p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
-        <div className="flex items-center gap-2">
+      <header className="sticky top-0 z-30 flex items-center justify-between px-4 md:px-6 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
+        <div className="flex items-center gap-3">
             <Play className="h-6 w-6 text-primary flex-shrink-0" />
             <div>
                 <h1 className="text-lg md:text-xl font-bold tracking-tight text-foreground leading-tight">
@@ -206,14 +204,33 @@ export default function SimulateJourneyPage() {
       </header>
 
       {/* Main Content Grid */}
-      <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-0">
+      <div className="flex-grow grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-0"> {/* Changed grid for sidebar */}
         {/* Left Column: Stage Content */}
-        <main className="lg:col-span-8 xl:col-span-9 p-4 md:p-6 space-y-6 overflow-y-auto">
+        <main className="lg:col-span-2 xl:col-span-3 p-4 md:p-6 space-y-6 overflow-y-auto">
           <Card className="rounded-xl shadow-sm">
             <CardHeader className="pb-3 pt-5 px-5">
-              <CardTitle className="text-xl md:text-2xl font-semibold text-foreground">
-                Stage {String(currentStageIndex + 1).padStart(2, '0')}: {currentStage.title}
+              <CardTitle className="text-xl md:text-2xl font-semibold text-foreground flex items-center">
+                 <StageDetailIcon className="mr-3 h-6 w-6 text-primary/80" />
+                 Stage {String(currentStageIndex + 1).padStart(2, '0')}: {currentStage.title}
               </CardTitle>
+               <div className="flex justify-between items-center mt-3 mb-1"> {/* Pagination moved here */}
+                <Button
+                  variant="outline"
+                  onClick={goToPreviousStage}
+                  disabled={currentStageIndex === 0}
+                  className="h-9 px-4 text-sm group"
+                >
+                  <ChevronLeft className="mr-1.5 h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" /> Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={goToNextStage}
+                  disabled={currentStageIndex === journeyStages.length - 1}
+                  className="h-9 px-4 text-sm group"
+                >
+                  Next <ChevronRight className="ml-1.5 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="pt-2 space-y-5 px-5 pb-5">
               <div>
@@ -274,38 +291,18 @@ export default function SimulateJourneyPage() {
               </div>
             </CardContent>
           </Card>
-          
-          {/* Pagination for Left Column */}
-          <div className="flex justify-between items-center mt-auto pt-6">
-            <Button
-              variant="outline"
-              onClick={goToPreviousStage}
-              disabled={currentStageIndex === 0}
-              className="h-10 px-5 text-sm group"
-            >
-              <ChevronLeft className="mr-2 h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" /> Previous Stage
-            </Button>
-            <Button
-              variant="outline"
-              onClick={goToNextStage}
-              disabled={currentStageIndex === journeyStages.length - 1}
-              className="h-10 px-5 text-sm group"
-            >
-              Next Stage <ChevronRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-            </Button>
-          </div>
         </main>
 
         {/* Right Column: Vertical Stepper */}
-        <aside className="lg:col-span-4 xl:col-span-3 p-4 md:p-6 bg-muted/30 border-l border-border/70 overflow-y-auto">
-          <div className="sticky top-0 py-2 bg-muted/30 z-10 mb-1 -mx-4 md:-mx-6 px-4 md:px-6 border-b border-border/50">
+        <aside className="lg:col-span-1 xl:col-span-1 p-4 md:p-6 bg-card border-l border-border overflow-y-auto"> {/* Changed to bg-card */}
+          <div className="sticky top-0 py-2 bg-card z-10 mb-1 -mx-4 md:-mx-6 px-4 md:px-6 border-b border-border/50">
             <h3 className="text-base font-semibold text-foreground">Journey Stages ({journeyStages.length})</h3>
           </div>
           <div className="relative space-y-0 mt-2">
             {journeyStages.map((stage, index) => (
               <div 
                 key={stage.id} 
-                className="flex items-start group cursor-pointer py-1.5"
+                className="flex items-start group cursor-pointer py-1" // Reduced py-1.5 to py-1
                 onClick={() => setCurrentStageIndex(index)}
               >
                 <div className="flex flex-col items-center mr-3 flex-shrink-0">
@@ -321,7 +318,7 @@ export default function SimulateJourneyPage() {
                   </div>
                   {index < journeyStages.length - 1 && (
                     <div className={cn(
-                      "w-px h-6 mt-1.5 transition-colors duration-200", 
+                      "w-px h-4 mt-1 transition-colors duration-200", // Reduced h-6 to h-4, mt-1.5 to mt-1
                       index < currentStageIndex ? "bg-primary" : "bg-border group-hover:bg-primary/30"
                     )}></div>
                   )}
@@ -344,5 +341,3 @@ export default function SimulateJourneyPage() {
     </div>
   );
 }
-
-    
