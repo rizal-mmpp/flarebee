@@ -2,11 +2,11 @@
 'use client';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { getAllServicesFromFirestore } from '@/lib/firebase/firestoreServices'; // Updated import
-import type { Service } from '@/lib/types'; // Updated type
-import { Briefcase, Loader2, PlusCircle, RefreshCw, Edit2, Trash2, Eye, MoreHorizontal, ExternalLink, AlertCircle } from 'lucide-react'; // Changed icon
+import { getAllServicesFromFirestore } from '@/lib/firebase/firestoreServices'; 
+import type { Service } from '@/lib/types'; 
+import { Briefcase, Loader2, PlusCircle, RefreshCw, Edit2, Trash2, MoreHorizontal, AlertCircle, Eye } from 'lucide-react'; 
 import { useToast } from '@/hooks/use-toast';
-import { deleteServiceAction } from '@/lib/actions/service.actions'; // Updated import
+import { deleteServiceAction } from '@/lib/actions/service.actions'; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
@@ -57,7 +57,7 @@ const getStatusBadgeVariant = (status: Service['status']) => {
   }
 };
 
-const searchByServiceOptions = [ // Renamed
+const searchByServiceOptions = [ 
   { value: 'title', label: 'Title' },
   { value: 'category.name', label: 'Category' },
   { value: 'pricingModel', label: 'Pricing Model' },
@@ -65,9 +65,9 @@ const searchByServiceOptions = [ // Renamed
   { value: 'tags', label: 'Tags' },
 ];
 
-export default function AdminServicesPage() { // Renamed component
-  const [allFetchedServices, setAllFetchedServices] = useState<Service[]>([]); // Updated type
-  const [displayedServices, setDisplayedServices] = useState<Service[]>([]); // Updated type
+export default function AdminServicesPage() { 
+  const [allFetchedServices, setAllFetchedServices] = useState<Service[]>([]); 
+  const [displayedServices, setDisplayedServices] = useState<Service[]>([]); 
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const { toast } = useToast();
@@ -81,14 +81,14 @@ export default function AdminServicesPage() { // Renamed component
   const [totalItems, setTotalItems] = useState(0);
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null); // Updated type
+  const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null); 
   
   const searchColumnId = 'title'; 
 
-  const fetchServices = useCallback(async () => { // Renamed function
+  const fetchServices = useCallback(async () => { 
     setIsLoading(true);
     try {
-      const result = await getAllServicesFromFirestore({ // Updated function call
+      const result = await getAllServicesFromFirestore({ 
         pageIndex: pagination.pageIndex,
         pageSize: pagination.pageSize,
       });
@@ -96,10 +96,10 @@ export default function AdminServicesPage() { // Renamed component
       setPageCount(result.pageCount);
       setTotalItems(result.totalItems);
     } catch (error: any) {
-      console.error("Failed to fetch services:", error); // Updated message
+      console.error("Failed to fetch services:", error); 
       toast({
-        title: "Error Fetching Services", // Updated message
-        description: error.message || "Could not load services.", // Updated message
+        title: "Error Fetching Services", 
+        description: error.message || "Could not load services.", 
         variant: "destructive",
       });
     } finally {
@@ -116,7 +116,7 @@ export default function AdminServicesPage() { // Renamed component
     const currentSearchTerm = typeof filter?.value === 'string' ? filter.value.toLowerCase() : '';
 
     if (currentSearchTerm) {
-      const filtered = allFetchedServices.filter(service => { // Updated variable name
+      const filtered = allFetchedServices.filter(service => { 
         const lowerSearchTerm = currentSearchTerm;
         switch (selectedSearchField) {
           case 'title':
@@ -133,14 +133,14 @@ export default function AdminServicesPage() { // Renamed component
             return true;
         }
       });
-      setDisplayedServices(filtered); // Updated variable name
+      setDisplayedServices(filtered); 
     } else {
-      setDisplayedServices(allFetchedServices); // Updated variable name
+      setDisplayedServices(allFetchedServices); 
     }
   }, [allFetchedServices, columnFilters, selectedSearchField, searchColumnId]);
 
 
-  const handleDeleteClick = (service: Service) => { // Updated type
+  const handleDeleteClick = (service: Service) => { 
     setServiceToDelete(service);
     setDialogOpen(true);
   };
@@ -148,12 +148,12 @@ export default function AdminServicesPage() { // Renamed component
   const confirmDelete = async () => {
     if (serviceToDelete) {
       setIsDeleting(serviceToDelete.id);
-      const result = await deleteServiceAction(serviceToDelete.id); // Updated action call
+      const result = await deleteServiceAction(serviceToDelete.id); 
       if (result.success) {
-        toast({ title: "Service Deleted", description: result.message }); // Updated message
+        toast({ title: "Service Deleted", description: result.message }); 
         fetchServices(); 
       } else {
-        toast({ title: "Error Deleting Service", description: result.error, variant: "destructive" }); // Updated message
+        toast({ title: "Error Deleting Service", description: result.error, variant: "destructive" }); 
       }
       setServiceToDelete(null);
       setIsDeleting(null);
@@ -161,7 +161,7 @@ export default function AdminServicesPage() { // Renamed component
     setDialogOpen(false);
   };
 
-  const columns = useMemo<ColumnDef<Service, any>[]>(() => [ // Updated type
+  const columns = useMemo<ColumnDef<Service, any>[]>(() => [ 
     {
       accessorKey: "imageUrl",
       header: "Image",
@@ -180,7 +180,11 @@ export default function AdminServicesPage() { // Renamed component
     {
       accessorKey: "title",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Title" />,
-      cell: ({ row }) => <span className="font-medium text-foreground">{row.original.title}</span>, // Ensured text-foreground for contrast
+      cell: ({ row }) => (
+        <Link href={`/admin/services/${row.original.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
+          {row.original.title}
+        </Link>
+      ),
     },
     {
       accessorKey: "category.name",
@@ -219,12 +223,11 @@ export default function AdminServicesPage() { // Renamed component
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {/* Public view link will be different for services - to be added later */}
-              {/* <DropdownMenuItem asChild>
-                <Link href={`/services/${row.original.id}`} target="_blank">
-                  <Eye className="mr-2 h-4 w-4" /> View Public <ExternalLink className="ml-auto h-3 w-3"/>
+              <DropdownMenuItem asChild>
+                <Link href={`/admin/services/${row.original.id}`}>
+                  <Eye className="mr-2 h-4 w-4" /> View Details
                 </Link>
-              </DropdownMenuItem> */}
+              </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href={`/admin/services/edit/${row.original.id}`}>
                   <Edit2 className="mr-2 h-4 w-4" /> Edit
@@ -256,7 +259,7 @@ export default function AdminServicesPage() { // Renamed component
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
-            <Briefcase className="mr-3 h-8 w-8 text-primary" /> {/* Changed icon */}
+            <Briefcase className="mr-3 h-8 w-8 text-primary" /> 
             Manage Services 
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -302,7 +305,7 @@ export default function AdminServicesPage() { // Renamed component
             isLoading={isLoading}
             searchColumnId={searchColumnId} 
             searchPlaceholder="Search services..."
-            searchByOptions={searchByServiceOptions} // Updated options
+            searchByOptions={searchByServiceOptions} 
             selectedSearchBy={selectedSearchField}
             onSelectedSearchByChange={setSelectedSearchField}
             pageSizeOptions={[20, 50, 100]}
