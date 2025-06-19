@@ -70,6 +70,16 @@ const nextConfig: NextConfig = {
   serverActions: {
     bodySizeLimit: '5mb', // Increased limit for file uploads
   },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Prevent 'fs' module from being bundled on the client
+      config.resolve.fallback = {
+        ...config.resolve.fallback, // Ensure we don't overwrite other fallbacks
+        fs: false,
+      };
+    }
+    return config;
+  },
 };
 
 export default nextConfig;
