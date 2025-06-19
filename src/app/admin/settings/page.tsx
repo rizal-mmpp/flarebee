@@ -18,9 +18,7 @@ import type { SiteSettings } from '@/lib/types';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 
-import ColorPicker, { type Color } from '@rc-component/color-picker';
-import RcColor from 'rc-color'; // For converting HSL string to Color object/hex
-import '@rc-component/color-picker/assets/index.css';
+import { HslColorPicker, type HslColor } from 'react-colorful';
 
 
 const hslColorStringRegex = /^\d{1,3}\s+\d{1,3}%\s+\d{1,3}%$/;
@@ -39,29 +37,21 @@ const settingsFormSchema = z.object({
 type SettingsFormValues = z.infer<typeof settingsFormSchema>;
 
 
-// Helper to convert HSL string "H S% L%" to a hex string for ColorPicker
-function hslStringToHex(hslString: string): string {
-  if (!hslColorStringRegex.test(hslString)) return '#000000'; // Default or error color
+// Helper to convert HSL string "H S% L%" to react-colorful HSL object {h, s, l} (s, l are 0-100)
+function hslStringToHslObject(hslString: string): HslColor {
+  if (!hslColorStringRegex.test(hslString)) return { h: 0, s: 0, l: 0 };
   const parts = hslString.match(/(\d+)\s+(\d+)%\s+(\d+)%/);
-  if (!parts) return '#000000';
-
-  const h = parseInt(parts[1], 10);
-  const s = parseInt(parts[2], 10) / 100;
-  const l = parseInt(parts[3], 10) / 100;
-
-  try {
-    const color = new RcColor({ h, s, l, a: 1 });
-    return color.toHexString();
-  } catch (e) {
-    console.error("Error converting HSL string to hex:", e);
-    return '#000000';
-  }
+  if (!parts) return { h: 0, s: 0, l: 0 };
+  return {
+    h: parseInt(parts[1], 10),
+    s: parseInt(parts[2], 10),
+    l: parseInt(parts[3], 10),
+  };
 }
 
-// Helper to convert rc-color Color object to HSL string "H S% L%"
-function rcColorToHslString(rcColorInstance: Color): string {
-  const hsl = rcColorInstance.toHsl(); // { h, s, l, a } with s, l as 0-1
-  return `${Math.round(hsl.h)} ${Math.round(hsl.s * 100)}% ${Math.round(hsl.l * 100)}%`;
+// Helper to convert react-colorful HSL object {h, s, l} to HSL string "H S% L%"
+function hslObjectToHslString(hslObject: HslColor): string {
+  return `${Math.round(hslObject.h)} ${Math.round(hslObject.s)}% ${Math.round(hslObject.l)}%`;
 }
 
 
@@ -73,7 +63,7 @@ export default function AdminSettingsPage() {
   const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
-  const { control, handleSubmit, setValue, reset, formState: { errors } } = useForm<SettingsFormValues>({
+  const { control, handleSubmit, setValue, reset, watch, formState: { errors } } = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsFormSchema),
     defaultValues: {
       siteTitle: DEFAULT_SETTINGS.siteTitle,
@@ -191,31 +181,41 @@ export default function AdminSettingsPage() {
     );
   }
 
-  const renderColorPickerField = (name: keyof SettingsFormValues, label: string) => (
-    <div>
-      <Label htmlFor={name}>{label}</Label>
-      <Controller
-        name={name}
-        control={control}
-        render={({ field }) => {
-          // Convert HSL string from form state to hex for ColorPicker's value
-          const pickerColorValue = useMemo(() => hslStringToHex(field.value as string), [field.value]);
+  const renderColorPickerField = (name: keyof SettingsFormValues, label: string) => {
+    const formValue = watch(name) as string; // Get current HSL string from form
+    const colorForPicker = useMemo(() => hslStringToHslObject(formValue), [formValue]);
 
-          return (
-            <ColorPicker
-              value={pickerColorValue}
-              onChange={(colorObject: Color) => {
-                // Convert ColorPicker's output Color object to HSL string for form state
-                field.onChange(rcColorToHslString(colorObject));
-              }}
-              className="mt-1 w-full [&_.rc-color-picker-trigger]:h-10 [&_.rc-color-picker-trigger]:w-full [&_.rc-color-picker-trigger]:rounded-xl [&_.rc-color-picker-trigger]:border [&_.rc-color-picker-trigger]:border-input"
+    return (
+        <div className="space-y-2">
+            <Label htmlFor={name}>{label}</Label>
+            <Controller
+                name={name}
+                control={control}
+                render={({ field }) => (
+                    <div className="flex flex-col items-center">
+                        <HslColorPicker
+                            color={colorForPicker}
+                            onChange={(newHslColor) => {
+                                field.onChange(hslObjectToHslString(newHslColor));
+                            }}
+                            className="!w-full !h-auto aspect-square max-w-[280px]"
+                        />
+                        <Input
+                            id={name}
+                            value={field.value}
+                            onChange={(e) => {
+                                field.onChange(e.target.value); // Allow direct HSL string input
+                            }}
+                            className="mt-2 text-sm text-center w-full max-w-[280px]"
+                            placeholder="H S% L%"
+                        />
+                    </div>
+                )}
             />
-          );
-        }}
-      />
-      {errors[name] && <p className="text-sm text-destructive mt-1">{(errors[name] as any)?.message}</p>}
-    </div>
-  );
+            {errors[name] && <p className="text-sm text-destructive mt-1 text-center">{(errors[name] as any)?.message}</p>}
+        </div>
+    );
+};
 
 
   return (
@@ -281,10 +281,9 @@ export default function AdminSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
-          {/* Light Theme Section */}
           <div>
-            <h3 className="text-lg font-semibold mb-3 flex items-center text-foreground/90"><Sun className="mr-2 h-5 w-5 text-yellow-500"/>Light Theme</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
+            <h3 className="text-lg font-semibold mb-4 flex items-center text-foreground/90"><Sun className="mr-2 h-5 w-5 text-yellow-500"/>Light Theme</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8">
               {renderColorPickerField('themePrimaryColor', 'Primary Color')}
               {renderColorPickerField('themeAccentColor', 'Accent Color')}
               {renderColorPickerField('themeBackgroundColor', 'Background Color')}
@@ -293,10 +292,9 @@ export default function AdminSettingsPage() {
 
           <Separator />
 
-          {/* Dark Theme Section */}
           <div>
-            <h3 className="text-lg font-semibold mb-3 flex items-center text-foreground/90"><Moon className="mr-2 h-5 w-5 text-indigo-400"/>Dark Theme</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
+            <h3 className="text-lg font-semibold mb-4 flex items-center text-foreground/90"><Moon className="mr-2 h-5 w-5 text-indigo-400"/>Dark Theme</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8">
               {renderColorPickerField('darkThemePrimaryColor', 'Primary Color')}
               {renderColorPickerField('darkThemeAccentColor', 'Accent Color')}
               {renderColorPickerField('darkThemeBackgroundColor', 'Background Color')}
