@@ -1,26 +1,27 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import NextImage from 'next/image';
+
 import { getServiceByIdFromFirestore } from '@/lib/firebase/firestoreServices';
 import type { Service, JourneyStage } from '@/lib/types';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { 
-  ArrowLeft, Loader2, ServerCrash, Play, Save, Briefcase, ChevronLeft, ChevronRight,
-  UploadCloud, Image as ImageIcon, Search, Presentation, Wand2, UserPlus, LayoutDashboard, ShoppingBag, CreditCard, ListChecks, Rocket, Repeat
-} from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
-import NextImage from 'next/image'; 
 import { CustomDropzone } from '@/components/ui/custom-dropzone';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { 
+  ArrowLeft, Loader2, ServerCrash, Save, Play, ChevronLeft, ChevronRight, 
+  UploadCloud, Image as ImageIcon 
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Default journey stages if not found in service data
-// Icons removed as per previous request, but structure retained.
 const DEFAULT_JOURNEY_STAGES: JourneyStage[] = [
   { id: 'discovery', title: 'Discovery', details: ["Touchpoints: Homepage → “Explore Our Services”, Services List → “Business Profile Website”, Paid Ads, Social Media, WhatsApp Campaigns", "Key Actions: Click service card → open dedicated service landing page"], placeholder: "Describe visual elements and user interactions for Discovery. What does the user see on the homepage? How is the service presented in lists/ads? What's the initial hook?" },
   { id: 'service-landing-page', title: 'Service Landing Page', details: ["Content: Hero: “Professional Website for Your Business – Launch in Days”, Value props (e.g., Free subdomain, SEO ready, CMS), Demo links / client success stories", "CTAs: “Start Now” (Primary), “Preview Demo”, “Chat First”"], placeholder: "Detail the layout of the service landing page. Visual hierarchy? CTA displays? Demo preview look? How are value props communicated visually?" },
@@ -49,7 +50,7 @@ export default function SimulateJourneyPage() {
   const [stageImages, setStageImages] = useState<Record<string, string | null>>({}); 
   const [selectedFiles, setSelectedFiles] = useState<Record<string, File | null>>({}); 
 
-  const [journeyStages, setJourneyStages] = useState<JourneyStage[]>(DEFAULT_JOURNEY_STAGES);
+  const [journeyStages, setJourneyStages] = useState<JourneyStage[]>([]);
 
   useEffect(() => {
     if (serviceId) {
@@ -61,7 +62,7 @@ export default function SimulateJourneyPage() {
             setService(fetchedService);
             const stages = fetchedService.customerJourneyStages && fetchedService.customerJourneyStages.length > 0 
               ? fetchedService.customerJourneyStages 
-              : DEFAULT_JOURNEY_STAGES; // Fallback to default if not set on service
+              : DEFAULT_JOURNEY_STAGES;
             setJourneyStages(stages);
 
             const initialNotes: Record<string, string> = {};
@@ -93,7 +94,8 @@ export default function SimulateJourneyPage() {
     setJourneyNotes(prev => ({ ...prev, [stageId]: value }));
   };
   
-  const handleImageFileChange = (stageId: string, file: File | null) => {
+  const handleImageFileChange = useCallback((stageId: string, file: File | null) => {
+    // Revoke previous object URL if it exists for this stage
     if (stageImages[stageId]) {
       URL.revokeObjectURL(stageImages[stageId]!);
     }
@@ -103,11 +105,11 @@ export default function SimulateJourneyPage() {
     } else {
       setStageImages(prev => ({ ...prev, [stageId]: null }));
     }
-  };
+  }, [stageImages]);
 
   const handleSaveJourney = () => {
     console.log("Saving Journey Notes for Service ID:", serviceId, journeyNotes);
-    console.log("Stage Images (selected files):", selectedFiles); 
+    console.log("Stage Images (selected files - to be uploaded):", selectedFiles); 
     alert("Save functionality is not implemented yet. Notes and file selections logged to console.");
   };
   
@@ -154,7 +156,7 @@ export default function SimulateJourneyPage() {
   if (!service || !currentStage) {
     return (
       <div className="container mx-auto px-4 py-12 text-center">
-        <Briefcase className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
+        <ServerCrash className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
         <h2 className="text-2xl font-semibold text-foreground mb-2">Service or Journey Stage Not Found</h2>
         <p className="text-muted-foreground mb-6">The requested service or journey stage could not be loaded.</p>
         <Button variant="outline" asChild className="group">
@@ -165,16 +167,19 @@ export default function SimulateJourneyPage() {
   }
   
   return (
-    <div className="flex flex-col h-full min-h-[calc(100vh-8rem)] bg-background">
+    <div className="flex flex-col h-full min-h-[calc(100vh-theme(spacing.24))] bg-background"> {/* Adjusted min-height */}
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b bg-card shadow-sm">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
-            Customer Journey Simulation
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            For service: <span className="font-semibold text-foreground">{service.title}</span>
-          </p>
+      <header className="sticky top-0 z-30 flex items-center justify-between p-3 md:p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
+        <div className="flex items-center gap-2">
+            <Play className="h-6 w-6 text-primary flex-shrink-0" />
+            <div>
+                <h1 className="text-lg md:text-xl font-bold tracking-tight text-foreground leading-tight">
+                    Customer Journey Simulation
+                </h1>
+                <p className="text-xs md:text-sm text-muted-foreground leading-tight truncate max-w-xs md:max-w-sm">
+                    For service: <span className="font-medium text-foreground/90">{service.title}</span>
+                </p>
+            </div>
         </div>
         <div className="flex items-center gap-2">
           <TooltipProvider delayDuration={0}>
@@ -202,18 +207,18 @@ export default function SimulateJourneyPage() {
 
       {/* Main Content Grid */}
       <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-0">
-        {/* Left Column: Stage Content & Image Preview */}
-        <main className="lg:col-span-9 p-4 md:p-6 space-y-6 overflow-y-auto">
-          <Card className="rounded-xl shadow-md">
+        {/* Left Column: Stage Content */}
+        <main className="lg:col-span-8 xl:col-span-9 p-4 md:p-6 space-y-6 overflow-y-auto">
+          <Card className="rounded-xl shadow-sm">
             <CardHeader className="pb-3 pt-5 px-5">
-              <CardTitle className="text-lg md:text-xl flex items-center text-foreground">
+              <CardTitle className="text-xl md:text-2xl font-semibold text-foreground">
                 Stage {String(currentStageIndex + 1).padStart(2, '0')}: {currentStage.title}
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-2 space-y-4 px-5 pb-5">
+            <CardContent className="pt-2 space-y-5 px-5 pb-5">
               <div>
-                <h4 className="text-sm font-semibold text-muted-foreground mb-1.5">Key Elements for this Stage:</h4>
-                <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                <h4 className="text-base font-semibold text-muted-foreground mb-2">Key Elements & Considerations:</h4>
+                <ul className="text-sm text-muted-foreground space-y-1.5 list-disc list-outside pl-5">
                   {currentStage.details.map((detail, idx) => (
                     <li key={idx} className="leading-relaxed">
                       {detail}
@@ -221,111 +226,113 @@ export default function SimulateJourneyPage() {
                   ))}
                 </ul>
               </div>
-              <div>
-                <Label htmlFor={`notes-${currentStage.id}`} className="text-sm font-medium text-muted-foreground mb-1.5">
-                  Your Design, Visual & UX Notes:
+              
+              <div className="pt-2">
+                <Label htmlFor={`notes-${currentStage.id}`} className="text-base font-semibold text-muted-foreground mb-2 block">
+                  Visual Design & UX Notes:
                 </Label>
                 <Textarea
                   id={`notes-${currentStage.id}`}
                   value={journeyNotes[currentStage.id] || ''}
                   onChange={(e) => handleNoteChange(currentStage.id, e.target.value)}
-                  placeholder={currentStage.placeholder}
-                  rows={6} 
-                  className="bg-muted/30 text-sm"
+                  placeholder={currentStage.placeholder || 'Describe the visual design, user interactions, and overall experience for this stage...'}
+                  rows={8} 
+                  className="text-sm bg-muted/20 border-border/70 focus:border-primary"
                 />
+              </div>
+
+              <div className="pt-2">
+                 <Label htmlFor={`image-upload-${currentStage.id}`} className="text-base font-semibold text-muted-foreground mb-2 block">
+                    Visual Mockup / UI Preview for this Stage:
+                </Label>
+                <div className="mt-1 p-3 border-2 border-dashed border-border/50 rounded-lg bg-muted/20 min-h-[200px] flex flex-col items-center justify-center text-center">
+                    {currentStageImagePreview ? (
+                    <div className="relative w-full max-w-lg aspect-video mb-3">
+                        <NextImage
+                        src={currentStageImagePreview}
+                        alt={`Preview for ${currentStage.title}`}
+                        fill
+                        className="object-contain rounded-md"
+                        />
+                    </div>
+                    ) : (
+                    <div className="text-muted-foreground space-y-1.5 py-6">
+                        <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground/50" />
+                        <p className="text-sm">No preview image uploaded for this stage.</p>
+                        <p className="text-xs">Upload a mockup or UI screenshot.</p>
+                    </div>
+                    )}
+                     <CustomDropzone
+                        id={`image-upload-${currentStage.id}`}
+                        onFileChange={(file) => handleImageFileChange(currentStage.id, file)}
+                        currentFileName={currentSelectedFile?.name}
+                        accept={{ 'image/*': ['.png', '.jpeg', '.jpg', '.gif', '.webp', '.avif'] }}
+                        maxSize={1 * 1024 * 1024} 
+                        className="w-full max-w-md"
+                    />
+                </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card className="rounded-xl shadow-md">
-            <CardHeader className="pb-3 pt-5 px-5">
-              <CardTitle className="text-base md:text-lg flex items-center text-foreground">
-                Visual Mockup / UI Preview
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 px-5 pb-5">
-              <div className="flex-grow flex flex-col items-center justify-center border-2 border-dashed border-border/70 rounded-lg p-3 bg-muted/20 min-h-[200px] sm:min-h-[250px]">
-                {currentStageImagePreview ? (
-                  <div className="relative w-full max-w-full aspect-video">
-                    <NextImage
-                      src={currentStageImagePreview}
-                      alt={`Preview for ${currentStage.title}`}
-                      fill
-                      className="object-contain rounded-md"
-                    />
-                  </div>
-                ) : (
-                  <div className="text-center text-muted-foreground space-y-1.5">
-                    <ImageIcon className="h-10 w-10 mx-auto text-muted-foreground/70" />
-                    <p className="text-xs">No preview image uploaded for this stage.</p>
-                  </div>
-                )}
-              </div>
-              <CustomDropzone
-                id={`image-upload-${currentStage.id}`}
-                onFileChange={(file) => handleImageFileChange(currentStage.id, file)}
-                currentFileName={currentSelectedFile?.name}
-                accept={{ 'image/*': ['.png', '.jpeg', '.jpg', '.gif', '.webp', '.avif'] }}
-                maxSize={1 * 1024 * 1024} 
-              />
-            </CardContent>
-          </Card>
-
-          <div className="flex items-center justify-between pt-4">
+          {/* Pagination for Left Column */}
+          <div className="flex justify-between items-center mt-auto pt-6">
             <Button
               variant="outline"
               onClick={goToPreviousStage}
               disabled={currentStageIndex === 0}
-              className="h-9 px-4 text-sm"
+              className="h-10 px-5 text-sm group"
             >
-              <ChevronLeft className="mr-1.5 h-4 w-4" /> Previous Stage
+              <ChevronLeft className="mr-2 h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" /> Previous Stage
             </Button>
             <Button
               variant="outline"
               onClick={goToNextStage}
               disabled={currentStageIndex === journeyStages.length - 1}
-              className="h-9 px-4 text-sm"
+              className="h-10 px-5 text-sm group"
             >
-              Next Stage <ChevronRight className="ml-1.5 h-4 w-4" />
+              Next Stage <ChevronRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
             </Button>
           </div>
         </main>
 
         {/* Right Column: Vertical Stepper */}
-        <aside className="lg:col-span-3 p-4 md:p-6 bg-muted/40 border-l border-border overflow-y-auto">
-          <h3 className="text-md font-semibold text-foreground mb-4 sticky top-0 bg-muted/80 py-2 backdrop-blur-sm">Journey Stages</h3>
-          <div className="relative space-y-0">
+        <aside className="lg:col-span-4 xl:col-span-3 p-4 md:p-6 bg-muted/30 border-l border-border/70 overflow-y-auto">
+          <div className="sticky top-0 py-2 bg-muted/30 z-10 mb-1 -mx-4 md:-mx-6 px-4 md:px-6 border-b border-border/50">
+            <h3 className="text-base font-semibold text-foreground">Journey Stages ({journeyStages.length})</h3>
+          </div>
+          <div className="relative space-y-0 mt-2">
             {journeyStages.map((stage, index) => (
-              <div key={stage.id} className="flex items-start group">
-                {/* Vertical Line Connector */}
-                <div className="flex flex-col items-center mr-4">
+              <div 
+                key={stage.id} 
+                className="flex items-start group cursor-pointer py-1.5"
+                onClick={() => setCurrentStageIndex(index)}
+              >
+                <div className="flex flex-col items-center mr-3 flex-shrink-0">
                   <div
                     className={cn(
-                      "relative flex items-center justify-center h-7 w-7 rounded-full text-xs font-semibold border-2 transition-all duration-200 ease-in-out cursor-pointer",
-                      currentStageIndex === index ? "bg-primary border-primary text-primary-foreground scale-110" : 
+                      "flex items-center justify-center h-7 w-7 rounded-full text-xs font-semibold border-2 transition-all duration-200 ease-in-out",
+                      currentStageIndex === index ? "bg-primary border-primary text-primary-foreground scale-110 shadow-md" : 
                       index < currentStageIndex ? "bg-primary/20 border-primary text-primary" : 
-                      "bg-card border-border text-muted-foreground group-hover:border-primary group-hover:text-primary"
+                      "bg-card border-border text-muted-foreground group-hover:border-primary/70 group-hover:text-primary"
                     )}
-                    onClick={() => setCurrentStageIndex(index)}
                   >
                     {String(index + 1).padStart(2, '0')}
                   </div>
                   {index < journeyStages.length - 1 && (
                     <div className={cn(
-                      "w-0.5 h-8 mt-1", 
-                      index < currentStageIndex ? "bg-primary" : "bg-border group-hover:bg-primary/50"
+                      "w-px h-6 mt-1.5 transition-colors duration-200", 
+                      index < currentStageIndex ? "bg-primary" : "bg-border group-hover:bg-primary/30"
                     )}></div>
                   )}
                 </div>
-                {/* Stage Title */}
                 <div 
                   className={cn(
-                    "pt-1 pb-5 cursor-pointer",
+                    "pt-0.5 transition-colors duration-200",
                     currentStageIndex === index ? "text-primary font-semibold" : 
-                    index < currentStageIndex ? "text-primary/90" :
-                    "text-muted-foreground group-hover:text-primary"
+                    index < currentStageIndex ? "text-primary/80 font-medium" :
+                    "text-muted-foreground group-hover:text-foreground"
                   )}
-                  onClick={() => setCurrentStageIndex(index)}
                 >
                   <p className="text-sm leading-tight">{stage.title}</p>
                 </div>
@@ -338,3 +345,4 @@ export default function SimulateJourneyPage() {
   );
 }
 
+    
