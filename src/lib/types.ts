@@ -105,10 +105,13 @@ export interface SiteSettings {
   id: 'main'; // Fixed ID for the single settings document
   siteTitle: string;
   logoUrl: string | null;
-  faviconUrl: string | null; // Placeholder for now, not fully implemented
+  faviconUrl: string | null;
   themePrimaryColor: string; // HSL string e.g., "210 40% 98%"
   themeAccentColor: string; // HSL string
   themeBackgroundColor: string; // HSL string
+  darkThemePrimaryColor: string; // HSL string for dark mode
+  darkThemeAccentColor: string; // HSL string for dark mode
+  darkThemeBackgroundColor: string; // HSL string for dark mode
   updatedAt?: string | null; // ISO date string or null
 }
 

@@ -82,27 +82,27 @@ export default function AdminLayout({
         />
       </aside>
       <div className="flex flex-1 flex-col sm:pl-64">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:py-4">
-          <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
-            <SheetTrigger asChild>
-              <Button size="icon" variant="outline" className="sm:hidden">
-                <PanelLeft className="h-5 w-5" />
-                <span className="sr-only">Toggle Menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="sm:max-w-xs p-0">
-              {/* Ensuring SheetContent has an accessible title for mobile admin sidebar */}
-              <SheetHeader className="sr-only">
-                <SheetTitle>Admin Navigation Menu</SheetTitle>
-              </SheetHeader>
-              <AdminSidebar 
-                onLinkClick={() => setMobileSidebarOpen(false)}
-                logoUrl={displayLogoUrl}
-                siteTitle={displaySiteTitle}
-              />
-            </SheetContent>
-          </Sheet>
-           <div className="sm:hidden">
+        <div className="sm:hidden">
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:py-4">
+            <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+              <SheetTrigger asChild>
+                <Button size="icon" variant="outline" className="sm:hidden">
+                  <PanelLeft className="h-5 w-5" />
+                  <span className="sr-only">Toggle Menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="sm:max-w-xs p-0">
+                {/* Ensuring SheetContent has an accessible title for mobile admin sidebar */}
+                <SheetHeader className="sr-only">
+                  <SheetTitle>Admin Navigation Menu</SheetTitle>
+                </SheetHeader>
+                <AdminSidebar 
+                  onLinkClick={() => setMobileSidebarOpen(false)}
+                  logoUrl={displayLogoUrl}
+                  siteTitle={displaySiteTitle}
+                />
+              </SheetContent>
+            </Sheet>
             <Link href="/admin/dashboard" className="flex items-center gap-2 group">
                 {displayLogoUrl ? (
                   <NextImage src={displayLogoUrl} alt={`${displaySiteTitle} Admin Logo`} width={28} height={28} className="h-7 w-7 object-contain" />
@@ -111,8 +111,8 @@ export default function AdminLayout({
                 )}
                 <span className="text-md font-bold text-foreground">{displaySiteTitle} Admin</span>
             </Link>
-           </div>
-        </header>
+          </header>
+        </div>
         <main className="flex-grow p-4 md:p-6 lg:p-8 bg-muted/40">
           {children}
         </main>

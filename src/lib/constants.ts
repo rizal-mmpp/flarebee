@@ -16,12 +16,17 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   id: 'main',
   siteTitle: 'Ragam Inovasi Optima',
   logoUrl: null,
-  faviconUrl: null, // Basic favicon, can be enhanced later
-  themePrimaryColor: '50 90% 55%', // Yellow
-  themeAccentColor: '30 84% 51%',  // Orange
+  faviconUrl: null,
+  themePrimaryColor: '50 90% 55%', // Light Yellow
+  themeAccentColor: '30 84% 51%',  // Light Orange
   themeBackgroundColor: '228 100% 98%', // Light Blue
+  darkThemePrimaryColor: '50 90% 60%', // Dark Yellow (brighter for dark bg)
+  darkThemeAccentColor: '30 84% 55%', // Dark Orange (brighter for dark bg)
+  darkThemeBackgroundColor: '210 70% 18%', // Dark Blue
+  updatedAt: null,
 };
 
 // MOCK_TEMPLATES and related functions are removed as data will now come from Firestore.
 // Ensure pages using these are updated to fetch data from Firestore.
 // e.g. getTemplateByIdFromFirestore, getAllTemplatesFromFirestore
+
