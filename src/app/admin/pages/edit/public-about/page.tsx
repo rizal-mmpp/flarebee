@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, type SubmitHandler, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,10 +12,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Save, Loader2, Settings, Info, Users, Briefcase, Sparkles, MessageCircle, Building, ListChecks, PlusCircle, Trash2 } from 'lucide-react';
+import { CustomDropzone } from '@/components/ui/custom-dropzone';
+import NextImage from 'next/image';
+import { ArrowLeft, Save, Loader2, Settings, Info, Users, Briefcase, Sparkles, MessageCircle, Building, ListChecks, PlusCircle, Trash2, ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getSitePageContent } from '@/lib/firebase/firestoreSitePages';
 import { updateSitePageContentAction } from '@/lib/actions/sitePage.actions';
+import { uploadFileToVercelBlob } from '@/lib/actions/vercelBlob.actions';
 import type { PublicAboutPageContent, PublicAboutPageServiceItem } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
 
@@ -30,8 +33,9 @@ const serviceItemSchema = z.object({
 const pageSectionSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   text: z.string().min(1, 'Text is required'),
-  imageUrl: z.string().url('Must be a valid URL or empty').or(z.literal('')).nullable().optional(),
+  imageUrl: z.string().url('Must be a valid URL or empty string.').optional().nullable(),
   imageAiHint: z.string().max(50, "AI hint too long").optional(),
+  imageFile: z.instanceof(File).optional().nullable(),
 });
 
 const publicAboutPageSchema = z.object({
@@ -39,8 +43,9 @@ const publicAboutPageSchema = z.object({
   heroSection: z.object({
     tagline: z.string().min(1, 'Tagline is required.'),
     subTagline: z.string().optional(),
-    imageUrl: z.string().url('Must be a valid URL or empty').or(z.literal('')).nullable().optional(),
+    imageUrl: z.string().url('Must be a valid URL or empty string.').optional().nullable(),
     imageAiHint: z.string().max(50, "AI hint too long").optional(),
+    imageFile: z.instanceof(File).optional().nullable(),
     ctaButtonText: z.string().optional(),
     ctaButtonLink: z.string().url('Must be a valid URL or empty').or(z.literal('')).optional(),
   }),
@@ -51,8 +56,9 @@ const publicAboutPageSchema = z.object({
     name: z.string().min(1, 'Founder name is required.'),
     title: z.string().min(1, 'Founder title is required.'),
     bio: z.string().min(1, 'Founder bio is required.'),
-    imageUrl: z.string().url('Must be a valid URL or empty').or(z.literal('')).nullable().optional(),
+    imageUrl: z.string().url('Must be a valid URL or empty string.').optional().nullable(),
     imageAiHint: z.string().max(50, "AI hint too long").optional(),
+    imageFile: z.instanceof(File).optional().nullable(),
   }),
   showMissionVisionSection: z.boolean().optional().default(true),
   missionVisionSection: z.object({
@@ -86,7 +92,16 @@ export default function EditPublicAboutPage() {
   const [isLoadingContent, setIsLoadingContent] = useState(true);
   const [isSaving, startSaveTransition] = useTransition();
 
-  const { control, register, handleSubmit, reset, formState: { errors }, setValue } = useForm<PublicAboutFormValues>({
+  const [selectedHeroImageFile, setSelectedHeroImageFile] = useState<File | null>(null);
+  const [heroImagePreview, setHeroImagePreview] = useState<string | null>(null);
+  const [selectedHistoryImageFile, setSelectedHistoryImageFile] = useState<File | null>(null);
+  const [historyImagePreview, setHistoryImagePreview] = useState<string | null>(null);
+  const [selectedFounderImageFile, setSelectedFounderImageFile] = useState<File | null>(null);
+  const [founderImagePreview, setFounderImagePreview] = useState<string | null>(null);
+  const [selectedCompanyOverviewImageFile, setSelectedCompanyOverviewImageFile] = useState<File | null>(null);
+  const [companyOverviewImagePreview, setCompanyOverviewImagePreview] = useState<string | null>(null);
+
+  const { control, register, handleSubmit, reset, formState: { errors }, setValue, watch } = useForm<PublicAboutFormValues>({
     resolver: zodResolver(publicAboutPageSchema),
   });
 
@@ -94,6 +109,8 @@ export default function EditPublicAboutPage() {
     control,
     name: "servicesHighlights",
   });
+  
+  const MAX_FILE_SIZE_BYTES = 0.95 * 1024 * 1024;
 
   useEffect(() => {
     setIsLoadingContent(true);
@@ -103,21 +120,25 @@ export default function EditPublicAboutPage() {
           const content = data as PublicAboutPageContent;
           reset({
             pageTitle: content.pageTitle,
-            heroSection: content.heroSection,
+            heroSection: { ...content.heroSection, imageFile: null },
             showHistorySection: content.showHistorySection !== undefined ? content.showHistorySection : true,
-            historySection: content.historySection,
+            historySection: { ...content.historySection, imageFile: null },
             showFounderSection: content.showFounderSection !== undefined ? content.showFounderSection : true,
-            founderSection: content.founderSection,
+            founderSection: { ...content.founderSection, imageFile: null },
             showMissionVisionSection: content.showMissionVisionSection !== undefined ? content.showMissionVisionSection : true,
             missionVisionSection: content.missionVisionSection || { missionTitle: '', missionText: '', visionTitle: '', visionText: '' },
             showServicesIntroSection: content.showServicesIntroSection !== undefined ? content.showServicesIntroSection : true,
             servicesIntroSection: content.servicesIntroSection || { title: '', introText: ''},
             servicesHighlights: content.servicesHighlights || [],
             showCompanyOverviewSection: content.showCompanyOverviewSection !== undefined ? content.showCompanyOverviewSection : true,
-            companyOverviewSection: content.companyOverviewSection,
+            companyOverviewSection: { ...content.companyOverviewSection, imageFile: null },
             showCallToActionSection: content.showCallToActionSection !== undefined ? content.showCallToActionSection : true,
             callToActionSection: content.callToActionSection,
           });
+          setHeroImagePreview(content.heroSection.imageUrl || null);
+          setHistoryImagePreview(content.historySection.imageUrl || null);
+          setFounderImagePreview(content.founderSection.imageUrl || null);
+          setCompanyOverviewImagePreview(content.companyOverviewSection.imageUrl || null);
         } else {
           toast({ title: 'Data Error', description: 'Failed to load specific page data, defaults may be shown.', variant: 'destructive' });
         }
@@ -131,21 +152,127 @@ export default function EditPublicAboutPage() {
       });
   }, [reset, toast]);
 
-  const onSubmit: SubmitHandler<PublicAboutFormValues> = (data) => {
+  // Image Preview Effect Hooks
+  useEffect(() => {
+    let objectUrl: string | undefined;
+    if (selectedHeroImageFile) {
+      objectUrl = URL.createObjectURL(selectedHeroImageFile);
+      setHeroImagePreview(objectUrl);
+    } else {
+      setHeroImagePreview(watch('heroSection.imageUrl') || null);
+    }
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [selectedHeroImageFile, watch('heroSection.imageUrl')]);
+
+  useEffect(() => {
+    let objectUrl: string | undefined;
+    if (selectedHistoryImageFile) {
+      objectUrl = URL.createObjectURL(selectedHistoryImageFile);
+      setHistoryImagePreview(objectUrl);
+    } else {
+      setHistoryImagePreview(watch('historySection.imageUrl') || null);
+    }
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [selectedHistoryImageFile, watch('historySection.imageUrl')]);
+
+  useEffect(() => {
+    let objectUrl: string | undefined;
+    if (selectedFounderImageFile) {
+      objectUrl = URL.createObjectURL(selectedFounderImageFile);
+      setFounderImagePreview(objectUrl);
+    } else {
+      setFounderImagePreview(watch('founderSection.imageUrl') || null);
+    }
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [selectedFounderImageFile, watch('founderSection.imageUrl')]);
+
+  useEffect(() => {
+    let objectUrl: string | undefined;
+    if (selectedCompanyOverviewImageFile) {
+      objectUrl = URL.createObjectURL(selectedCompanyOverviewImageFile);
+      setCompanyOverviewImagePreview(objectUrl);
+    } else {
+      setCompanyOverviewImagePreview(watch('companyOverviewSection.imageUrl') || null);
+    }
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [selectedCompanyOverviewImageFile, watch('companyOverviewSection.imageUrl')]);
+
+  // File Change Handlers
+  const handleHeroImageFileChange = useCallback((file: File | null) => {
+    setSelectedHeroImageFile(file);
+    setValue('heroSection.imageFile', file, { shouldValidate: true });
+  }, [setValue]);
+  const handleHistoryImageFileChange = useCallback((file: File | null) => {
+    setSelectedHistoryImageFile(file);
+    setValue('historySection.imageFile', file, { shouldValidate: true });
+  }, [setValue]);
+  const handleFounderImageFileChange = useCallback((file: File | null) => {
+    setSelectedFounderImageFile(file);
+    setValue('founderSection.imageFile', file, { shouldValidate: true });
+  }, [setValue]);
+  const handleCompanyOverviewImageFileChange = useCallback((file: File | null) => {
+    setSelectedCompanyOverviewImageFile(file);
+    setValue('companyOverviewSection.imageFile', file, { shouldValidate: true });
+  }, [setValue]);
+
+
+  const onSubmit: SubmitHandler<PublicAboutFormValues> = async (formDataFromHook) => {
     startSaveTransition(async () => {
-      const pageDataForAction: PublicAboutPageContent = {
-        id: 'public-about',
-        ...data,
-        missionVisionSection: data.missionVisionSection && (data.missionVisionSection.missionText || data.missionVisionSection.visionText) ? data.missionVisionSection : undefined,
-        servicesIntroSection: data.servicesIntroSection && data.servicesIntroSection.title ? data.servicesIntroSection : undefined,
-        servicesHighlights: data.servicesHighlights && data.servicesHighlights.length > 0 ? data.servicesHighlights : undefined,
-      };
-      const formData = new FormData();
-      formData.append('pageDataJson', JSON.stringify(pageDataForAction));
+      const pageDataForAction: PublicAboutPageContent = JSON.parse(JSON.stringify(formDataFromHook)); // Deep clone
       
-      const result = await updateSitePageContentAction('public-about', formData);
+      // Helper function to upload image if a new one is selected
+      const uploadImage = async (file: File | null | undefined, currentUrl: string | null | undefined): Promise<string | null | undefined> => {
+        if (file) {
+          const blobFormData = new FormData();
+          blobFormData.append('file', file);
+          const uploadResult = await uploadFileToVercelBlob(blobFormData);
+          if (uploadResult.success && uploadResult.data?.url) {
+            return uploadResult.data.url;
+          } else {
+            toast({ title: 'Image Upload Failed', description: `Could not upload ${file.name}. ${uploadResult.error}`, variant: 'destructive' });
+            throw new Error(`Upload failed for ${file.name}`); // Throw to stop submission
+          }
+        }
+        return currentUrl; // Return current URL if no new file
+      };
+
+      try {
+        pageDataForAction.heroSection.imageUrl = await uploadImage(formDataFromHook.heroSection.imageFile, formDataFromHook.heroSection.imageUrl);
+        pageDataForAction.historySection.imageUrl = await uploadImage(formDataFromHook.historySection.imageFile, formDataFromHook.historySection.imageUrl);
+        pageDataForAction.founderSection.imageUrl = await uploadImage(formDataFromHook.founderSection.imageFile, formDataFromHook.founderSection.imageUrl);
+        pageDataForAction.companyOverviewSection.imageUrl = await uploadImage(formDataFromHook.companyOverviewSection.imageFile, formDataFromHook.companyOverviewSection.imageUrl);
+      } catch (uploadError: any) {
+        // Error already toasted by uploadImage helper
+        console.error("Image upload process failed:", uploadError);
+        return; // Stop form submission
+      }
+      
+      // Clean up imageFile properties as they are not part of PublicAboutPageContent type for Firestore
+      delete (pageDataForAction.heroSection as any).imageFile;
+      delete (pageDataForAction.historySection as any).imageFile;
+      delete (pageDataForAction.founderSection as any).imageFile;
+      delete (pageDataForAction.companyOverviewSection as any).imageFile;
+
+      // Ensure optional sections are correctly structured
+      pageDataForAction.missionVisionSection = formDataFromHook.missionVisionSection && (formDataFromHook.missionVisionSection.missionText || formDataFromHook.missionVisionSection.visionText) ? formDataFromHook.missionVisionSection : undefined;
+      pageDataForAction.servicesIntroSection = formDataFromHook.servicesIntroSection && formDataFromHook.servicesIntroSection.title ? formDataFromHook.servicesIntroSection : undefined;
+      pageDataForAction.servicesHighlights = formDataFromHook.servicesHighlights && formDataFromHook.servicesHighlights.length > 0 ? formDataFromHook.servicesHighlights : undefined;
+
+
+      const formDataForAction = new FormData();
+      formDataForAction.append('pageDataJson', JSON.stringify(pageDataForAction));
+      
+      const result = await updateSitePageContentAction('public-about', formDataForAction);
       if (result.success) {
         toast({ title: 'Page Saved', description: 'Public About Us page has been updated successfully.' });
+        // Reset file states after successful save
+        setSelectedHeroImageFile(null);
+        setSelectedHistoryImageFile(null);
+        setSelectedFounderImageFile(null);
+        setSelectedCompanyOverviewImageFile(null);
+        // Re-fetch or re-reset form to show newly saved URLs if needed
+        // For now, router.push will cause a reload anyway if it navigates.
+        // If staying on the page, a manual re-sync of image previews to new URLs might be good.
         router.push('/admin/pages');
       } else {
         toast({ title: 'Error Saving Page', description: result.error || 'An unknown error occurred.', variant: 'destructive' });
@@ -176,17 +303,17 @@ export default function EditPublicAboutPage() {
                 </div>
                 {showSectionToggleName && (
                     <Controller
-                        name={showSectionToggleName as any} // Type assertion needed here
+                        name={showSectionToggleName as any} 
                         control={control}
                         render={({ field }) => (
                             <div className="flex items-center space-x-2">
                                 <Switch
                                     id={`toggle-${showSectionToggleName}`}
-                                    checked={field.value}
+                                    checked={field.value as boolean | undefined}
                                     onCheckedChange={field.onChange}
                                 />
                                 <Label htmlFor={`toggle-${showSectionToggleName}`} className="text-xs text-muted-foreground">
-                                    {field.value ? "Visible" : "Hidden"}
+                                    {(field.value as boolean | undefined) ? "Visible" : "Hidden"}
                                 </Label>
                             </div>
                         )}
@@ -199,6 +326,57 @@ export default function EditPublicAboutPage() {
         </CardContent>
     </Card>
   );
+
+  const ImageFieldSection: React.FC<{
+    sectionName: 'heroSection' | 'historySection' | 'founderSection' | 'companyOverviewSection';
+    label: string;
+    imagePreviewUrl: string | null;
+    onFileChange: (file: File | null) => void;
+    selectedFileName: string | null | undefined;
+    aiHintName: string;
+    maxSize?: number;
+  }> = ({ sectionName, label, imagePreviewUrl, onFileChange, selectedFileName, aiHintName, maxSize }) => (
+    <>
+      <div>
+        <Label htmlFor={`${sectionName}.imageFile`}>{label} Image (Optional)</Label>
+        <CustomDropzone
+          onFileChange={onFileChange}
+          currentFileName={selectedFileName}
+          accept={{ 'image/*': ['.png', '.jpeg', '.jpg', '.webp', '.avif'] }}
+          maxSize={maxSize || MAX_FILE_SIZE_BYTES}
+          className="mt-1"
+        />
+        {/* @ts-ignore */}
+        {errors[sectionName]?.imageFile && <p className="text-sm text-destructive mt-1">{errors[sectionName]?.imageFile?.message}</p>}
+        {/* @ts-ignore */}
+        {errors[sectionName]?.imageUrl && <p className="text-sm text-destructive mt-1">{errors[sectionName]?.imageUrl?.message}</p>}
+
+        {imagePreviewUrl && (
+          <div className="mt-3 p-2 border border-border rounded-lg bg-muted/50 max-w-xs">
+            <p className="text-xs text-muted-foreground mb-1">Image Preview:</p>
+            <NextImage
+              src={imagePreviewUrl}
+              alt={`${label} preview`}
+              width={200}
+              height={120}
+              className="rounded-md object-contain max-h-[120px]"
+            />
+          </div>
+        )}
+        {!imagePreviewUrl && !selectedFileName && (
+            <div className="mt-3 p-4 border border-dashed border-input rounded-lg bg-muted/30 text-center text-muted-foreground max-w-xs">
+                <ImageIcon className="mx-auto h-8 w-8 mb-1" />
+                <p className="text-xs">Upload an image or leave blank.</p>
+            </div>
+        )}
+      </div>
+      <div>
+        <Label htmlFor={aiHintName as string}>Image AI Hint (Optional, 1-2 words)</Label>
+        <Input id={aiHintName as string} {...register(aiHintName as any)} className="mt-1" placeholder="e.g., modern technology" />
+      </div>
+    </>
+  );
+
 
   if (isLoadingContent) {
     return (
@@ -245,15 +423,14 @@ export default function EditPublicAboutPage() {
           <Label htmlFor="heroSection.subTagline">Hero Sub-Tagline (Optional)</Label>
           <Textarea id="heroSection.subTagline" {...register('heroSection.subTagline')} className="mt-1" rows={2} placeholder="A brief sentence expanding on the tagline."/>
         </div>
-        <div>
-          <Label htmlFor="heroSection.imageUrl">Hero Image URL (Optional)</Label>
-          <Input id="heroSection.imageUrl" {...register('heroSection.imageUrl')} className="mt-1" placeholder="https://placehold.co/1200x600.png" />
-          {errors.heroSection?.imageUrl && <p className="text-sm text-destructive mt-1">{errors.heroSection.imageUrl.message}</p>}
-        </div>
-         <div>
-          <Label htmlFor="heroSection.imageAiHint">Hero Image AI Hint (Optional, 1-2 words)</Label>
-          <Input id="heroSection.imageAiHint" {...register('heroSection.imageAiHint')} className="mt-1" placeholder="e.g., modern technology" />
-        </div>
+        <ImageFieldSection
+            sectionName="heroSection"
+            label="Hero"
+            imagePreviewUrl={heroImagePreview}
+            onFileChange={handleHeroImageFileChange}
+            selectedFileName={selectedHeroImageFile?.name}
+            aiHintName="heroSection.imageAiHint"
+        />
         <div>
           <Label htmlFor="heroSection.ctaButtonText">Hero CTA Button Text (Optional)</Label>
           <Input id="heroSection.ctaButtonText" {...register('heroSection.ctaButtonText')} className="mt-1" placeholder="e.g., Explore Our Services" />
@@ -276,15 +453,14 @@ export default function EditPublicAboutPage() {
           <Textarea id="historySection.text" {...register('historySection.text')} rows={5} className="mt-1" placeholder="Tell your company's story, mention Ditjen AHU registration."/>
           {errors.historySection?.text && <p className="text-sm text-destructive mt-1">{errors.historySection.text.message}</p>}
         </div>
-        <div>
-          <Label htmlFor="historySection.imageUrl">Image URL (Optional)</Label>
-          <Input id="historySection.imageUrl" {...register('historySection.imageUrl')} className="mt-1" placeholder="https://placehold.co/600x400.png" />
-          {errors.historySection?.imageUrl && <p className="text-sm text-destructive mt-1">{errors.historySection.imageUrl.message}</p>}
-        </div>
-         <div>
-          <Label htmlFor="historySection.imageAiHint">History Image AI Hint (Optional)</Label>
-          <Input id="historySection.imageAiHint" {...register('historySection.imageAiHint')} className="mt-1" placeholder="e.g., timeline graph" />
-        </div>
+        <ImageFieldSection
+            sectionName="historySection"
+            label="History"
+            imagePreviewUrl={historyImagePreview}
+            onFileChange={handleHistoryImageFileChange}
+            selectedFileName={selectedHistoryImageFile?.name}
+            aiHintName="historySection.imageAiHint"
+        />
       </SectionCard>
 
       <SectionCard title="Founder Section" icon={Users} showSectionToggleName="showFounderSection">
@@ -294,9 +470,14 @@ export default function EditPublicAboutPage() {
         {errors.founderSection?.title && <p className="text-sm text-destructive mt-1">{errors.founderSection.title.message}</p>}</div>
         <div><Label htmlFor="founderSection.bio">Founder Bio</Label><Textarea id="founderSection.bio" {...register('founderSection.bio')} rows={4} className="mt-1" placeholder="A brief bio about the founder."/>
         {errors.founderSection?.bio && <p className="text-sm text-destructive mt-1">{errors.founderSection.bio.message}</p>}</div>
-        <div><Label htmlFor="founderSection.imageUrl">Founder Image URL (Optional)</Label><Input id="founderSection.imageUrl" {...register('founderSection.imageUrl')} className="mt-1" placeholder="https://placehold.co/400x400.png" />
-        {errors.founderSection?.imageUrl && <p className="text-sm text-destructive mt-1">{errors.founderSection.imageUrl.message}</p>}</div>
-        <div><Label htmlFor="founderSection.imageAiHint">Founder Image AI Hint</Label><Input id="founderSection.imageAiHint" {...register('founderSection.imageAiHint')} className="mt-1" placeholder="e.g., professional portrait" /></div>
+        <ImageFieldSection
+            sectionName="founderSection"
+            label="Founder"
+            imagePreviewUrl={founderImagePreview}
+            onFileChange={handleFounderImageFileChange}
+            selectedFileName={selectedFounderImageFile?.name}
+            aiHintName="founderSection.imageAiHint"
+        />
       </SectionCard>
 
        <SectionCard title="Mission & Vision Section (Optional)" icon={Sparkles} showSectionToggleName="showMissionVisionSection">
@@ -364,7 +545,6 @@ export default function EditPublicAboutPage() {
          {errors.servicesHighlights && typeof errors.servicesHighlights.message === 'string' && <p className="text-sm text-destructive mt-1">{errors.servicesHighlights.message}</p>}
       </SectionCard>
 
-
       <SectionCard title="Company Overview Section" icon={Building} showSectionToggleName="showCompanyOverviewSection">
          <div>
           <Label htmlFor="companyOverviewSection.title">Section Title</Label>
@@ -376,15 +556,14 @@ export default function EditPublicAboutPage() {
           <Textarea id="companyOverviewSection.text" {...register('companyOverviewSection.text')} rows={5} className="mt-1" placeholder="Provide more details about your company, values, or approach."/>
           {errors.companyOverviewSection?.text && <p className="text-sm text-destructive mt-1">{errors.companyOverviewSection.text.message}</p>}
         </div>
-        <div>
-          <Label htmlFor="companyOverviewSection.imageUrl">Image URL (Optional)</Label>
-          <Input id="companyOverviewSection.imageUrl" {...register('companyOverviewSection.imageUrl')} className="mt-1" placeholder="https://placehold.co/600x400.png" />
-           {errors.companyOverviewSection?.imageUrl && <p className="text-sm text-destructive mt-1">{errors.companyOverviewSection.imageUrl.message}</p>}
-        </div>
-         <div>
-          <Label htmlFor="companyOverviewSection.imageAiHint">Image AI Hint (Optional)</Label>
-          <Input id="companyOverviewSection.imageAiHint" {...register('companyOverviewSection.imageAiHint')} className="mt-1" placeholder="e.g., team working together" />
-        </div>
+         <ImageFieldSection
+            sectionName="companyOverviewSection"
+            label="Company Overview"
+            imagePreviewUrl={companyOverviewImagePreview}
+            onFileChange={handleCompanyOverviewImageFileChange}
+            selectedFileName={selectedCompanyOverviewImageFile?.name}
+            aiHintName="companyOverviewSection.imageAiHint"
+        />
       </SectionCard>
 
       <SectionCard title="Call To Action Section" icon={MessageCircle} showSectionToggleName="showCallToActionSection">
@@ -419,3 +598,4 @@ export default function EditPublicAboutPage() {
     </form>
   );
 }
+
