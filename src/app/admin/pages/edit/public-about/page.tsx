@@ -11,13 +11,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Save, Loader2, Settings, Info, Users, Briefcase, Sparkles, MessageCircle, Building, ListChecks, PlusCircle, Trash2 } from 'lucide-react'; // Added Building, ListChecks, MessageCircle, PlusCircle, Trash2
+import { Switch } from '@/components/ui/switch';
+import { ArrowLeft, Save, Loader2, Settings, Info, Users, Briefcase, Sparkles, MessageCircle, Building, ListChecks, PlusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getSitePageContent } from '@/lib/firebase/firestoreSitePages';
 import { updateSitePageContentAction } from '@/lib/actions/sitePage.actions';
 import type { PublicAboutPageContent, PublicAboutPageServiceItem } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
-// import { CustomDropzone } from '@/components/ui/custom-dropzone'; // Keep for future image uploads
 
 
 const serviceItemSchema = z.object({
@@ -44,7 +44,9 @@ const publicAboutPageSchema = z.object({
     ctaButtonText: z.string().optional(),
     ctaButtonLink: z.string().url('Must be a valid URL or empty').or(z.literal('')).optional(),
   }),
+  showHistorySection: z.boolean().optional().default(true),
   historySection: pageSectionSchema,
+  showFounderSection: z.boolean().optional().default(true),
   founderSection: z.object({
     name: z.string().min(1, 'Founder name is required.'),
     title: z.string().min(1, 'Founder title is required.'),
@@ -52,22 +54,22 @@ const publicAboutPageSchema = z.object({
     imageUrl: z.string().url('Must be a valid URL or empty').or(z.literal('')).nullable().optional(),
     imageAiHint: z.string().max(50, "AI hint too long").optional(),
   }),
+  showMissionVisionSection: z.boolean().optional().default(true),
   missionVisionSection: z.object({
     missionTitle: z.string().optional(),
     missionText: z.string().optional(),
-    missionImageUrl: z.string().url('Must be a valid URL or empty').or(z.literal('')).nullable().optional(),
-    missionImageAiHint: z.string().max(50, "AI hint too long").optional(),
     visionTitle: z.string().optional(),
     visionText: z.string().optional(),
-    visionImageUrl: z.string().url('Must be a valid URL or empty').or(z.literal('')).nullable().optional(),
-    visionImageAiHint: z.string().max(50, "AI hint too long").optional(),
   }).optional(),
+  showServicesIntroSection: z.boolean().optional().default(true),
   servicesIntroSection: z.object({
     title: z.string().min(1, 'Services intro title is required'),
     introText: z.string().min(1, 'Services intro text is required'),
   }).optional(),
   servicesHighlights: z.array(serviceItemSchema).optional(),
+  showCompanyOverviewSection: z.boolean().optional().default(true),
   companyOverviewSection: pageSectionSchema,
+  showCallToActionSection: z.boolean().optional().default(true),
   callToActionSection: z.object({
     title: z.string().min(1, 'CTA title is required'),
     text: z.string().min(1, 'CTA text is required'),
@@ -84,9 +86,8 @@ export default function EditPublicAboutPage() {
   const [isLoadingContent, setIsLoadingContent] = useState(true);
   const [isSaving, startSaveTransition] = useTransition();
 
-  const { control, register, handleSubmit, reset, formState: { errors } } = useForm<PublicAboutFormValues>({
+  const { control, register, handleSubmit, reset, formState: { errors }, setValue } = useForm<PublicAboutFormValues>({
     resolver: zodResolver(publicAboutPageSchema),
-    // Default values will be set by fetching or from DEFAULT_PUBLIC_ABOUT_CONTENT via getSitePageContent
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -103,12 +104,18 @@ export default function EditPublicAboutPage() {
           reset({
             pageTitle: content.pageTitle,
             heroSection: content.heroSection,
+            showHistorySection: content.showHistorySection !== undefined ? content.showHistorySection : true,
             historySection: content.historySection,
+            showFounderSection: content.showFounderSection !== undefined ? content.showFounderSection : true,
             founderSection: content.founderSection,
+            showMissionVisionSection: content.showMissionVisionSection !== undefined ? content.showMissionVisionSection : true,
             missionVisionSection: content.missionVisionSection || { missionTitle: '', missionText: '', visionTitle: '', visionText: '' },
+            showServicesIntroSection: content.showServicesIntroSection !== undefined ? content.showServicesIntroSection : true,
             servicesIntroSection: content.servicesIntroSection || { title: '', introText: ''},
             servicesHighlights: content.servicesHighlights || [],
+            showCompanyOverviewSection: content.showCompanyOverviewSection !== undefined ? content.showCompanyOverviewSection : true,
             companyOverviewSection: content.companyOverviewSection,
+            showCallToActionSection: content.showCallToActionSection !== undefined ? content.showCallToActionSection : true,
             callToActionSection: content.callToActionSection,
           });
         } else {
@@ -129,7 +136,6 @@ export default function EditPublicAboutPage() {
       const pageDataForAction: PublicAboutPageContent = {
         id: 'public-about',
         ...data,
-        // Ensure optional fields that might be undefined from form are handled correctly
         missionVisionSection: data.missionVisionSection && (data.missionVisionSection.missionText || data.missionVisionSection.visionText) ? data.missionVisionSection : undefined,
         servicesIntroSection: data.servicesIntroSection && data.servicesIntroSection.title ? data.servicesIntroSection : undefined,
         servicesHighlights: data.servicesHighlights && data.servicesHighlights.length > 0 ? data.servicesHighlights : undefined,
@@ -147,15 +153,46 @@ export default function EditPublicAboutPage() {
     });
   };
   
-  const SectionCard: React.FC<{title: string, description?: string, icon?: React.ElementType, children: React.ReactNode, cardClassName?: string}> = 
-    ({title, description, icon: Icon, children, cardClassName}) => (
+  interface SectionCardProps {
+    title: string;
+    description?: string;
+    icon?: React.ElementType;
+    children: React.ReactNode;
+    cardClassName?: string;
+    showSectionToggleName?: keyof PublicAboutFormValues;
+  }
+
+  const SectionCard: React.FC<SectionCardProps> = 
+    ({title, description, icon: Icon, children, cardClassName, showSectionToggleName}) => (
     <Card className={cardClassName}>
         <CardHeader>
-            <CardTitle className="text-xl flex items-center">
-                {Icon && <Icon className="mr-3 h-6 w-6 text-primary" />}
-                {title}
-            </CardTitle>
-            {description && <CardDescription>{description}</CardDescription>}
+            <div className="flex justify-between items-start">
+                <div>
+                    <CardTitle className="text-xl flex items-center">
+                        {Icon && <Icon className="mr-3 h-6 w-6 text-primary" />}
+                        {title}
+                    </CardTitle>
+                    {description && <CardDescription className="mt-1">{description}</CardDescription>}
+                </div>
+                {showSectionToggleName && (
+                    <Controller
+                        name={showSectionToggleName as any} // Type assertion needed here
+                        control={control}
+                        render={({ field }) => (
+                            <div className="flex items-center space-x-2">
+                                <Switch
+                                    id={`toggle-${showSectionToggleName}`}
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                />
+                                <Label htmlFor={`toggle-${showSectionToggleName}`} className="text-xs text-muted-foreground">
+                                    {field.value ? "Visible" : "Hidden"}
+                                </Label>
+                            </div>
+                        )}
+                    />
+                )}
+            </div>
         </CardHeader>
         <CardContent className="space-y-6">
             {children}
@@ -228,7 +265,7 @@ export default function EditPublicAboutPage() {
         </div>
       </SectionCard>
       
-      <SectionCard title="History Section" icon={ListChecks}>
+      <SectionCard title="History Section" icon={ListChecks} showSectionToggleName="showHistorySection">
         <div>
           <Label htmlFor="historySection.title">Section Title</Label>
           <Input id="historySection.title" {...register('historySection.title')} className="mt-1" placeholder="e.g., Our Journey & Commitment"/>
@@ -250,7 +287,7 @@ export default function EditPublicAboutPage() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Founder Section" icon={Users}>
+      <SectionCard title="Founder Section" icon={Users} showSectionToggleName="showFounderSection">
         <div><Label htmlFor="founderSection.name">Founder Name</Label><Input id="founderSection.name" {...register('founderSection.name')} className="mt-1" placeholder="Rizal Iswandy"/>
         {errors.founderSection?.name && <p className="text-sm text-destructive mt-1">{errors.founderSection.name.message}</p>}</div>
         <div><Label htmlFor="founderSection.title">Founder Title</Label><Input id="founderSection.title" {...register('founderSection.title')} className="mt-1" placeholder="e.g., Founder & Lead Innovator"/>
@@ -262,7 +299,7 @@ export default function EditPublicAboutPage() {
         <div><Label htmlFor="founderSection.imageAiHint">Founder Image AI Hint</Label><Input id="founderSection.imageAiHint" {...register('founderSection.imageAiHint')} className="mt-1" placeholder="e.g., professional portrait" /></div>
       </SectionCard>
 
-       <SectionCard title="Mission & Vision Section (Optional)" icon={Sparkles} description="Clearly state your company's mission and vision.">
+       <SectionCard title="Mission & Vision Section (Optional)" icon={Sparkles} showSectionToggleName="showMissionVisionSection">
         <div>
           <Label htmlFor="missionVisionSection.missionTitle">Mission Title</Label>
           <Input id="missionVisionSection.missionTitle" {...register('missionVisionSection.missionTitle')} className="mt-1" placeholder="e.g., Our Mission" />
@@ -270,14 +307,6 @@ export default function EditPublicAboutPage() {
         <div>
           <Label htmlFor="missionVisionSection.missionText">Mission Text</Label>
           <Textarea id="missionVisionSection.missionText" {...register('missionVisionSection.missionText')} rows={3} className="mt-1" placeholder="Describe your company's mission."/>
-        </div>
-        <div>
-          <Label htmlFor="missionVisionSection.missionImageUrl">Mission Image URL (Optional)</Label>
-          <Input id="missionVisionSection.missionImageUrl" {...register('missionVisionSection.missionImageUrl')} className="mt-1" placeholder="https://placehold.co/600x400.png" />
-        </div>
-         <div>
-          <Label htmlFor="missionVisionSection.missionImageAiHint">Mission Image AI Hint (Optional)</Label>
-          <Input id="missionVisionSection.missionImageAiHint" {...register('missionVisionSection.missionImageAiHint')} className="mt-1" />
         </div>
         <Separator className="my-6"/>
         <div>
@@ -288,17 +317,9 @@ export default function EditPublicAboutPage() {
           <Label htmlFor="missionVisionSection.visionText">Vision Text</Label>
           <Textarea id="missionVisionSection.visionText" {...register('missionVisionSection.visionText')} rows={3} className="mt-1" placeholder="Describe your company's vision."/>
         </div>
-        <div>
-          <Label htmlFor="missionVisionSection.visionImageUrl">Vision Image URL (Optional)</Label>
-          <Input id="missionVisionSection.visionImageUrl" {...register('missionVisionSection.visionImageUrl')} className="mt-1" placeholder="https://placehold.co/600x400.png" />
-        </div>
-         <div>
-          <Label htmlFor="missionVisionSection.visionImageAiHint">Vision Image AI Hint (Optional)</Label>
-          <Input id="missionVisionSection.visionImageAiHint" {...register('missionVisionSection.visionImageAiHint')} className="mt-1" />
-        </div>
       </SectionCard>
 
-      <SectionCard title="Services Overview" icon={Briefcase} description="Highlight key services offered.">
+      <SectionCard title="Services Overview" icon={Briefcase} description="Highlight key services offered." showSectionToggleName="showServicesIntroSection">
          <div>
             <Label htmlFor="servicesIntroSection.title">Section Title</Label>
             <Input id="servicesIntroSection.title" {...register('servicesIntroSection.title')} className="mt-1" placeholder="e.g., What We Do Best"/>
@@ -344,7 +365,7 @@ export default function EditPublicAboutPage() {
       </SectionCard>
 
 
-      <SectionCard title="Company Overview Section" icon={Building}>
+      <SectionCard title="Company Overview Section" icon={Building} showSectionToggleName="showCompanyOverviewSection">
          <div>
           <Label htmlFor="companyOverviewSection.title">Section Title</Label>
           <Input id="companyOverviewSection.title" {...register('companyOverviewSection.title')} className="mt-1" placeholder="e.g., Why Choose Us?"/>
@@ -366,7 +387,7 @@ export default function EditPublicAboutPage() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Call To Action Section" icon={MessageCircle}>
+      <SectionCard title="Call To Action Section" icon={MessageCircle} showSectionToggleName="showCallToActionSection">
          <div>
           <Label htmlFor="callToActionSection.title">CTA Title</Label>
           <Input id="callToActionSection.title" {...register('callToActionSection.title')} className="mt-1" placeholder="e.g., Ready to Start Your Project?"/>

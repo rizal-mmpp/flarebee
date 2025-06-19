@@ -16,12 +16,14 @@ const DEFAULT_PUBLIC_ABOUT_CONTENT: PublicAboutPageContent = {
     ctaButtonText: 'Explore Our Services',
     ctaButtonLink: '/',
   },
+  showHistorySection: true,
   historySection: {
     title: 'Our Journey & Commitment',
     text: 'Ragam Inovasi Optima was founded with a vision to make cutting-edge technology accessible and impactful. Officially registered with Ditjen AHU (Direktorat Jenderal Administrasi Hukum Umum) in 2025, we are committed to transparency, innovation, and delivering excellence in every project. Our journey is one of continuous learning and adaptation, ensuring we bring the best solutions to our clients.',
     imageUrl: 'https://placehold.co/600x400.png',
     imageAiHint: 'timeline graph growth',
   },
+  showFounderSection: true,
   founderSection: {
     name: 'Rizal Iswandy',
     title: 'Founder & Lead Innovator',
@@ -29,16 +31,14 @@ const DEFAULT_PUBLIC_ABOUT_CONTENT: PublicAboutPageContent = {
     imageUrl: 'https://placehold.co/400x400.png',
     imageAiHint: 'professional portrait man',
   },
+  showMissionVisionSection: true,
   missionVisionSection: {
     missionTitle: 'Our Mission',
     missionText: 'To provide innovative, high-quality digital services and solutions that drive growth, efficiency, and competitive advantage for our clients.',
-    missionImageUrl: 'https://placehold.co/600x400.png',
-    missionImageAiHint: 'team collaboration',
     visionTitle: 'Our Vision',
     visionText: 'To be a leading digital transformation partner, recognized for our expertise, creativity, and commitment to client success in an ever-evolving technological landscape.',
-    visionImageUrl: 'https://placehold.co/600x400.png',
-    visionImageAiHint: 'futuristic cityscape',
   },
+  showServicesIntroSection: true,
   servicesIntroSection: {
     title: 'What We Do Best',
     introText: 'We offer a range of services designed to meet your unique digital needs, from building powerful web applications to implementing intelligent automation.',
@@ -48,17 +48,19 @@ const DEFAULT_PUBLIC_ABOUT_CONTENT: PublicAboutPageContent = {
     { id: 'automation', icon: 'Zap', name: 'AI & Automation', description: 'Leveraging AI to streamline processes, enhance customer experiences, and unlock new efficiencies.' },
     { id: 'custom', icon: 'Layers', name: 'Custom Software Solutions', description: 'Building bespoke software applications to solve unique business challenges.' },
   ],
+  showCompanyOverviewSection: true,
   companyOverviewSection: {
     title: 'Why Choose Ragam Inovasi Optima?',
     text: "At Ragam Inovasi Optima, we believe in partnership. We work closely with you to understand your goals and challenges, ensuring the solutions we deliver are not just technologically sound but also strategically aligned with your business objectives. Our commitment to quality, innovation, and customer satisfaction sets us apart. We are more than just a service provider; we are your dedicated partner in digital excellence.",
     imageUrl: 'https://placehold.co/600x400.png',
     imageAiHint: 'business handshake team',
   },
+  showCallToActionSection: true,
   callToActionSection: {
     title: "Ready to Elevate Your Digital Presence?",
     text: "Let's discuss how Ragam Inovasi Optima can help you achieve your business goals with innovative technology solutions.",
     buttonText: "Get In Touch",
-    buttonLink: "/contact", // Placeholder - update if you have a contact page
+    buttonLink: "/contact", 
   },
   updatedAt: new Date().toISOString(),
 };
@@ -75,7 +77,7 @@ export async function getSitePageContent(pageId: string): Promise<SitePage | nul
 
       if (pageId === 'public-about') {
         const contentFromDb = data as Partial<PublicAboutPageContent>;
-        // Deep merge with defaults to ensure all fields are present
+        
         const mergedContent: PublicAboutPageContent = {
           id: 'public-about',
           pageTitle: contentFromDb.pageTitle ?? DEFAULT_PUBLIC_ABOUT_CONTENT.pageTitle,
@@ -83,20 +85,24 @@ export async function getSitePageContent(pageId: string): Promise<SitePage | nul
             ...DEFAULT_PUBLIC_ABOUT_CONTENT.heroSection, 
             ...(contentFromDb.heroSection || {}) 
           },
+          showHistorySection: contentFromDb.showHistorySection !== undefined ? contentFromDb.showHistorySection : DEFAULT_PUBLIC_ABOUT_CONTENT.showHistorySection,
           historySection: { 
             ...DEFAULT_PUBLIC_ABOUT_CONTENT.historySection, 
             ...(contentFromDb.historySection || {}) 
           },
+          showFounderSection: contentFromDb.showFounderSection !== undefined ? contentFromDb.showFounderSection : DEFAULT_PUBLIC_ABOUT_CONTENT.showFounderSection,
           founderSection: { 
             ...DEFAULT_PUBLIC_ABOUT_CONTENT.founderSection, 
             ...(contentFromDb.founderSection || {}) 
           },
+          showMissionVisionSection: contentFromDb.showMissionVisionSection !== undefined ? contentFromDb.showMissionVisionSection : DEFAULT_PUBLIC_ABOUT_CONTENT.showMissionVisionSection,
           missionVisionSection: contentFromDb.missionVisionSection 
             ? { 
                 ...DEFAULT_PUBLIC_ABOUT_CONTENT.missionVisionSection,
                 ...(contentFromDb.missionVisionSection || {})
               } 
             : DEFAULT_PUBLIC_ABOUT_CONTENT.missionVisionSection,
+          showServicesIntroSection: contentFromDb.showServicesIntroSection !== undefined ? contentFromDb.showServicesIntroSection : DEFAULT_PUBLIC_ABOUT_CONTENT.showServicesIntroSection,
           servicesIntroSection: contentFromDb.servicesIntroSection
             ? {
                 ...DEFAULT_PUBLIC_ABOUT_CONTENT.servicesIntroSection,
@@ -106,16 +112,12 @@ export async function getSitePageContent(pageId: string): Promise<SitePage | nul
           servicesHighlights: contentFromDb.servicesHighlights && contentFromDb.servicesHighlights.length > 0 
             ? contentFromDb.servicesHighlights 
             : DEFAULT_PUBLIC_ABOUT_CONTENT.servicesHighlights,
-          teamSection: contentFromDb.teamSection 
-            ? { 
-              ...DEFAULT_PUBLIC_ABOUT_CONTENT.teamSection, 
-              ...(contentFromDb.teamSection || {}) 
-            } 
-            : DEFAULT_PUBLIC_ABOUT_CONTENT.teamSection,
+          showCompanyOverviewSection: contentFromDb.showCompanyOverviewSection !== undefined ? contentFromDb.showCompanyOverviewSection : DEFAULT_PUBLIC_ABOUT_CONTENT.showCompanyOverviewSection,
           companyOverviewSection: { 
             ...DEFAULT_PUBLIC_ABOUT_CONTENT.companyOverviewSection, 
             ...(contentFromDb.companyOverviewSection || {}) 
           },
+          showCallToActionSection: contentFromDb.showCallToActionSection !== undefined ? contentFromDb.showCallToActionSection : DEFAULT_PUBLIC_ABOUT_CONTENT.showCallToActionSection,
           callToActionSection: { 
             ...DEFAULT_PUBLIC_ABOUT_CONTENT.callToActionSection, 
             ...(contentFromDb.callToActionSection || {}) 
@@ -165,14 +167,12 @@ export async function saveSitePageContent(
     let dataToSave: any;
 
     if (pageId === 'public-about' && typeof titleOrData === 'object') {
-      // Ensure id is part of the data but not necessarily duplicated in Firestore doc structure
       const { id, ...saveableData } = titleOrData as PublicAboutPageContent;
       dataToSave = {
-        ...saveableData, // Spread all fields from the structured object
+        ...saveableData, 
         updatedAt: serverTimestamp(),
       };
     } else if (typeof titleOrData === 'string' && typeof content === 'string') {
-      // Handling for standard markdown pages
       dataToSave = {
         title: titleOrData,
         content: content,
@@ -185,6 +185,6 @@ export async function saveSitePageContent(
     await setDoc(pageRef, dataToSave, { merge: true });
   } catch (error) {
     console.error(`Error saving site page content for ${pageId}:`, error);
-    throw error; // Re-throw to be handled by the server action
+    throw error; 
   }
 }

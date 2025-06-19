@@ -7,17 +7,16 @@ import Link from 'next/link';
 import { getSitePageContent } from '@/lib/firebase/firestoreSitePages';
 import type { PublicAboutPageContent, PublicAboutPageServiceItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Loader2, AlertTriangle, CheckCircle, Target, Eye, Users, Zap, Layers, Globe, Building, MessageCircle, Sparkles, Award, Users2, Lightbulb } from 'lucide-react';
-import { DEFAULT_SETTINGS } from '@/lib/constants'; // For default page title
+import { Card, CardContent } from '@/components/ui/card';
+import { ArrowLeft, Loader2, AlertTriangle, CheckCircle, Target, Eye, Users as UsersIcon, Zap, Layers, Globe, Building, MessageCircle, Sparkles, Award, Users2, Lightbulb } from 'lucide-react';
+import { DEFAULT_SETTINGS } from '@/lib/constants'; 
 
 // Helper to dynamically get Lucide icons
 const LucideIcon = ({ name, className }: { name: string, className?: string }) => {
   const icons: { [key: string]: React.ElementType } = {
-    Globe, Code: Globe, Zap, Layers, CheckCircle, Target, Eye, Users, Building, MessageCircle, Sparkles, Award, Users2, Lightbulb
+    Globe, Code: Globe, Zap, Layers, CheckCircle, Target, Eye, Users: UsersIcon, Building, MessageCircle, Sparkles, Award, Users2, Lightbulb
   };
-  const IconComponent = icons[name] || Sparkles; // Default to Sparkles if icon not found
+  const IconComponent = icons[name] || Sparkles; 
   return <IconComponent className={className} />;
 };
 
@@ -36,13 +35,11 @@ export default function PublicAboutPage() {
         if (content && content.id === 'public-about') {
           setPageContent(content as PublicAboutPageContent);
         } else {
-          // This case implies default content was returned or an error structure
           const defaultContentOnError = (await getSitePageContent('public-about')) as PublicAboutPageContent;
           setPageContent(defaultContentOnError);
           if(content?.title === "Error Loading Page" || (content as PublicAboutPageContent)?.pageTitle === 'Error Loading About Page') {
             setError(content.content || "Failed to load content. Default content might be shown.");
           } else {
-            // This means no specific 'public-about' data, but some default structure was returned
             console.warn("No specific 'public-about' data found, using defaults.");
           }
         }
@@ -67,7 +64,6 @@ export default function PublicAboutPage() {
     );
   }
   
-  // If there's an error AND pageContent is still using the error title from default fallback
   if (error && pageContent?.pageTitle === 'Error Loading About Page') {
     return (
        <div className="container mx-auto px-4 py-12 text-center">
@@ -83,7 +79,7 @@ export default function PublicAboutPage() {
     );
   }
   
-  if (!pageContent) { // Fallback if pageContent is truly null after loading and error checks
+  if (!pageContent) { 
     return (
       <div className="text-center py-10 container mx-auto">
         <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -98,15 +94,14 @@ export default function PublicAboutPage() {
   }
 
   const { 
-    pageTitle = DEFAULT_SETTINGS.siteTitle, // Default to site title if pageTitle is somehow missing
+    pageTitle = DEFAULT_SETTINGS.siteTitle, 
     heroSection, 
-    historySection, 
-    founderSection, 
-    missionVisionSection,
-    servicesIntroSection,
-    servicesHighlights,
-    companyOverviewSection,
-    callToActionSection 
+    showHistorySection = true, historySection, 
+    showFounderSection = true, founderSection, 
+    showMissionVisionSection = true, missionVisionSection,
+    showServicesIntroSection = true, servicesIntroSection, servicesHighlights,
+    showCompanyOverviewSection = true, companyOverviewSection,
+    showCallToActionSection = true, callToActionSection 
   } = pageContent;
 
   const SectionWrapper: React.FC<{children: React.ReactNode, className?: string, id?: string, bgClassName?: string}> = 
@@ -153,40 +148,44 @@ export default function PublicAboutPage() {
       </SectionWrapper>
 
       {/* History Section */}
-      <SectionWrapper id="history" bgClassName="bg-background">
-        <div className="grid md:grid-cols-2 gap-12 md:gap-20 items-center">
-          <div className="order-2 md:order-1">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">{historySection.title}</h2>
-            <p className="text-muted-foreground leading-relaxed whitespace-pre-line text-md">{historySection.text}</p>
-          </div>
-          {historySection.imageUrl && (
-            <div className="relative w-full aspect-square md:aspect-[4/3] rounded-2xl overflow-hidden shadow-xl border order-1 md:order-2">
-              <Image src={historySection.imageUrl} alt={historySection.title} fill style={{objectFit:"cover"}} data-ai-hint={historySection.imageAiHint || "company journey visual"} />
+      {showHistorySection && (
+        <SectionWrapper id="history" bgClassName="bg-background">
+            <div className="grid md:grid-cols-2 gap-12 md:gap-20 items-center">
+            <div className="order-2 md:order-1">
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">{historySection.title}</h2>
+                <p className="text-muted-foreground leading-relaxed whitespace-pre-line text-md">{historySection.text}</p>
             </div>
-          )}
-        </div>
-      </SectionWrapper>
+            {historySection.imageUrl && (
+                <div className="relative w-full aspect-square md:aspect-[4/3] rounded-2xl overflow-hidden shadow-xl border order-1 md:order-2">
+                <Image src={historySection.imageUrl} alt={historySection.title} fill style={{objectFit:"cover"}} data-ai-hint={historySection.imageAiHint || "company journey visual"} />
+                </div>
+            )}
+            </div>
+        </SectionWrapper>
+      )}
       
       {/* Founder Section */}
-      <SectionWrapper id="founder" bgClassName="bg-card">
-        <div className="grid md:grid-cols-1 lg:grid-cols-5 gap-10 md:gap-16 items-center">
-          {founderSection.imageUrl && (
-            <div className="relative w-48 h-48 lg:w-64 lg:h-64 rounded-full overflow-hidden shadow-2xl border-4 border-primary mx-auto lg:mx-0 lg:col-span-2">
-              <Image src={founderSection.imageUrl} alt={founderSection.name} fill style={{objectFit:"cover"}} data-ai-hint={founderSection.imageAiHint || "founder photo"} />
+      {showFounderSection && (
+        <SectionWrapper id="founder" bgClassName="bg-card">
+            <div className="grid md:grid-cols-1 lg:grid-cols-5 gap-8 md:gap-10 items-center"> {/* Reduced gap */}
+            {founderSection.imageUrl && (
+                <div className="relative w-48 h-48 lg:w-64 lg:h-64 rounded-full overflow-hidden shadow-2xl border-4 border-primary mx-auto lg:mx-0 lg:col-span-2">
+                <Image src={founderSection.imageUrl} alt={founderSection.name} fill style={{objectFit:"cover"}} data-ai-hint={founderSection.imageAiHint || "founder photo"} />
+                </div>
+            )}
+            <div className={`lg:col-span-${founderSection.imageUrl ? '3' : '5'} text-center lg:text-left`}>
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-2">{founderSection.name}</h2>
+                <p className="text-xl text-primary font-semibold mb-5">{founderSection.title}</p>
+                <div className="prose prose-lg dark:prose-invert max-w-none text-muted-foreground leading-relaxed whitespace-pre-line">
+                <p>{founderSection.bio}</p>
+                </div>
             </div>
-          )}
-          <div className={`lg:col-span-${founderSection.imageUrl ? '3' : '5'} text-center lg:text-left`}>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-2">{founderSection.name}</h2>
-            <p className="text-xl text-primary font-semibold mb-5">{founderSection.title}</p>
-            <div className="prose prose-lg dark:prose-invert max-w-none text-muted-foreground leading-relaxed whitespace-pre-line">
-              <p>{founderSection.bio}</p>
             </div>
-          </div>
-        </div>
-      </SectionWrapper>
+        </SectionWrapper>
+      )}
       
       {/* Mission & Vision Section */}
-      {missionVisionSection && (missionVisionSection.missionText || missionVisionSection.visionText) && (
+      {showMissionVisionSection && missionVisionSection && (missionVisionSection.missionText || missionVisionSection.visionText) && (
         <SectionWrapper id="mission-vision" bgClassName="bg-background">
             <div className="grid md:grid-cols-2 gap-12 md:gap-20 items-start">
             {missionVisionSection.missionText && (
@@ -195,11 +194,6 @@ export default function PublicAboutPage() {
                         <Target className="mr-3 h-7 w-7 text-primary"/> {missionVisionSection.missionTitle || "Our Mission"}
                     </h3>
                     <p className="text-muted-foreground leading-relaxed whitespace-pre-line mb-6 text-md">{missionVisionSection.missionText}</p>
-                    {missionVisionSection.missionImageUrl && (
-                        <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden shadow-md border">
-                            <Image src={missionVisionSection.missionImageUrl} alt="Mission" fill style={{objectFit:"cover"}} data-ai-hint={missionVisionSection.missionImageAiHint || "mission visual"} />
-                        </div>
-                    )}
                 </div>
             )}
             {missionVisionSection.visionText && (
@@ -208,11 +202,6 @@ export default function PublicAboutPage() {
                         <Eye className="mr-3 h-7 w-7 text-primary"/> {missionVisionSection.visionTitle || "Our Vision"}
                     </h3>
                     <p className="text-muted-foreground leading-relaxed whitespace-pre-line mb-6 text-md">{missionVisionSection.visionText}</p>
-                     {missionVisionSection.visionImageUrl && (
-                        <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden shadow-md border">
-                            <Image src={missionVisionSection.visionImageUrl} alt="Vision" fill style={{objectFit:"cover"}} data-ai-hint={missionVisionSection.visionImageAiHint || "vision visual"} />
-                        </div>
-                    )}
                 </div>
             )}
             </div>
@@ -220,7 +209,7 @@ export default function PublicAboutPage() {
       )}
 
       {/* Services Section */}
-      {servicesIntroSection && servicesHighlights && servicesHighlights.length > 0 && (
+      {showServicesIntroSection && servicesIntroSection && servicesHighlights && servicesHighlights.length > 0 && (
         <SectionWrapper id="services" bgClassName="bg-card">
           <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">{servicesIntroSection.title}</h2>
@@ -235,30 +224,34 @@ export default function PublicAboutPage() {
       )}
 
       {/* Company Overview Section */}
-      <SectionWrapper id="overview" bgClassName="bg-background">
-          <div className="grid md:grid-cols-2 gap-12 md:gap-20 items-center">
-          {companyOverviewSection.imageUrl && (
-              <div className="relative w-full aspect-square md:aspect-[4/3] rounded-2xl overflow-hidden shadow-xl border order-1">
-              <Image src={companyOverviewSection.imageUrl} alt={companyOverviewSection.title} fill style={{objectFit:"cover"}} data-ai-hint={companyOverviewSection.imageAiHint || "company culture visual"} />
-              </div>
-          )}
-          <div className={`order-2 ${!companyOverviewSection.imageUrl ? 'md:col-span-2 text-center max-w-3xl mx-auto' : ''}`}>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">{companyOverviewSection.title}</h2>
-              <p className="text-muted-foreground leading-relaxed whitespace-pre-line text-md">{companyOverviewSection.text}</p>
-          </div>
-          </div>
-      </SectionWrapper>
+      {showCompanyOverviewSection && (
+        <SectionWrapper id="overview" bgClassName="bg-background">
+            <div className="grid md:grid-cols-2 gap-12 md:gap-20 items-center">
+            {companyOverviewSection.imageUrl && (
+                <div className="relative w-full aspect-square md:aspect-[4/3] rounded-2xl overflow-hidden shadow-xl border order-1">
+                <Image src={companyOverviewSection.imageUrl} alt={companyOverviewSection.title} fill style={{objectFit:"cover"}} data-ai-hint={companyOverviewSection.imageAiHint || "company culture visual"} />
+                </div>
+            )}
+            <div className={`order-2 ${!companyOverviewSection.imageUrl ? 'md:col-span-2 text-center max-w-3xl mx-auto' : ''}`}>
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">{companyOverviewSection.title}</h2>
+                <p className="text-muted-foreground leading-relaxed whitespace-pre-line text-md">{companyOverviewSection.text}</p>
+            </div>
+            </div>
+        </SectionWrapper>
+      )}
 
       {/* Call to Action Section */}
-      <SectionWrapper id="cta" bgClassName="bg-gradient-to-tr from-primary/5 via-background to-accent/5 border-t border-border">
-        <div className="text-center max-w-2xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-5">{callToActionSection.title}</h2>
-          <p className="text-muted-foreground mb-10 leading-relaxed text-lg">{callToActionSection.text}</p>
-          <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-primary-foreground px-12 py-7 text-lg rounded-full shadow-lg hover:shadow-primary/30 transition-all duration-300 transform hover:scale-105">
-            <Link href={callToActionSection.buttonLink}>{callToActionSection.buttonText}</Link>
-          </Button>
-        </div>
-      </SectionWrapper>
+      {showCallToActionSection && (
+        <SectionWrapper id="cta" bgClassName="bg-gradient-to-tr from-primary/5 via-background to-accent/5 border-t border-border">
+            <div className="text-center max-w-2xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-5">{callToActionSection.title}</h2>
+            <p className="text-muted-foreground mb-10 leading-relaxed text-lg">{callToActionSection.text}</p>
+            <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-primary-foreground px-12 py-7 text-lg rounded-full shadow-lg hover:shadow-primary/30 transition-all duration-300 transform hover:scale-105">
+                <Link href={callToActionSection.buttonLink}>{callToActionSection.buttonText}</Link>
+            </Button>
+            </div>
+        </SectionWrapper>
+      )}
 
        <div className="container mx-auto px-4 md:px-6 py-12 text-center">
           <Button variant="outline" asChild className="group">

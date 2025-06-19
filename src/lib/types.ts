@@ -35,34 +35,34 @@ export interface ServiceCategory {
 }
 
 export interface JourneyStage {
-  id: string; // e.g., 'discovery', 'service-landing-page'
-  title: string; // e.g., 'Discovery', 'Service Landing Page' (this will be the label below the step number)
-  details: string[]; // Predefined key elements for this stage
-  placeholder?: string; // Placeholder for the notes textarea
+  id: string; 
+  title: string; 
+  details: string[]; 
+  placeholder?: string; 
 }
 
 export interface Service {
-  id: string; // Firestore document ID
+  id: string; 
   title: string;
   title_lowercase?: string;
   shortDescription: string;
-  longDescription: string; // Markdown
+  longDescription: string; 
   category: ServiceCategory;
   pricingModel: "Fixed Price" | "Starting At" | "Hourly" | "Subscription" | "Custom Quote";
-  priceMin?: number; // In IDR
-  priceMax?: number; // In IDR
-  currency: string; // e.g., "IDR"
+  priceMin?: number; 
+  priceMax?: number; 
+  currency: string; 
   tags: string[];
-  imageUrl: string; // Representative image for the service
+  imageUrl: string; 
   dataAiHint?: string;
   status: 'active' | 'inactive' | 'draft';
-  keyFeatures?: string[]; // List of key features/benefits
-  targetAudience?: string[]; // Who is this service for?
-  estimatedDuration?: string; // e.g., "2-4 weeks", "Varies"
-  portfolioLink?: string; // URL to relevant work/case studies
-  customerJourneyStages?: JourneyStage[]; // Array of customer journey stages for this service
-  createdAt: string; // ISO date string
-  updatedAt?: string; // ISO date string
+  keyFeatures?: string[]; 
+  targetAudience?: string[]; 
+  estimatedDuration?: string; 
+  portfolioLink?: string; 
+  customerJourneyStages?: JourneyStage[]; 
+  createdAt: string; 
+  updatedAt?: string; 
 }
 
 
@@ -116,14 +116,14 @@ export type OrderInputData = Omit<Order, 'id' | 'createdAt' | 'updatedAt'> & {
   updatedAt?: any;
 };
 
-export interface FetchServicesParams { // Renamed from FetchTemplatesParams
+export interface FetchServicesParams { 
   pageIndex?: number;
   pageSize?: number;
   sorting?: { id: string; desc: boolean }[];
   searchTerm?: string;
 }
 
-export interface FetchServicesResult { // Renamed from FetchTemplatesResult
+export interface FetchServicesResult { 
   data: Service[];
   pageCount: number;
   totalItems: number;
@@ -133,14 +133,14 @@ export interface FetchServicesResult { // Renamed from FetchTemplatesResult
 export interface StandardSitePage {
   id: string;
   title: string;
-  content: string; // Markdown content
+  content: string; 
   updatedAt?: string | null;
 }
 
 // Structured content for Public About Us Page
 export interface PublicAboutPageServiceItem {
-  id: string; // For React key e.g. service-web-dev
-  icon: string; // Lucide icon name string e.g. "Code"
+  id: string; 
+  icon: string; 
   name: string;
   description: string;
 }
@@ -153,8 +153,8 @@ export interface PublicAboutPageSectionContent {
 }
 
 export interface PublicAboutPageContent {
-  id: 'public-about'; // Specific ID for this page type
-  pageTitle: string; // For browser tab and H1
+  id: 'public-about'; 
+  pageTitle: string; 
   
   heroSection: {
     tagline: string;
@@ -165,8 +165,10 @@ export interface PublicAboutPageContent {
     ctaButtonLink?: string;
   };
 
+  showHistorySection?: boolean;
   historySection: PublicAboutPageSectionContent;
 
+  showFounderSection?: boolean;
   founderSection: {
     name: string;
     title: string;
@@ -175,31 +177,26 @@ export interface PublicAboutPageContent {
     imageAiHint?: string;
   };
 
+  showMissionVisionSection?: boolean;
   missionVisionSection?: {
     missionTitle?: string;
     missionText?: string;
-    missionImageUrl?: string | null;
-    missionImageAiHint?: string;
     visionTitle?: string;
     visionText?: string;
-    visionImageUrl?: string | null;
-    visionImageAiHint?: string;
   };
 
-  servicesIntroSection?: { // Made optional
+  showServicesIntroSection?: boolean;
+  servicesIntroSection?: { 
     title: string;
     introText: string;
   };
   
   servicesHighlights?: PublicAboutPageServiceItem[];
 
-  teamSection?: { // Made optional
-    title: string;
-    introText?: string;
-  };
-  
+  showCompanyOverviewSection?: boolean;
   companyOverviewSection: PublicAboutPageSectionContent; 
 
+  showCallToActionSection?: boolean;
   callToActionSection: {
     title: string;
     text: string;
