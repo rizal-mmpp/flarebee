@@ -8,12 +8,9 @@ import NextImage from 'next/image';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { randomUUID } from 'crypto'; // Ensure this is polyfilled or handled if used client-side without Node.js env
-
 import { getServiceByIdFromFirestore } from '@/lib/firebase/firestoreServices';
 import { updateServiceJourneyStagesAction } from '@/lib/actions/service.actions';
 import type { Service, JourneyStage } from '@/lib/types';
-
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,7 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from '@/hooks/use-toast';
 import { 
   ArrowLeft, Loader2, ServerCrash, Save, Play, ChevronLeft, ChevronRight, 
-  UploadCloud, Image as ImageIcon, Edit, Trash2, PlusCircle, ArrowUp, ArrowDown,
+  ImageIcon, Edit, Trash2, PlusCircle, ArrowUp, ArrowDown,
   Edit2, Check
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -37,6 +34,8 @@ const stageFormSchema = z.object({
 });
 type StageFormValues = z.infer<typeof stageFormSchema>;
 
+// Default empty array for journey stages if a service has none
+const DEFAULT_JOURNEY_STAGES_PLACEHOLDER: JourneyStage[] = [];
 
 export default function SimulateJourneyPage() {
   const params = useParams();
@@ -55,9 +54,8 @@ export default function SimulateJourneyPage() {
   const [selectedFiles, setSelectedFiles] = useState<Record<string, File | null>>({});
 
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
-  const [currentEditingStage, setCurrentEditingStage] = useState<JourneyStage | null>(null); // Use for both add/edit
+  const [currentEditingStage, setCurrentEditingStage] = useState<JourneyStage | null>(null);
   const [editingStageOriginalIndex, setEditingStageOriginalIndex] = useState<number | null>(null);
-
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [stageToDeleteIndex, setStageToDeleteIndex] = useState<number | null>(null);
@@ -79,16 +77,15 @@ export default function SimulateJourneyPage() {
             setService(fetchedService);
             const stages = fetchedService.customerJourneyStages && fetchedService.customerJourneyStages.length > 0
               ? fetchedService.customerJourneyStages
-              : []; // Start with empty if none in Firestore
+              : DEFAULT_JOURNEY_STAGES_PLACEHOLDER;
             setJourneyStages(stages);
             if (stages.length > 0) {
               setCurrentStageIndex(0);
             } else {
               setCurrentStageIndex(null);
             }
-            // Initialize image states for existing stages (if images were stored - currently not)
             const initialImages: Record<string, string | null> = {};
-            stages.forEach(stage => { initialImages[stage.id] = null; /* TODO: Load from service.stageImages if implemented */ });
+            stages.forEach(stage => { initialImages[stage.id] = null; });
             setStageImages(initialImages);
             setSelectedFiles({});
           } else {
@@ -110,16 +107,16 @@ export default function SimulateJourneyPage() {
   }, [serviceId]);
 
   const handleImageFileChange = useCallback((stageId: string, file: File | null) => {
-    if (stageImages[stageId]) {
-      URL.revokeObjectURL(stageImages[stageId]!);
-    }
+    setStageImages(prevImages => {
+      const newImages = { ...prevImages };
+      if (newImages[stageId]) {
+        URL.revokeObjectURL(newImages[stageId]!);
+      }
+      newImages[stageId] = file ? URL.createObjectURL(file) : null;
+      return newImages;
+    });
     setSelectedFiles(prev => ({...prev, [stageId]: file }));
-    if (file) {
-      setStageImages(prev => ({ ...prev, [stageId]: URL.createObjectURL(file) }));
-    } else {
-      setStageImages(prev => ({ ...prev, [stageId]: null }));
-    }
-  }, [stageImages]);
+  }, []);
   
   const handleOpenAddStageModal = () => {
     setCurrentEditingStage(null);
@@ -141,23 +138,28 @@ export default function SimulateJourneyPage() {
 
   const onStageFormSubmit: SubmitHandler<StageFormValues> = (data) => {
     const newStageDetails = data.details.split('\n').map(d => d.trim()).filter(d => d);
-    if (currentEditingStage && editingStageOriginalIndex !== null) { // Editing existing stage
+    const stageId = currentEditingStage ? currentEditingStage.id : `stage-${Date.now()}-${(typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID().substring(0,6) : Math.random().toString(36).substring(2, 8)}`;
+    
+    const stageData: JourneyStage = {
+      id: stageId,
+      title: data.title,
+      details: newStageDetails,
+      placeholder: data.placeholder,
+    };
+
+    if (currentEditingStage && editingStageOriginalIndex !== null) {
       const updatedStages = journeyStages.map((s, idx) => 
-        idx === editingStageOriginalIndex 
-        ? { ...s, title: data.title, details: newStageDetails, placeholder: data.placeholder } 
-        : s
+        idx === editingStageOriginalIndex ? stageData : s
       );
       setJourneyStages(updatedStages);
-    } else { // Adding new stage
-      const newStage: JourneyStage = {
-        id: `stage-${Date.now()}-${(typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID().substring(0,6) : Math.random().toString(36).substring(2, 8)}`,
-        title: data.title,
-        details: newStageDetails,
-        placeholder: data.placeholder,
-      };
-      const updatedStages = [...journeyStages, newStage];
+    } else {
+      const updatedStages = [...journeyStages, stageData];
       setJourneyStages(updatedStages);
-      setCurrentStageIndex(updatedStages.length - 1); // Navigate to the new stage
+      setCurrentStageIndex(updatedStages.length - 1);
+      if (!stageImages[stageId]) { // Initialize image state for new stage
+        setStageImages(prev => ({...prev, [stageId]: null}));
+        setSelectedFiles(prev => ({...prev, [stageId]: null}));
+      }
     }
     setIsAddEditModalOpen(false);
   };
@@ -169,9 +171,17 @@ export default function SimulateJourneyPage() {
 
   const confirmDeleteStage = () => {
     if (stageToDeleteIndex !== null) {
+      const stageToDelete = journeyStages[stageToDeleteIndex];
       const updatedStages = journeyStages.filter((_, idx) => idx !== stageToDeleteIndex);
       setJourneyStages(updatedStages);
       
+      // Clean up image state for deleted stage
+      if (stageToDelete) {
+        if (stageImages[stageToDelete.id]) URL.revokeObjectURL(stageImages[stageToDelete.id]!);
+        setStageImages(prev => { const newImages = {...prev}; delete newImages[stageToDelete.id]; return newImages; });
+        setSelectedFiles(prev => { const newFiles = {...prev}; delete newFiles[stageToDelete.id]; return newFiles; });
+      }
+
       if (currentStageIndex !== null) {
         if (updatedStages.length === 0) {
           setCurrentStageIndex(null);
@@ -193,7 +203,6 @@ export default function SimulateJourneyPage() {
 
     [newStages[index], newStages[targetIndex]] = [newStages[targetIndex], newStages[index]];
     setJourneyStages(newStages);
-    // Update currentStageIndex if it was one of the moved stages
     if (currentStageIndex === index) {
       setCurrentStageIndex(targetIndex);
     } else if (currentStageIndex === targetIndex) {
@@ -204,14 +213,10 @@ export default function SimulateJourneyPage() {
   const handleSaveChangesToFirestore = () => {
     if (!service) return;
     startSaveTransition(async () => {
-      // Image upload to blob and updating service.customerJourneyImages is NOT implemented here yet.
-      // This only saves the text structure of journeyStages.
       console.log("Saving Journey Stages to Firestore:", journeyStages);
-      
       const result = await updateServiceJourneyStagesAction(service.id, journeyStages);
       if (result.success) {
         toast({ title: 'Journey Saved', description: 'Customer journey stages have been updated.' });
-        setIsEditModeActive(false);
       } else {
         toast({ title: 'Error Saving Journey', description: result.error || 'Could not save changes.', variant: 'destructive' });
       }
@@ -260,193 +265,190 @@ export default function SimulateJourneyPage() {
   
   return (
     <TooltipProvider delayDuration={0}>
-      <div className="flex flex-col h-full min-h-[calc(100vh-theme(spacing.16))]">
-        {/* New Header Bar */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-3">
-                <Play className="h-7 w-7 md:h-8 md:w-8 text-primary flex-shrink-0" />
-                <div>
-                <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground leading-tight">
-                    Customer Journey Simulation
-                </h1>
-                <p className="text-sm md:text-base text-muted-foreground leading-tight truncate max-w-xs md:max-w-md">
-                    For service: <span className="font-medium text-foreground/90">{service.title}</span>
-                </p>
-                </div>
+      <div className="flex flex-col h-full min-h-screen"> {/* Changed to min-h-screen to ensure footer is pushed down */}
+        {/* NEW HEADER SECTION */}
+        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 p-4 md:p-6 rounded-xl border bg-card text-card-foreground shadow">
+          <div className="flex items-center gap-3">
+            <Play className="h-7 w-7 md:h-8 md:w-8 text-primary flex-shrink-0" />
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground leading-tight">
+                Customer Journey Simulation
+              </h1>
+              <p className="text-sm md:text-base text-muted-foreground leading-tight truncate max-w-xs md:max-w-md">
+                For service: <span className="font-medium text-foreground/90">{service?.title || 'Loading...'}</span>
+              </p>
             </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end flex-wrap">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={() => router.push(`/admin/services/${serviceId}`)} disabled={isSavingJourney}>
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Back to Service Details</p></TooltipContent>
+            </Tooltip>
+
+            {isEditModeActive ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={() => setIsEditModeActive(false)} disabled={isSavingJourney}>
+                    <Check className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>Done Editing (View Mode)</p></TooltipContent>
+              </Tooltip>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={() => setIsEditModeActive(true)} disabled={isSavingJourney}>
+                    <Edit2 className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>Edit Journey</p></TooltipContent>
+              </Tooltip>
+            )}
+
+            {isEditModeActive && (
+              <>
                 <Tooltip>
-                    <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" onClick={() => router.push(`/admin/services/${serviceId}`)} disabled={isSavingJourney}>
-                        <ArrowLeft className="h-5 w-5" />
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" onClick={handleOpenAddStageModal} disabled={isSavingJourney}>
+                      <PlusCircle className="h-5 w-5" />
                     </Button>
-                    </TooltipTrigger>
-                    <TooltipContent><p>Back to Service Details</p></TooltipContent>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Add New Stage</p></TooltipContent>
                 </Tooltip>
-
-                {!isEditModeActive && (
                 <Tooltip>
-                    <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" onClick={() => setIsEditModeActive(true)} disabled={isSavingJourney}>
-                        <Edit2 className="h-5 w-5" />
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" onClick={() => currentStage && handleOpenEditStageModal(currentStage, currentStageIndex!)} disabled={isSavingJourney || !currentStage}>
+                      <Edit className="h-5 w-5" />
                     </Button>
-                    </TooltipTrigger>
-                    <TooltipContent><p>Edit Journey</p></TooltipContent>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Edit Current Stage</p></TooltipContent>
                 </Tooltip>
-                )}
-
-                {isEditModeActive && (
-                <>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" onClick={() => setIsEditModeActive(false)} disabled={isSavingJourney}>
-                            <Check className="h-5 w-5" />
-                        </Button>
-                        </TooltipTrigger>
-                        <TooltipContent><p>Done Editing (View Mode)</p></TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" onClick={handleOpenAddStageModal} disabled={isSavingJourney}>
-                            <PlusCircle className="h-5 w-5" />
-                        </Button>
-                        </TooltipTrigger>
-                        <TooltipContent><p>Add New Stage</p></TooltipContent>
-                    </Tooltip>
-                    {currentStage && (
-                    <>
-                        <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button variant="outline" size="icon" onClick={() => handleOpenEditStageModal(currentStage, currentStageIndex!)} disabled={isSavingJourney}>
-                            <Edit className="h-5 w-5" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent><p>Edit Current Stage</p></TooltipContent>
-                        </Tooltip>
-                        {journeyStages.length > 0 && ( // Only show delete if there are stages
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                            <Button variant="outline" size="icon" onClick={() => handleOpenDeleteModal(currentStageIndex!)} disabled={isSavingJourney} className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                                <Trash2 className="h-5 w-5" />
-                            </Button>
-                            </TooltipTrigger>
-                            <TooltipContent><p>Delete Current Stage</p></TooltipContent>
-                        </Tooltip>
-                        )}
-                    </>
-                    )}
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                        <Button variant="default" size="icon" onClick={handleSaveChangesToFirestore} disabled={isSavingJourney} className="bg-primary hover:bg-primary/90">
-                            {isSavingJourney ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-                        </Button>
-                        </TooltipTrigger>
-                        <TooltipContent><p>Save All Journey Changes</p></TooltipContent>
-                    </Tooltip>
-                </>
-                )}
-            </div>
-        </div>
-
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" onClick={() => currentStageIndex !== null && handleOpenDeleteModal(currentStageIndex)} disabled={isSavingJourney || !currentStage || journeyStages.length <= 1}>
+                      <Trash2 className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Delete Current Stage</p></TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="default" size="icon" onClick={handleSaveChangesToFirestore} disabled={isSavingJourney} className="bg-primary hover:bg-primary/90">
+                      {isSavingJourney ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Save All Journey Changes</p></TooltipContent>
+                </Tooltip>
+              </>
+            )}
+          </div>
+        </header>
 
         {/* Main Content Grid */}
-        <div className="flex-grow grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-6 p-0"> {/* Adjusted lg grid and removed padding */}
+        <div className="flex-grow grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6"> {/* No outer padding for grid, using fixed width for stepper */}
           {/* Left Column: Stage Content */}
           <Card className="rounded-xl shadow-sm flex flex-col">
-            <CardContent className="p-4 md:p-6 space-y-5 flex-grow overflow-y-auto">
-              {currentStage ? (
-                <>
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <h2 className="text-xl md:text-2xl font-semibold text-foreground">
-                      Stage {String(currentStageIndex! + 1).padStart(2, '0')}: {currentStage.title}
-                    </h2>
-                    <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentStageIndex(prev => prev !== null && prev > 0 ? prev - 1 : prev)}
-                        disabled={currentStageIndex === 0 || currentStageIndex === null}
-                        className="h-9 px-4 group"
-                      >
-                        <ChevronLeft className="mr-1.5 h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" /> Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentStageIndex(prev => prev !== null && prev < journeyStages.length - 1 ? prev + 1 : prev)}
-                        disabled={currentStageIndex === null || currentStageIndex === journeyStages.length - 1}
-                        className="h-9 px-4 group"
-                      >
-                        Next <ChevronRight className="ml-1.5 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-3">
-                    <h4 className="text-base font-semibold text-muted-foreground mb-2">Key Elements & Considerations:</h4>
-                    {currentStage.details.length > 0 ? (
-                        <ul className="text-sm text-muted-foreground space-y-1.5 list-disc list-outside pl-5">
-                        {currentStage.details.map((detail, idx) => (
-                            <li key={idx} className="leading-relaxed">{detail}</li>
-                        ))}
-                        </ul>
-                    ) : (
-                        <p className="text-sm text-muted-foreground italic">No predefined details for this stage. {isEditModeActive ? 'Add details via "Edit Stage".' : ''}</p>
-                    )}
-                  </div>
-                  
-                  <Card className="mt-5">
-                    <CardHeader className="pb-3 pt-4 px-4">
-                        <CardTitle className="text-base font-semibold">Visual Mockup / UI Preview</CardTitle>
-                        <CardDescription className="text-xs">
-                            {isEditModeActive ? "Upload an image for this stage's UI or visual representation." : "Preview for this stage."}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-4">
-                        <div className={cn("mt-1 p-3 border-2 border-dashed border-border/50 rounded-lg bg-muted/20 min-h-[200px] flex flex-col items-center justify-center text-center")}>
-                            {currentStageImagePreview ? (
-                            <div className="relative w-full max-w-lg aspect-video mb-3">
-                                <NextImage
-                                src={currentStageImagePreview}
-                                alt={`Preview for ${currentStage.title}`}
-                                fill
-                                className="object-contain rounded-md"
-                                />
-                            </div>
-                            ) : (
-                            <div className="text-muted-foreground space-y-1.5 py-6">
-                                <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground/50" />
-                                <p className="text-sm">No preview image for this stage.</p>
-                                {isEditModeActive && <p className="text-xs">Upload a mockup or UI screenshot.</p>}
-                            </div>
-                            )}
-                            {isEditModeActive && (
-                                <CustomDropzone
-                                    id={`image-upload-${currentStage.id}`}
-                                    onFileChange={(file) => handleImageFileChange(currentStage.id, file)}
-                                    currentFileName={currentSelectedFile?.name}
-                                    accept={{ 'image/*': ['.png', '.jpeg', '.jpg', '.gif', '.webp', '.avif'] }}
-                                    maxSize={1 * 1024 * 1024} 
-                                    className="w-full max-w-md mt-3"
-                                />
-                            )}
+            <CardContent className="p-4 md:p-6 space-y-4 flex-grow overflow-y-auto"> {/* Reduced space-y */}
+                {currentStage ? (
+                  <>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-2">
+                        <h2 className="text-xl md:text-2xl font-semibold text-foreground">
+                          Stage {String(currentStageIndex! + 1).padStart(2, '0')}: {currentStage.title}
+                        </h2>
+                        <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                            <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentStageIndex(prev => prev !== null && prev > 0 ? prev - 1 : prev)}
+                            disabled={currentStageIndex === 0 || currentStageIndex === null}
+                            className="h-9 px-4 group"
+                            >
+                            <ChevronLeft className="mr-1.5 h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
+                            Previous
+                            </Button>
+                            <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentStageIndex(prev => prev !== null && prev < journeyStages.length - 1 ? prev + 1 : prev)}
+                            disabled={currentStageIndex === null || currentStageIndex === journeyStages.length - 1}
+                            className="h-9 px-4 group"
+                            >
+                            Next
+                            <ChevronRight className="ml-1.5 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                            </Button>
                         </div>
-                    </CardContent>
-                  </Card>
-                </>
-              ) : (
+                    </div>
+                    
+                    <div className="mt-1">
+                        <h4 className="text-base font-semibold text-muted-foreground mb-2">Key Elements & Considerations:</h4>
+                        {currentStage.details.length > 0 ? (
+                            <ul className="text-sm text-muted-foreground space-y-1.5 list-disc list-outside pl-5">
+                            {currentStage.details.map((detail, idx) => (
+                                <li key={idx} className="leading-relaxed">{detail}</li>
+                            ))}
+                            </ul>
+                        ) : (
+                            <p className="text-sm text-muted-foreground italic">No predefined details for this stage. {isEditModeActive ? 'Add details via "Edit Stage".' : ''}</p>
+                        )}
+                    </div>
+                    
+                    <Card className="mt-3">
+                        <CardHeader className="pb-3 pt-4 px-4">
+                            <CardTitle className="text-base font-semibold">Visual Mockup / UI Preview</CardTitle>
+                            {isEditModeActive && (
+                                <CardDescription className="text-xs">
+                                    Upload an image for this stage's UI or visual representation.
+                                </CardDescription>
+                            )}
+                        </CardHeader>
+                        <CardContent className="px-4 pb-4">
+                            <div className={cn("mt-1 p-3 border-2 border-dashed border-border/50 rounded-lg bg-muted/20 min-h-[200px] flex flex-col items-center justify-center text-center")}>
+                                {currentStageImagePreview ? (
+                                <div className="relative w-full max-w-lg aspect-video mb-3">
+                                    <NextImage
+                                    src={currentStageImagePreview}
+                                    alt={`Preview for ${currentStage.title}`}
+                                    fill
+                                    className="object-contain rounded-md"
+                                    />
+                                </div>
+                                ) : (
+                                <div className="text-muted-foreground space-y-1.5 py-6">
+                                    <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground/50" />
+                                    <p className="text-sm">No preview image for this stage.</p>
+                                    {isEditModeActive && <p className="text-xs">Upload a mockup or UI screenshot.</p>}
+                                </div>
+                                )}
+                                {isEditModeActive && currentStage && (
+                                    <CustomDropzone
+                                        id={`image-upload-${currentStage.id}`}
+                                        onFileChange={(file) => handleImageFileChange(currentStage.id, file)}
+                                        currentFileName={currentSelectedFile?.name}
+                                        accept={{ 'image/*': ['.png', '.jpeg', '.jpg', '.gif', '.webp', '.avif'] }}
+                                        maxSize={1 * 1024 * 1024} 
+                                        className="w-full max-w-md mt-3"
+                                    />
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                  </>
+                ) : (
                  <div className="text-center p-10 h-full flex flex-col items-center justify-center">
                   <ImageIcon className="h-20 w-20 text-muted-foreground/30 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-muted-foreground mb-2">No Journey Stages Defined</h3>
                   <p className="text-sm text-muted-foreground mb-6">
                     This service doesn't have any customer journey stages set up yet.
                   </p>
-                  {isEditModeActive && (
+                  {isEditModeActive ? (
                     <Button onClick={handleOpenAddStageModal} variant="default">
                         <PlusCircle className="mr-2 h-4 w-4" /> Add First Stage
                     </Button>
-                  )}
-                  {!isEditModeActive && (
+                  ) : (
                      <Button onClick={() => setIsEditModeActive(true)} variant="default">
                         <Edit2 className="mr-2 h-4 w-4" /> Start Editing Journey
                     </Button>
@@ -457,15 +459,15 @@ export default function SimulateJourneyPage() {
           </Card>
 
           {/* Right Column: Vertical Stepper */}
-          <Card id="stepper-sidebar" className="rounded-xl shadow-sm flex flex-col overflow-hidden"> {/* Removed p-0 and adjusted overflow */}
-            <CardHeader className="py-3 md:py-4 px-4 md:px-5 border-b bg-card"> {/* Made header sticky within the card */}
+          <Card id="stepper-sidebar" className="rounded-xl shadow-sm flex flex-col overflow-hidden">
+            <CardHeader className="py-3 md:py-4 px-4 md:px-5 border-b bg-card sticky top-0 z-10">
               <h3 className="text-base font-semibold text-foreground">Journey Stages ({journeyStages.length})</h3>
             </CardHeader>
-            <CardContent className="flex-grow overflow-y-auto p-0"> {/* Removed padding here */}
+            <CardContent className="flex-grow overflow-y-auto p-3"> {/* Reduced padding */}
                 {journeyStages.length > 0 ? (
-                    <div className="relative space-y-0 px-3 py-4"> {/* Added padding here for stepper items */}
+                    <div className="relative space-y-0">
                     {journeyStages.map((stage, index) => (
-                    <div key={stage.id} className="flex items-start group">
+                    <div key={stage.id} className="flex items-start group py-1"> {/* Reduced py */}
                         <div className="flex flex-col items-center mr-3 flex-shrink-0 mt-0.5"> 
                         <div
                             className={cn(
@@ -480,7 +482,7 @@ export default function SimulateJourneyPage() {
                         </div>
                         {index < journeyStages.length - 1 && (
                             <div className={cn(
-                            "w-px h-4 my-0.5 transition-colors duration-200", 
+                            "w-px h-4 my-0.5 transition-colors duration-200", // Reduced h
                             index < (currentStageIndex ?? -1) ? "bg-primary" : "bg-border group-hover:bg-primary/30"
                             )}></div>
                         )}
@@ -493,7 +495,7 @@ export default function SimulateJourneyPage() {
                         )}
                         onClick={() => setCurrentStageIndex(index)}
                         >
-                        <p className="text-sm leading-snug cursor-pointer break-words">{stage.title}</p> {/* Allow text wrapping */}
+                          <p className="text-sm leading-snug cursor-pointer break-words">{stage.title}</p> {/* text-wrap */}
                         </div>
                         {isEditModeActive && (
                             <div className="flex items-center ml-auto pl-1 pt-0">
@@ -520,7 +522,7 @@ export default function SimulateJourneyPage() {
                 </div>
                 ) : (
                     <div className="p-6 text-center text-sm text-muted-foreground">
-                        {isEditModeActive ? "No stages defined yet. Click 'Add New Stage' in the top bar to begin building the journey." : "No journey stages have been defined for this service."}
+                        {isEditModeActive ? "No stages defined yet. Click 'Add New Stage' in the top bar to begin." : "No journey stages have been defined for this service."}
                     </div>
                 )}
             </CardContent>
@@ -534,7 +536,7 @@ export default function SimulateJourneyPage() {
           <DialogHeader>
             <DialogTitle>{currentEditingStage ? 'Edit Journey Stage' : 'Add New Journey Stage'}</DialogTitle>
             <DialogDescription>
-              Define the title, key details (one per line), and an optional placeholder for notes for this stage.
+              Define the title and key details (one per line) for this stage.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmitStageForm(onStageFormSubmit)} className="space-y-4 py-2">
@@ -548,7 +550,7 @@ export default function SimulateJourneyPage() {
               <Textarea id="stageDetails" {...registerStageForm('details')} rows={5} className="mt-1" placeholder="Touchpoint: Homepage feature\nAction: User clicks 'Learn More'"/>
               {stageFormErrors.details && <p className="text-sm text-destructive mt-1">{stageFormErrors.details.message}</p>}
             </div>
-            <div>
+             <div>
               <Label htmlFor="stagePlaceholder">Placeholder for Image Description (Optional)</Label>
               <Textarea id="stagePlaceholder" {...registerStageForm('placeholder')} rows={3} className="mt-1" placeholder="e.g., Describe the visual elements and primary CTA for this step..."/>
             </div>
