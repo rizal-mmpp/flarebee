@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getServiceByIdFromFirestore } from '@/lib/firebase/firestoreServices';
@@ -12,11 +12,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { 
   ArrowLeft, Loader2, ServerCrash, Play, Save, Briefcase, ChevronLeft, ChevronRight,
-  Search, Presentation, Wand2, UserPlus, LayoutDashboard, ShoppingBag, CreditCard, ListChecks, Rocket, Repeat, UploadCloud, Image as ImageIcon
+  Search, Presentation, Wand2, UserPlus, LayoutDashboard, ShoppingBag, CreditCard, ListChecks, Rocket, Repeat, UploadCloud, Image as ImageIcon // Renamed NextImage to ImageIcon
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import NextImage from 'next/image'; // Renamed import to avoid conflict
+import NextImage from 'next/image'; // Explicit NextImage import
 import { CustomDropzone } from '@/components/ui/custom-dropzone';
 
 const journeyStages = [
