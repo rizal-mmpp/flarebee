@@ -5,124 +5,34 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getServiceByIdFromFirestore } from '@/lib/firebase/firestoreServices';
-import type { Service } from '@/lib/types';
+import type { Service, JourneyStage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { 
   ArrowLeft, Loader2, ServerCrash, Play, Save, Briefcase, ChevronLeft, ChevronRight,
-  Search, Presentation, Wand2, UserPlus, LayoutDashboard, ShoppingBag, CreditCard, ListChecks, Rocket, Repeat, UploadCloud, Image as ImageIcon // Renamed NextImage to ImageIcon
+  UploadCloud, Image as ImageIcon 
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import NextImage from 'next/image'; // Explicit NextImage import
+import NextImage from 'next/image'; 
 import { CustomDropzone } from '@/components/ui/custom-dropzone';
 
-const journeyStages = [
-  { 
-    id: 'discovery', 
-    title: '1. Discovery', 
-    icon: Search,
-    details: [
-      "Touchpoints: Homepage → “Explore Our Services”, Services List → “Business Profile Website”, Paid Ads, Social Media, WhatsApp Campaigns",
-      "Key Actions: Click service card → open dedicated service landing page"
-    ],
-    placeholder: "Describe visual elements and user interactions for Discovery. What does the user see on the homepage? How is the service presented in lists/ads? What's the initial hook?"
-  },
-  { 
-    id: 'service-landing-page', 
-    title: '2. Service Landing Page', 
-    icon: Presentation,
-    details: [
-      "Content: Hero: “Professional Website for Your Business – Launch in Days”, Value props (e.g., Free subdomain, SEO ready, CMS), Demo links / client success stories",
-      "CTAs: “Start Now” (Primary), “Preview Demo”, “Chat First”"
-    ],
-    placeholder: "Detail the layout of the service landing page. Visual hierarchy? CTA displays? Demo preview look? How are value props communicated visually?"
-  },
-  { 
-    id: 'smart-onboarding', 
-    title: '3. Smart Onboarding (Pre-Login)', 
-    icon: Wand2,
-    details: [
-      "Inline, 3-step lightweight wizard: Business Name & Type, Domain options ('I have one', 'Search domain', 'Skip for now' → subdomain), Select preferred style/template (quick preview).",
-      "All fields optional. 'Continue' active if at least 1 field filled."
-    ],
-    placeholder: "Design the wizard steps. How are domain options presented? How does the style/template quick preview work visually? What's the feel of this onboarding?"
-  },
-  { 
-    id: 'sign-in-up', 
-    title: '4. Sign In / Sign Up', 
-    icon: UserPlus,
-    details: [
-      "Google OAuth & Email options.",
-      "Progress from onboarding is saved in session/local storage and applied post-login."
-    ],
-    placeholder: "Describe the sign-in/sign-up interface. How is the saved onboarding progress communicated or handled visually upon return?"
-  },
-  { 
-    id: 'dashboard-start-project', 
-    title: '5. Dashboard: Start Project', 
-    icon: LayoutDashboard,
-    details: [
-      "Now in authenticated project dashboard.",
-      "Auto-generated project draft based on onboarding.",
-      "Show project steps: ✅ Business Info, ✅ Domain, 🟨 Template Selection (edit or keep), 🟧 Package Plan, 🟩 Custom Feature (optional)."
-    ],
-    placeholder: "Visualize the initial project dashboard. How is the draft project presented? How are the project steps shown? How can users edit pre-filled info?"
-  },
-  { 
-    id: 'select-package-addons', 
-    title: '6. Select Package & Add-ons', 
-    icon: ShoppingBag,
-    details: [
-      "Show pricing tiers with visual comparison.",
-      "Add-ons (CMS, Blog, WhatsApp button, Form, SEO setup, etc.).",
-      "Upsell option for full custom dev."
-    ],
-    placeholder: "Design the package selection interface. How are tiers and add-ons visually distinct? How is the upsell presented without being intrusive?"
-  },
-  { 
-    id: 'checkout', 
-    title: '7. Checkout', 
-    icon: CreditCard,
-    details: [
-      "Transparent breakdown: Subscription (monthly/annual), Add-on costs (if any).",
-      "Payment options: card, VA, QRIS (Xendit).",
-      "Post-payment CTA: “Go to Dashboard”."
-    ],
-    placeholder: "Visualize the checkout page. How is the cost breakdown presented clearly? How are payment options displayed? What's the success confirmation look like?"
-  },
-  { 
-    id: 'project-status-tracker', 
-    title: '8. Project Status Tracker (Dashboard)', 
-    icon: ListChecks,
-    details: [
-      "Post-checkout dashboard shows: Project timeline (Planning → Development → Review → Launch), Chat with Dev team, Upload brand assets, Edit business info, Domain integration status, 'Invite teammate' (if relevant)."
-    ],
-    placeholder: "Design the project tracker. How is the timeline visualized? What does the chat interface look like? How are asset uploads and info editing handled?"
-  },
-  { 
-    id: 'launch-delivery', 
-    title: '9. Launch & Delivery', 
-    icon: Rocket,
-    details: [
-      "Final site preview, DNS guide or auto-config, “Go Live” button.",
-      "Confirmation Page: Success message, Analytics starter, CMS guide, Shareable link button."
-    ],
-    placeholder: "Visualize the final launch steps. What does the 'Go Live' confirmation look like? How are guides and success messages presented?"
-  },
-  { 
-    id: 'post-launch-retention', 
-    title: '10. Post-Launch & Retention', 
-    icon: Repeat,
-    details: [
-      "Regular performance emails: “Your site had 134 views this week”.",
-      "Client dashboard includes: CMS editor, Traffic stats (Google Analytics embed), Support ticket/chat, Plan management & renewals, Easy upgrade CTA: “Need More Pages?”."
-    ],
-    placeholder: "Design the post-launch dashboard elements. How are stats presented? What does the CMS editor access look like? How are upgrade CTAs integrated smoothly?"
-  },
+// Default journey stages if not found in service data
+const DEFAULT_JOURNEY_STAGES: JourneyStage[] = [
+  { id: 'discovery', title: 'Discovery', details: ["Touchpoints: Homepage → “Explore Our Services”, Services List → “Business Profile Website”, Paid Ads, Social Media, WhatsApp Campaigns", "Key Actions: Click service card → open dedicated service landing page"], placeholder: "Describe visual elements and user interactions for Discovery. What does the user see on the homepage? How is the service presented in lists/ads? What's the initial hook?" },
+  { id: 'service-landing-page', title: 'Service Landing Page', details: ["Content: Hero: “Professional Website for Your Business – Launch in Days”, Value props (e.g., Free subdomain, SEO ready, CMS), Demo links / client success stories", "CTAs: “Start Now” (Primary), “Preview Demo”, “Chat First”"], placeholder: "Detail the layout of the service landing page. Visual hierarchy? CTA displays? Demo preview look? How are value props communicated visually?" },
+  { id: 'smart-onboarding', title: 'Smart Onboarding', details: ["Inline, 3-step lightweight wizard: Business Name & Type, Domain options ('I have one', 'Search domain', 'Skip for now' → subdomain), Select preferred style/template (quick preview).", "All fields optional. 'Continue' active if at least 1 field filled."], placeholder: "Design the wizard steps. How are domain options presented? How does the style/template quick preview work visually? What's the feel of this onboarding?" },
+  { id: 'sign-in-up', title: 'Sign In / Sign Up', details: ["Google OAuth & Email options.", "Progress from onboarding is saved in session/local storage and applied post-login."], placeholder: "Describe the sign-in/sign-up interface. How is the saved onboarding progress communicated or handled visually upon return?" },
+  { id: 'dashboard-start-project', title: 'Dashboard: Start Project', details: ["Now in authenticated project dashboard.", "Auto-generated project draft based on onboarding.", "Show project steps: ✅ Business Info, ✅ Domain, 🟨 Template Selection (edit or keep), 🟧 Package Plan, 🟩 Custom Feature (optional)."], placeholder: "Visualize the initial project dashboard. How is the draft project presented? How are the project steps shown? How can users edit pre-filled info?" },
+  { id: 'select-package-addons', title: 'Select Package & Add-ons', details: ["Show pricing tiers with visual comparison.", "Add-ons (CMS, Blog, WhatsApp button, Form, SEO setup, etc.).", "Upsell option for full custom dev."], placeholder: "Design the package selection interface. How are tiers and add-ons visually distinct? How is the upsell presented without being intrusive?" },
+  { id: 'checkout', title: 'Checkout', details: ["Transparent breakdown: Subscription (monthly/annual), Add-on costs (if any).", "Payment options: card, VA, QRIS (Xendit).", "Post-payment CTA: “Go to Dashboard”."], placeholder: "Visualize the checkout page. How is the cost breakdown presented clearly? How are payment options displayed? What's the success confirmation look like?" },
+  { id: 'project-status-tracker', title: 'Project Status Tracker', details: ["Post-checkout dashboard shows: Project timeline (Planning → Development → Review → Launch), Chat with Dev team, Upload brand assets, Edit business info, Domain integration status, 'Invite teammate' (if relevant)."], placeholder: "Design the project tracker. How is the timeline visualized? What does the chat interface look like? How are asset uploads and info editing handled?" },
+  { id: 'launch-delivery', title: 'Launch & Delivery', details: ["Final site preview, DNS guide or auto-config, “Go Live” button.", "Confirmation Page: Success message, Analytics starter, CMS guide, Shareable link button."], placeholder: "Visualize the final launch steps. What does the 'Go Live' confirmation look like? How are guides and success messages presented?" },
+  { id: 'post-launch-retention', title: 'Post-Launch & Retention', details: ["Regular performance emails: “Your site had 134 views this week”.", "Client dashboard includes: CMS editor, Traffic stats (Google Analytics embed), Support ticket/chat, Plan management & renewals, Easy upgrade CTA: “Need More Pages?”."], placeholder: "Design the post-launch dashboard elements. How are stats presented? What does the CMS editor access look like? How are upgrade CTAs integrated smoothly?" },
 ];
+
 
 export default function SimulateJourneyPage() {
   const params = useParams();
@@ -135,8 +45,11 @@ export default function SimulateJourneyPage() {
   
   const [currentStageIndex, setCurrentStageIndex] = useState(0);
   const [journeyNotes, setJourneyNotes] = useState<Record<string, string>>({});
-  const [stageImages, setStageImages] = useState<Record<string, string | null>>({}); // Stores object URLs for previews
-  const [selectedFiles, setSelectedFiles] = useState<Record<string, File | null>>({}); // Stores actual File objects
+  const [stageImages, setStageImages] = useState<Record<string, string | null>>({}); 
+  const [selectedFiles, setSelectedFiles] = useState<Record<string, File | null>>({}); 
+
+  const [journeyStages, setJourneyStages] = useState<JourneyStage[]>(DEFAULT_JOURNEY_STAGES);
+
 
   useEffect(() => {
     if (serviceId) {
@@ -146,10 +59,15 @@ export default function SimulateJourneyPage() {
         .then((fetchedService) => {
           if (fetchedService) {
             setService(fetchedService);
+            const stages = fetchedService.customerJourneyStages && fetchedService.customerJourneyStages.length > 0 
+              ? fetchedService.customerJourneyStages 
+              : DEFAULT_JOURNEY_STAGES;
+            setJourneyStages(stages);
+
             const initialNotes: Record<string, string> = {};
             const initialImages: Record<string, string | null> = {};
-            journeyStages.forEach(stage => {
-              initialNotes[stage.id] = '';
+            stages.forEach(stage => {
+              initialNotes[stage.id] = ''; // Or load saved notes if they exist on the service
               initialImages[stage.id] = null;
             });
             setJourneyNotes(initialNotes);
@@ -157,11 +75,13 @@ export default function SimulateJourneyPage() {
             setSelectedFiles({});
           } else {
             setError('Service not found.');
+            setJourneyStages(DEFAULT_JOURNEY_STAGES); // Use default if service not found
           }
         })
         .catch((err) => {
           console.error('Failed to fetch service details:', err);
           setError('Failed to load service details. Please try again.');
+          setJourneyStages(DEFAULT_JOURNEY_STAGES); // Use default on error
         })
         .finally(() => {
           setIsLoading(false);
@@ -174,11 +94,9 @@ export default function SimulateJourneyPage() {
   };
   
   const handleImageFileChange = (stageId: string, file: File | null) => {
-    // Revoke previous object URL if it exists for this stage
     if (stageImages[stageId]) {
       URL.revokeObjectURL(stageImages[stageId]!);
     }
-
     setSelectedFiles(prev => ({...prev, [stageId]: file }));
     if (file) {
       setStageImages(prev => ({ ...prev, [stageId]: URL.createObjectURL(file) }));
@@ -206,8 +124,8 @@ export default function SimulateJourneyPage() {
   };
 
   const currentStage = journeyStages[currentStageIndex];
-  const currentStageImagePreview = stageImages[currentStage.id];
-  const currentSelectedFile = selectedFiles[currentStage.id];
+  const currentStageImagePreview = currentStage ? stageImages[currentStage.id] : null;
+  const currentSelectedFile = currentStage ? selectedFiles[currentStage.id] : null;
 
 
   if (isLoading) {
@@ -234,82 +152,76 @@ export default function SimulateJourneyPage() {
     );
   }
 
-  if (!service) {
+  if (!service || !currentStage) {
     return (
       <div className="container mx-auto px-4 py-12 text-center">
         <Briefcase className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-        <h2 className="text-2xl font-semibold text-foreground mb-2">Service Not Found</h2>
-        <p className="text-muted-foreground mb-6">The requested service could not be found.</p>
+        <h2 className="text-2xl font-semibold text-foreground mb-2">Service or Journey Stage Not Found</h2>
+        <p className="text-muted-foreground mb-6">The requested service or journey stage could not be loaded.</p>
         <Button variant="outline" asChild className="group">
           <Link href="/admin/services"><ArrowLeft className="mr-2 h-4 w-4" /> Back to Services</Link>
         </Button>
       </div>
     );
   }
-
+  
   return (
-    <div className="flex flex-col h-full min-h-[calc(100vh-8rem)] p-4 md:p-6 space-y-4 bg-muted/30">
+    <div className="flex flex-col h-full min-h-[calc(100vh-8rem)] space-y-6 bg-muted/20 p-4 md:p-6">
       {/* Top Header Section */}
-      <Card className="rounded-xl shadow-sm">
-        <CardHeader className="pb-4">
-          <div className="flex items-center gap-3">
-            <Play className="h-7 w-7 text-primary" />
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Customer Journey Simulation
-            </h1>
-          </div>
-          <p className="text-sm text-muted-foreground ml-10">
+      <Card className="rounded-xl shadow-md">
+        <CardHeader className="pb-3 pt-5 px-5 md:px-6">
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
+            Customer Journey Simulation
+          </h1>
+          <p className="text-sm text-muted-foreground">
             For service: <span className="font-semibold text-foreground">{service.title}</span>
           </p>
         </CardHeader>
-      </Card>
-
-      {/* Stepper Bar */}
-      <Card className="rounded-xl shadow-sm">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between overflow-x-auto pb-2">
+        
+        {/* Stepper Bar */}
+        <CardContent className="px-5 md:px-6 py-4 border-y">
+          <div className="flex items-center overflow-x-auto pb-2 -mb-2">
             {journeyStages.map((stage, index) => (
               <React.Fragment key={stage.id}>
-                <div className="flex flex-col items-center">
-                  <button
-                    onClick={() => setCurrentStageIndex(index)}
-                    className={cn(
-                      "flex flex-col items-center justify-center h-10 w-10 rounded-full text-xs font-semibold border-2 transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                      currentStageIndex === index
-                        ? "bg-primary border-primary text-primary-foreground scale-110"
-                        : "bg-card border-border text-muted-foreground hover:border-primary hover:text-primary"
-                    )}
-                    aria-current={currentStageIndex === index ? "step" : undefined}
-                  >
-                    {String(index + 1).padStart(2, '0')}
-                  </button>
-                  <span className={cn(
-                    "mt-1.5 text-xs text-center w-20 truncate",
-                    currentStageIndex === index ? "text-primary font-semibold" : "text-muted-foreground"
+                <div 
+                  className="flex flex-col items-center cursor-pointer group" 
+                  onClick={() => setCurrentStageIndex(index)}
+                >
+                  <div className={cn(
+                      "relative flex items-center justify-center h-8 w-8 rounded-full text-xs font-semibold border-2 transition-all duration-200 ease-in-out",
+                      currentStageIndex === index ? "bg-primary border-primary text-primary-foreground scale-110" : 
+                      index < currentStageIndex ? "bg-primary/20 border-primary text-primary" : 
+                      "bg-card border-border text-muted-foreground group-hover:border-primary group-hover:text-primary"
                   )}>
-                    {stage.title.substring(stage.title.indexOf('.') + 1).trim()}
+                    {String(index + 1).padStart(2, '0')}
+                  </div>
+                  <span className={cn(
+                    "mt-1.5 text-[0.65rem] sm:text-xs text-center w-20 truncate font-medium",
+                    currentStageIndex === index ? "text-primary" : 
+                    index < currentStageIndex ? "text-primary/80" :
+                    "text-muted-foreground group-hover:text-primary"
+                  )}>
+                    {stage.title}
                   </span>
                 </div>
                 {index < journeyStages.length - 1 && (
                   <div className={cn(
-                    "flex-1 h-0.5 mt-5", // Align with center of circle
-                    currentStageIndex > index ? "bg-primary" : "bg-border"
-                  )}></div>
+                    "flex-1 h-0.5 min-w-[20px] sm:min-w-[30px] md:min-w-[40px]", // Responsive connector length
+                    index < currentStageIndex ? "bg-primary" : "bg-border"
+                  )} style={{ marginTop: '-0.875rem' }}></div> 
                 )}
               </React.Fragment>
             ))}
           </div>
         </CardContent>
-      </Card>
 
-      {/* Control Bar */}
-      <Card className="rounded-xl shadow-sm">
-        <CardContent className="p-3 flex items-center justify-between">
-          <TooltipProvider delayDuration={0}>
+        {/* Control Bar */}
+        <CardContent className="p-3 md:p-4 flex items-center justify-between">
+           <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="outline" size="icon" onClick={() => router.push(`/admin/services/${serviceId}`)}>
-                  <ArrowLeft className="h-5 w-5" />
+                  <ArrowLeft className="h-4 w-4" />
                   <span className="sr-only">Back to Service Details</span>
                 </Button>
               </TooltipTrigger>
@@ -322,17 +234,17 @@ export default function SimulateJourneyPage() {
               variant="outline"
               onClick={goToPreviousStage}
               disabled={currentStageIndex === 0}
-              className="h-9 px-3"
+              className="h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm"
             >
-              <ChevronLeft className="mr-1.5 h-4 w-4" /> Previous
+              <ChevronLeft className="mr-1 h-3.5 w-3.5 sm:mr-1.5 sm:h-4 sm:w-4" /> Previous
             </Button>
             <Button
               variant="outline"
               onClick={goToNextStage}
               disabled={currentStageIndex === journeyStages.length - 1}
-              className="h-9 px-3"
+              className="h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm"
             >
-              Next <ChevronRight className="ml-1.5 h-4 w-4" />
+              Next <ChevronRight className="ml-1 h-3.5 w-3.5 sm:ml-1.5 sm:h-4 sm:w-4" />
             </Button>
           </div>
           
@@ -340,7 +252,7 @@ export default function SimulateJourneyPage() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="default" size="icon" onClick={handleSaveJourney} className="bg-primary hover:bg-primary/90">
-                  <Save className="h-5 w-5" />
+                  <Save className="h-4 w-4" />
                   <span className="sr-only">Save Journey (Log)</span>
                 </Button>
               </TooltipTrigger>
@@ -351,20 +263,19 @@ export default function SimulateJourneyPage() {
       </Card>
 
       {/* Main Content Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-grow">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-6 flex-grow">
         {/* Left Column: Stage Label & UI Preview */}
-        <Card className="lg:col-span-3 rounded-xl shadow-sm flex flex-col">
-          <CardHeader>
-            <CardTitle className="text-xl flex items-center">
-              <currentStage.icon className="mr-2 h-6 w-6 text-primary" />
-              {currentStage.title}
+        <Card className="lg:col-span-3 rounded-xl shadow-md flex flex-col">
+          <CardHeader className="pb-3 pt-5 px-5">
+            <CardTitle className="text-lg md:text-xl flex items-center text-foreground">
+              Stage {String(currentStageIndex + 1).padStart(2, '0')}: {currentStage.title}
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex-grow flex flex-col pt-2 space-y-4">
-            <Label htmlFor={`image-upload-${currentStage.id}`} className="text-base font-medium text-foreground">
-              Dynamic UI Preview/Mockup for this Stage:
+          <CardContent className="flex-grow flex flex-col pt-2 space-y-3 px-5 pb-5">
+            <Label htmlFor={`image-upload-${currentStage.id}`} className="text-sm font-medium text-muted-foreground">
+              Visual Mockup / UI Preview for this Stage:
             </Label>
-            <div className="flex-grow flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-4 bg-background min-h-[300px]">
+            <div className="flex-grow flex flex-col items-center justify-center border-2 border-dashed border-border/70 rounded-lg p-3 bg-background min-h-[250px] sm:min-h-[300px]">
               {currentStageImagePreview ? (
                 <div className="relative w-full max-w-full aspect-video">
                   <NextImage
@@ -375,9 +286,9 @@ export default function SimulateJourneyPage() {
                   />
                 </div>
               ) : (
-                <div className="text-center text-muted-foreground space-y-2">
-                  <ImageIcon className="h-12 w-12 mx-auto" />
-                  <p className="text-sm">No preview image uploaded for this stage.</p>
+                <div className="text-center text-muted-foreground space-y-1.5">
+                  <ImageIcon className="h-10 w-10 mx-auto text-muted-foreground/70" />
+                  <p className="text-xs">No preview image uploaded for this stage.</p>
                 </div>
               )}
             </div>
@@ -386,35 +297,35 @@ export default function SimulateJourneyPage() {
                 onFileChange={(file) => handleImageFileChange(currentStage.id, file)}
                 currentFileName={currentSelectedFile?.name}
                 accept={{ 'image/*': ['.png', '.jpeg', '.jpg', '.gif', '.webp', '.avif'] }}
-                maxSize={2 * 1024 * 1024} // 2MB limit for stage previews
+                maxSize={1 * 1024 * 1024} 
               />
           </CardContent>
         </Card>
 
         {/* Right Column: Stage Description & Notes */}
-        <Card className="lg:col-span-2 rounded-xl shadow-sm flex flex-col">
-          <CardHeader>
-            <CardTitle className="text-xl">Stage Details & Notes</CardTitle>
+        <Card className="lg:col-span-2 rounded-xl shadow-md flex flex-col">
+          <CardHeader className="pb-3 pt-5 px-5">
+            <CardTitle className="text-lg md:text-xl text-foreground">Stage Elements & UX Notes</CardTitle>
           </CardHeader>
-          <CardContent className="flex-grow flex flex-col pt-2 space-y-4">
-            <div className="text-sm text-muted-foreground space-y-2 border-b pb-3 mb-3">
-              <h4 className="font-semibold text-foreground mb-1">Key Elements for this Stage:</h4>
+          <CardContent className="flex-grow flex flex-col pt-2 space-y-3 px-5 pb-5">
+            <div className="text-xs text-muted-foreground space-y-1.5 border rounded-md p-3 bg-background max-h-48 overflow-y-auto">
+              <h4 className="font-semibold text-foreground/90 mb-1 text-sm">Key Elements for this Stage:</h4>
               {currentStage.details.map((detail, idx) => (
-                <p key={idx} className="leading-relaxed text-xs">
+                <p key={idx} className="leading-relaxed">
                   {detail.startsWith('Touchpoints:') || detail.startsWith('Key Actions:') || detail.startsWith('Content:') || detail.startsWith('CTAs:') || detail.startsWith('Show project steps:') || detail.startsWith('Post-checkout dashboard shows:') || detail.startsWith('Confirmation Page:') || detail.startsWith('Client dashboard includes:') || detail.startsWith('Inline,') ? <strong>{detail.substring(0, detail.indexOf(':')+1)}</strong> : ''}{detail.startsWith('Touchpoints:') || detail.startsWith('Key Actions:') || detail.startsWith('Content:') || detail.startsWith('CTAs:') || detail.startsWith('Show project steps:') || detail.startsWith('Post-checkout dashboard shows:') || detail.startsWith('Confirmation Page:') || detail.startsWith('Client dashboard includes:') || detail.startsWith('Inline,') ? detail.substring(detail.indexOf(':')+1) : detail}
                 </p>
               ))}
             </div>
             <div className="flex-grow flex flex-col">
-                <Label htmlFor={`notes-${currentStage.id}`} className="text-base font-medium text-foreground mb-1.5">
-                Your Design & UX Notes:
+                <Label htmlFor={`notes-${currentStage.id}`} className="text-sm font-medium text-muted-foreground mb-1.5">
+                Your Design, Visual & UX Notes for this Stage:
                 </Label>
                 <Textarea
                 id={`notes-${currentStage.id}`}
                 value={journeyNotes[currentStage.id] || ''}
                 onChange={(e) => handleNoteChange(currentStage.id, e.target.value)}
                 placeholder={currentStage.placeholder}
-                rows={10} 
+                rows={8} 
                 className="bg-background flex-grow resize-none text-sm"
                 />
             </div>

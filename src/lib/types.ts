@@ -34,6 +34,13 @@ export interface ServiceCategory {
   slug: string;
 }
 
+export interface JourneyStage {
+  id: string; // e.g., 'discovery', 'service-landing-page'
+  title: string; // e.g., 'Discovery', 'Service Landing Page' (this will be the label below the step number)
+  details: string[]; // Predefined key elements for this stage
+  placeholder?: string; // Placeholder for the notes textarea
+}
+
 export interface Service {
   id: string; // Firestore document ID
   title: string;
@@ -53,6 +60,7 @@ export interface Service {
   targetAudience?: string[]; // Who is this service for?
   estimatedDuration?: string; // e.g., "2-4 weeks", "Varies"
   portfolioLink?: string; // URL to relevant work/case studies
+  customerJourneyStages?: JourneyStage[]; // Array of customer journey stages for this service
   createdAt: string; // ISO date string
   updatedAt?: string; // ISO date string
 }
@@ -141,3 +149,4 @@ export interface SiteSettings {
   darkThemeBackgroundColor: string; 
   updatedAt?: string | null; 
 }
+
