@@ -69,7 +69,7 @@ export default function AdminSitePagesPage() {
                 <TableRow>
                   <TableHead>Page Title</TableHead>
                   <TableHead className="hidden sm:table-cell">Path</TableHead>
-                  <TableHead className="hidden md:table-cell">Type</TableHead>
+                  {/* Removed Type column header */}
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -83,14 +83,7 @@ export default function AdminSitePagesPage() {
                             {page.path} <ExternalLink className="inline-block ml-1 h-3 w-3" />
                         </Link>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <Badge 
-                        variant={page.type === 'Content-Managed' ? 'default' : 'outline'} 
-                        className={page.type === 'Content-Managed' ? 'bg-primary/80' : 'border-dashed'}
-                      >
-                        {page.type}
-                      </Badge>
-                    </TableCell>
+                    {/* Removed Type column cell */}
                     <TableCell>
                       <Badge variant={page.status === 'Published' ? 'default' : 'outline'} className={page.status === 'Published' ? 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30' : ''}>
                         {page.status}
@@ -116,4 +109,3 @@ export default function AdminSitePagesPage() {
     </div>
   );
 }
-

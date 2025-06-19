@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/firebase/AuthContext';
 import { Loader2, PanelLeft } from 'lucide-react';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet'; // Added SheetHeader, SheetTitle
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import Link from 'next/link';
 import { Hexagon } from 'lucide-react';
 import NextImage from 'next/image';
@@ -50,10 +50,9 @@ export default function AdminLayout({
         setSettingsLoading(false);
       }
     }
-    if (user && role === 'admin') { // Fetch settings only if admin is confirmed
+    if (user && role === 'admin') { 
         loadSettings();
     } else if (!authLoading && (!user || role !== 'admin')) {
-        // If not admin or not logged in, and auth check is done, still use default settings to avoid null
         setSiteSettings(DEFAULT_SETTINGS);
         setSettingsLoading(false);
     }
@@ -69,7 +68,8 @@ export default function AdminLayout({
     );
   }
   
-  const displaySiteTitle = siteSettings?.siteTitle || DEFAULT_SETTINGS.siteTitle;
+  // siteTitle is used for the logo alt text
+  const displaySiteTitleForLogo = siteSettings?.siteTitle || DEFAULT_SETTINGS.siteTitle;
   const displayLogoUrl = siteSettings?.logoUrl;
 
   return (
@@ -78,7 +78,7 @@ export default function AdminLayout({
         <AdminSidebar 
           onLinkClick={() => {}} 
           logoUrl={displayLogoUrl} 
-          siteTitle={displaySiteTitle}
+          siteTitle={displaySiteTitleForLogo} // Pass siteTitle for logo alt
         />
       </aside>
       <div className="flex flex-1 flex-col sm:pl-64">
@@ -92,24 +92,23 @@ export default function AdminLayout({
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="sm:max-w-xs p-0">
-                {/* Ensuring SheetContent has an accessible title for mobile admin sidebar */}
                 <SheetHeader className="sr-only">
                   <SheetTitle>Admin Navigation Menu</SheetTitle>
                 </SheetHeader>
                 <AdminSidebar 
                   onLinkClick={() => setMobileSidebarOpen(false)}
                   logoUrl={displayLogoUrl}
-                  siteTitle={displaySiteTitle}
+                  siteTitle={displaySiteTitleForLogo} // Pass siteTitle for logo alt
                 />
               </SheetContent>
             </Sheet>
             <Link href="/admin/dashboard" className="flex items-center gap-2 group">
                 {displayLogoUrl ? (
-                  <NextImage src={displayLogoUrl} alt={`${displaySiteTitle} Admin Logo`} width={28} height={28} className="h-7 w-7 object-contain" />
+                  <NextImage src={displayLogoUrl} alt={`${displaySiteTitleForLogo} Logo`} width={28} height={28} className="h-7 w-7 object-contain" />
                 ) : (
                   <Hexagon className="h-7 w-7 text-primary transition-transform duration-300 ease-in-out group-hover:rotate-[30deg]" />
                 )}
-                <span className="text-md font-bold text-foreground">{displaySiteTitle} Admin</span>
+                <span className="text-md font-bold text-foreground">Admin Panel</span>
             </Link>
           </header>
         </div>
@@ -118,7 +117,7 @@ export default function AdminLayout({
         </main>
          <footer className="border-t bg-background text-center py-4 px-6">
             <p className="text-sm text-muted-foreground">
-                &copy; {new Date().getFullYear()} {displaySiteTitle} Admin Panel.
+                &copy; {new Date().getFullYear()} Admin Panel. {/* Removed dynamic site title here */}
             </p>
         </footer>
       </div>
