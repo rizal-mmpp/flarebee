@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useTransition, useMemo } from 'react';
-import { useForm, type SubmitHandler, Controller } from 'react-hook-form';
+import { useForm, type SubmitHandler, Controller, type Control, type FieldErrors, type UseFormWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -17,9 +17,7 @@ import { DEFAULT_SETTINGS } from '@/lib/constants';
 import type { SiteSettings } from '@/lib/types';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
-
 import { HslColorPicker, type HslColor } from 'react-colorful';
-
 
 const hslColorStringRegex = /^\d{1,3}\s+\d{1,3}%\s+\d{1,3}%$/;
 
@@ -35,7 +33,6 @@ const settingsFormSchema = z.object({
 });
 
 type SettingsFormValues = z.infer<typeof settingsFormSchema>;
-
 
 // Helper to convert HSL string "H S% L%" to react-colorful HSL object {h, s, l} (s, l are 0-100)
 function hslStringToHslObject(hslString: string): HslColor {
@@ -53,6 +50,50 @@ function hslStringToHslObject(hslString: string): HslColor {
 function hslObjectToHslString(hslObject: HslColor): string {
   return `${Math.round(hslObject.h)} ${Math.round(hslObject.s)}% ${Math.round(hslObject.l)}%`;
 }
+
+interface ColorPickerFieldProps {
+  name: keyof SettingsFormValues;
+  label: string;
+  control: Control<SettingsFormValues>;
+  errors: FieldErrors<SettingsFormValues>;
+  watch: UseFormWatch<SettingsFormValues>;
+}
+
+const ColorPickerField: React.FC<ColorPickerFieldProps> = ({ name, label, control, errors, watch }) => {
+  const formValue = watch(name) as string;
+  const colorForPicker = useMemo(() => hslStringToHslObject(formValue), [formValue]);
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={name}>{label}</Label>
+      <Controller
+        name={name}
+        control={control}
+        render={({ field }) => (
+          <div className="flex flex-col items-center">
+            <HslColorPicker
+              color={colorForPicker}
+              onChange={(newHslColor) => {
+                field.onChange(hslObjectToHslString(newHslColor));
+              }}
+              className="!w-full !h-auto aspect-square max-w-[280px]"
+            />
+            <Input
+              id={name}
+              value={field.value}
+              onChange={(e) => {
+                field.onChange(e.target.value); 
+              }}
+              className="mt-2 text-sm text-center w-full max-w-[280px]"
+              placeholder="H S% L%"
+            />
+          </div>
+        )}
+      />
+      {errors[name] && <p className="text-sm text-destructive mt-1 text-center">{(errors[name] as any)?.message}</p>}
+    </div>
+  );
+};
 
 
 export default function AdminSettingsPage() {
@@ -181,43 +222,6 @@ export default function AdminSettingsPage() {
     );
   }
 
-  const renderColorPickerField = (name: keyof SettingsFormValues, label: string) => {
-    const formValue = watch(name) as string; // Get current HSL string from form
-    const colorForPicker = useMemo(() => hslStringToHslObject(formValue), [formValue]);
-
-    return (
-        <div className="space-y-2">
-            <Label htmlFor={name}>{label}</Label>
-            <Controller
-                name={name}
-                control={control}
-                render={({ field }) => (
-                    <div className="flex flex-col items-center">
-                        <HslColorPicker
-                            color={colorForPicker}
-                            onChange={(newHslColor) => {
-                                field.onChange(hslObjectToHslString(newHslColor));
-                            }}
-                            className="!w-full !h-auto aspect-square max-w-[280px]"
-                        />
-                        <Input
-                            id={name}
-                            value={field.value}
-                            onChange={(e) => {
-                                field.onChange(e.target.value); // Allow direct HSL string input
-                            }}
-                            className="mt-2 text-sm text-center w-full max-w-[280px]"
-                            placeholder="H S% L%"
-                        />
-                    </div>
-                )}
-            />
-            {errors[name] && <p className="text-sm text-destructive mt-1 text-center">{(errors[name] as any)?.message}</p>}
-        </div>
-    );
-};
-
-
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -284,9 +288,9 @@ export default function AdminSettingsPage() {
           <div>
             <h3 className="text-lg font-semibold mb-4 flex items-center text-foreground/90"><Sun className="mr-2 h-5 w-5 text-yellow-500"/>Light Theme</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8">
-              {renderColorPickerField('themePrimaryColor', 'Primary Color')}
-              {renderColorPickerField('themeAccentColor', 'Accent Color')}
-              {renderColorPickerField('themeBackgroundColor', 'Background Color')}
+              <ColorPickerField name="themePrimaryColor" label="Primary Color" control={control} errors={errors} watch={watch} />
+              <ColorPickerField name="themeAccentColor" label="Accent Color" control={control} errors={errors} watch={watch} />
+              <ColorPickerField name="themeBackgroundColor" label="Background Color" control={control} errors={errors} watch={watch} />
             </div>
           </div>
 
@@ -295,9 +299,9 @@ export default function AdminSettingsPage() {
           <div>
             <h3 className="text-lg font-semibold mb-4 flex items-center text-foreground/90"><Moon className="mr-2 h-5 w-5 text-indigo-400"/>Dark Theme</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8">
-              {renderColorPickerField('darkThemePrimaryColor', 'Primary Color')}
-              {renderColorPickerField('darkThemeAccentColor', 'Accent Color')}
-              {renderColorPickerField('darkThemeBackgroundColor', 'Background Color')}
+              <ColorPickerField name="darkThemePrimaryColor" label="Primary Color" control={control} errors={errors} watch={watch} />
+              <ColorPickerField name="darkThemeAccentColor" label="Accent Color" control={control} errors={errors} watch={watch} />
+              <ColorPickerField name="darkThemeBackgroundColor" label="Background Color" control={control} errors={errors} watch={watch} />
             </div>
           </div>
            <div className="mt-2 p-3 border border-blue-500/30 bg-blue-500/5 rounded-md">
@@ -318,3 +322,4 @@ export default function AdminSettingsPage() {
     </form>
   );
 }
+
