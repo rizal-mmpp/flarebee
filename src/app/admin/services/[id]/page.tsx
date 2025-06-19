@@ -131,6 +131,15 @@ export default function ServiceDetailPage() {
               </TooltipTrigger>
               <TooltipContent><p>Back to Services</p></TooltipContent>
             </Tooltip>
+             <Tooltip>
+              <TooltipTrigger asChild>
+                 <Button variant="outline" size="icon" onClick={() => router.push(`/admin/services/edit/${service.id}`)}>
+                  <Edit className="h-4 w-4" />
+                  <span className="sr-only">Edit Service</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Edit Service</p></TooltipContent>
+            </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="default" size="icon" onClick={() => router.push(`/admin/services/${service.id}/simulate-journey`)} className="bg-primary hover:bg-primary/90">
@@ -139,15 +148,6 @@ export default function ServiceDetailPage() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>Simulate Customer Journey</p></TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                 <Button variant="outline" size="icon" onClick={() => router.push(`/admin/services/edit/${service.id}`)}>
-                  <Edit className="h-4 w-4" />
-                  <span className="sr-only">Edit Service</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent><p>Edit Service</p></TooltipContent>
             </Tooltip>
           </div>
         </TooltipProvider>
