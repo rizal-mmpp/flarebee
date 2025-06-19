@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Send, Mail, MessageSquare, User, Building, Phone, Info, AlertTriangle } from 'lucide-react';
+import { Loader2, Send, Mail, MessageSquare, User, Building, Phone, Info, AlertTriangle, MapPin, Facebook, Instagram } from 'lucide-react';
 import Image from 'next/image';
 import { getSiteSettings } from '@/lib/actions/settings.actions';
 import { DEFAULT_SETTINGS } from '@/lib/constants';
@@ -46,7 +46,7 @@ export default function ContactUsPage() {
         setSettings(siteSettings);
       } catch (error) {
         console.error("Failed to fetch site settings for contact page:", error);
-        setSettings(DEFAULT_SETTINGS); // Fallback to defaults
+        setSettings(DEFAULT_SETTINGS); 
       } finally {
         setIsLoadingSettings(false);
       }
@@ -73,8 +73,8 @@ export default function ContactUsPage() {
     });
   };
 
-  const contactImageUrl = settings?.contactPageImageUrl || 'https://placehold.co/800x1000/EBF4FF/7697A0.png?text=Contact+Us';
-  const contactImageAiHint = "abstract contact illustration";
+  const contactImageUrl = settings?.contactPageImageUrl || 'https://placehold.co/800x600.png';
+  const contactImageAiHint = "modern office workspace";
   const siteTitle = settings?.siteTitle || DEFAULT_SETTINGS.siteTitle;
 
   return (
@@ -85,7 +85,7 @@ export default function ContactUsPage() {
           Back to Home
         </Link>
       </Button>
-      <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
+      <div className="grid md:grid-cols-2 gap-12 lg:gap-16 items-start"> {/* Increased gap */}
         {/* Left Column: Contact Form */}
         <Card className="w-full max-w-lg mx-auto md:mx-0 shadow-xl border-border/60">
           <CardHeader className="text-center md:text-left">
@@ -135,53 +135,71 @@ export default function ContactUsPage() {
 
         {/* Right Column: Image & Contact Info */}
         <div className="space-y-8">
-          <div className="relative w-full aspect-[4/5] max-w-md mx-auto md:max-w-none rounded-2xl overflow-hidden shadow-2xl border-4 border-card">
-             {isLoadingSettings ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-muted">
-                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          {isLoadingSettings ? (
+            <div className="flex flex-col items-center justify-center p-10 bg-muted rounded-xl min-h-[400px]">
+                <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
+                <p className="text-muted-foreground">Loading contact info...</p>
+            </div>
+          ) : settings ? (
+            <>
+              <div className="relative pt-2"> {/* Added padding-top to make space for absolute social icons */}
+                <div className="absolute top-0 right-0 flex space-x-3">
+                  <Link href="#" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-muted-foreground hover:text-primary">
+                    <Facebook className="h-6 w-6" />
+                  </Link>
+                  <Link href="#" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-muted-foreground hover:text-primary">
+                    <Instagram className="h-6 w-6" />
+                  </Link>
                 </div>
-            ) : (
-                <Image
-                    src={contactImageUrl}
-                    alt={`Contact ${siteTitle}`}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    style={{objectFit:"cover"}}
-                    data-ai-hint={contactImageAiHint}
-                    priority
-                />
-            )}
-          </div>
-          {settings && !isLoadingSettings && (
-            <Card className="bg-card/70 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center text-xl"><Info className="mr-2 h-5 w-5 text-primary"/> Our Contact Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                {settings.contactAddress && (
-                  <div className="flex items-start">
-                    <MapPin className="h-4 w-4 mr-3 mt-0.5 text-primary flex-shrink-0" />
-                    <p className="text-muted-foreground">{settings.contactAddress}</p>
-                  </div>
-                )}
-                {settings.contactPhone && (
-                  <div className="flex items-center">
-                    <Phone className="h-4 w-4 mr-3 text-primary flex-shrink-0" />
-                    <a href={`tel:${settings.contactPhone.replace(/\s/g, '')}`} className="text-muted-foreground hover:text-primary">
-                      {settings.contactPhone}
-                    </a>
-                  </div>
-                )}
-                {settings.contactEmail && (
-                  <div className="flex items-center">
-                    <Mail className="h-4 w-4 mr-3 text-primary flex-shrink-0" />
-                     <a href={`mailto:${settings.contactEmail}`} className="text-muted-foreground hover:text-primary">
-                       {settings.contactEmail}
-                    </a>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+
+                <div className="space-y-5"> {/* Increased spacing for contact items */}
+                  {settings.contactAddress && (
+                    <div className="flex items-start">
+                      <MapPin className="h-5 w-5 mr-3 mt-0.5 text-primary flex-shrink-0" />
+                      <div>
+                        <p className="font-semibold text-foreground">{settings.contactAddress}</p>
+                        {/* Add more address lines here if they were part of SiteSettings in the future */}
+                        {/* <p className="text-xs text-muted-foreground">The 2nd Floor</p> 
+                        <p className="text-xs text-muted-foreground">*A wooden door, next to the Jewelry store</p> */}
+                      </div>
+                    </div>
+                  )}
+                  {settings.contactPhone && (
+                    <div className="flex items-center">
+                      <Phone className="h-5 w-5 mr-3 text-primary flex-shrink-0" />
+                      <a href={`tel:${settings.contactPhone.replace(/\s/g, '')}`} className="text-foreground hover:text-primary">
+                        {settings.contactPhone}
+                      </a>
+                    </div>
+                  )}
+                  {settings.contactEmail && (
+                    <div className="flex items-center">
+                      <Mail className="h-5 w-5 mr-3 text-primary flex-shrink-0" />
+                      <a href={`mailto:${settings.contactEmail}`} className="text-foreground hover:text-primary">
+                        {settings.contactEmail}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl border-2 border-card">
+                  <Image
+                      src={contactImageUrl}
+                      alt={`Contact ${siteTitle}`}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      style={{objectFit:"cover"}}
+                      data-ai-hint={contactImageAiHint}
+                      priority
+                  />
+              </div>
+            </>
+          ) : (
+            <div className="p-10 border rounded-xl bg-card text-center">
+                <Info className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
+                <p className="text-muted-foreground">Contact information is currently unavailable.</p>
+            </div>
           )}
         </div>
       </div>
@@ -189,5 +207,3 @@ export default function ContactUsPage() {
   );
 }
 
-// Added MapPin icon
-import { MapPin } from 'lucide-react';
