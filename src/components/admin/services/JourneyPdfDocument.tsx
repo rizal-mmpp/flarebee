@@ -89,33 +89,35 @@ const formatDetails = (detailsInput: string | undefined | null) => {
     if (trimmedLine.startsWith('- ')) {
       return <Text key={`detail-line-${index}`} style={styles.bulletPoint}>• {trimmedLine.substring(2)}</Text>;
     }
-    return <Text key={`detail-line-${index}`} style={styles.text}>{line}</Text>;
+    return <Text key={`detail-line-${index}`} style={styles.text}>{String(line)}</Text>; // Ensure line is string
   });
 };
 
 export const JourneyPdfDocument: React.FC<JourneyPdfDocumentProps> = ({ serviceTitle, stages }) => (
   <Document title={`Service Journey - ${serviceTitle || 'Untitled Service'}`}>
     <Page size="A4" style={styles.page}>
-      <Text style={styles.header}>Service Journey: {serviceTitle || 'Untitled Service'}</Text>
+      <Text style={styles.header}>Service Journey: {String(serviceTitle || 'Untitled Service')}</Text>
 
       {stages.length === 0 ? (
         <Text style={styles.noContent}>No journey stages defined for this service.</Text>
       ) : (
         stages.map((stage, index) => {
-          const trimmedImageUrl = stage.imageUrl?.trim(); // Trim and check
-          const stageKey = stage.id || `stage-fallback-${index}`; // Fallback key
+          const trimmedImageUrl = stage.imageUrl?.trim(); 
+          const stageKey = stage.id || `stage-fallback-${index}`;
+          const stageTitleString = String(stage.title || 'Untitled Stage');
+          const stageImageAiHintString = String(stage.imageAiHint?.trim() || '');
+
 
           return (
             <View style={styles.stageContainer} key={stageKey} wrap={false}>
-              <Text style={styles.stageTitle}>Stage {index + 1}: {stage.title || 'Untitled Stage'}</Text>
+              <Text style={styles.stageTitle}>Stage {index + 1}: {stageTitleString}</Text>
               
               <Text style={styles.sectionTitle}>Details:</Text>
               {formatDetails(stage.details)}
 
-              {trimmedImageUrl ? (
+              {trimmedImageUrl && trimmedImageUrl.length > 0 ? (
                 <>
                   <Text style={styles.sectionTitle}>Mockup / Image:</Text>
-                  {/* @ts-ignore: @react-pdf/renderer Image src prop type is string, but can accept object for remote images if library supports it */}
                   <PdfImage style={styles.image} src={trimmedImageUrl} />
                 </>
               ) : (
@@ -125,8 +127,8 @@ export const JourneyPdfDocument: React.FC<JourneyPdfDocumentProps> = ({ serviceT
                 </>
               )}
 
-              {stage.imageAiHint && stage.imageAiHint.trim() && (
-                <Text style={styles.aiHint}>AI Hint: {stage.imageAiHint.trim()}</Text>
+              {stageImageAiHintString && (
+                <Text style={styles.aiHint}>AI Hint: {stageImageAiHintString}</Text>
               )}
             </View>
           );
@@ -136,5 +138,4 @@ export const JourneyPdfDocument: React.FC<JourneyPdfDocumentProps> = ({ serviceT
   </Document>
 );
 
-// Default export for dynamic import if needed, but named export is generally preferred for components.
 export default JourneyPdfDocument;
