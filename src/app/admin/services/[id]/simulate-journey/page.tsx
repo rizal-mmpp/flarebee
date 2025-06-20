@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const DEFAULT_JOURNEY_STAGES_PLACEHOLDER: JourneyStage[] = []; // Should be imported or defined if used
+const DEFAULT_JOURNEY_STAGES_PLACEHOLDER: JourneyStage[] = []; 
 
 export default function SimulateJourneyPage() {
   const params = useParams();
@@ -100,11 +100,16 @@ export default function SimulateJourneyPage() {
   }, [currentStageIndex, journeyStages]);
 
   const currentStageImagePreviewUrl = useMemo(() => {
-    return currentStageData ? stageImagePreviews[currentStageData.id] : null;
-  }, [currentStageData, stageImagePreviews]);
+    if (currentStageData && stageImageFiles[currentStageData.id]) {
+      return stageImagePreviews[currentStageData.id]; // Show preview of newly selected file
+    } else if (currentStageData) {
+      return currentStageData.imageUrl; // Show persisted URL
+    }
+    return null;
+  }, [currentStageData, stageImageFiles, stageImagePreviews]);
 
 
-  const handleStageInputChange = (field: keyof JourneyStage, value: string) => {
+  const handleStageInputChange = (field: keyof Omit<JourneyStage, 'id' | 'imageUrl'>, value: string) => {
     if (currentStageIndex === null || !currentStageData) return;
     const updatedStages = [...journeyStages];
     updatedStages[currentStageIndex] = { ...updatedStages[currentStageIndex], [field]: value };
@@ -140,7 +145,7 @@ export default function SimulateJourneyPage() {
     setJourneyStages(updatedStages);
     setCurrentStageIndex(updatedStages.length - 1);
     setStageImagePreviews(prev => ({ ...prev, [newStageId]: null }));
-    setStageImageFiles(prev => ({ ...prev, [newStageId]: undefined })); // No file selected initially
+    setStageImageFiles(prev => ({ ...prev, [newStageId]: undefined }));
   };
 
 
@@ -194,9 +199,9 @@ export default function SimulateJourneyPage() {
   const handleSaveChangesToFirestore = async () => {
     if (!service) return;
     startSaveTransition(async () => {
-      const stagesToSave = JSON.parse(JSON.stringify(journeyStages)) as JourneyStage[]; // Deep copy for modification
+      const stagesToSave = JSON.parse(JSON.stringify(journeyStages)) as JourneyStage[]; 
       let uploadErrorOccurred = false;
-      const newPreviews = { ...stageImagePreviews };
+      const newPreviewsAfterSave = { ...stageImagePreviews };
 
       for (let i = 0; i < stagesToSave.length; i++) {
         const stage = stagesToSave[i];
@@ -204,7 +209,7 @@ export default function SimulateJourneyPage() {
 
         if (fileToUpload === null) { // Image was explicitly cleared
           stagesToSave[i].imageUrl = null;
-          newPreviews[stage.id] = null;
+          newPreviewsAfterSave[stage.id] = null;
         } else if (fileToUpload instanceof File) { // New file selected
           try {
             const formData = new FormData();
@@ -212,7 +217,7 @@ export default function SimulateJourneyPage() {
             const uploadResult = await uploadFileToVercelBlob(formData);
             if (uploadResult.success && uploadResult.data?.url) {
               stagesToSave[i].imageUrl = uploadResult.data.url;
-              newPreviews[stage.id] = uploadResult.data.url; // Update preview to permanent URL
+              newPreviewsAfterSave[stage.id] = uploadResult.data.url; 
             } else {
               toast({ title: `Image Upload Failed for Stage: ${stage.title}`, description: uploadResult.error || 'Could not upload image.', variant: 'destructive' });
               uploadErrorOccurred = true;
@@ -224,7 +229,6 @@ export default function SimulateJourneyPage() {
             break;
           }
         }
-        // If stageImageFiles[stage.id] is undefined, imageUrl remains as is (from initial load or last save)
       }
 
       if (uploadErrorOccurred) {
@@ -235,35 +239,26 @@ export default function SimulateJourneyPage() {
       if (result.success) {
         toast({ title: 'Journey Saved', description: 'Customer journey stages have been updated.' });
         setJourneyStages(stagesToSave); 
-        setStageImagePreviews(newPreviews);
+        setStageImagePreviews(newPreviewsAfterSave);
         setStageImageFiles({}); 
-        setInitialJourneyStagesOnEditStart(JSON.parse(JSON.stringify(stagesToSave))); // Update snapshot
-        setInitialStageImagePreviewsOnEditStart({...newPreviews});
+        setInitialJourneyStagesOnEditStart(JSON.parse(JSON.stringify(stagesToSave)));
+        setInitialStageImagePreviewsOnEditStart({...newPreviewsAfterSave});
       } else {
         toast({ title: 'Error Saving Journey', description: result.error || 'Could not save changes.', variant: 'destructive' });
       }
     });
   };
 
-  const toggleEditMode = () => {
-    if (isEditModeActive) { // Trying to exit edit mode
-      const hasStageDataChanged = JSON.stringify(journeyStages) !== JSON.stringify(initialJourneyStagesOnEditStart);
-      const hasImageFilesChanged = Object.keys(stageImageFiles).some(key => stageImageFiles[key] !== undefined);
-
-      if (hasStageDataChanged || hasImageFilesChanged) {
-        setIsDiscardConfirmModalOpen(true);
-      } else {
-        exitEditMode(false); // No changes, just exit
-      }
-    } else { // Entering edit mode
-      setInitialJourneyStagesOnEditStart(JSON.parse(JSON.stringify(journeyStages)));
-      setInitialStageImagePreviewsOnEditStart({...stageImagePreviews });
-      setIsEditModeActive(true);
-    }
-  };
-
   const exitEditMode = (discardChanges: boolean) => {
     if (discardChanges && initialJourneyStagesOnEditStart) {
+      // Revoke any blob URLs created during the discarded edit session
+      Object.keys(stageImagePreviews).forEach(stageId => {
+        const currentPreview = stageImagePreviews[stageId];
+        const initialPreview = initialStageImagePreviewsOnEditStart?.[stageId];
+        if (currentPreview && currentPreview.startsWith('blob:') && currentPreview !== initialPreview) {
+          URL.revokeObjectURL(currentPreview);
+        }
+      });
       setJourneyStages(initialJourneyStagesOnEditStart);
       setStageImagePreviews(initialStageImagePreviewsOnEditStart || {});
     }
@@ -272,6 +267,23 @@ export default function SimulateJourneyPage() {
     setInitialJourneyStagesOnEditStart(null);
     setInitialStageImagePreviewsOnEditStart(null);
     setIsDiscardConfirmModalOpen(false);
+  };
+
+  const toggleEditMode = () => {
+    if (isEditModeActive) { 
+      const hasStageDataChanged = JSON.stringify(journeyStages) !== JSON.stringify(initialJourneyStagesOnEditStart);
+      const hasImageFilesChanged = Object.values(stageImageFiles).some(file => file !== undefined);
+
+      if (hasStageDataChanged || hasImageFilesChanged) {
+        setIsDiscardConfirmModalOpen(true);
+      } else {
+        exitEditMode(false); 
+      }
+    } else { 
+      setInitialJourneyStagesOnEditStart(JSON.parse(JSON.stringify(journeyStages)));
+      setInitialStageImagePreviewsOnEditStart({...stageImagePreviews });
+      setIsEditModeActive(true);
+    }
   };
   
 
@@ -338,7 +350,7 @@ export default function SimulateJourneyPage() {
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant={isEditModeActive ? "default" : "outline"} size="icon" onClick={toggleEditMode} disabled={isSavingJourney}>
+                <Button variant="outline" size="icon" onClick={toggleEditMode} disabled={isSavingJourney}>
                   {isEditModeActive ? <Check className="h-5 w-5" /> : <Edit className="h-5 w-5" />}
                 </Button>
               </TooltipTrigger>
@@ -368,7 +380,7 @@ export default function SimulateJourneyPage() {
           </div>
         </header>
 
-        <div className="flex-grow grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6"> {/* Increased sidebar width slightly */}
+        <div className="flex-grow grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
           <Card className="rounded-xl shadow-sm flex flex-col">
             <CardContent className="p-4 md:p-6 space-y-4 flex-grow overflow-y-auto">
                 {currentStageData ? (
@@ -408,7 +420,7 @@ export default function SimulateJourneyPage() {
                             placeholder="- Touchpoint: Homepage feature..."
                           />
                         ) : currentStageData.details ? (
-                           <article className="prose prose-sm sm:prose-base dark:prose-invert max-w-none prose-headings:font-semibold prose-a:text-primary hover:prose-a:text-primary/80 text-muted-foreground">
+                           <article className="prose prose-sm sm:prose-base dark:prose-invert max-w-none prose-headings:font-semibold prose-a:text-primary hover:prose-a:text-primary/80 text-muted-foreground prose-p:my-1 prose-li:my-0.5 prose-ul:my-1 prose-ol:my-1">
                              <ReactMarkdown>{currentStageData.details}</ReactMarkdown>
                            </article>
                         ) : (
@@ -465,7 +477,6 @@ export default function SimulateJourneyPage() {
             </CardContent>
           </Card>
 
-          {/* Sidebar for Stepper */}
           <Card id="stepper-sidebar" className="rounded-xl shadow-sm flex flex-col overflow-hidden">
             <CardHeader className="py-3 md:py-4 px-4 md:px-5 border-b bg-card sticky top-0 z-10 flex flex-row items-center justify-between">
               <h3 className="text-base font-semibold text-foreground">Journey Stages ({journeyStages.length})</h3>
@@ -484,7 +495,7 @@ export default function SimulateJourneyPage() {
                 {journeyStages.length > 0 ? (
                     <div className="relative space-y-0">
                     {journeyStages.map((stage, index) => (
-                    <div key={stage.id} className="flex items-start group py-1 pr-1"> {/* Added pr-1 for spacing before reorder buttons */}
+                    <div key={stage.id} className="flex items-start group py-1 pr-1"> 
                         <div className="flex flex-col items-center mr-3 flex-shrink-0 mt-0.5"> 
                         <div className={cn("flex items-center justify-center h-7 w-7 rounded-full text-xs font-semibold border-2 transition-all duration-200 ease-in-out cursor-pointer", currentStageIndex === index ? "bg-primary border-primary text-primary-foreground scale-110 shadow-md" : index < (currentStageIndex ?? -1) ? "bg-primary/20 border-primary text-primary" : "bg-card border-border text-muted-foreground group-hover:border-primary/70 group-hover:text-primary")} onClick={() => setCurrentStageIndex(index)}>
                             {String(index + 1).padStart(2, '0')}
