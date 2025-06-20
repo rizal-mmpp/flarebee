@@ -107,10 +107,10 @@ export const JourneyPdfDocument: React.FC<JourneyPdfDocumentProps> = ({ serviceT
             <Text style={styles.sectionTitle}>Details:</Text>
             {formatDetails(stage.details)}
 
-            {stage.imageUrl ? (
+            {stage.imageUrl && stage.imageUrl.trim() !== '' ? (
               <>
                 <Text style={styles.sectionTitle}>Mockup / Image:</Text>
-                <PdfImage style={styles.image} src={stage.imageUrl} />
+                <PdfImage style={styles.image} src={stage.imageUrl.trim()} />
               </>
             ) : (
               <>
