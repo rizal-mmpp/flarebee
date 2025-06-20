@@ -15,7 +15,7 @@ const styles = StyleSheet.create({
     paddingRight: 40,
     paddingBottom: 50,
     lineHeight: 1.5,
-    color: '#333', // Dark gray for text
+    color: '#333333', // Dark gray for text
   },
   header: {
     fontSize: 18,
@@ -78,52 +78,59 @@ interface JourneyPdfDocumentProps {
 }
 
 // Helper to format details text (basic Markdown list to bullets)
-const formatDetails = (details: string) => {
-  if (!details || details.trim() === '') {
+const formatDetails = (detailsInput: string | undefined | null) => {
+  const details = detailsInput || ''; // Ensure details is a string
+  if (!details.trim()) {
     return <Text style={styles.noContent}>No details provided for this stage.</Text>;
   }
   const lines = details.split('\n');
   return lines.map((line, index) => {
     const trimmedLine = line.trim();
     if (trimmedLine.startsWith('- ')) {
-      return <Text key={index} style={styles.bulletPoint}>• {trimmedLine.substring(2)}</Text>;
+      return <Text key={`detail-line-${index}`} style={styles.bulletPoint}>• {trimmedLine.substring(2)}</Text>;
     }
-    return <Text key={index} style={styles.text}>{line}</Text>;
+    return <Text key={`detail-line-${index}`} style={styles.text}>{line}</Text>;
   });
 };
 
 export const JourneyPdfDocument: React.FC<JourneyPdfDocumentProps> = ({ serviceTitle, stages }) => (
-  <Document title={`Service Journey - ${serviceTitle}`}>
+  <Document title={`Service Journey - ${serviceTitle || 'Untitled Service'}`}>
     <Page size="A4" style={styles.page}>
-      <Text style={styles.header}>Service Journey: {serviceTitle}</Text>
+      <Text style={styles.header}>Service Journey: {serviceTitle || 'Untitled Service'}</Text>
 
       {stages.length === 0 ? (
         <Text style={styles.noContent}>No journey stages defined for this service.</Text>
       ) : (
-        stages.map((stage, index) => (
-          <View style={styles.stageContainer} key={stage.id} wrap={false}> {/* wrap={false} to prevent stage from splitting across pages if possible */}
-            <Text style={styles.stageTitle}>Stage {index + 1}: {stage.title}</Text>
-            
-            <Text style={styles.sectionTitle}>Details:</Text>
-            {formatDetails(stage.details)}
+        stages.map((stage, index) => {
+          const trimmedImageUrl = stage.imageUrl?.trim(); // Trim and check
+          const stageKey = stage.id || `stage-fallback-${index}`; // Fallback key
 
-            {stage.imageUrl && stage.imageUrl.trim() !== '' ? (
-              <>
-                <Text style={styles.sectionTitle}>Mockup / Image:</Text>
-                <PdfImage style={styles.image} src={stage.imageUrl.trim()} />
-              </>
-            ) : (
-              <>
-                <Text style={styles.sectionTitle}>Mockup / Image:</Text>
-                <Text style={styles.noContent}>No image provided for this stage.</Text>
-              </>
-            )}
+          return (
+            <View style={styles.stageContainer} key={stageKey} wrap={false}>
+              <Text style={styles.stageTitle}>Stage {index + 1}: {stage.title || 'Untitled Stage'}</Text>
+              
+              <Text style={styles.sectionTitle}>Details:</Text>
+              {formatDetails(stage.details)}
 
-            {stage.imageAiHint && (
-              <Text style={styles.aiHint}>AI Hint: {stage.imageAiHint}</Text>
-            )}
-          </View>
-        ))
+              {trimmedImageUrl ? (
+                <>
+                  <Text style={styles.sectionTitle}>Mockup / Image:</Text>
+                  {/* @ts-ignore: @react-pdf/renderer Image src prop type is string, but can accept object for remote images if library supports it */}
+                  <PdfImage style={styles.image} src={trimmedImageUrl} />
+                </>
+              ) : (
+                <>
+                  <Text style={styles.sectionTitle}>Mockup / Image:</Text>
+                  <Text style={styles.noContent}>No image provided for this stage.</Text>
+                </>
+              )}
+
+              {stage.imageAiHint && stage.imageAiHint.trim() && (
+                <Text style={styles.aiHint}>AI Hint: {stage.imageAiHint.trim()}</Text>
+              )}
+            </View>
+          );
+        })
       )}
     </Page>
   </Document>
