@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { getAllServicesFromFirestore } from '@/lib/firebase/firestoreServices'; 
 import type { Service } from '@/lib/types'; 
-import { Briefcase, Loader2, PlusCircle, RefreshCw, Edit2, Trash2, MoreHorizontal, AlertCircle, Eye } from 'lucide-react'; 
+import { Briefcase, Loader2, PlusCircle, RefreshCw, Edit2, Trash2, MoreHorizontal, AlertCircle, Eye, Play } from 'lucide-react'; 
 import { useToast } from '@/hooks/use-toast';
 import { deleteServiceAction } from '@/lib/actions/service.actions'; 
 import { Button } from '@/components/ui/button';
@@ -231,6 +231,11 @@ export default function AdminServicesPage() {
               <DropdownMenuItem asChild>
                 <Link href={`/admin/services/edit/${row.original.id}`}>
                   <Edit2 className="mr-2 h-4 w-4" /> Edit
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/admin/services/${row.original.id}/simulate-journey`}>
+                  <Play className="mr-2 h-4 w-4" /> Run Simulation
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
