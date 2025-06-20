@@ -16,13 +16,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CustomDropzone } from '@/components/ui/custom-dropzone';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
 import { 
   ArrowLeft, Loader2, ServerCrash, Save, Play, ChevronLeft, ChevronRight, 
   ImageIcon, Edit, Trash2, PlusCircle, ArrowUp, ArrowDown,
-  Check, XCircle, AlertTriangle
+  Check, AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -100,16 +100,17 @@ export default function SimulateJourneyPage() {
   }, [currentStageIndex, journeyStages]);
 
   const currentStageImagePreviewUrl = useMemo(() => {
-    if (currentStageData && stageImageFiles[currentStageData.id]) {
-      return stageImagePreviews[currentStageData.id]; 
+    if (currentStageData && stageImageFiles[currentStageData.id] !== undefined) {
+        if (stageImageFiles[currentStageData.id] === null) return null; // Explicitly cleared
+        return stageImagePreviews[currentStageData.id]; // Object URL or original from initial edit start
     } else if (currentStageData) {
-      return currentStageData.imageUrl; 
+      return currentStageData.imageUrl; // Fallback to the URL stored in the stage data itself
     }
     return null;
   }, [currentStageData, stageImageFiles, stageImagePreviews]);
 
 
-  const handleStageInputChange = (field: keyof Omit<JourneyStage, 'id' | 'imageUrl'>, value: string) => {
+  const handleStageInputChange = (field: keyof Omit<JourneyStage, 'id' | 'imageUrl' | 'imageFile'>, value: string) => {
     if (currentStageIndex === null || !currentStageData) return;
     const updatedStages = [...journeyStages];
     updatedStages[currentStageIndex] = { ...updatedStages[currentStageIndex], [field]: value };
@@ -124,6 +125,7 @@ export default function SimulateJourneyPage() {
       const objectUrl = URL.createObjectURL(file);
       setStageImagePreviews(prev => ({ ...prev, [stageId]: objectUrl }));
     } else {
+      // File explicitly cleared, keep existing image URL for now or let initial state handle it
       const originalStageFromInitialLoad = initialJourneyStagesOnEditStart?.find(s => s.id === stageId);
       const originalImageUrl = originalStageFromInitialLoad?.imageUrl || currentStageData.imageUrl || null;
       setStageImagePreviews(prev => ({ ...prev, [stageId]: originalImageUrl }));
@@ -207,10 +209,10 @@ export default function SimulateJourneyPage() {
         const stage = stagesToSave[i];
         const fileToUpload = stageImageFiles[stage.id];
 
-        if (fileToUpload === null) { 
+        if (fileToUpload === null) { // Image explicitly cleared
           stagesToSave[i].imageUrl = null;
           newPreviewsAfterSave[stage.id] = null;
-        } else if (fileToUpload instanceof File) { 
+        } else if (fileToUpload instanceof File) { // New file selected
           try {
             const formData = new FormData();
             formData.append('file', fileToUpload);
@@ -229,6 +231,7 @@ export default function SimulateJourneyPage() {
             break;
           }
         }
+        // If fileToUpload is undefined, image was not touched in this edit session, imageUrl on stage is already correct.
       }
 
       if (uploadErrorOccurred) {
@@ -428,19 +431,24 @@ export default function SimulateJourneyPage() {
                                     />
                                 </>
                             ) : null}
-                            <div className={cn("mt-1 p-3 border-2 border-dashed border-border/50 rounded-lg bg-muted/20 min-h-[200px] flex flex-col items-center justify-center text-center")}>
-                                {currentStageImagePreviewUrl ? (
-                                <div className="relative w-full max-w-lg aspect-video mb-3">
-                                    <NextImage src={currentStageImagePreviewUrl} alt={`Preview for ${currentStageData.title}`} fill className="object-cover rounded-md" data-ai-hint={currentStageData.imageAiHint || "journey stage mockup"}/>
+                            
+                            {currentStageImagePreviewUrl ? (
+                                <div className="relative w-full max-w-full aspect-video rounded-lg overflow-hidden bg-muted mt-2">
+                                    <NextImage 
+                                        src={currentStageImagePreviewUrl} 
+                                        alt={`Preview for ${currentStageData.title}`} 
+                                        fill 
+                                        className="object-cover"
+                                        data-ai-hint={currentStageData.imageAiHint || "journey stage mockup"}
+                                    />
                                 </div>
-                                ) : (
-                                <div className="text-muted-foreground space-y-1.5 py-6">
+                            ) : (
+                                <div className={cn("mt-2 p-3 rounded-lg bg-muted/30 min-h-[200px] flex flex-col items-center justify-center text-center", isEditModeActive && "border-2 border-dashed border-input")}>
                                     <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground/50" />
-                                    <p className="text-sm">No preview image for this stage.</p>
-                                    {isEditModeActive && <p className="text-xs">Upload a mockup using the controls above.</p>}
+                                    <p className="text-sm text-muted-foreground mt-2">No preview image for this stage.</p>
+                                    {isEditModeActive && <p className="text-xs text-muted-foreground">Upload a mockup using the controls above.</p>}
                                 </div>
-                                )}
-                            </div>
+                            )}
                         </CardContent>
                     </Card>
 
@@ -538,7 +546,7 @@ export default function SimulateJourneyPage() {
             Are you sure you want to delete the stage "{stageToDeleteIndex !== null && journeyStages[stageToDeleteIndex]?.title}"? This action cannot be undone.
           </DialogDescription>
           <DialogFooter>
-            <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+            <Button variant="outline" onClick={()=> setIsDeleteModalOpen(false)}>Cancel</Button>
             <Button variant="destructive" onClick={confirmDeleteStage}>Delete Stage</Button>
           </DialogFooter>
         </DialogContent>
