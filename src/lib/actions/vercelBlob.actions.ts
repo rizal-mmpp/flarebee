@@ -1,7 +1,7 @@
 
 'use server';
 
-import { put, list, type PutBlobResult, type ListBlobResult } from '@vercel/blob';
+import { put, list, del, type PutBlobResult, type ListBlobResult, type ListBlobResultBlob } from '@vercel/blob'; // Added del and ListBlobResultBlob
 import { NextResponse } from 'next/server';
 
 export async function uploadFileToVercelBlob(formData: FormData): Promise<{ success: boolean; data?: PutBlobResult; error?: string }> {
@@ -56,5 +56,23 @@ export async function listVercelBlobFiles(options?: { limit?: number; cursor?: s
   } catch (error: any) {
     console.error('Error listing files from Vercel Blob:', error);
     return { success: false, error: error.message || 'Failed to list files.' };
+  }
+}
+
+export async function deleteVercelBlobFile(url: string): Promise<{ success: boolean; error?: string }> {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return { success: false, error: 'Vercel Blob environment variable not configured.' };
+  }
+  if (!url) {
+    return { success: false, error: 'File URL is required for deletion.' };
+  }
+  console.log(`deleteVercelBlobFile: Attempting to delete blob at URL: ${url}`);
+  try {
+    await del(url);
+    console.log(`deleteVercelBlobFile: Blob at URL ${url} deleted successfully.`);
+    return { success: true };
+  } catch (error: any) {
+    console.error(`Error deleting blob at URL ${url}:`, error);
+    return { success: false, error: error.message || `Failed to delete file at ${url}.` };
   }
 }

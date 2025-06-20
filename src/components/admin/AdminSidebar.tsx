@@ -12,7 +12,7 @@ import {
   Hexagon,
   CreditCard, 
   TestTube2, 
-  UploadCloud, 
+  Archive, // Changed from UploadCloud
   LibraryBig,
   Briefcase, 
 } from 'lucide-react';
@@ -22,27 +22,26 @@ import NextImage from 'next/image';
 interface AdminSidebarProps {
   onLinkClick?: () => void; 
   logoUrl?: string | null;
-  siteTitle?: string | null; // This prop is still received, used for logo alt text
+  siteTitle?: string | null;
 }
 
 const adminNavItems = [
   { href: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { href: '/admin/services', label: 'Services', icon: Briefcase },
+  { href: '/admin/services', label: 'Services', icon: Briefcase }, 
   { href: '/admin/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/admin/customers', label: 'Customers', icon: Users },
-  { href: '/admin/pages', label: 'Pages', icon: FileText }, // Changed label
+  { href: '/admin/pages', label: 'Pages', icon: FileText },
+  { href: '/admin/file-upload-test', label: 'Assets', icon: Archive }, // Changed label and icon, kept href
   { href: '/admin/docs', label: 'Documentation', icon: LibraryBig },
   { type: 'divider', key: 'div1' },
-  { href: '/admin/settings', label: 'Settings', icon: Settings }, // Changed label
+  { href: '/admin/settings', label: 'Settings', icon: Settings },
   { type: 'divider', key: 'div2' },
   { href: '/admin/xendit-test', label: 'Xendit Tests', icon: TestTube2 },
   { href: '/admin/ipaymu-test', label: 'iPaymu Tests', icon: CreditCard }, 
-  { href: '/admin/file-upload-test', label: 'File Upload Test', icon: UploadCloud },
 ];
 
 export function AdminSidebar({ onLinkClick, logoUrl, siteTitle }: AdminSidebarProps) {
   const pathname = usePathname();
-  // siteTitle prop is used for the logo alt text, to keep it descriptive of the site it represents.
   const displaySiteTitleForLogo = siteTitle || "RIO"; 
 
   return (

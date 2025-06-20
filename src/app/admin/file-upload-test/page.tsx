@@ -1,34 +1,53 @@
 
 'use client';
 
-import { useState, type FormEvent, useEffect, useCallback } from 'react';
+import { useState, type FormEvent, useEffect, useCallback, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, UploadCloud, CheckCircle, AlertTriangle, ExternalLink, Image as ImageIcon, Link as LinkIcon, RefreshCw, ServerCrash, FolderClosed } from 'lucide-react';
-import { uploadFileToVercelBlob, listVercelBlobFiles } from '@/lib/actions/vercelBlob.actions';
+import { Loader2, UploadCloud, CheckCircle, AlertTriangle, ExternalLink, ImageIcon, LinkIcon, RefreshCw, ServerCrash, FolderClosed, Archive, Copy, Trash2, FileText as FileTextIcon } from 'lucide-react';
+import { uploadFileToVercelBlob, listVercelBlobFiles, deleteVercelBlobFile } from '@/lib/actions/vercelBlob.actions';
 import type { PutBlobResult, ListBlobResultBlob } from '@vercel/blob';
-import Image from 'next/image';
+import NextImage from 'next/image';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { CustomDropzone } from '@/components/ui/custom-dropzone';
+import { format } from 'date-fns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-export default function FileUploadTestPage() {
+export default function AssetsPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isUploading, startUploadTransition] = useTransition();
   const [uploadResult, setUploadResult] = useState<{ success: boolean; data?: PutBlobResult; error?: string } | null>(null);
 
   const [listedBlobs, setListedBlobs] = useState<ListBlobResultBlob[]>([]);
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const [isDeleting, startDeleteTransition] = useTransition();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [blobToDelete, setBlobToDelete] = useState<ListBlobResultBlob | null>(null);
+
 
   const handleFetchListedFiles = useCallback(async () => {
     setIsLoadingList(true);
     setListError(null);
-    const result = await listVercelBlobFiles({ limit: 50 });
+    const result = await listVercelBlobFiles({ limit: 100 }); // Increased limit
     if (result.success && result.data) {
-      setListedBlobs(result.data.blobs);
+      setListedBlobs(result.data.blobs.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()));
     } else {
       setListError(result.error || 'Failed to fetch file list.');
       setListedBlobs([]);
@@ -40,14 +59,9 @@ export default function FileUploadTestPage() {
     handleFetchListedFiles();
   }, [handleFetchListedFiles]);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      setFile(files[0]);
-      setUploadResult(null); 
-    } else {
-      setFile(null);
-    }
+  const handleFileChange = (selectedFile: File | null) => {
+    setFile(selectedFile);
+    setUploadResult(null); 
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -57,52 +71,48 @@ export default function FileUploadTestPage() {
       return;
     }
 
-    setIsUploading(true);
-    setUploadResult(null);
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const result = await uploadFileToVercelBlob(formData);
-    setUploadResult(result);
-    setIsUploading(false);
-
-    if (result.success) {
-      setFile(null); 
-      (event.target as HTMLFormElement).reset(); 
-      handleFetchListedFiles(); 
-    }
+    startUploadTransition(async () => {
+      setUploadResult(null);
+      const formData = new FormData();
+      formData.append('file', file);
+      const result = await uploadFileToVercelBlob(formData);
+      setUploadResult(result);
+      if (result.success) {
+        setFile(null); 
+        (event.target as HTMLFormElement).reset(); 
+        handleFetchListedFiles(); 
+         toast({ title: "Upload Successful", description: `${file.name} has been uploaded.` });
+      } else {
+        toast({ title: "Upload Failed", description: result.error || "An unknown error occurred.", variant: "destructive" });
+      }
+    });
   };
 
-  const imageBlobs = listedBlobs.filter(blob => {
-    const knownImageContentTypes = [
-      'image/jpeg',
-      'image/png',
-      'image/gif',
-      'image/webp',
-      'image/svg+xml',
-      'image/avif',
-    ];
-    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.avif'];
+  const handleCopyUrl = (url: string) => {
+    navigator.clipboard.writeText(url)
+      .then(() => toast({ title: "URL Copied!", description: "Asset URL copied to clipboard." }))
+      .catch(err => toast({ title: "Copy Failed", description: "Could not copy URL.", variant: "destructive" }));
+  };
 
-    const lcContentType = blob.contentType?.toLowerCase();
-    const lcPathname = blob.pathname.toLowerCase();
+  const handleDeleteClick = (blob: ListBlobResultBlob) => {
+    setBlobToDelete(blob);
+    setShowDeleteDialog(true);
+  };
 
-    // Check against known content types first
-    if (lcContentType && knownImageContentTypes.includes(lcContentType)) {
-      return true;
-    }
-    // Fallback: If content type is missing or not in the known list, check by extension
-    if (imageExtensions.some(ext => lcPathname.endsWith(ext))) {
-      return true;
-    }
-    // Broader check for any image/* if content type exists but wasn't in the known list and extension didn't match
-    if (lcContentType && lcContentType.startsWith('image/')) {
-        return true;
-    }
-    
-    return false;
-  });
+  const confirmDelete = async () => {
+    if (!blobToDelete) return;
+    startDeleteTransition(async () => {
+      const result = await deleteVercelBlobFile(blobToDelete.url);
+      if (result.success) {
+        toast({ title: "Asset Deleted", description: `${blobToDelete.pathname} has been deleted.` });
+        handleFetchListedFiles(); // Refresh the list
+      } else {
+        toast({ title: "Delete Failed", description: result.error || "Could not delete asset.", variant: "destructive" });
+      }
+      setShowDeleteDialog(false);
+      setBlobToDelete(null);
+    });
+  };
 
   return (
     <div className="space-y-8">
@@ -110,22 +120,23 @@ export default function FileUploadTestPage() {
         <CardHeader>
           <CardTitle className="text-2xl flex items-center">
             <UploadCloud className="h-7 w-7 text-primary mr-3" />
-            Vercel Blob File Upload Test
+            Upload New Asset
           </CardTitle>
           <CardDescription>
-            Test uploading files to Vercel Blob storage. Ensure your project is linked to a Vercel account, a Blob store is created, and the 
-            <code className="font-mono bg-muted px-1 py-0.5 rounded-sm">BLOB_READ_WRITE_TOKEN</code> is available.
+            Upload files to Vercel Blob storage. Ensure your project is linked, a Blob store is created, and the 
+            <code className="font-mono bg-muted px-1 py-0.5 rounded-sm text-xs">BLOB_READ_WRITE_TOKEN</code> is available.
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-6">
             <div>
               <Label htmlFor="fileUpload" className="text-base">Select File</Label>
-              <Input 
-                id="fileUpload" 
-                type="file" 
-                onChange={handleFileChange} 
-                className="mt-2 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+              <CustomDropzone
+                onFileChange={handleFileChange}
+                currentFileName={file?.name}
+                accept={{}} // Accept all file types by passing an empty object
+                maxSize={10 * 1024 * 1024} // 10MB limit example
+                className="mt-2"
                 disabled={isUploading}
               />
               {file && <p className="text-sm text-muted-foreground mt-2">Selected: {file.name} ({(file.size / 1024).toFixed(2)} KB)</p>}
@@ -140,25 +151,23 @@ export default function FileUploadTestPage() {
               Upload to Vercel Blob
             </Button>
 
-            {uploadResult && (
+            {uploadResult && !isUploading && (
               <div className="mt-6">
                 {uploadResult.success && uploadResult.data ? (
                   <Alert variant="default" className="border-green-500 bg-green-500/10">
                     <CheckCircle className="h-5 w-5 text-green-600" />
                     <AlertTitle className="text-green-700">Upload Successful!</AlertTitle>
                     <AlertDescription className="text-green-600/90 space-y-2">
-                      <p>Your file has been uploaded to Vercel Blob.</p>
                       <div className="flex items-center gap-2">
                         <LinkIcon className="h-4 w-4" />
                         <Link href={uploadResult.data.url} target="_blank" rel="noopener noreferrer" className="font-medium underline hover:text-green-700 break-all">
                           {uploadResult.data.url}
                         </Link>
                       </div>
-                      <p className="text-xs">Pathname: {uploadResult.data.pathname}</p>
                       {file?.type.startsWith('image/') && uploadResult.data.url && (
                         <div className="mt-3 p-2 border border-green-300 rounded-md bg-green-500/5 max-w-xs">
                            <ImageIcon className="h-4 w-4 text-green-600 mb-1" />
-                          <Image 
+                          <NextImage 
                             src={uploadResult.data.url} 
                             alt="Uploaded image preview" 
                             width={200} 
@@ -182,11 +191,6 @@ export default function FileUploadTestPage() {
             )}
           </CardContent>
         </form>
-        <CardFooter>
-            <p className="text-xs text-muted-foreground pt-4">
-                Files uploaded here will be publicly accessible via the generated URL.
-            </p>
-        </CardFooter>
       </Card>
 
       <Separator />
@@ -195,14 +199,14 @@ export default function FileUploadTestPage() {
         <CardHeader className="flex flex-row items-center justify-between">
             <div>
                 <CardTitle className="text-2xl flex items-center">
-                    <ImageIcon className="h-7 w-7 text-primary mr-3" />
-                    Stored Images in Vercel Blob
+                    <Archive className="h-7 w-7 text-primary mr-3" />
+                    Asset Library
                 </CardTitle>
                 <CardDescription>
-                    Showing up to 50 most recent image files from your Blob store.
+                    Showing up to 100 most recent assets from your Blob store.
                 </CardDescription>
             </div>
-            <Button onClick={handleFetchListedFiles} disabled={isLoadingList} variant="outline">
+            <Button onClick={handleFetchListedFiles} disabled={isLoadingList || isDeleting} variant="outline">
                 {isLoadingList ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                 Refresh List
             </Button>
@@ -211,43 +215,80 @@ export default function FileUploadTestPage() {
             {isLoadingList ? (
                 <div className="flex justify-center items-center py-10">
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                    <p className="ml-3 text-muted-foreground">Loading image list...</p>
+                    <p className="ml-3 text-muted-foreground">Loading asset library...</p>
                 </div>
             ) : listError ? (
                 <Alert variant="destructive" className="mt-4">
                     <ServerCrash className="h-5 w-5" />
-                    <AlertTitle>Error Fetching File List</AlertTitle>
+                    <AlertTitle>Error Fetching Asset List</AlertTitle>
                     <AlertDescription>{listError}</AlertDescription>
                 </Alert>
-            ) : imageBlobs.length === 0 ? (
+            ) : listedBlobs.length === 0 ? (
                  <div className="text-center py-10">
                     <FolderClosed className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                    <p className="text-lg text-muted-foreground">No images found in Vercel Blob.</p>
-                    <p className="text-sm text-muted-foreground">Try uploading an image using the form above.</p>
+                    <p className="text-lg text-muted-foreground">No assets found in Vercel Blob.</p>
+                    <p className="text-sm text-muted-foreground">Try uploading an asset using the form above.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-4">
-                    {imageBlobs.map((blob) => (
-                        <div key={blob.url} className="group relative border rounded-lg overflow-hidden aspect-square bg-muted">
-                            <Image
-                                src={blob.url}
-                                alt={blob.pathname}
-                                fill
-                                sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
-                                className="object-cover transition-transform duration-300 group-hover:scale-105"
-                            />
-                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                <p className="text-xs font-medium truncate" title={blob.pathname}>{blob.pathname}</p>
-                                <Link href={blob.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline block">
-                                    View Raw <ExternalLink className="inline h-3 w-3 ml-0.5" />
-                                </Link>
-                            </div>
-                        </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
+                    {listedBlobs.map((blob) => (
+                        <Card key={blob.url} className="flex flex-col group">
+                            <CardContent className="p-3 flex-grow flex flex-col items-center justify-center">
+                                {blob.contentType?.startsWith('image/') ? (
+                                    <div className="relative w-full aspect-video rounded-md overflow-hidden bg-muted mb-2">
+                                        <NextImage
+                                            src={blob.url}
+                                            alt={blob.pathname}
+                                            fill
+                                            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                                            className="object-contain"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="w-full aspect-video rounded-md bg-muted flex items-center justify-center mb-2">
+                                        <FileTextIcon className="h-16 w-16 text-muted-foreground" />
+                                    </div>
+                                )}
+                                <p className="text-xs font-medium text-foreground truncate w-full text-center" title={blob.pathname}>{blob.pathname}</p>
+                                <p className="text-xs text-muted-foreground">{format(new Date(blob.uploadedAt), "PP")}</p>
+                                <p className="text-xs text-muted-foreground">{(blob.size / 1024).toFixed(2)} KB</p>
+                            </CardContent>
+                            <CardFooter className="p-2 border-t flex items-center justify-end gap-1.5">
+                                <Button variant="ghost" size="icon" onClick={() => handleCopyUrl(blob.url)} className="h-7 w-7 text-muted-foreground hover:text-primary" title="Copy URL">
+                                    <Copy className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(blob)} className="h-7 w-7 text-muted-foreground hover:text-destructive" title="Delete Asset" disabled={isDeleting}>
+                                  {isDeleting && blobToDelete?.url === blob.url ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
+                                </Button>
+                            </CardFooter>
+                        </Card>
                     ))}
                 </div>
             )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center">
+              <AlertTriangle className="h-5 w-5 text-destructive mr-2" />
+              Confirm Deletion
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the asset "{blobToDelete?.pathname}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={isDeleting}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4"/>}
+              Delete Asset
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
