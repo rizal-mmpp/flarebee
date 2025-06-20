@@ -124,7 +124,6 @@ export default function SimulateJourneyPage() {
       const objectUrl = URL.createObjectURL(file);
       setStageImagePreviews(prev => ({ ...prev, [stageId]: objectUrl }));
     } else {
-      // Revert to original/initial URL if file is cleared
       const originalStageFromInitialLoad = initialJourneyStagesOnEditStart?.find(s => s.id === stageId);
       const originalImageUrl = originalStageFromInitialLoad?.imageUrl || currentStageData.imageUrl || null;
       setStageImagePreviews(prev => ({ ...prev, [stageId]: originalImageUrl }));
@@ -350,7 +349,7 @@ export default function SimulateJourneyPage() {
 
             <Tooltip>
               <TooltipTrigger asChild>
-                 <Button variant={isEditModeActive ? "outline" : "default"} size="icon" onClick={toggleEditMode} disabled={isSavingJourney}>
+                 <Button variant={isEditModeActive ? "outline" : "outline"} size="icon" onClick={toggleEditMode} disabled={isSavingJourney}>
                   {isEditModeActive ? <Check className="h-5 w-5" /> : <Edit className="h-5 w-5" />}
                 </Button>
               </TooltipTrigger>
@@ -432,7 +431,7 @@ export default function SimulateJourneyPage() {
                             <div className={cn("mt-1 p-3 border-2 border-dashed border-border/50 rounded-lg bg-muted/20 min-h-[200px] flex flex-col items-center justify-center text-center")}>
                                 {currentStageImagePreviewUrl ? (
                                 <div className="relative w-full max-w-lg aspect-video mb-3">
-                                    <NextImage src={currentStageImagePreviewUrl} alt={`Preview for ${currentStageData.title}`} fill className="object-contain rounded-md" data-ai-hint={currentStageData.imageAiHint || "journey stage mockup"}/>
+                                    <NextImage src={currentStageImagePreviewUrl} alt={`Preview for ${currentStageData.title}`} fill className="object-cover rounded-md" data-ai-hint={currentStageData.imageAiHint || "journey stage mockup"}/>
                                 </div>
                                 ) : (
                                 <div className="text-muted-foreground space-y-1.5 py-6">
@@ -471,7 +470,7 @@ export default function SimulateJourneyPage() {
                   <h3 className="text-xl font-semibold text-muted-foreground mb-2">No Journey Stages Defined</h3>
                   <p className="text-sm text-muted-foreground mb-6">This service doesn't have any customer journey stages set up yet.</p>
                   {isEditModeActive ? ( <Button onClick={handleAddNewStage} variant="default"><PlusCircle className="mr-2 h-4 w-4" /> Add First Stage</Button>
-                  ) : ( <Button onClick={toggleEditMode} variant="default"><Edit className="mr-2 h-4 w-4" /> Start Editing Journey</Button> )}
+                  ) : ( <Button onClick={toggleEditMode} variant="outline"><Edit className="mr-2 h-4 w-4" /> Start Editing Journey</Button> )}
                 </div>
               )}
             </CardContent>
