@@ -33,6 +33,11 @@ import {
 } from "@/components/ui/popover";
 import { cn } from '@/lib/utils';
 
+// Helper function to check for image extensions
+const isImagePath = (pathname: string): boolean => {
+  return /\.(png|jpe?g|gif|webp|avif)$/i.test(pathname);
+};
+
 export default function AssetsPage() {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, startUploadTransition] = useTransition();
@@ -170,7 +175,7 @@ export default function AssetsPage() {
                           {uploadResult.data.url}
                         </Link>
                       </div>
-                      {file?.type.startsWith('image/') && uploadResult.data.url && (
+                      {uploadResult.data.contentType?.startsWith('image/') && uploadResult.data.url && (
                         <div className="mt-3 p-2 border border-green-300 rounded-md bg-green-500/5 max-w-xs">
                            <ImageIcon className="h-4 w-4 text-green-600 mb-1" />
                           <NextImage 
@@ -240,7 +245,7 @@ export default function AssetsPage() {
                     {listedBlobs.map((blob) => (
                         <Card key={blob.url} className="flex flex-col group relative">
                             <CardContent className="p-2 aspect-square flex items-center justify-center bg-muted/30 rounded-t-lg">
-                                {blob.contentType?.startsWith('image/') ? (
+                                {isImagePath(blob.pathname) ? (
                                     <div className="relative w-full h-full rounded-md overflow-hidden">
                                         <NextImage
                                             src={blob.url}
@@ -279,9 +284,7 @@ export default function AssetsPage() {
                                         <p className="text-muted-foreground">
                                             <span className="font-medium">Size:</span> {(blob.size / 1024).toFixed(2)} KB
                                         </p>
-                                        <p className="text-muted-foreground truncate" title={blob.contentType}>
-                                            <span className="font-medium">Type:</span> {blob.contentType || 'N/A'}
-                                        </p>
+                                        {/* contentType is not available in ListBlobResultBlob, so it's removed here */}
                                     </PopoverContent>
                                 </Popover>
                             </div>
@@ -325,3 +328,5 @@ export default function AssetsPage() {
     </div>
   );
 }
+
+    
