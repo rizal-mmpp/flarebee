@@ -37,7 +37,7 @@ export interface ServiceCategory {
 export interface JourneyStage {
   id: string; 
   title: string; 
-  details: string[]; 
+  details: string; // Changed from string[] to string for Markdown content
   placeholder?: string; 
 }
 
@@ -161,12 +161,13 @@ export interface PublicAboutPageContent {
     subTagline?: string;
     imageUrl?: string | null;
     imageAiHint?: string;
+    imageFile?: File | null; // For admin form
     ctaButtonText?: string;
     ctaButtonLink?: string;
   };
 
   showHistorySection?: boolean;
-  historySection: PublicAboutPageSectionContent;
+  historySection: PublicAboutPageSectionContent & { imageFile?: File | null; };
 
   showFounderSection?: boolean;
   founderSection: {
@@ -175,6 +176,7 @@ export interface PublicAboutPageContent {
     bio: string;
     imageUrl?: string | null;
     imageAiHint?: string;
+    imageFile?: File | null; // For admin form
   };
 
   showMissionVisionSection?: boolean;
@@ -194,7 +196,7 @@ export interface PublicAboutPageContent {
   servicesHighlights?: PublicAboutPageServiceItem[];
 
   showCompanyOverviewSection?: boolean;
-  companyOverviewSection: PublicAboutPageSectionContent; 
+  companyOverviewSection: PublicAboutPageSectionContent & { imageFile?: File | null; };
 
   showCallToActionSection?: boolean;
   callToActionSection: {

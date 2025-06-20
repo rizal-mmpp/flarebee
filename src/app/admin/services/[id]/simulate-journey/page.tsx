@@ -20,6 +20,7 @@ import { CustomDropzone } from '@/components/ui/custom-dropzone';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import ReactMarkdown from 'react-markdown';
 import { 
   ArrowLeft, Loader2, ServerCrash, Save, Play, ChevronLeft, ChevronRight, 
   ImageIcon, Edit, Trash2, PlusCircle, ArrowUp, ArrowDown,
@@ -29,7 +30,7 @@ import { cn } from '@/lib/utils';
 
 const stageFormSchema = z.object({
   title: z.string().min(1, 'Title is required.'),
-  details: z.string().min(1, 'Details are required (one per line).'),
+  details: z.string().min(1, 'Details are required (Markdown supported).'), // Details will be a single Markdown string
   placeholder: z.string().optional(),
 });
 type StageFormValues = z.infer<typeof stageFormSchema>;
@@ -85,7 +86,7 @@ export default function SimulateJourneyPage() {
               setCurrentStageIndex(null);
             }
             const initialImages: Record<string, string | null> = {};
-            stages.forEach(stage => { initialImages[stage.id] = null; });
+            stages.forEach(stage => { initialImages[stage.id] = null; }); // Images are client-side only for simulation
             setStageImages(initialImages);
             setSelectedFiles({});
           } else {
@@ -130,20 +131,19 @@ export default function SimulateJourneyPage() {
     setEditingStageOriginalIndex(index);
     resetStageForm({
       title: stage.title,
-      details: stage.details.join('\n'),
+      details: stage.details, // details is already a string (Markdown)
       placeholder: stage.placeholder || '',
     });
     setIsAddEditModalOpen(true);
   };
 
   const onStageFormSubmit: SubmitHandler<StageFormValues> = (data) => {
-    const newStageDetails = data.details.split('\n').map(d => d.trim()).filter(d => d);
     const stageId = currentEditingStage ? currentEditingStage.id : `stage-${Date.now()}-${(typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID().substring(0,6) : Math.random().toString(36).substring(2, 8)}`;
     
     const stageData: JourneyStage = {
       id: stageId,
       title: data.title,
-      details: newStageDetails,
+      details: data.details, // details is now a string (Markdown)
       placeholder: data.placeholder,
     };
 
@@ -156,7 +156,7 @@ export default function SimulateJourneyPage() {
       const updatedStages = [...journeyStages, stageData];
       setJourneyStages(updatedStages);
       setCurrentStageIndex(updatedStages.length - 1);
-      if (!stageImages[stageId]) { // Initialize image state for new stage
+      if (!stageImages[stageId]) { 
         setStageImages(prev => ({...prev, [stageId]: null}));
         setSelectedFiles(prev => ({...prev, [stageId]: null}));
       }
@@ -175,7 +175,6 @@ export default function SimulateJourneyPage() {
       const updatedStages = journeyStages.filter((_, idx) => idx !== stageToDeleteIndex);
       setJourneyStages(updatedStages);
       
-      // Clean up image state for deleted stage
       if (stageToDelete) {
         if (stageImages[stageToDelete.id]) URL.revokeObjectURL(stageImages[stageToDelete.id]!);
         setStageImages(prev => { const newImages = {...prev}; delete newImages[stageToDelete.id]; return newImages; });
@@ -265,8 +264,7 @@ export default function SimulateJourneyPage() {
   
   return (
     <TooltipProvider delayDuration={0}>
-      <div className="flex flex-col h-full min-h-screen"> {/* Changed to min-h-screen to ensure footer is pushed down */}
-        {/* NEW HEADER SECTION */}
+      <div className="flex flex-col h-full min-h-screen">
         <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <Play className="h-7 w-7 md:h-8 md:w-8 text-primary flex-shrink-0" />
@@ -348,11 +346,9 @@ export default function SimulateJourneyPage() {
           </div>
         </header>
 
-        {/* Main Content Grid */}
-        <div className="flex-grow grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-6"> {/* No outer padding for grid, using fixed width for stepper */}
-          {/* Left Column: Stage Content */}
+        <div className="flex-grow grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-6">
           <Card className="rounded-xl shadow-sm flex flex-col">
-            <CardContent className="p-4 md:p-6 space-y-4 flex-grow overflow-y-auto"> {/* Reduced space-y */}
+            <CardContent className="p-4 md:p-6 space-y-4 flex-grow overflow-y-auto">
                 {currentStage ? (
                   <>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-2">
@@ -383,12 +379,10 @@ export default function SimulateJourneyPage() {
                     
                     <div className="mt-1">
                         <h4 className="text-base font-semibold text-muted-foreground mb-2">Key Elements & Considerations:</h4>
-                        {currentStage.details.length > 0 ? (
-                            <ul className="text-sm text-muted-foreground space-y-1.5 list-disc list-outside pl-5">
-                            {currentStage.details.map((detail, idx) => (
-                                <li key={idx} className="leading-relaxed">{detail}</li>
-                            ))}
-                            </ul>
+                        {currentStage.details ? (
+                           <article className="prose prose-sm sm:prose-base dark:prose-invert max-w-none prose-headings:font-semibold prose-a:text-primary hover:prose-a:text-primary/80 text-muted-foreground">
+                             <ReactMarkdown>{currentStage.details}</ReactMarkdown>
+                           </article>
                         ) : (
                             <p className="text-sm text-muted-foreground italic">No predefined details for this stage. {isEditModeActive ? 'Add details via "Edit Stage".' : ''}</p>
                         )}
@@ -456,16 +450,15 @@ export default function SimulateJourneyPage() {
             </CardContent>
           </Card>
 
-          {/* Right Column: Vertical Stepper */}
           <Card id="stepper-sidebar" className="rounded-xl shadow-sm flex flex-col overflow-hidden">
             <CardHeader className="py-3 md:py-4 px-4 md:px-5 border-b bg-card sticky top-0 z-10">
               <h3 className="text-base font-semibold text-foreground">Journey Stages ({journeyStages.length})</h3>
             </CardHeader>
-            <CardContent className="flex-grow overflow-y-auto p-3"> {/* Reduced padding */}
+            <CardContent className="flex-grow overflow-y-auto p-3">
                 {journeyStages.length > 0 ? (
                     <div className="relative space-y-0">
                     {journeyStages.map((stage, index) => (
-                    <div key={stage.id} className="flex items-start group py-1"> {/* Reduced py */}
+                    <div key={stage.id} className="flex items-start group py-1">
                         <div className="flex flex-col items-center mr-3 flex-shrink-0 mt-0.5"> 
                         <div
                             className={cn(
@@ -480,7 +473,7 @@ export default function SimulateJourneyPage() {
                         </div>
                         {index < journeyStages.length - 1 && (
                             <div className={cn(
-                            "w-px h-4 my-0.5 transition-colors duration-200", // Reduced h
+                            "w-px h-4 my-0.5 transition-colors duration-200", 
                             index < (currentStageIndex ?? -1) ? "bg-primary" : "bg-border group-hover:bg-primary/30"
                             )}></div>
                         )}
@@ -493,7 +486,7 @@ export default function SimulateJourneyPage() {
                         )}
                         onClick={() => setCurrentStageIndex(index)}
                         >
-                          <p className="text-sm leading-snug cursor-pointer break-words">{stage.title}</p> {/* text-wrap */}
+                          <p className="text-sm leading-snug cursor-pointer break-words">{stage.title}</p>
                         </div>
                         {isEditModeActive && (
                             <div className="flex items-center ml-auto pl-1 pt-0">
@@ -528,13 +521,12 @@ export default function SimulateJourneyPage() {
         </div>
       </div>
 
-      {/* Add/Edit Stage Modal */}
       <Dialog open={isAddEditModalOpen} onOpenChange={setIsAddEditModalOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{currentEditingStage ? 'Edit Journey Stage' : 'Add New Journey Stage'}</DialogTitle>
             <DialogDescription>
-              Define the title and key details (one per line) for this stage.
+              Define the title and key details (Markdown supported) for this stage.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmitStageForm(onStageFormSubmit)} className="space-y-4 py-2">
@@ -544,8 +536,8 @@ export default function SimulateJourneyPage() {
               {stageFormErrors.title && <p className="text-sm text-destructive mt-1">{stageFormErrors.title.message}</p>}
             </div>
             <div>
-              <Label htmlFor="stageDetails">Key Details (one per line)</Label>
-              <Textarea id="stageDetails" {...registerStageForm('details')} rows={5} className="mt-1" placeholder="Touchpoint: Homepage feature\nAction: User clicks 'Learn More'"/>
+              <Label htmlFor="stageDetails">Key Elements & Considerations (Markdown)</Label>
+              <Textarea id="stageDetails" {...registerStageForm('details')} rows={8} className="mt-1" placeholder="- Touchpoint: Homepage feature\n- Action: User clicks 'Learn More'\n- **Goal:** Get user to service page"/>
               {stageFormErrors.details && <p className="text-sm text-destructive mt-1">{stageFormErrors.details.message}</p>}
             </div>
              <div>
@@ -562,7 +554,6 @@ export default function SimulateJourneyPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Stage Confirmation Modal */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
