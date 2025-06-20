@@ -38,11 +38,12 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription, // Added DialogDescription
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from '@/lib/utils';
 
 const isImagePath = (pathname: string): boolean => {
+  if (!pathname) return false;
   return /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(pathname);
 };
 
@@ -151,9 +152,8 @@ export default function AssetsPage() {
         setDeletingUrl(null);      
 
         if (wasSuccessful) {
-          setTimeout(() => {
-            handleFetchListedFiles();
-          }, 50); 
+          // Instead of fetching files, reload the page
+          window.location.reload();
         }
       }
     });
@@ -291,10 +291,11 @@ export default function AssetsPage() {
                         <ContextMenuTrigger asChild>
                             <Card 
                                 className="group relative overflow-hidden rounded-lg cursor-pointer shadow-sm hover:shadow-md transition-shadow"
+                                onClick={() => isImagePath(blob.pathname) && openPreviewModal(blob.url)}
                             >
                                 <CardContent className="p-0 aspect-square flex items-center justify-center bg-muted/30 rounded-t-lg overflow-hidden">
-                                    {isImagePath(blob.pathname) ? (
-                                        <div className="relative w-full h-full rounded-t-lg overflow-hidden">
+                                    <div className="relative w-full h-full rounded-t-lg overflow-hidden">
+                                        {isImagePath(blob.pathname) ? (
                                             <NextImage
                                                 src={blob.url}
                                                 alt={blob.pathname}
@@ -302,12 +303,12 @@ export default function AssetsPage() {
                                                 sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                                                 className="object-cover"
                                             />
-                                        </div>
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center">
-                                            <FileTextIcon className="h-16 w-16 text-muted-foreground/70" />
-                                        </div>
-                                    )}
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center">
+                                                <FileTextIcon className="h-16 w-16 text-muted-foreground/70" />
+                                            </div>
+                                        )}
+                                    </div>
                                 </CardContent>
                                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent p-1.5">
                                   <p className="text-xs text-white truncate font-medium" title={blob.pathname.split('/').pop()}>
@@ -373,8 +374,8 @@ export default function AssetsPage() {
       <Dialog open={isPreviewModalOpen} onOpenChange={setIsPreviewModalOpen}>
         <DialogContent className="max-w-3xl p-2">
           <DialogHeader className="sr-only"> 
-            <DialogTitle>Asset Preview</DialogTitle>
-            <DialogDescription>Full preview of the selected asset.</DialogDescription>
+             <DialogTitle>Asset Preview</DialogTitle>
+             <DialogDescription>Full preview of the selected asset.</DialogDescription>
           </DialogHeader>
           {imageToPreviewUrl && (
             <div className="relative w-full aspect-video">
@@ -415,5 +416,6 @@ export default function AssetsPage() {
     
 
     
+
 
 
