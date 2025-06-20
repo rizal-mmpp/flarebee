@@ -1,19 +1,16 @@
 
 'use client';
 
-import React, { useEffect, useState, useCallback, useTransition } from 'react';
+import React, { useEffect, useState, useCallback, useTransition, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import NextImage from 'next/image';
-import { useForm, type SubmitHandler } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { getServiceByIdFromFirestore } from '@/lib/firebase/firestoreServices';
 import { updateServiceJourneyStagesAction } from '@/lib/actions/service.actions';
 import { uploadFileToVercelBlob } from '@/lib/actions/vercelBlob.actions';
 import type { Service, JourneyStage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,19 +22,11 @@ import ReactMarkdown from 'react-markdown';
 import { 
   ArrowLeft, Loader2, ServerCrash, Save, Play, ChevronLeft, ChevronRight, 
   ImageIcon, Edit, Trash2, PlusCircle, ArrowUp, ArrowDown,
-  Edit2, Check
+  Check, XCircle, AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const stageFormSchema = z.object({
-  title: z.string().min(1, 'Title is required.'),
-  details: z.string().min(1, 'Details are required (Markdown supported).'),
-  placeholder: z.string().optional(),
-  imageAiHint: z.string().max(50, "AI Hint too long").optional(),
-});
-type StageFormValues = z.infer<typeof stageFormSchema>;
-
-const DEFAULT_JOURNEY_STAGES_PLACEHOLDER: JourneyStage[] = [];
+const DEFAULT_JOURNEY_STAGES_PLACEHOLDER: JourneyStage[] = []; // Should be imported or defined if used
 
 export default function SimulateJourneyPage() {
   const params = useParams();
@@ -55,149 +44,105 @@ export default function SimulateJourneyPage() {
   const [stageImagePreviews, setStageImagePreviews] = useState<Record<string, string | null>>({}); 
   const [stageImageFiles, setStageImageFiles] = useState<Record<string, File | null | undefined>>({});
 
-  const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
-  const [currentEditingStage, setCurrentEditingStage] = useState<JourneyStage | null>(null);
-  const [editingStageOriginalIndex, setEditingStageOriginalIndex] = useState<number | null>(null);
-  const [modalSelectedFile, setModalSelectedFile] = useState<File | null>(null);
-
-
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [stageToDeleteIndex, setStageToDeleteIndex] = useState<number | null>(null);
 
   const [isSavingJourney, startSaveTransition] = useTransition();
   const [isEditModeActive, setIsEditModeActive] = useState(false);
 
-  const { register: registerStageForm, handleSubmit: handleSubmitStageForm, reset: resetStageForm, formState: { errors: stageFormErrors }, setValue: setStageFormValue } = useForm<StageFormValues>({
-    resolver: zodResolver(stageFormSchema),
-  });
+  const [initialJourneyStagesOnEditStart, setInitialJourneyStagesOnEditStart] = useState<JourneyStage[] | null>(null);
+  const [initialStageImagePreviewsOnEditStart, setInitialStageImagePreviewsOnEditStart] = useState<Record<string, string | null> | null>(null);
+  const [isDiscardConfirmModalOpen, setIsDiscardConfirmModalOpen] = useState(false);
+  
 
-  useEffect(() => {
-    if (serviceId) {
-      setIsLoadingService(true);
-      setError(null);
-      getServiceByIdFromFirestore(serviceId)
-        .then((fetchedService) => {
-          if (fetchedService) {
-            setService(fetchedService);
-            const stages = fetchedService.customerJourneyStages && fetchedService.customerJourneyStages.length > 0
-              ? fetchedService.customerJourneyStages
-              : DEFAULT_JOURNEY_STAGES_PLACEHOLDER;
-            setJourneyStages(stages);
-            if (stages.length > 0) {
-              setCurrentStageIndex(0);
-            } else {
-              setCurrentStageIndex(null);
-            }
-            const initialPreviews: Record<string, string | null> = {};
-            stages.forEach(stage => { initialPreviews[stage.id] = stage.imageUrl || null; });
-            setStageImagePreviews(initialPreviews);
-            setStageImageFiles({}); // Reset pending file changes on load
-          } else {
-            setError('Service not found.');
-            setJourneyStages([]);
-            setCurrentStageIndex(null);
-          }
-        })
-        .catch((err) => {
-          console.error('Failed to fetch service details:', err);
-          setError('Failed to load service details. Please try again.');
-          setJourneyStages([]);
+  const loadServiceAndJourney = useCallback(async () => {
+    if (!serviceId) return;
+    setIsLoadingService(true);
+    setError(null);
+    try {
+      const fetchedService = await getServiceByIdFromFirestore(serviceId);
+      if (fetchedService) {
+        setService(fetchedService);
+        const stages = fetchedService.customerJourneyStages && fetchedService.customerJourneyStages.length > 0
+          ? fetchedService.customerJourneyStages
+          : DEFAULT_JOURNEY_STAGES_PLACEHOLDER;
+        setJourneyStages(stages);
+        if (stages.length > 0) {
+          setCurrentStageIndex(0);
+        } else {
           setCurrentStageIndex(null);
-        })
-        .finally(() => {
-          setIsLoadingService(false);
-        });
+        }
+        const initialPreviews: Record<string, string | null> = {};
+        stages.forEach(stage => { initialPreviews[stage.id] = stage.imageUrl || null; });
+        setStageImagePreviews(initialPreviews);
+        setStageImageFiles({}); 
+      } else {
+        setError('Service not found.');
+        setJourneyStages([]);
+        setCurrentStageIndex(null);
+      }
+    } catch (err) {
+      console.error('Failed to fetch service details:', err);
+      setError('Failed to load service details. Please try again.');
+      setJourneyStages([]);
+      setCurrentStageIndex(null);
+    } finally {
+      setIsLoadingService(false);
     }
   }, [serviceId]);
+
+  useEffect(() => {
+    loadServiceAndJourney();
+  }, [loadServiceAndJourney]);
   
-  const handleModalImageFileChange = useCallback((file: File | null) => {
-    setModalSelectedFile(file);
-    if (currentEditingStage) {
-      if (file) {
-        const objectUrl = URL.createObjectURL(file);
-        setStageImagePreviews(prev => ({...prev, [currentEditingStage.id]: objectUrl}));
-      } else {
-        // If cleared, show original image or nothing if no original
-        setStageImagePreviews(prev => ({...prev, [currentEditingStage.id]: currentEditingStage.imageUrl || null}));
-      }
+  const currentStageData = useMemo(() => {
+    return (currentStageIndex !== null && journeyStages[currentStageIndex]) ? journeyStages[currentStageIndex] : null;
+  }, [currentStageIndex, journeyStages]);
+
+  const currentStageImagePreviewUrl = useMemo(() => {
+    return currentStageData ? stageImagePreviews[currentStageData.id] : null;
+  }, [currentStageData, stageImagePreviews]);
+
+
+  const handleStageInputChange = (field: keyof JourneyStage, value: string) => {
+    if (currentStageIndex === null || !currentStageData) return;
+    const updatedStages = [...journeyStages];
+    updatedStages[currentStageIndex] = { ...updatedStages[currentStageIndex], [field]: value };
+    setJourneyStages(updatedStages);
+  };
+
+  const handleStageImageFileChange = (file: File | null) => {
+    if (currentStageIndex === null || !currentStageData) return;
+    const stageId = currentStageData.id;
+    setStageImageFiles(prev => ({ ...prev, [stageId]: file }));
+    if (file) {
+      const objectUrl = URL.createObjectURL(file);
+      setStageImagePreviews(prev => ({ ...prev, [stageId]: objectUrl }));
+    } else {
+      // If file is cleared, revert preview to the original imageUrl for this stage (if any)
+      const originalStageData = initialJourneyStagesOnEditStart?.find(s => s.id === stageId) || currentStageData;
+      setStageImagePreviews(prev => ({ ...prev, [stageId]: originalStageData.imageUrl || null }));
     }
-  }, [currentEditingStage]);
-
-  const handleOpenAddStageModal = () => {
-    setCurrentEditingStage(null);
-    setEditingStageOriginalIndex(null);
-    setModalSelectedFile(null);
-    resetStageForm({ title: '', details: '', placeholder: '', imageAiHint: '' });
-    setIsAddEditModalOpen(true);
   };
 
-  const handleOpenEditStageModal = (stage: JourneyStage, index: number) => {
-    setCurrentEditingStage(stage);
-    setEditingStageOriginalIndex(index);
-    setModalSelectedFile(null); // Reset file selection for the modal
-    resetStageForm({
-      title: stage.title,
-      details: stage.details,
-      placeholder: stage.placeholder || '',
-      imageAiHint: stage.imageAiHint || '',
-    });
-    // Pre-fill preview in modal from existing stage data
-    setStageImagePreviews(prev => ({...prev, [stage.id]: stage.imageUrl || null}));
-    setIsAddEditModalOpen(true);
-  };
 
-  const onStageFormSubmit: SubmitHandler<StageFormValues> = (data) => {
-    const stageId = currentEditingStage ? currentEditingStage.id : `stage-${Date.now()}-${(typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID().substring(0,6) : Math.random().toString(36).substring(2, 8)}`;
-    
-    const updatedStageData: Partial<JourneyStage> = {
-      title: data.title,
-      details: data.details,
-      placeholder: data.placeholder,
-      imageAiHint: data.imageAiHint,
+  const handleAddNewStage = () => {
+    const newStageId = `stage-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    const newStage: JourneyStage = {
+      id: newStageId,
+      title: 'New Stage',
+      details: '- Add details here...',
+      placeholder: 'Describe mockup elements...',
+      imageUrl: null,
+      imageAiHint: '',
     };
-
-    // Record the file change intent
-    if (currentEditingStage) { // Editing existing
-      setStageImageFiles(prev => ({...prev, [currentEditingStage.id]: modalSelectedFile}));
-    } else { // Adding new
-      setStageImageFiles(prev => ({...prev, [stageId]: modalSelectedFile}));
-    }
-     // Update local preview immediately based on modal's file selection (if any)
-    if (modalSelectedFile) {
-        // Preview was already set by handleModalImageFileChange
-    } else if (currentEditingStage && modalSelectedFile === null) { 
-        // If file was explicitly cleared in modal, update preview to reflect (potentially original image)
-        setStageImagePreviews(prev => ({ ...prev, [currentEditingStage.id]: currentEditingStage.imageUrl || null }));
-    }
-
-
-    if (currentEditingStage && editingStageOriginalIndex !== null) {
-      const updatedStages = journeyStages.map((s, idx) => 
-        idx === editingStageOriginalIndex ? { ...s, ...updatedStageData, id: s.id } : s // Keep original ID
-      );
-      setJourneyStages(updatedStages);
-    } else { // Adding new stage
-      const newStage: JourneyStage = {
-        id: stageId,
-        title: data.title,
-        details: data.details,
-        placeholder: data.placeholder,
-        imageUrl: null, // Will be set after upload if a file is selected
-        imageAiHint: data.imageAiHint,
-      };
-      const updatedStages = [...journeyStages, newStage];
-      setJourneyStages(updatedStages);
-      setCurrentStageIndex(updatedStages.length - 1);
-      // Ensure preview state exists for new stage
-      if (modalSelectedFile) {
-        setStageImagePreviews(prev => ({...prev, [stageId]: URL.createObjectURL(modalSelectedFile)}));
-      } else {
-         setStageImagePreviews(prev => ({...prev, [stageId]: null}));
-      }
-    }
-    setIsAddEditModalOpen(false);
-    setModalSelectedFile(null);
+    const updatedStages = [...journeyStages, newStage];
+    setJourneyStages(updatedStages);
+    setCurrentStageIndex(updatedStages.length - 1);
+    setStageImagePreviews(prev => ({ ...prev, [newStageId]: null }));
+    setStageImageFiles(prev => ({ ...prev, [newStageId]: undefined })); // No file selected initially
   };
+
 
   const handleOpenDeleteModal = (index: number) => {
     setStageToDeleteIndex(index);
@@ -211,8 +156,10 @@ export default function SimulateJourneyPage() {
       setJourneyStages(updatedStages);
       
       if (stageToDelete) {
-        if (stageImagePreviews[stageToDelete.id]) URL.revokeObjectURL(stageImagePreviews[stageToDelete.id]!);
-        setStageImagePreviews(prev => { const newImages = {...prev}; delete newImages[stageToDelete.id]; return newImages; });
+        const previewUrl = stageImagePreviews[stageToDelete.id];
+        if (previewUrl && previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+        
+        setStageImagePreviews(prev => { const newPreviews = {...prev}; delete newPreviews[stageToDelete.id]; return newPreviews; });
         setStageImageFiles(prev => { const newFiles = {...prev}; delete newFiles[stageToDelete.id]; return newFiles; });
       }
 
@@ -247,22 +194,25 @@ export default function SimulateJourneyPage() {
   const handleSaveChangesToFirestore = async () => {
     if (!service) return;
     startSaveTransition(async () => {
-      const stagesToSave = [...journeyStages]; // Create a copy to modify
+      const stagesToSave = JSON.parse(JSON.stringify(journeyStages)) as JourneyStage[]; // Deep copy for modification
       let uploadErrorOccurred = false;
+      const newPreviews = { ...stageImagePreviews };
 
       for (let i = 0; i < stagesToSave.length; i++) {
         const stage = stagesToSave[i];
         const fileToUpload = stageImageFiles[stage.id];
 
         if (fileToUpload === null) { // Image was explicitly cleared
-          stagesToSave[i] = { ...stage, imageUrl: null };
+          stagesToSave[i].imageUrl = null;
+          newPreviews[stage.id] = null;
         } else if (fileToUpload instanceof File) { // New file selected
           try {
             const formData = new FormData();
             formData.append('file', fileToUpload);
             const uploadResult = await uploadFileToVercelBlob(formData);
             if (uploadResult.success && uploadResult.data?.url) {
-              stagesToSave[i] = { ...stage, imageUrl: uploadResult.data.url };
+              stagesToSave[i].imageUrl = uploadResult.data.url;
+              newPreviews[stage.id] = uploadResult.data.url; // Update preview to permanent URL
             } else {
               toast({ title: `Image Upload Failed for Stage: ${stage.title}`, description: uploadResult.error || 'Could not upload image.', variant: 'destructive' });
               uploadErrorOccurred = true;
@@ -274,27 +224,56 @@ export default function SimulateJourneyPage() {
             break;
           }
         }
-        // If stageImageFiles[stage.id] is undefined, it means the image wasn't touched for this stage in this session, so its existing imageUrl is preserved.
+        // If stageImageFiles[stage.id] is undefined, imageUrl remains as is (from initial load or last save)
       }
 
       if (uploadErrorOccurred) {
-        return; // Stop if an upload failed
+        return; 
       }
       
       const result = await updateServiceJourneyStagesAction(service.id, stagesToSave);
       if (result.success) {
         toast({ title: 'Journey Saved', description: 'Customer journey stages have been updated.' });
-        setJourneyStages(stagesToSave); // Update local state with final URLs
-        setStageImageFiles({}); // Clear pending file changes
+        setJourneyStages(stagesToSave); 
+        setStageImagePreviews(newPreviews);
+        setStageImageFiles({}); 
+        setInitialJourneyStagesOnEditStart(JSON.parse(JSON.stringify(stagesToSave))); // Update snapshot
+        setInitialStageImagePreviewsOnEditStart({...newPreviews});
       } else {
         toast({ title: 'Error Saving Journey', description: result.error || 'Could not save changes.', variant: 'destructive' });
       }
     });
   };
-  
-  const currentStageData = (currentStageIndex !== null && journeyStages[currentStageIndex]) ? journeyStages[currentStageIndex] : null;
-  const currentStageImagePreviewUrl = currentStageData ? stageImagePreviews[currentStageData.id] : null;
 
+  const toggleEditMode = () => {
+    if (isEditModeActive) { // Trying to exit edit mode
+      const hasStageDataChanged = JSON.stringify(journeyStages) !== JSON.stringify(initialJourneyStagesOnEditStart);
+      const hasImageFilesChanged = Object.keys(stageImageFiles).some(key => stageImageFiles[key] !== undefined);
+
+      if (hasStageDataChanged || hasImageFilesChanged) {
+        setIsDiscardConfirmModalOpen(true);
+      } else {
+        exitEditMode(false); // No changes, just exit
+      }
+    } else { // Entering edit mode
+      setInitialJourneyStagesOnEditStart(JSON.parse(JSON.stringify(journeyStages)));
+      setInitialStageImagePreviewsOnEditStart({...stageImagePreviews });
+      setIsEditModeActive(true);
+    }
+  };
+
+  const exitEditMode = (discardChanges: boolean) => {
+    if (discardChanges && initialJourneyStagesOnEditStart) {
+      setJourneyStages(initialJourneyStagesOnEditStart);
+      setStageImagePreviews(initialStageImagePreviewsOnEditStart || {});
+    }
+    setIsEditModeActive(false);
+    setStageImageFiles({});
+    setInitialJourneyStagesOnEditStart(null);
+    setInitialStageImagePreviewsOnEditStart(null);
+    setIsDiscardConfirmModalOpen(false);
+  };
+  
 
   if (isLoadingService) {
     return (
@@ -332,9 +311,6 @@ export default function SimulateJourneyPage() {
     );
   }
   
-  const modalImagePreview = currentEditingStage ? stageImagePreviews[currentEditingStage.id] : null;
-  const modalCurrentFileName = modalSelectedFile?.name || (currentEditingStage?.imageUrl ? currentEditingStage.imageUrl.split('/').pop() : undefined);
-
   return (
     <TooltipProvider delayDuration={0}>
       <div className="flex flex-col h-full min-h-screen">
@@ -360,51 +336,24 @@ export default function SimulateJourneyPage() {
               <TooltipContent><p>Back to Service Details</p></TooltipContent>
             </Tooltip>
 
-            {isEditModeActive ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" onClick={() => setIsEditModeActive(false)} disabled={isSavingJourney}>
-                    <Check className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>Done Editing (View Mode)</p></TooltipContent>
-              </Tooltip>
-            ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="default" size="icon" onClick={() => setIsEditModeActive(true)} disabled={isSavingJourney}>
-                    <Edit className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>Edit Journey</p></TooltipContent>
-              </Tooltip>
-            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant={isEditModeActive ? "default" : "outline"} size="icon" onClick={toggleEditMode} disabled={isSavingJourney}>
+                  {isEditModeActive ? <Check className="h-5 w-5" /> : <Edit className="h-5 w-5" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>{isEditModeActive ? "Done Editing (View Mode)" : "Edit Journey"}</p></TooltipContent>
+            </Tooltip>
 
             {isEditModeActive && (
               <>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" onClick={handleOpenAddStageModal} disabled={isSavingJourney}>
+                    <Button variant="outline" size="icon" onClick={handleAddNewStage} disabled={isSavingJourney}>
                       <PlusCircle className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent><p>Add New Stage</p></TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" onClick={() => currentStageData && handleOpenEditStageModal(currentStageData, currentStageIndex!)} disabled={isSavingJourney || !currentStageData}>
-                      <Edit className="h-5 w-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent><p>Edit Current Stage</p></TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" onClick={() => currentStageIndex !== null && handleOpenDeleteModal(currentStageIndex)} disabled={isSavingJourney || !currentStageData || journeyStages.length <= 1}>
-                      <Trash2 className="h-5 w-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent><p>Delete Current Stage</p></TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -419,150 +368,140 @@ export default function SimulateJourneyPage() {
           </div>
         </header>
 
-        <div className="flex-grow grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-6">
+        <div className="flex-grow grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6"> {/* Increased sidebar width slightly */}
           <Card className="rounded-xl shadow-sm flex flex-col">
             <CardContent className="p-4 md:p-6 space-y-4 flex-grow overflow-y-auto">
                 {currentStageData ? (
-                  <>
+                  <div className="space-y-4">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-2">
-                        <h2 className="text-xl md:text-2xl font-semibold text-foreground">
-                          Stage {String(currentStageIndex! + 1).padStart(2, '0')}: {currentStageData.title}
-                        </h2>
+                        {isEditModeActive ? (
+                          <Input 
+                            value={currentStageData.title}
+                            onChange={(e) => handleStageInputChange('title', e.target.value)}
+                            className="text-xl md:text-2xl font-semibold flex-grow"
+                            placeholder="Stage Title"
+                          />
+                        ) : (
+                          <h2 className="text-xl md:text-2xl font-semibold text-foreground">
+                            Stage {String(currentStageIndex! + 1).padStart(2, '0')}: {currentStageData.title}
+                          </h2>
+                        )}
                         <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                            <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentStageIndex(prev => prev !== null && prev > 0 ? prev - 1 : prev)}
-                            disabled={currentStageIndex === 0 || currentStageIndex === null}
-                            className="h-9 group"
-                            >
-                            <ChevronLeft className="mr-1.5 h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
+                            <Button variant="outline" size="sm" onClick={() => setCurrentStageIndex(prev => prev !== null && prev > 0 ? prev - 1 : prev)} disabled={currentStageIndex === 0 || currentStageIndex === null} className="h-9 group">
+                                <ChevronLeft className="mr-1.5 h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
                             </Button>
-                            <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentStageIndex(prev => prev !== null && prev < journeyStages.length - 1 ? prev + 1 : prev)}
-                            disabled={currentStageIndex === null || currentStageIndex === journeyStages.length - 1}
-                            className="h-9 group"
-                            >
-                            <ChevronRight className="ml-1.5 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                            <Button variant="outline" size="sm" onClick={() => setCurrentStageIndex(prev => prev !== null && prev < journeyStages.length - 1 ? prev + 1 : prev)} disabled={currentStageIndex === null || currentStageIndex === journeyStages.length - 1} className="h-9 group">
+                                <ChevronRight className="ml-1.5 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                             </Button>
                         </div>
                     </div>
                     
-                    <div className="mt-1">
-                        <h4 className="text-base font-semibold text-muted-foreground mb-2">Key Elements & Considerations:</h4>
-                        {currentStageData.details ? (
+                    <div>
+                        <Label htmlFor={`stage-details-${currentStageData.id}`} className="text-base font-semibold text-muted-foreground mb-1 block">Key Elements & Considerations:</Label>
+                        {isEditModeActive ? (
+                          <Textarea 
+                            id={`stage-details-${currentStageData.id}`}
+                            value={currentStageData.details}
+                            onChange={(e) => handleStageInputChange('details', e.target.value)}
+                            rows={10}
+                            className="font-mono text-sm"
+                            placeholder="- Touchpoint: Homepage feature..."
+                          />
+                        ) : currentStageData.details ? (
                            <article className="prose prose-sm sm:prose-base dark:prose-invert max-w-none prose-headings:font-semibold prose-a:text-primary hover:prose-a:text-primary/80 text-muted-foreground">
                              <ReactMarkdown>{currentStageData.details}</ReactMarkdown>
                            </article>
                         ) : (
-                            <p className="text-sm text-muted-foreground italic">No predefined details for this stage. {isEditModeActive ? 'Add details via "Edit Stage".' : ''}</p>
+                            <p className="text-sm text-muted-foreground italic">No predefined details for this stage.</p>
                         )}
                     </div>
                     
-                    <Card className="mt-3">
+                    <Card>
                         <CardHeader className="pb-3 pt-4 px-4">
                             <CardTitle className="text-base font-semibold">Visual Mockup / UI Preview</CardTitle>
                         </CardHeader>
-                        <CardContent className="px-4 pb-4">
+                        <CardContent className="px-4 pb-4 space-y-3">
+                            {isEditModeActive ? (
+                                <>
+                                    <CustomDropzone
+                                        onFileChange={handleStageImageFileChange}
+                                        currentFileName={stageImageFiles[currentStageData.id]?.name || currentStageData.imageUrl?.split('/').pop()}
+                                        accept={{ 'image/*': ['.png', '.jpeg', '.jpg', '.webp', '.avif'] }}
+                                        maxSize={1 * 1024 * 1024}
+                                    />
+                                    <Input 
+                                      value={currentStageData.imageAiHint || ''}
+                                      onChange={(e) => handleStageInputChange('imageAiHint', e.target.value)}
+                                      placeholder="AI Hint for image (e.g., user journey map)"
+                                      className="text-sm"
+                                    />
+                                </>
+                            ) : null}
                             <div className={cn("mt-1 p-3 border-2 border-dashed border-border/50 rounded-lg bg-muted/20 min-h-[200px] flex flex-col items-center justify-center text-center")}>
                                 {currentStageImagePreviewUrl ? (
                                 <div className="relative w-full max-w-lg aspect-video mb-3">
-                                    <NextImage
-                                    src={currentStageImagePreviewUrl}
-                                    alt={`Preview for ${currentStageData.title}`}
-                                    fill
-                                    className="object-contain rounded-md"
-                                    data-ai-hint={currentStageData.imageAiHint || "journey stage mockup"}
-                                    />
+                                    <NextImage src={currentStageImagePreviewUrl} alt={`Preview for ${currentStageData.title}`} fill className="object-contain rounded-md" data-ai-hint={currentStageData.imageAiHint || "journey stage mockup"}/>
                                 </div>
                                 ) : (
                                 <div className="text-muted-foreground space-y-1.5 py-6">
                                     <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground/50" />
                                     <p className="text-sm">No preview image for this stage.</p>
-                                    {isEditModeActive && <p className="text-xs">Edit the stage to upload a mockup.</p>}
+                                    {isEditModeActive && <p className="text-xs">Upload a mockup using the controls above.</p>}
                                 </div>
                                 )}
                             </div>
                         </CardContent>
                     </Card>
-                  </>
+                  </div>
                 ) : (
                  <div className="text-center p-10 h-full flex flex-col items-center justify-center">
                   <ImageIcon className="h-20 w-20 text-muted-foreground/30 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-muted-foreground mb-2">No Journey Stages Defined</h3>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    This service doesn't have any customer journey stages set up yet.
-                  </p>
-                  {isEditModeActive ? (
-                    <Button onClick={handleOpenAddStageModal} variant="default">
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add First Stage
-                    </Button>
-                  ) : (
-                     <Button onClick={() => setIsEditModeActive(true)} variant="default">
-                        <Edit2 className="mr-2 h-4 w-4" /> Start Editing Journey
-                    </Button>
-                  )}
+                  <p className="text-sm text-muted-foreground mb-6">This service doesn't have any customer journey stages set up yet.</p>
+                  {isEditModeActive ? ( <Button onClick={handleAddNewStage} variant="default"><PlusCircle className="mr-2 h-4 w-4" /> Add First Stage</Button>
+                  ) : ( <Button onClick={toggleEditMode} variant="default"><Edit className="mr-2 h-4 w-4" /> Start Editing Journey</Button> )}
                 </div>
               )}
             </CardContent>
           </Card>
 
+          {/* Sidebar for Stepper */}
           <Card id="stepper-sidebar" className="rounded-xl shadow-sm flex flex-col overflow-hidden">
-            <CardHeader className="py-3 md:py-4 px-4 md:px-5 border-b bg-card sticky top-0 z-10">
+            <CardHeader className="py-3 md:py-4 px-4 md:px-5 border-b bg-card sticky top-0 z-10 flex flex-row items-center justify-between">
               <h3 className="text-base font-semibold text-foreground">Journey Stages ({journeyStages.length})</h3>
+              {isEditModeActive && journeyStages.length > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => currentStageIndex !== null && handleOpenDeleteModal(currentStageIndex)} disabled={isSavingJourney || !currentStageData || journeyStages.length <= 0} >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left"><p>Delete Current Stage</p></TooltipContent>
+                </Tooltip>
+              )}
             </CardHeader>
             <CardContent className="flex-grow overflow-y-auto p-3">
                 {journeyStages.length > 0 ? (
                     <div className="relative space-y-0">
                     {journeyStages.map((stage, index) => (
-                    <div key={stage.id} className="flex items-start group py-1">
+                    <div key={stage.id} className="flex items-start group py-1 pr-1"> {/* Added pr-1 for spacing before reorder buttons */}
                         <div className="flex flex-col items-center mr-3 flex-shrink-0 mt-0.5"> 
-                        <div
-                            className={cn(
-                            "flex items-center justify-center h-7 w-7 rounded-full text-xs font-semibold border-2 transition-all duration-200 ease-in-out cursor-pointer",
-                            currentStageIndex === index ? "bg-primary border-primary text-primary-foreground scale-110 shadow-md" : 
-                            index < (currentStageIndex ?? -1) ? "bg-primary/20 border-primary text-primary" : 
-                            "bg-card border-border text-muted-foreground group-hover:border-primary/70 group-hover:text-primary"
-                            )}
-                            onClick={() => setCurrentStageIndex(index)}
-                        >
+                        <div className={cn("flex items-center justify-center h-7 w-7 rounded-full text-xs font-semibold border-2 transition-all duration-200 ease-in-out cursor-pointer", currentStageIndex === index ? "bg-primary border-primary text-primary-foreground scale-110 shadow-md" : index < (currentStageIndex ?? -1) ? "bg-primary/20 border-primary text-primary" : "bg-card border-border text-muted-foreground group-hover:border-primary/70 group-hover:text-primary")} onClick={() => setCurrentStageIndex(index)}>
                             {String(index + 1).padStart(2, '0')}
                         </div>
-                        {index < journeyStages.length - 1 && (
-                            <div className={cn(
-                            "w-px h-4 my-0.5 transition-colors duration-200", 
-                            index < (currentStageIndex ?? -1) ? "bg-primary" : "bg-border group-hover:bg-primary/30"
-                            )}></div>
-                        )}
+                        {index < journeyStages.length - 1 && ( <div className={cn("w-px h-4 my-0.5 transition-colors duration-200", index < (currentStageIndex ?? -1) ? "bg-primary" : "bg-border group-hover:bg-primary/30")}></div> )}
                         </div>
-                        <div className={cn(
-                            "pt-1 pb-1 transition-colors duration-200 flex-grow min-w-0", 
-                            currentStageIndex === index ? "text-primary font-semibold" : 
-                            index < (currentStageIndex ?? -1) ? "text-primary/80 font-medium" :
-                            "text-muted-foreground group-hover:text-foreground"
-                        )}
-                        onClick={() => setCurrentStageIndex(index)}
-                        >
+                        <div className={cn("pt-1 pb-1 transition-colors duration-200 flex-grow min-w-0", currentStageIndex === index ? "text-primary font-semibold" : index < (currentStageIndex ?? -1) ? "text-primary/80 font-medium" : "text-muted-foreground group-hover:text-foreground")} onClick={() => setCurrentStageIndex(index)}>
                           <p className="text-sm leading-snug cursor-pointer break-words">{stage.title}</p>
                         </div>
                         {isEditModeActive && (
-                            <div className="flex items-center ml-auto pl-1 pt-0">
+                            <div className="flex items-center ml-auto pl-1 pt-0 opacity-50 group-hover:opacity-100 transition-opacity">
                                 <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveStage(index, 'up')} disabled={index === 0 || isSavingJourney}>
-                                            <ArrowUp className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
+                                    <TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveStage(index, 'up')} disabled={index === 0 || isSavingJourney}><ArrowUp className="h-4 w-4" /></Button></TooltipTrigger>
                                     <TooltipContent side="left"><p>Move Up</p></TooltipContent>
                                 </Tooltip>
                                 <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveStage(index, 'down')} disabled={index === journeyStages.length - 1 || isSavingJourney}>
-                                            <ArrowDown className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
+                                    <TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveStage(index, 'down')} disabled={index === journeyStages.length - 1 || isSavingJourney}><ArrowDown className="h-4 w-4" /></Button></TooltipTrigger>
                                     <TooltipContent side="left"><p>Move Down</p></TooltipContent>
                                 </Tooltip>
                             </div>
@@ -580,59 +519,6 @@ export default function SimulateJourneyPage() {
         </div>
       </div>
 
-      <Dialog open={isAddEditModalOpen} onOpenChange={setIsAddEditModalOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{currentEditingStage ? 'Edit Journey Stage' : 'Add New Journey Stage'}</DialogTitle>
-            <DialogDescription>
-              Define the title, details, and optional image for this stage.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmitStageForm(onStageFormSubmit)} className="space-y-4 py-2">
-            <div>
-              <Label htmlFor="stageTitle">Stage Title</Label>
-              <Input id="stageTitle" {...registerStageForm('title')} className="mt-1" placeholder="e.g., Discovery & Awareness"/>
-              {stageFormErrors.title && <p className="text-sm text-destructive mt-1">{stageFormErrors.title.message}</p>}
-            </div>
-            <div>
-              <Label htmlFor="stageDetails">Key Elements & Considerations (Markdown)</Label>
-              <Textarea id="stageDetails" {...registerStageForm('details')} rows={8} className="mt-1" placeholder="- Touchpoint: Homepage feature\n- Action: User clicks 'Learn More'\n- **Goal:** Get user to service page"/>
-              {stageFormErrors.details && <p className="text-sm text-destructive mt-1">{stageFormErrors.details.message}</p>}
-            </div>
-             <div>
-              <Label htmlFor="stagePlaceholder">Placeholder for Image Description (Optional)</Label>
-              <Textarea id="stagePlaceholder" {...registerStageForm('placeholder')} rows={3} className="mt-1" placeholder="e.g., Describe the visual elements and primary CTA for this step..."/>
-            </div>
-            <div>
-              <Label htmlFor="stageImageAiHint">Image AI Hint (Optional)</Label>
-              <Input id="stageImageAiHint" {...registerStageForm('imageAiHint')} className="mt-1" placeholder="e.g., user journey map" />
-              {stageFormErrors.imageAiHint && <p className="text-sm text-destructive mt-1">{stageFormErrors.imageAiHint.message}</p>}
-            </div>
-            <div>
-              <Label>Stage Image (Optional)</Label>
-               <CustomDropzone
-                  onFileChange={handleModalImageFileChange}
-                  currentFileName={modalCurrentFileName}
-                  accept={{ 'image/*': ['.png', '.jpeg', '.jpg', '.webp', '.avif'] }}
-                  maxSize={1 * 1024 * 1024} 
-                  className="mt-1"
-                />
-                {modalImagePreview && (
-                    <div className="mt-2 p-2 border border-border rounded-md bg-muted/50 max-w-[200px]">
-                        <NextImage src={modalImagePreview} alt="Modal image preview" width={200} height={120} className="rounded object-contain max-h-[120px]" />
-                    </div>
-                )}
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button type="submit">{currentEditingStage ? 'Save Changes' : 'Add Stage'}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -647,6 +533,22 @@ export default function SimulateJourneyPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <Dialog open={isDiscardConfirmModalOpen} onOpenChange={setIsDiscardConfirmModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center"><AlertTriangle className="mr-2"/>Discard Unsaved Changes?</DialogTitle>
+          </DialogHeader>
+          <DialogDescription>
+            You have unsaved changes to the journey stages. Are you sure you want to discard them and exit edit mode?
+          </DialogDescription>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDiscardConfirmModalOpen(false)}>Cancel (Keep Editing)</Button>
+            <Button variant="destructive" onClick={() => exitEditMode(true)}>Discard Changes & Exit</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </TooltipProvider>
   );
 }
