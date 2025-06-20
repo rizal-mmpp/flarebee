@@ -25,6 +25,9 @@ import {
   Check, AlertTriangle, Copy, Download
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { pdf } from '@react-pdf/renderer';
+import { JourneyPdfDocument } from '@/components/admin/services/JourneyPdfDocument';
+
 
 const DEFAULT_JOURNEY_STAGES_PLACEHOLDER: JourneyStage[] = []; 
 
@@ -312,39 +315,33 @@ export default function SimulateJourneyPage() {
     }
   }, [journeyStages, service?.title, toast]);
 
-  const handleExportJourney = useCallback(() => {
-    if (journeyStages.length === 0) {
-      toast({ title: "Nothing to Export", description: "There are no journey stages defined.", variant: "destructive" });
+  const handleExportJourney = useCallback(async () => {
+    if (!service || journeyStages.length === 0) {
+      toast({ title: "Nothing to Export", description: "Service data or journey stages are missing.", variant: "destructive" });
       return;
     }
-    let markdownContent = `# Service Journey: ${service?.title || 'Untitled Service'}\n\n`;
-    journeyStages.forEach((stage, index) => {
-      markdownContent += `## Stage ${index + 1}: ${stage.title}\n\n`;
-      markdownContent += `### Details\n${stage.details || 'No details provided.'}\n\n`;
-      if (stage.imageUrl) {
-        markdownContent += `### Image\n![Image for ${stage.title}](${stage.imageUrl})\n`;
-      } else {
-        markdownContent += `### Image\n_No image for this stage._\n`;
-      }
-      if (stage.imageAiHint) {
-        markdownContent += `(AI Hint: ${stage.imageAiHint})\n\n`;
-      } else {
-        markdownContent += `\n`;
-      }
-      markdownContent += `---\n\n`;
-    });
 
-    const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    const fileName = `${service?.title.replace(/\s+/g, '_').toLowerCase() || 'service'}_journey.md`;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
-    toast({ title: "Journey Exported", description: `Journey exported as ${fileName}.` });
-  }, [journeyStages, service?.title, toast]);
+    toast({ title: "Generating PDF...", description: "Please wait a moment."});
+
+    try {
+      const docInstance = <JourneyPdfDocument serviceTitle={service.title} stages={journeyStages} />;
+      const blob = await pdf(docInstance).toBlob();
+      
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      const fileName = `${service.title.replace(/\s+/g, '_').toLowerCase() || 'service'}_journey.pdf`;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+      
+      toast({ title: "Journey Exported as PDF", description: `File: ${fileName}` });
+    } catch (exportError: any) {
+      console.error("Error exporting journey to PDF:", exportError);
+      toast({ title: "PDF Export Failed", description: exportError.message || "Could not generate PDF.", variant: "destructive" });
+    }
+  }, [journeyStages, service, toast]);
   
 
   if (isLoadingService) {
@@ -433,7 +430,7 @@ export default function SimulateJourneyPage() {
                       <Download className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent><p>Export Journey (Markdown)</p></TooltipContent>
+                  <TooltipContent><p>Export Journey as PDF</p></TooltipContent>
                 </Tooltip>
               </>
             )}
