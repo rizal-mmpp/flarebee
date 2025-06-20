@@ -101,9 +101,9 @@ export default function SimulateJourneyPage() {
 
   const currentStageImagePreviewUrl = useMemo(() => {
     if (currentStageData && stageImageFiles[currentStageData.id]) {
-      return stageImagePreviews[currentStageData.id]; // Show preview of newly selected file
+      return stageImagePreviews[currentStageData.id]; 
     } else if (currentStageData) {
-      return currentStageData.imageUrl; // Show persisted URL
+      return currentStageData.imageUrl; 
     }
     return null;
   }, [currentStageData, stageImageFiles, stageImagePreviews]);
@@ -124,9 +124,10 @@ export default function SimulateJourneyPage() {
       const objectUrl = URL.createObjectURL(file);
       setStageImagePreviews(prev => ({ ...prev, [stageId]: objectUrl }));
     } else {
-      // If file is cleared, revert preview to the original imageUrl for this stage (if any)
-      const originalStageData = initialJourneyStagesOnEditStart?.find(s => s.id === stageId) || currentStageData;
-      setStageImagePreviews(prev => ({ ...prev, [stageId]: originalStageData.imageUrl || null }));
+      // Revert to original/initial URL if file is cleared
+      const originalStageFromInitialLoad = initialJourneyStagesOnEditStart?.find(s => s.id === stageId);
+      const originalImageUrl = originalStageFromInitialLoad?.imageUrl || currentStageData.imageUrl || null;
+      setStageImagePreviews(prev => ({ ...prev, [stageId]: originalImageUrl }));
     }
   };
 
@@ -136,8 +137,8 @@ export default function SimulateJourneyPage() {
     const newStage: JourneyStage = {
       id: newStageId,
       title: 'New Stage',
-      details: '- Add details here...',
-      placeholder: 'Describe mockup elements...',
+      details: '- Add details here...\n- Use Markdown for lists, bold, etc.',
+      placeholder: 'Describe mockup elements or considerations for this stage...',
       imageUrl: null,
       imageAiHint: '',
     };
@@ -207,10 +208,10 @@ export default function SimulateJourneyPage() {
         const stage = stagesToSave[i];
         const fileToUpload = stageImageFiles[stage.id];
 
-        if (fileToUpload === null) { // Image was explicitly cleared
+        if (fileToUpload === null) { 
           stagesToSave[i].imageUrl = null;
           newPreviewsAfterSave[stage.id] = null;
-        } else if (fileToUpload instanceof File) { // New file selected
+        } else if (fileToUpload instanceof File) { 
           try {
             const formData = new FormData();
             formData.append('file', fileToUpload);
@@ -251,7 +252,6 @@ export default function SimulateJourneyPage() {
 
   const exitEditMode = (discardChanges: boolean) => {
     if (discardChanges && initialJourneyStagesOnEditStart) {
-      // Revoke any blob URLs created during the discarded edit session
       Object.keys(stageImagePreviews).forEach(stageId => {
         const currentPreview = stageImagePreviews[stageId];
         const initialPreview = initialStageImagePreviewsOnEditStart?.[stageId];
@@ -350,7 +350,7 @@ export default function SimulateJourneyPage() {
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={toggleEditMode} disabled={isSavingJourney}>
+                 <Button variant={isEditModeActive ? "outline" : "default"} size="icon" onClick={toggleEditMode} disabled={isSavingJourney}>
                   {isEditModeActive ? <Check className="h-5 w-5" /> : <Edit className="h-5 w-5" />}
                 </Button>
               </TooltipTrigger>
@@ -408,26 +408,6 @@ export default function SimulateJourneyPage() {
                         </div>
                     </div>
                     
-                    <div>
-                        <Label htmlFor={`stage-details-${currentStageData.id}`} className="text-base font-semibold text-muted-foreground mb-1 block">Key Elements & Considerations:</Label>
-                        {isEditModeActive ? (
-                          <Textarea 
-                            id={`stage-details-${currentStageData.id}`}
-                            value={currentStageData.details}
-                            onChange={(e) => handleStageInputChange('details', e.target.value)}
-                            rows={10}
-                            className="font-mono text-sm"
-                            placeholder="- Touchpoint: Homepage feature..."
-                          />
-                        ) : currentStageData.details ? (
-                           <article className="prose prose-sm sm:prose-base dark:prose-invert max-w-none prose-headings:font-semibold prose-a:text-primary hover:prose-a:text-primary/80 text-muted-foreground prose-p:my-1 prose-li:my-0.5 prose-ul:my-1 prose-ol:my-1">
-                             <ReactMarkdown>{currentStageData.details}</ReactMarkdown>
-                           </article>
-                        ) : (
-                            <p className="text-sm text-muted-foreground italic">No predefined details for this stage.</p>
-                        )}
-                    </div>
-                    
                     <Card>
                         <CardHeader className="pb-3 pt-4 px-4">
                             <CardTitle className="text-base font-semibold">Visual Mockup / UI Preview</CardTitle>
@@ -464,6 +444,26 @@ export default function SimulateJourneyPage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    <div>
+                        <Label htmlFor={`stage-details-${currentStageData.id}`} className="text-base font-semibold text-muted-foreground mb-1 block">Key Elements & Considerations:</Label>
+                        {isEditModeActive ? (
+                          <Textarea 
+                            id={`stage-details-${currentStageData.id}`}
+                            value={currentStageData.details}
+                            onChange={(e) => handleStageInputChange('details', e.target.value)}
+                            rows={10}
+                            className="font-mono text-sm"
+                            placeholder="- Touchpoint: Homepage feature...\n- Key Action: User clicks 'Learn More'..."
+                          />
+                        ) : currentStageData.details ? (
+                           <article className="prose prose-sm sm:prose-base dark:prose-invert max-w-none prose-headings:font-semibold prose-a:text-primary hover:prose-a:text-primary/80 text-muted-foreground prose-p:my-1 prose-li:my-0.5 prose-ul:my-1 prose-ol:my-1">
+                             <ReactMarkdown>{currentStageData.details}</ReactMarkdown>
+                           </article>
+                        ) : (
+                            <p className="text-sm text-muted-foreground italic">No predefined details for this stage.</p>
+                        )}
+                    </div>
                   </div>
                 ) : (
                  <div className="text-center p-10 h-full flex flex-col items-center justify-center">
