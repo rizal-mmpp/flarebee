@@ -38,12 +38,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
+  DialogDescription, // Added DialogDescription
 } from "@/components/ui/dialog";
 import { cn } from '@/lib/utils';
 
 const isImagePath = (pathname: string): boolean => {
-  // More robust check for various image extensions
   return /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(pathname);
 };
 
@@ -58,8 +57,8 @@ export default function AssetsPage() {
   const [listError, setListError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const [isTransitionPending, startDeleteTransition] = useTransition(); // Renamed from isDeleting
-  const [deletingUrl, setDeletingUrl] = useState<string | null>(null); // New state for URL being deleted
+  const [isTransitionPending, startDeleteTransition] = useTransition();
+  const [deletingUrl, setDeletingUrl] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [blobToDelete, setBlobToDelete] = useState<ListBlobResultBlob | null>(null);
 
@@ -129,20 +128,33 @@ export default function AssetsPage() {
 
   const confirmDelete = async () => {
     if (!blobToDelete) return;
-    setDeletingUrl(blobToDelete.url); // Mark this URL as being processed
+    const blobPath = blobToDelete.pathname; 
+    const blobUrlToDelete = blobToDelete.url; 
+
+    setDeletingUrl(blobUrlToDelete); 
+
     startDeleteTransition(async () => {
+      let wasSuccessful = false;
       try {
-        const result = await deleteVercelBlobFile(blobToDelete.url);
+        const result = await deleteVercelBlobFile(blobUrlToDelete);
         if (result.success) {
-          toast({ title: "Asset Deleted", description: `${blobToDelete.pathname} has been deleted.` });
-          handleFetchListedFiles();
+          toast({ title: "Asset Deleted", description: `${blobPath} has been deleted.` });
+          wasSuccessful = true;
         } else {
           toast({ title: "Delete Failed", description: result.error || "Could not delete asset.", variant: "destructive" });
         }
+      } catch (e) {
+         toast({ title: "Delete Operation Error", description: (e as Error).message || "An error occurred.", variant: "destructive" });
       } finally {
-        setDeletingUrl(null); // Clear the URL after the operation
-        setShowDeleteDialog(false);
-        setBlobToDelete(null);
+        setShowDeleteDialog(false); 
+        setBlobToDelete(null);     
+        setDeletingUrl(null);      
+
+        if (wasSuccessful) {
+          setTimeout(() => {
+            handleFetchListedFiles();
+          }, 50); 
+        }
       }
     });
   };
@@ -178,7 +190,7 @@ export default function AssetsPage() {
                 onFileChange={handleFileChange}
                 currentFileName={file?.name}
                 accept={{}} 
-                maxSize={1 * 1024 * 1024} // 1MB limit
+                maxSize={1 * 1024 * 1024} 
                 className="mt-2"
                 disabled={isUploading}
               />
@@ -279,11 +291,10 @@ export default function AssetsPage() {
                         <ContextMenuTrigger asChild>
                             <Card 
                                 className="group relative overflow-hidden rounded-lg cursor-pointer shadow-sm hover:shadow-md transition-shadow"
-                                // onClick={() => isImagePath(blob.pathname) && openPreviewModal(blob.url)} // Click handled by ContextMenuItem now
                             >
                                 <CardContent className="p-0 aspect-square flex items-center justify-center bg-muted/30 rounded-t-lg overflow-hidden">
                                     {isImagePath(blob.pathname) ? (
-                                        <div className="relative w-full h-full">
+                                        <div className="relative w-full h-full rounded-t-lg overflow-hidden">
                                             <NextImage
                                                 src={blob.url}
                                                 alt={blob.pathname}
@@ -321,9 +332,9 @@ export default function AssetsPage() {
                             <ContextMenuItem
                                 className="text-destructive focus:text-destructive"
                                 onClick={() => handleDeleteClick(blob)}
-                                disabled={isTransitionPending || (deletingUrl === blob.url)}
+                                disabled={isTransitionPending && deletingUrl === blob.url}
                             >
-                                {isTransitionPending && deletingUrl === blob.url ? (
+                                {(isTransitionPending && deletingUrl === blob.url) ? (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
                                 ) : (
                                     <Trash2 className="mr-2 h-4 w-4" />
@@ -361,8 +372,9 @@ export default function AssetsPage() {
 
       <Dialog open={isPreviewModalOpen} onOpenChange={setIsPreviewModalOpen}>
         <DialogContent className="max-w-3xl p-2">
-          <DialogHeader className="sr-only">
+          <DialogHeader className="sr-only"> 
             <DialogTitle>Asset Preview</DialogTitle>
+            <DialogDescription>Full preview of the selected asset.</DialogDescription>
           </DialogHeader>
           {imageToPreviewUrl && (
             <div className="relative w-full aspect-video">
@@ -381,6 +393,7 @@ export default function AssetsPage() {
         <DialogContent className="sm:max-w-md">
             <DialogHeader>
                 <DialogTitle className="flex items-center"><InfoIcon className="mr-2 h-5 w-5 text-primary"/>Asset Details</DialogTitle>
+                <DialogDescription>Metadata for the selected asset.</DialogDescription>
             </DialogHeader>
             {blobForDetails && (
                 <div className="space-y-2 py-2 text-sm">
@@ -402,4 +415,5 @@ export default function AssetsPage() {
     
 
     
+
 
