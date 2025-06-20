@@ -43,8 +43,10 @@ import {
 import { cn } from '@/lib/utils';
 
 const isImagePath = (pathname: string): boolean => {
-  return /\.(png|jpe?g|gif|webp|avif)$/i.test(pathname);
+  // More robust check for various image extensions
+  return /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(pathname);
 };
+
 
 export default function AssetsPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -56,7 +58,8 @@ export default function AssetsPage() {
   const [listError, setListError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const [isDeleting, startDeleteTransition] = useTransition();
+  const [isTransitionPending, startDeleteTransition] = useTransition(); // Renamed from isDeleting
+  const [deletingUrl, setDeletingUrl] = useState<string | null>(null); // New state for URL being deleted
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [blobToDelete, setBlobToDelete] = useState<ListBlobResultBlob | null>(null);
 
@@ -126,18 +129,24 @@ export default function AssetsPage() {
 
   const confirmDelete = async () => {
     if (!blobToDelete) return;
+    setDeletingUrl(blobToDelete.url); // Mark this URL as being processed
     startDeleteTransition(async () => {
-      const result = await deleteVercelBlobFile(blobToDelete.url);
-      if (result.success) {
-        toast({ title: "Asset Deleted", description: `${blobToDelete.pathname} has been deleted.` });
-        handleFetchListedFiles();
-      } else {
-        toast({ title: "Delete Failed", description: result.error || "Could not delete asset.", variant: "destructive" });
+      try {
+        const result = await deleteVercelBlobFile(blobToDelete.url);
+        if (result.success) {
+          toast({ title: "Asset Deleted", description: `${blobToDelete.pathname} has been deleted.` });
+          handleFetchListedFiles();
+        } else {
+          toast({ title: "Delete Failed", description: result.error || "Could not delete asset.", variant: "destructive" });
+        }
+      } finally {
+        setDeletingUrl(null); // Clear the URL after the operation
+        setShowDeleteDialog(false);
+        setBlobToDelete(null);
       }
-      setShowDeleteDialog(false);
-      setBlobToDelete(null);
     });
   };
+
 
   const openPreviewModal = (url: string) => {
     setImageToPreviewUrl(url);
@@ -240,7 +249,7 @@ export default function AssetsPage() {
                     Showing up to 100 most recent assets. Right-click for options.
                 </CardDescription>
             </div>
-            <Button onClick={handleFetchListedFiles} disabled={isLoadingList || !!isDeleting} variant="outline">
+            <Button onClick={handleFetchListedFiles} disabled={isLoadingList || isTransitionPending} variant="outline">
                 {isLoadingList ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                 Refresh List
             </Button>
@@ -270,11 +279,11 @@ export default function AssetsPage() {
                         <ContextMenuTrigger asChild>
                             <Card 
                                 className="group relative overflow-hidden rounded-lg cursor-pointer shadow-sm hover:shadow-md transition-shadow"
-                                onClick={() => isImagePath(blob.pathname) && openPreviewModal(blob.url)}
+                                // onClick={() => isImagePath(blob.pathname) && openPreviewModal(blob.url)} // Click handled by ContextMenuItem now
                             >
-                                <CardContent className="p-0 aspect-square flex items-center justify-center bg-muted/30 rounded-lg">
+                                <CardContent className="p-0 aspect-square flex items-center justify-center bg-muted/30 rounded-t-lg overflow-hidden">
                                     {isImagePath(blob.pathname) ? (
-                                        <div className="relative w-full h-full rounded-t-lg overflow-hidden">
+                                        <div className="relative w-full h-full">
                                             <NextImage
                                                 src={blob.url}
                                                 alt={blob.pathname}
@@ -289,7 +298,7 @@ export default function AssetsPage() {
                                         </div>
                                     )}
                                 </CardContent>
-                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent p-1.5">
+                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent p-1.5">
                                   <p className="text-xs text-white truncate font-medium" title={blob.pathname.split('/').pop()}>
                                     {blob.pathname.split('/').pop()}
                                   </p>
@@ -312,9 +321,13 @@ export default function AssetsPage() {
                             <ContextMenuItem
                                 className="text-destructive focus:text-destructive"
                                 onClick={() => handleDeleteClick(blob)}
-                                disabled={!!isDeleting && isDeleting === blob.url}
+                                disabled={isTransitionPending || (deletingUrl === blob.url)}
                             >
-                                {isDeleting === blob.url ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4" />}
+                                {isTransitionPending && deletingUrl === blob.url ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
+                                ) : (
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                )}
                                 Delete Asset
                             </ContextMenuItem>
                         </ContextMenuContent>
@@ -337,9 +350,9 @@ export default function AssetsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={!!isDeleting && isDeleting === blobToDelete?.url}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={!!isDeleting && isDeleting === blobToDelete?.url}>
-              {(!!isDeleting && isDeleting === blobToDelete?.url) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4"/>}
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={isTransitionPending && deletingUrl === blobToDelete?.url}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={isTransitionPending && deletingUrl === blobToDelete?.url}>
+              {(isTransitionPending && deletingUrl === blobToDelete?.url) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4"/>}
               Delete Asset
             </Button>
           </AlertDialogFooter>
@@ -348,8 +361,8 @@ export default function AssetsPage() {
 
       <Dialog open={isPreviewModalOpen} onOpenChange={setIsPreviewModalOpen}>
         <DialogContent className="max-w-3xl p-2">
-          <DialogHeader>
-            <DialogTitle className="sr-only">Asset Preview</DialogTitle>
+          <DialogHeader className="sr-only">
+            <DialogTitle>Asset Preview</DialogTitle>
           </DialogHeader>
           {imageToPreviewUrl && (
             <div className="relative w-full aspect-video">
@@ -389,3 +402,4 @@ export default function AssetsPage() {
     
 
     
+
