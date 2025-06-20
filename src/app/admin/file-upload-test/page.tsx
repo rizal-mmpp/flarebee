@@ -243,16 +243,16 @@ export default function AssetsPage() {
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
                     {listedBlobs.map((blob) => (
-                        <Card key={blob.url} className="flex flex-col group relative">
-                            <CardContent className="p-2 aspect-square flex items-center justify-center bg-muted/30 rounded-t-lg">
+                        <Card key={blob.url} className="flex flex-col group relative overflow-hidden">
+                            <CardContent className="p-0 aspect-square flex items-center justify-center bg-muted/30 rounded-t-lg">
                                 {isImagePath(blob.pathname) ? (
-                                    <div className="relative w-full h-full rounded-md overflow-hidden">
+                                    <div className="relative w-full h-full rounded-t-lg overflow-hidden"> {/* Ensures image respects parent rounding */}
                                         <NextImage
                                             src={blob.url}
                                             alt={blob.pathname}
                                             fill
                                             sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                                            className="object-cover"
+                                            className="object-cover" // Image fills container
                                         />
                                     </div>
                                 ) : (
@@ -284,7 +284,6 @@ export default function AssetsPage() {
                                         <p className="text-muted-foreground">
                                             <span className="font-medium">Size:</span> {(blob.size / 1024).toFixed(2)} KB
                                         </p>
-                                        {/* contentType is not available in ListBlobResultBlob, so it's removed here */}
                                     </PopoverContent>
                                 </Popover>
                             </div>
@@ -328,5 +327,6 @@ export default function AssetsPage() {
     </div>
   );
 }
+    
 
     
