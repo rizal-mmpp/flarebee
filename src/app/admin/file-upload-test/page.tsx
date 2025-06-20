@@ -17,16 +17,6 @@ import { useToast } from '@/hooks/use-toast';
 import { CustomDropzone } from '@/components/ui/custom-dropzone';
 import { format } from 'date-fns';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
@@ -60,9 +50,7 @@ export default function AssetsPage() {
 
   const [isTransitionPending, startDeleteTransition] = useTransition();
   const [deletingUrl, setDeletingUrl] = useState<string | null>(null);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [blobToDelete, setBlobToDelete] = useState<ListBlobResultBlob | null>(null);
-
+  
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [imageToPreviewUrl, setImageToPreviewUrl] = useState<string | null>(null);
 
@@ -122,12 +110,7 @@ export default function AssetsPage() {
       .catch(err => toast({ title: "Copy Failed", description: "Could not copy URL.", variant: "destructive" }));
   };
 
-  const handleDeleteClick = (blob: ListBlobResultBlob) => {
-    setBlobToDelete(blob);
-    setShowDeleteDialog(true);
-  };
-
-  const confirmDelete = async () => {
+  const handleImmediateDelete = async (blobToDelete: ListBlobResultBlob) => {
     if (!blobToDelete) return;
     const blobPath = blobToDelete.pathname; 
     const blobUrlToDelete = blobToDelete.url; 
@@ -147,12 +130,8 @@ export default function AssetsPage() {
       } catch (e) {
          toast({ title: "Delete Operation Error", description: (e as Error).message || "An error occurred.", variant: "destructive" });
       } finally {
-        setShowDeleteDialog(false); 
-        setBlobToDelete(null);     
         setDeletingUrl(null);      
-
         if (wasSuccessful) {
-          // Instead of fetching files, reload the page
           window.location.reload();
         }
       }
@@ -332,7 +311,7 @@ export default function AssetsPage() {
                             <ContextMenuSeparator />
                             <ContextMenuItem
                                 className="text-destructive focus:text-destructive"
-                                onClick={() => handleDeleteClick(blob)}
+                                onClick={() => handleImmediateDelete(blob)}
                                 disabled={isTransitionPending && deletingUrl === blob.url}
                             >
                                 {(isTransitionPending && deletingUrl === blob.url) ? (
@@ -349,27 +328,6 @@ export default function AssetsPage() {
             )}
         </CardContent>
       </Card>
-
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center">
-              <AlertTriangle className="h-5 w-5 text-destructive mr-2" />
-              Confirm Deletion
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete the asset "{blobToDelete?.pathname}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={isTransitionPending && deletingUrl === blobToDelete?.url}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={isTransitionPending && deletingUrl === blobToDelete?.url}>
-              {(isTransitionPending && deletingUrl === blobToDelete?.url) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4"/>}
-              Delete Asset
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <Dialog open={isPreviewModalOpen} onOpenChange={setIsPreviewModalOpen}>
         <DialogContent className="max-w-3xl p-2">
@@ -416,6 +374,7 @@ export default function AssetsPage() {
     
 
     
+
 
 
 
