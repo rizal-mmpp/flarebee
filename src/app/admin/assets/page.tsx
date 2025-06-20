@@ -122,7 +122,6 @@ export default function AssetsPage() {
         const result = await deleteVercelBlobFile(blobUrlToDelete);
         if (result.success) {
           toast({ title: "Asset Deleted", description: `${blobPath} has been deleted.` });
-          window.location.reload(); // Reload on success
         } else {
           toast({ title: "Delete Failed", description: result.error || "Could not delete asset.", variant: "destructive" });
         }

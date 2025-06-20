@@ -130,10 +130,7 @@ export default function AssetsPage() {
       } catch (e) {
          toast({ title: "Delete Operation Error", description: (e as Error).message || "An error occurred.", variant: "destructive" });
       } finally {
-        setDeletingUrl(null);      
-        if (wasSuccessful) {
-          window.location.reload();
-        }
+        setDeletingUrl(null);     
       }
     });
   };
