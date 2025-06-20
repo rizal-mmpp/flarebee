@@ -22,7 +22,7 @@ import ReactMarkdown from 'react-markdown';
 import { 
   ArrowLeft, Loader2, ServerCrash, Save, Play, ChevronLeft, ChevronRight, 
   ImageIcon, Edit, Trash2, PlusCircle, ArrowUp, ArrowDown,
-  Check, AlertTriangle
+  Check, AlertTriangle, Copy, Download
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -125,7 +125,6 @@ export default function SimulateJourneyPage() {
       const objectUrl = URL.createObjectURL(file);
       setStageImagePreviews(prev => ({ ...prev, [stageId]: objectUrl }));
     } else {
-      // File explicitly cleared, keep existing image URL for now or let initial state handle it
       const originalStageFromInitialLoad = initialJourneyStagesOnEditStart?.find(s => s.id === stageId);
       const originalImageUrl = originalStageFromInitialLoad?.imageUrl || currentStageData.imageUrl || null;
       setStageImagePreviews(prev => ({ ...prev, [stageId]: originalImageUrl }));
@@ -209,10 +208,10 @@ export default function SimulateJourneyPage() {
         const stage = stagesToSave[i];
         const fileToUpload = stageImageFiles[stage.id];
 
-        if (fileToUpload === null) { // Image explicitly cleared
+        if (fileToUpload === null) { 
           stagesToSave[i].imageUrl = null;
           newPreviewsAfterSave[stage.id] = null;
-        } else if (fileToUpload instanceof File) { // New file selected
+        } else if (fileToUpload instanceof File) { 
           try {
             const formData = new FormData();
             formData.append('file', fileToUpload);
@@ -231,7 +230,6 @@ export default function SimulateJourneyPage() {
             break;
           }
         }
-        // If fileToUpload is undefined, image was not touched in this edit session, imageUrl on stage is already correct.
       }
 
       if (uploadErrorOccurred) {
@@ -287,6 +285,66 @@ export default function SimulateJourneyPage() {
       setIsEditModeActive(true);
     }
   };
+
+  const handleCopyJourney = useCallback(async () => {
+    if (journeyStages.length === 0) {
+      toast({ title: "Nothing to Copy", description: "There are no journey stages defined.", variant: "destructive" });
+      return;
+    }
+    let journeyText = `Service Journey: ${service?.title || 'Untitled Service'}\n\n`;
+    journeyStages.forEach((stage, index) => {
+      journeyText += `Stage ${index + 1}: ${stage.title}\n`;
+      journeyText += `Details:\n${stage.details || 'No details provided.'}\n`;
+      if (stage.imageUrl) {
+        journeyText += `Image: ${stage.imageUrl}\n`;
+      }
+      if (stage.imageAiHint) {
+        journeyText += `AI Hint: ${stage.imageAiHint}\n`;
+      }
+      journeyText += `--------------------\n\n`;
+    });
+
+    try {
+      await navigator.clipboard.writeText(journeyText);
+      toast({ title: "Journey Copied", description: "All stage titles and details copied to clipboard." });
+    } catch (err) {
+      toast({ title: "Copy Failed", description: "Could not copy journey to clipboard.", variant: "destructive" });
+    }
+  }, [journeyStages, service?.title, toast]);
+
+  const handleExportJourney = useCallback(() => {
+    if (journeyStages.length === 0) {
+      toast({ title: "Nothing to Export", description: "There are no journey stages defined.", variant: "destructive" });
+      return;
+    }
+    let markdownContent = `# Service Journey: ${service?.title || 'Untitled Service'}\n\n`;
+    journeyStages.forEach((stage, index) => {
+      markdownContent += `## Stage ${index + 1}: ${stage.title}\n\n`;
+      markdownContent += `### Details\n${stage.details || 'No details provided.'}\n\n`;
+      if (stage.imageUrl) {
+        markdownContent += `### Image\n![Image for ${stage.title}](${stage.imageUrl})\n`;
+      } else {
+        markdownContent += `### Image\n_No image for this stage._\n`;
+      }
+      if (stage.imageAiHint) {
+        markdownContent += `(AI Hint: ${stage.imageAiHint})\n\n`;
+      } else {
+        markdownContent += `\n`;
+      }
+      markdownContent += `---\n\n`;
+    });
+
+    const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const fileName = `${service?.title.replace(/\s+/g, '_').toLowerCase() || 'service'}_journey.md`;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+    toast({ title: "Journey Exported", description: `Journey exported as ${fileName}.` });
+  }, [journeyStages, service?.title, toast]);
   
 
   if (isLoadingService) {
@@ -358,6 +416,27 @@ export default function SimulateJourneyPage() {
               </TooltipTrigger>
               <TooltipContent><p>{isEditModeActive ? "Done Editing (View Mode)" : "Edit Journey"}</p></TooltipContent>
             </Tooltip>
+
+            {!isEditModeActive && journeyStages.length > 0 && (
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" onClick={handleCopyJourney} disabled={isSavingJourney}>
+                      <Copy className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Copy Journey Text</p></TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" onClick={handleExportJourney} disabled={isSavingJourney}>
+                      <Download className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Export Journey (Markdown)</p></TooltipContent>
+                </Tooltip>
+              </>
+            )}
 
             {isEditModeActive && (
               <>
@@ -504,12 +583,24 @@ export default function SimulateJourneyPage() {
                     {journeyStages.map((stage, index) => (
                     <div key={stage.id} className="flex items-start group py-1 pr-1"> 
                         <div className="flex flex-col items-center mr-3 flex-shrink-0 mt-0.5"> 
-                        <div className={cn("flex items-center justify-center h-7 w-7 rounded-full text-xs font-semibold border-2 transition-all duration-200 ease-in-out cursor-pointer", currentStageIndex === index ? "bg-primary border-primary text-primary-foreground scale-110 shadow-md" : index < (currentStageIndex ?? -1) ? "bg-primary/20 border-primary text-primary" : "bg-card border-border text-muted-foreground group-hover:border-primary/70 group-hover:text-primary")} onClick={() => setCurrentStageIndex(index)}>
+                        <div className={cn("flex items-center justify-center h-7 w-7 rounded-full text-xs font-semibold border-2 transition-all duration-200 ease-in-out cursor-pointer", 
+                            currentStageIndex === index 
+                                ? "bg-accent border-accent text-accent-foreground scale-110 shadow-md" 
+                                : index < (currentStageIndex ?? -1) 
+                                    ? "bg-primary/20 border-primary text-primary" 
+                                    : "bg-card border-border text-muted-foreground group-hover:border-primary/70 group-hover:text-primary"
+                        )} onClick={() => setCurrentStageIndex(index)}>
                             {String(index + 1).padStart(2, '0')}
                         </div>
                         {index < journeyStages.length - 1 && ( <div className={cn("w-px h-4 my-0.5 transition-colors duration-200", index < (currentStageIndex ?? -1) ? "bg-primary" : "bg-border group-hover:bg-primary/30")}></div> )}
                         </div>
-                        <div className={cn("pt-1 pb-1 transition-colors duration-200 flex-grow min-w-0", currentStageIndex === index ? "text-primary font-semibold" : index < (currentStageIndex ?? -1) ? "text-primary/80 font-medium" : "text-muted-foreground group-hover:text-foreground")} onClick={() => setCurrentStageIndex(index)}>
+                        <div className={cn("pt-1 pb-1 transition-colors duration-200 flex-grow min-w-0", 
+                            currentStageIndex === index 
+                                ? "text-accent font-semibold" 
+                                : index < (currentStageIndex ?? -1) 
+                                    ? "text-primary/80 font-medium" 
+                                    : "text-muted-foreground group-hover:text-foreground"
+                        )} onClick={() => setCurrentStageIndex(index)}>
                           <p className="text-sm leading-snug cursor-pointer break-words">{stage.title}</p>
                         </div>
                         {isEditModeActive && (
