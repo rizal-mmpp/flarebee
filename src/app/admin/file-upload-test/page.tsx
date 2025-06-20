@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, UploadCloud, CheckCircle, AlertTriangle, ExternalLink, ImageIcon, LinkIcon, RefreshCw, ServerCrash, FolderClosed, Archive, Copy, Trash2, FileText as FileTextIcon } from 'lucide-react';
+import { Loader2, UploadCloud, CheckCircle, AlertTriangle, ExternalLink, ImageIcon, LinkIcon, RefreshCw, ServerCrash, FolderClosed, Archive, Copy, Trash2, FileText as FileTextIcon, Info } from 'lucide-react';
 import { uploadFileToVercelBlob, listVercelBlobFiles, deleteVercelBlobFile } from '@/lib/actions/vercelBlob.actions';
 import type { PutBlobResult, ListBlobResultBlob } from '@vercel/blob';
 import NextImage from 'next/image';
@@ -26,6 +26,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from '@/lib/utils';
 
 export default function AssetsPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -232,10 +238,10 @@ export default function AssetsPage() {
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
                     {listedBlobs.map((blob) => (
-                        <Card key={blob.url} className="flex flex-col group">
-                            <CardContent className="p-3 flex-grow flex flex-col items-center justify-center">
+                        <Card key={blob.url} className="flex flex-col group relative">
+                            <CardContent className="p-2 aspect-square flex items-center justify-center bg-muted/30 rounded-t-lg">
                                 {blob.contentType?.startsWith('image/') ? (
-                                    <div className="relative w-full aspect-video rounded-md overflow-hidden bg-muted mb-2">
+                                    <div className="relative w-full h-full rounded-md overflow-hidden">
                                         <NextImage
                                             src={blob.url}
                                             alt={blob.pathname}
@@ -245,15 +251,42 @@ export default function AssetsPage() {
                                         />
                                     </div>
                                 ) : (
-                                    <div className="w-full aspect-video rounded-md bg-muted flex items-center justify-center mb-2">
-                                        <FileTextIcon className="h-16 w-16 text-muted-foreground" />
+                                    <div className="w-full h-full flex items-center justify-center">
+                                        <FileTextIcon className="h-16 w-16 text-muted-foreground/70" />
                                     </div>
                                 )}
-                                <p className="text-xs font-medium text-foreground truncate w-full text-center" title={blob.pathname}>{blob.pathname}</p>
-                                <p className="text-xs text-muted-foreground">{format(new Date(blob.uploadedAt), "PP")}</p>
-                                <p className="text-xs text-muted-foreground">{(blob.size / 1024).toFixed(2)} KB</p>
                             </CardContent>
-                            <CardFooter className="p-2 border-t flex items-center justify-end gap-1.5">
+                            
+                            <div className="absolute top-1 right-1 z-10">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-7 w-7 bg-background/60 backdrop-blur-sm hover:bg-background text-muted-foreground hover:text-primary rounded-full shadow"
+                                        aria-label="View asset details"
+                                    >
+                                        <Info className="h-4 w-4" />
+                                    </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-60 text-xs p-3 space-y-1 shadow-xl border-border/70">
+                                        <p className="font-semibold text-foreground truncate mb-1.5" title={blob.pathname}>
+                                            {blob.pathname}
+                                        </p>
+                                        <p className="text-muted-foreground">
+                                            <span className="font-medium">Uploaded:</span> {format(new Date(blob.uploadedAt), "PPp")}
+                                        </p>
+                                        <p className="text-muted-foreground">
+                                            <span className="font-medium">Size:</span> {(blob.size / 1024).toFixed(2)} KB
+                                        </p>
+                                        <p className="text-muted-foreground truncate" title={blob.contentType}>
+                                            <span className="font-medium">Type:</span> {blob.contentType || 'N/A'}
+                                        </p>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+
+                            <CardFooter className="p-2 border-t flex items-center justify-end gap-1.5 rounded-b-lg">
                                 <Button variant="ghost" size="icon" onClick={() => handleCopyUrl(blob.url)} className="h-7 w-7 text-muted-foreground hover:text-primary" title="Copy URL">
                                     <Copy className="h-4 w-4" />
                                 </Button>
