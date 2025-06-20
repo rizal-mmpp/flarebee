@@ -198,7 +198,7 @@ export default function AssetsPage() {
                           {uploadResult.data.url}
                         </Link>
                       </div>
-                      {uploadResult.data.pathname && isImagePath(uploadResult.data.pathname) && (
+                      {isImagePath(uploadResult.data.pathname) && (
                         <div className="mt-3 p-2 border border-green-300 rounded-md bg-green-500/5 max-w-xs">
                            <ImageIcon className="h-4 w-4 text-green-600 mb-1" />
                           <NextImage 
@@ -240,7 +240,7 @@ export default function AssetsPage() {
                     Showing up to 100 most recent assets. Right-click for options.
                 </CardDescription>
             </div>
-            <Button onClick={handleFetchListedFiles} disabled={isLoadingList || isDeleting} variant="outline">
+            <Button onClick={handleFetchListedFiles} disabled={isLoadingList || !!isDeleting} variant="outline">
                 {isLoadingList ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                 Refresh List
             </Button>
@@ -274,7 +274,7 @@ export default function AssetsPage() {
                             >
                                 <CardContent className="p-0 aspect-square flex items-center justify-center bg-muted/30 rounded-lg">
                                     {isImagePath(blob.pathname) ? (
-                                        <div className="relative w-full h-full">
+                                        <div className="relative w-full h-full rounded-t-lg overflow-hidden">
                                             <NextImage
                                                 src={blob.url}
                                                 alt={blob.pathname}
@@ -312,7 +312,7 @@ export default function AssetsPage() {
                             <ContextMenuItem
                                 className="text-destructive focus:text-destructive"
                                 onClick={() => handleDeleteClick(blob)}
-                                disabled={isDeleting === blob.url}
+                                disabled={!!isDeleting && isDeleting === blob.url}
                             >
                                 {isDeleting === blob.url ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4" />}
                                 Delete Asset
@@ -337,9 +337,9 @@ export default function AssetsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={isDeleting === blobToDelete?.url}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting === blobToDelete?.url}>
-              {isDeleting === blobToDelete?.url ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4"/>}
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={!!isDeleting && isDeleting === blobToDelete?.url}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={!!isDeleting && isDeleting === blobToDelete?.url}>
+              {(!!isDeleting && isDeleting === blobToDelete?.url) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4"/>}
               Delete Asset
             </Button>
           </AlertDialogFooter>
@@ -348,6 +348,9 @@ export default function AssetsPage() {
 
       <Dialog open={isPreviewModalOpen} onOpenChange={setIsPreviewModalOpen}>
         <DialogContent className="max-w-3xl p-2">
+          <DialogHeader>
+            <DialogTitle className="sr-only">Asset Preview</DialogTitle>
+          </DialogHeader>
           {imageToPreviewUrl && (
             <div className="relative w-full aspect-video">
                 <NextImage 
