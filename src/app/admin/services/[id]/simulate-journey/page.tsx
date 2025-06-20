@@ -22,11 +22,9 @@ import ReactMarkdown from 'react-markdown';
 import { 
   ArrowLeft, Loader2, ServerCrash, Save, Play, ChevronLeft, ChevronRight, 
   ImageIcon, Edit, Trash2, PlusCircle, ArrowUp, ArrowDown,
-  Check, AlertTriangle, Copy, Download
+  Check, AlertTriangle, Copy
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { pdf } from '@react-pdf/renderer';
-import { JourneyPdfDocument } from '@/components/admin/services/JourneyPdfDocument';
 
 
 const DEFAULT_JOURNEY_STAGES_PLACEHOLDER: JourneyStage[] = []; 
@@ -314,34 +312,6 @@ export default function SimulateJourneyPage() {
       toast({ title: "Copy Failed", description: "Could not copy journey to clipboard.", variant: "destructive" });
     }
   }, [journeyStages, service?.title, toast]);
-
-  const handleExportJourney = useCallback(async () => {
-    if (!service || journeyStages.length === 0) {
-      toast({ title: "Nothing to Export", description: "Service data or journey stages are missing.", variant: "destructive" });
-      return;
-    }
-
-    toast({ title: "Generating PDF...", description: "Please wait a moment."});
-
-    try {
-      const docInstance = <JourneyPdfDocument serviceTitle={service.title} stages={journeyStages} />;
-      const blob = await pdf(docInstance).toBlob();
-      
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      const fileName = `${service.title.replace(/\s+/g, '_').toLowerCase() || 'service'}_journey.pdf`;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
-      
-      toast({ title: "Journey Exported as PDF", description: `File: ${fileName}` });
-    } catch (exportError: any) {
-      console.error("Error exporting journey to PDF:", exportError);
-      toast({ title: "PDF Export Failed", description: exportError.message || "Could not generate PDF.", variant: "destructive" });
-    }
-  }, [journeyStages, service, toast]);
   
 
   if (isLoadingService) {
@@ -415,24 +385,14 @@ export default function SimulateJourneyPage() {
             </Tooltip>
 
             {!isEditModeActive && journeyStages.length > 0 && (
-              <>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" onClick={handleCopyJourney} disabled={isSavingJourney}>
-                      <Copy className="h-5 w-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent><p>Copy Journey Text</p></TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" onClick={handleExportJourney} disabled={isSavingJourney}>
-                      <Download className="h-5 w-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent><p>Export Journey as PDF</p></TooltipContent>
-                </Tooltip>
-              </>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={handleCopyJourney} disabled={isSavingJourney}>
+                    <Copy className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>Copy Journey Text</p></TooltipContent>
+              </Tooltip>
             )}
 
             {isEditModeActive && (
@@ -658,3 +618,4 @@ export default function SimulateJourneyPage() {
     </TooltipProvider>
   );
 }
+
