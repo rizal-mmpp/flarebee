@@ -10,6 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { getServiceByIdFromFirestore } from '@/lib/firebase/firestoreServices';
 import { updateServiceJourneyStagesAction } from '@/lib/actions/service.actions';
+import { uploadFileToVercelBlob } from '@/lib/actions/vercelBlob.actions';
 import type { Service, JourneyStage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -30,12 +31,12 @@ import { cn } from '@/lib/utils';
 
 const stageFormSchema = z.object({
   title: z.string().min(1, 'Title is required.'),
-  details: z.string().min(1, 'Details are required (Markdown supported).'), // Details will be a single Markdown string
+  details: z.string().min(1, 'Details are required (Markdown supported).'),
   placeholder: z.string().optional(),
+  imageAiHint: z.string().max(50, "AI Hint too long").optional(),
 });
 type StageFormValues = z.infer<typeof stageFormSchema>;
 
-// Default empty array for journey stages if a service has none
 const DEFAULT_JOURNEY_STAGES_PLACEHOLDER: JourneyStage[] = [];
 
 export default function SimulateJourneyPage() {
@@ -51,12 +52,14 @@ export default function SimulateJourneyPage() {
   const [currentStageIndex, setCurrentStageIndex] = useState<number | null>(null);
   const [journeyStages, setJourneyStages] = useState<JourneyStage[]>([]);
   
-  const [stageImages, setStageImages] = useState<Record<string, string | null>>({}); 
-  const [selectedFiles, setSelectedFiles] = useState<Record<string, File | null>>({});
+  const [stageImagePreviews, setStageImagePreviews] = useState<Record<string, string | null>>({}); 
+  const [stageImageFiles, setStageImageFiles] = useState<Record<string, File | null | undefined>>({});
 
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
   const [currentEditingStage, setCurrentEditingStage] = useState<JourneyStage | null>(null);
   const [editingStageOriginalIndex, setEditingStageOriginalIndex] = useState<number | null>(null);
+  const [modalSelectedFile, setModalSelectedFile] = useState<File | null>(null);
+
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [stageToDeleteIndex, setStageToDeleteIndex] = useState<number | null>(null);
@@ -64,7 +67,7 @@ export default function SimulateJourneyPage() {
   const [isSavingJourney, startSaveTransition] = useTransition();
   const [isEditModeActive, setIsEditModeActive] = useState(false);
 
-  const { register: registerStageForm, handleSubmit: handleSubmitStageForm, reset: resetStageForm, formState: { errors: stageFormErrors } } = useForm<StageFormValues>({
+  const { register: registerStageForm, handleSubmit: handleSubmitStageForm, reset: resetStageForm, formState: { errors: stageFormErrors }, setValue: setStageFormValue } = useForm<StageFormValues>({
     resolver: zodResolver(stageFormSchema),
   });
 
@@ -85,10 +88,10 @@ export default function SimulateJourneyPage() {
             } else {
               setCurrentStageIndex(null);
             }
-            const initialImages: Record<string, string | null> = {};
-            stages.forEach(stage => { initialImages[stage.id] = null; }); // Images are client-side only for simulation
-            setStageImages(initialImages);
-            setSelectedFiles({});
+            const initialPreviews: Record<string, string | null> = {};
+            stages.forEach(stage => { initialPreviews[stage.id] = stage.imageUrl || null; });
+            setStageImagePreviews(initialPreviews);
+            setStageImageFiles({}); // Reset pending file changes on load
           } else {
             setError('Service not found.');
             setJourneyStages([]);
@@ -106,62 +109,94 @@ export default function SimulateJourneyPage() {
         });
     }
   }, [serviceId]);
-
-  const handleImageFileChange = useCallback((stageId: string, file: File | null) => {
-    setStageImages(prevImages => {
-      const newImages = { ...prevImages };
-      if (newImages[stageId]) {
-        URL.revokeObjectURL(newImages[stageId]!);
-      }
-      newImages[stageId] = file ? URL.createObjectURL(file) : null;
-      return newImages;
-    });
-    setSelectedFiles(prev => ({...prev, [stageId]: file }));
-  }, []);
   
+  const handleModalImageFileChange = useCallback((file: File | null) => {
+    setModalSelectedFile(file);
+    if (currentEditingStage) {
+      if (file) {
+        const objectUrl = URL.createObjectURL(file);
+        setStageImagePreviews(prev => ({...prev, [currentEditingStage.id]: objectUrl}));
+      } else {
+        // If cleared, show original image or nothing if no original
+        setStageImagePreviews(prev => ({...prev, [currentEditingStage.id]: currentEditingStage.imageUrl || null}));
+      }
+    }
+  }, [currentEditingStage]);
+
   const handleOpenAddStageModal = () => {
     setCurrentEditingStage(null);
     setEditingStageOriginalIndex(null);
-    resetStageForm({ title: '', details: '', placeholder: '' });
+    setModalSelectedFile(null);
+    resetStageForm({ title: '', details: '', placeholder: '', imageAiHint: '' });
     setIsAddEditModalOpen(true);
   };
 
   const handleOpenEditStageModal = (stage: JourneyStage, index: number) => {
     setCurrentEditingStage(stage);
     setEditingStageOriginalIndex(index);
+    setModalSelectedFile(null); // Reset file selection for the modal
     resetStageForm({
       title: stage.title,
-      details: stage.details, // details is already a string (Markdown)
+      details: stage.details,
       placeholder: stage.placeholder || '',
+      imageAiHint: stage.imageAiHint || '',
     });
+    // Pre-fill preview in modal from existing stage data
+    setStageImagePreviews(prev => ({...prev, [stage.id]: stage.imageUrl || null}));
     setIsAddEditModalOpen(true);
   };
 
   const onStageFormSubmit: SubmitHandler<StageFormValues> = (data) => {
     const stageId = currentEditingStage ? currentEditingStage.id : `stage-${Date.now()}-${(typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID().substring(0,6) : Math.random().toString(36).substring(2, 8)}`;
     
-    const stageData: JourneyStage = {
-      id: stageId,
+    const updatedStageData: Partial<JourneyStage> = {
       title: data.title,
-      details: data.details, // details is now a string (Markdown)
+      details: data.details,
       placeholder: data.placeholder,
+      imageAiHint: data.imageAiHint,
     };
+
+    // Record the file change intent
+    if (currentEditingStage) { // Editing existing
+      setStageImageFiles(prev => ({...prev, [currentEditingStage.id]: modalSelectedFile}));
+    } else { // Adding new
+      setStageImageFiles(prev => ({...prev, [stageId]: modalSelectedFile}));
+    }
+     // Update local preview immediately based on modal's file selection (if any)
+    if (modalSelectedFile) {
+        // Preview was already set by handleModalImageFileChange
+    } else if (currentEditingStage && modalSelectedFile === null) { 
+        // If file was explicitly cleared in modal, update preview to reflect (potentially original image)
+        setStageImagePreviews(prev => ({ ...prev, [currentEditingStage.id]: currentEditingStage.imageUrl || null }));
+    }
+
 
     if (currentEditingStage && editingStageOriginalIndex !== null) {
       const updatedStages = journeyStages.map((s, idx) => 
-        idx === editingStageOriginalIndex ? stageData : s
+        idx === editingStageOriginalIndex ? { ...s, ...updatedStageData, id: s.id } : s // Keep original ID
       );
       setJourneyStages(updatedStages);
-    } else {
-      const updatedStages = [...journeyStages, stageData];
+    } else { // Adding new stage
+      const newStage: JourneyStage = {
+        id: stageId,
+        title: data.title,
+        details: data.details,
+        placeholder: data.placeholder,
+        imageUrl: null, // Will be set after upload if a file is selected
+        imageAiHint: data.imageAiHint,
+      };
+      const updatedStages = [...journeyStages, newStage];
       setJourneyStages(updatedStages);
       setCurrentStageIndex(updatedStages.length - 1);
-      if (!stageImages[stageId]) { 
-        setStageImages(prev => ({...prev, [stageId]: null}));
-        setSelectedFiles(prev => ({...prev, [stageId]: null}));
+      // Ensure preview state exists for new stage
+      if (modalSelectedFile) {
+        setStageImagePreviews(prev => ({...prev, [stageId]: URL.createObjectURL(modalSelectedFile)}));
+      } else {
+         setStageImagePreviews(prev => ({...prev, [stageId]: null}));
       }
     }
     setIsAddEditModalOpen(false);
+    setModalSelectedFile(null);
   };
 
   const handleOpenDeleteModal = (index: number) => {
@@ -176,9 +211,9 @@ export default function SimulateJourneyPage() {
       setJourneyStages(updatedStages);
       
       if (stageToDelete) {
-        if (stageImages[stageToDelete.id]) URL.revokeObjectURL(stageImages[stageToDelete.id]!);
-        setStageImages(prev => { const newImages = {...prev}; delete newImages[stageToDelete.id]; return newImages; });
-        setSelectedFiles(prev => { const newFiles = {...prev}; delete newFiles[stageToDelete.id]; return newFiles; });
+        if (stageImagePreviews[stageToDelete.id]) URL.revokeObjectURL(stageImagePreviews[stageToDelete.id]!);
+        setStageImagePreviews(prev => { const newImages = {...prev}; delete newImages[stageToDelete.id]; return newImages; });
+        setStageImageFiles(prev => { const newFiles = {...prev}; delete newFiles[stageToDelete.id]; return newFiles; });
       }
 
       if (currentStageIndex !== null) {
@@ -209,22 +244,57 @@ export default function SimulateJourneyPage() {
     }
   };
 
-  const handleSaveChangesToFirestore = () => {
+  const handleSaveChangesToFirestore = async () => {
     if (!service) return;
     startSaveTransition(async () => {
-      console.log("Saving Journey Stages to Firestore:", journeyStages);
-      const result = await updateServiceJourneyStagesAction(service.id, journeyStages);
+      const stagesToSave = [...journeyStages]; // Create a copy to modify
+      let uploadErrorOccurred = false;
+
+      for (let i = 0; i < stagesToSave.length; i++) {
+        const stage = stagesToSave[i];
+        const fileToUpload = stageImageFiles[stage.id];
+
+        if (fileToUpload === null) { // Image was explicitly cleared
+          stagesToSave[i] = { ...stage, imageUrl: null };
+        } else if (fileToUpload instanceof File) { // New file selected
+          try {
+            const formData = new FormData();
+            formData.append('file', fileToUpload);
+            const uploadResult = await uploadFileToVercelBlob(formData);
+            if (uploadResult.success && uploadResult.data?.url) {
+              stagesToSave[i] = { ...stage, imageUrl: uploadResult.data.url };
+            } else {
+              toast({ title: `Image Upload Failed for Stage: ${stage.title}`, description: uploadResult.error || 'Could not upload image.', variant: 'destructive' });
+              uploadErrorOccurred = true;
+              break; 
+            }
+          } catch (err) {
+            toast({ title: `Error Uploading Image for Stage: ${stage.title}`, description: (err as Error).message, variant: 'destructive' });
+            uploadErrorOccurred = true;
+            break;
+          }
+        }
+        // If stageImageFiles[stage.id] is undefined, it means the image wasn't touched for this stage in this session, so its existing imageUrl is preserved.
+      }
+
+      if (uploadErrorOccurred) {
+        return; // Stop if an upload failed
+      }
+      
+      const result = await updateServiceJourneyStagesAction(service.id, stagesToSave);
       if (result.success) {
         toast({ title: 'Journey Saved', description: 'Customer journey stages have been updated.' });
+        setJourneyStages(stagesToSave); // Update local state with final URLs
+        setStageImageFiles({}); // Clear pending file changes
       } else {
         toast({ title: 'Error Saving Journey', description: result.error || 'Could not save changes.', variant: 'destructive' });
       }
     });
   };
   
-  const currentStage = (currentStageIndex !== null && journeyStages[currentStageIndex]) ? journeyStages[currentStageIndex] : null;
-  const currentStageImagePreview = currentStage ? stageImages[currentStage.id] : null;
-  const currentSelectedFile = currentStage ? selectedFiles[currentStage.id] : null;
+  const currentStageData = (currentStageIndex !== null && journeyStages[currentStageIndex]) ? journeyStages[currentStageIndex] : null;
+  const currentStageImagePreviewUrl = currentStageData ? stageImagePreviews[currentStageData.id] : null;
+
 
   if (isLoadingService) {
     return (
@@ -262,6 +332,9 @@ export default function SimulateJourneyPage() {
     );
   }
   
+  const modalImagePreview = currentEditingStage ? stageImagePreviews[currentEditingStage.id] : null;
+  const modalCurrentFileName = modalSelectedFile?.name || (currentEditingStage?.imageUrl ? currentEditingStage.imageUrl.split('/').pop() : undefined);
+
   return (
     <TooltipProvider delayDuration={0}>
       <div className="flex flex-col h-full min-h-screen">
@@ -319,7 +392,7 @@ export default function SimulateJourneyPage() {
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" onClick={() => currentStage && handleOpenEditStageModal(currentStage, currentStageIndex!)} disabled={isSavingJourney || !currentStage}>
+                    <Button variant="outline" size="icon" onClick={() => currentStageData && handleOpenEditStageModal(currentStageData, currentStageIndex!)} disabled={isSavingJourney || !currentStageData}>
                       <Edit className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
@@ -327,7 +400,7 @@ export default function SimulateJourneyPage() {
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" onClick={() => currentStageIndex !== null && handleOpenDeleteModal(currentStageIndex)} disabled={isSavingJourney || !currentStage || journeyStages.length <= 1}>
+                    <Button variant="outline" size="icon" onClick={() => currentStageIndex !== null && handleOpenDeleteModal(currentStageIndex)} disabled={isSavingJourney || !currentStageData || journeyStages.length <= 1}>
                       <Trash2 className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
@@ -349,11 +422,11 @@ export default function SimulateJourneyPage() {
         <div className="flex-grow grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-6">
           <Card className="rounded-xl shadow-sm flex flex-col">
             <CardContent className="p-4 md:p-6 space-y-4 flex-grow overflow-y-auto">
-                {currentStage ? (
+                {currentStageData ? (
                   <>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-2">
                         <h2 className="text-xl md:text-2xl font-semibold text-foreground">
-                          Stage {String(currentStageIndex! + 1).padStart(2, '0')}: {currentStage.title}
+                          Stage {String(currentStageIndex! + 1).padStart(2, '0')}: {currentStageData.title}
                         </h2>
                         <div className="flex items-center gap-2 mt-2 sm:mt-0">
                             <Button
@@ -379,9 +452,9 @@ export default function SimulateJourneyPage() {
                     
                     <div className="mt-1">
                         <h4 className="text-base font-semibold text-muted-foreground mb-2">Key Elements & Considerations:</h4>
-                        {currentStage.details ? (
+                        {currentStageData.details ? (
                            <article className="prose prose-sm sm:prose-base dark:prose-invert max-w-none prose-headings:font-semibold prose-a:text-primary hover:prose-a:text-primary/80 text-muted-foreground">
-                             <ReactMarkdown>{currentStage.details}</ReactMarkdown>
+                             <ReactMarkdown>{currentStageData.details}</ReactMarkdown>
                            </article>
                         ) : (
                             <p className="text-sm text-muted-foreground italic">No predefined details for this stage. {isEditModeActive ? 'Add details via "Edit Stage".' : ''}</p>
@@ -391,39 +464,25 @@ export default function SimulateJourneyPage() {
                     <Card className="mt-3">
                         <CardHeader className="pb-3 pt-4 px-4">
                             <CardTitle className="text-base font-semibold">Visual Mockup / UI Preview</CardTitle>
-                            {isEditModeActive && (
-                                <CardDescription className="text-xs">
-                                    Upload an image for this stage's UI or visual representation.
-                                </CardDescription>
-                            )}
                         </CardHeader>
                         <CardContent className="px-4 pb-4">
                             <div className={cn("mt-1 p-3 border-2 border-dashed border-border/50 rounded-lg bg-muted/20 min-h-[200px] flex flex-col items-center justify-center text-center")}>
-                                {currentStageImagePreview ? (
+                                {currentStageImagePreviewUrl ? (
                                 <div className="relative w-full max-w-lg aspect-video mb-3">
                                     <NextImage
-                                    src={currentStageImagePreview}
-                                    alt={`Preview for ${currentStage.title}`}
+                                    src={currentStageImagePreviewUrl}
+                                    alt={`Preview for ${currentStageData.title}`}
                                     fill
                                     className="object-contain rounded-md"
+                                    data-ai-hint={currentStageData.imageAiHint || "journey stage mockup"}
                                     />
                                 </div>
                                 ) : (
                                 <div className="text-muted-foreground space-y-1.5 py-6">
                                     <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground/50" />
                                     <p className="text-sm">No preview image for this stage.</p>
-                                    {isEditModeActive && <p className="text-xs">Upload a mockup or UI screenshot.</p>}
+                                    {isEditModeActive && <p className="text-xs">Edit the stage to upload a mockup.</p>}
                                 </div>
-                                )}
-                                {isEditModeActive && currentStage && (
-                                    <CustomDropzone
-                                        id={`image-upload-${currentStage.id}`}
-                                        onFileChange={(file) => handleImageFileChange(currentStage.id, file)}
-                                        currentFileName={currentSelectedFile?.name}
-                                        accept={{ 'image/*': ['.png', '.jpeg', '.jpg', '.gif', '.webp', '.avif'] }}
-                                        maxSize={1 * 1024 * 1024} 
-                                        className="w-full max-w-md mt-3"
-                                    />
                                 )}
                             </div>
                         </CardContent>
@@ -526,7 +585,7 @@ export default function SimulateJourneyPage() {
           <DialogHeader>
             <DialogTitle>{currentEditingStage ? 'Edit Journey Stage' : 'Add New Journey Stage'}</DialogTitle>
             <DialogDescription>
-              Define the title and key details (Markdown supported) for this stage.
+              Define the title, details, and optional image for this stage.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmitStageForm(onStageFormSubmit)} className="space-y-4 py-2">
@@ -543,6 +602,26 @@ export default function SimulateJourneyPage() {
              <div>
               <Label htmlFor="stagePlaceholder">Placeholder for Image Description (Optional)</Label>
               <Textarea id="stagePlaceholder" {...registerStageForm('placeholder')} rows={3} className="mt-1" placeholder="e.g., Describe the visual elements and primary CTA for this step..."/>
+            </div>
+            <div>
+              <Label htmlFor="stageImageAiHint">Image AI Hint (Optional)</Label>
+              <Input id="stageImageAiHint" {...registerStageForm('imageAiHint')} className="mt-1" placeholder="e.g., user journey map" />
+              {stageFormErrors.imageAiHint && <p className="text-sm text-destructive mt-1">{stageFormErrors.imageAiHint.message}</p>}
+            </div>
+            <div>
+              <Label>Stage Image (Optional)</Label>
+               <CustomDropzone
+                  onFileChange={handleModalImageFileChange}
+                  currentFileName={modalCurrentFileName}
+                  accept={{ 'image/*': ['.png', '.jpeg', '.jpg', '.webp', '.avif'] }}
+                  maxSize={1 * 1024 * 1024} 
+                  className="mt-1"
+                />
+                {modalImagePreview && (
+                    <div className="mt-2 p-2 border border-border rounded-md bg-muted/50 max-w-[200px]">
+                        <NextImage src={modalImagePreview} alt="Modal image preview" width={200} height={120} className="rounded object-contain max-h-[120px]" />
+                    </div>
+                )}
             </div>
             <DialogFooter>
               <DialogClose asChild>

@@ -37,8 +37,10 @@ export interface ServiceCategory {
 export interface JourneyStage {
   id: string; 
   title: string; 
-  details: string; // Changed from string[] to string for Markdown content
+  details: string; 
   placeholder?: string; 
+  imageUrl?: string | null; 
+  imageAiHint?: string | null;
 }
 
 export interface Service {
@@ -250,3 +252,4 @@ export interface ContactFormValues {
   phone?: string;
   message: string;
 }
+

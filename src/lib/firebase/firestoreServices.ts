@@ -26,61 +26,81 @@ const DEFAULT_JOURNEY_STAGES: JourneyStage[] = [
     id: 'discovery', 
     title: 'Discovery', 
     details: "- Touchpoints: Homepage → “Explore Our Services”, Services List → “Business Profile Website”, Paid Ads, Social Media, WhatsApp Campaigns\n- Key Actions: Click service card → open dedicated service landing page", 
-    placeholder: "Describe visual elements and user interactions for Discovery. What does the user see on the homepage? How is the service presented in lists/ads? What's the initial hook?" 
+    placeholder: "Describe visual elements and user interactions for Discovery. What does the user see on the homepage? How is the service presented in lists/ads? What's the initial hook?",
+    imageUrl: null,
+    imageAiHint: null,
   },
   { 
     id: 'service-landing-page', 
     title: 'Service Landing Page', 
     details: "- Content: Hero: “Professional Website for Your Business – Launch in Days”, Value props (e.g., Free subdomain, SEO ready, CMS), Demo links / client success stories\n- CTAs: “Start Now” (Primary), “Preview Demo”, “Chat First”", 
-    placeholder: "Detail the layout of the service landing page. Visual hierarchy? CTA displays? Demo preview look? How are value props communicated visually?" 
+    placeholder: "Detail the layout of the service landing page. Visual hierarchy? CTA displays? Demo preview look? How are value props communicated visually?",
+    imageUrl: null,
+    imageAiHint: null,
   },
   { 
     id: 'smart-onboarding', 
     title: 'Smart Onboarding', 
     details: "- Inline, 3-step lightweight wizard: Business Name & Type, Domain options ('I have one', 'Search domain', 'Skip for now' → subdomain), Select preferred style/template (quick preview).\n- All fields optional. 'Continue' active if at least 1 field filled.", 
-    placeholder: "Design the wizard steps. How are domain options presented? How does the style/template quick preview work visually? What's the feel of this onboarding?" 
+    placeholder: "Design the wizard steps. How are domain options presented? How does the style/template quick preview work visually? What's the feel of this onboarding?",
+    imageUrl: null,
+    imageAiHint: null,
   },
   { 
     id: 'sign-in-up', 
     title: 'Sign In / Sign Up', 
     details: "- Google OAuth & Email options.\n- Progress from onboarding is saved in session/local storage and applied post-login.", 
-    placeholder: "Describe the sign-in/sign-up interface. How is the saved onboarding progress communicated or handled visually upon return?" 
+    placeholder: "Describe the sign-in/sign-up interface. How is the saved onboarding progress communicated or handled visually upon return?",
+    imageUrl: null,
+    imageAiHint: null,
   },
   { 
     id: 'dashboard-start-project', 
     title: 'Dashboard: Start Project', 
     details: "- Now in authenticated project dashboard.\n- Auto-generated project draft based on onboarding.\n- Show project steps: ✅ Business Info, ✅ Domain, 🟨 Template Selection (edit or keep), 🟧 Package Plan, 🟩 Custom Feature (optional).", 
-    placeholder: "Visualize the initial project dashboard. How is the draft project presented? How are the project steps shown? How can users edit pre-filled info?" 
+    placeholder: "Visualize the initial project dashboard. How is the draft project presented? How are the project steps shown? How can users edit pre-filled info?",
+    imageUrl: null,
+    imageAiHint: null,
   },
   { 
     id: 'select-package-addons', 
     title: 'Select Package & Add-ons', 
     details: "- Show pricing tiers with visual comparison.\n- Add-ons (CMS, Blog, WhatsApp button, Form, SEO setup, etc.).\n- Upsell option for full custom dev.", 
-    placeholder: "Design the package selection interface. How are tiers and add-ons visually distinct? How is the upsell presented without being intrusive?" 
+    placeholder: "Design the package selection interface. How are tiers and add-ons visually distinct? How is the upsell presented without being intrusive?",
+    imageUrl: null,
+    imageAiHint: null,
   },
   { 
     id: 'checkout', 
     title: 'Checkout', 
     details: "- Transparent breakdown: Subscription (monthly/annual), Add-on costs (if any).\n- Payment options: card, VA, QRIS (Xendit).\n- Post-payment CTA: “Go to Dashboard”.", 
-    placeholder: "Visualize the checkout page. How is the cost breakdown presented clearly? How are payment options displayed? What's the success confirmation look like?" 
+    placeholder: "Visualize the checkout page. How is the cost breakdown presented clearly? How are payment options displayed? What's the success confirmation look like?",
+    imageUrl: null,
+    imageAiHint: null,
   },
   { 
     id: 'project-status-tracker', 
     title: 'Project Status Tracker', 
     details: "- Post-checkout dashboard shows: Project timeline (Planning → Development → Review → Launch), Chat with Dev team, Upload brand assets, Edit business info, Domain integration status, 'Invite teammate' (if relevant).", 
-    placeholder: "Design the project tracker. How is the timeline visualized? What does the chat interface look like? How are asset uploads and info editing handled?" 
+    placeholder: "Design the project tracker. How is the timeline visualized? What does the chat interface look like? How are asset uploads and info editing handled?",
+    imageUrl: null,
+    imageAiHint: null,
   },
   { 
     id: 'launch-delivery', 
     title: 'Launch & Delivery', 
     details: "- Final site preview, DNS guide or auto-config, “Go Live” button.\n- Confirmation Page: Success message, Analytics starter, CMS guide, Shareable link button.", 
-    placeholder: "Visualize the final launch steps. What does the 'Go Live' confirmation look like? How are guides and success messages presented?" 
+    placeholder: "Visualize the final launch steps. What does the 'Go Live' confirmation look like? How are guides and success messages presented?",
+    imageUrl: null,
+    imageAiHint: null,
   },
   { 
     id: 'post-launch-retention', 
     title: 'Post-Launch & Retention', 
     details: "- Regular performance emails: “Your site had 134 views this week”.\n- Client dashboard includes: CMS editor, Traffic stats (Google Analytics embed), Support ticket/chat, Plan management & renewals, Easy upgrade CTA: “Need More Pages?”.", 
-    placeholder: "Design the post-launch dashboard elements. How are stats presented? What does the CMS editor access look like? How are upgrade CTAs integrated smoothly?" 
+    placeholder: "Design the post-launch dashboard elements. How are stats presented? What does the CMS editor access look like? How are upgrade CTAs integrated smoothly?",
+    imageUrl: null,
+    imageAiHint: null,
   },
 ];
 
@@ -90,15 +110,19 @@ const fromFirestore = (docSnapshot: QueryDocumentSnapshot<DocumentData>): Servic
   const data = docSnapshot.data();
   const category = SERVICE_CATEGORIES.find(c => c.id === data.categoryId) || SERVICE_CATEGORIES[0]; 
   
-  let customerJourneyStages = DEFAULT_JOURNEY_STAGES;
-  if (data.customerJourneyStages && Array.isArray(data.customerJourneyStages)) {
+  let customerJourneyStages: JourneyStage[] = DEFAULT_JOURNEY_STAGES; 
+  if (data.customerJourneyStages && Array.isArray(data.customerJourneyStages) && data.customerJourneyStages.length > 0) {
     customerJourneyStages = data.customerJourneyStages.map((stage: any) => ({
-      ...stage,
-      details: Array.isArray(stage.details) ? stage.details.join('\n- ') : (stage.details || ''), // Convert old array to markdown list
+      id: stage.id || `stage-${Math.random().toString(36).substring(2, 8)}`,
+      title: stage.title || 'Untitled Stage',
+      details: Array.isArray(stage.details) ? stage.details.join('\n- ') : (stage.details || ''),
+      placeholder: stage.placeholder || '',
+      imageUrl: stage.imageUrl || null,
+      imageAiHint: stage.imageAiHint || null,
     }));
-  } else if (data.customerJourneyStages === undefined || data.customerJourneyStages === null) {
-    // If customerJourneyStages is explicitly null or undefined in Firestore, use default
-    customerJourneyStages = DEFAULT_JOURNEY_STAGES;
+  } else {
+    // If customerJourneyStages is missing, empty, or not an array, use default.
+    customerJourneyStages = DEFAULT_JOURNEY_STAGES.map(stage => ({...stage})); // Ensure a fresh copy
   }
 
 
