@@ -1,7 +1,6 @@
-
 'use client';
 import Link from 'next/link';
-import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, LayoutGrid, ShoppingCart, ChevronDown, Compass, Settings, Info, Users, Mail } from 'lucide-react';
+import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, Briefcase, ShoppingCart, ChevronDown, Compass, Settings, Info, Mail } from 'lucide-react'; // Changed LayoutGrid to Briefcase
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useState, useEffect } from 'react';
@@ -16,11 +15,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { CustomMenuIcon } from '@/components/shared/CustomMenuIcon';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { CATEGORIES } from '@/lib/constants'; 
+import { SERVICE_CATEGORIES } from '@/lib/constants'; 
 import { cn } from '@/lib/utils';
 import { getSiteSettings } from '@/lib/actions/settings.actions'; 
 import { DEFAULT_SETTINGS } from '@/lib/constants';
@@ -85,16 +83,16 @@ export function Navbar() {
         <nav className="hidden md:flex items-center gap-4 text-sm ml-auto">
           <DropdownMenu>
             <DropdownMenuTrigger className={cn(desktopMenuItemClass, "flex items-center gap-1 outline-none")}>
-              Explore <ChevronDown className="h-4 w-4" />
+              Services <ChevronDown className="h-4 w-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56">
               <DropdownMenuItem asChild className={desktopDropdownItemClass}>
-                <Link href="/">All Templates</Link>
+                <Link href="/services">All Services</Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              {CATEGORIES.map((category) => (
+              {SERVICE_CATEGORIES.map((category) => (
                 <DropdownMenuItem key={category.id} asChild className={desktopDropdownItemClass}>
-                  <Link href={`/?category=${category.slug}`}>{category.name}</Link>
+                  <Link href={`/services?category=${category.slug}`}>{category.name}</Link>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
@@ -256,25 +254,25 @@ export function Navbar() {
                 )}
 
                 <Accordion type="multiple" collapsible className="w-full">
-                  <AccordionItem value="explore-categories" className="border-b-0 mb-1">
+                  <AccordionItem value="explore-services" className="border-b-0 mb-1">
                     <AccordionTrigger className={mobileMenuAccordionTriggerClass}>
                       <div className="flex items-center">
                         <Compass className="mr-2 h-5 w-5" />
-                        Explore Templates
+                        Explore Services
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="pl-4 pt-1 pb-0 space-y-1">
                        <Link
-                        href={`/`}
+                        href={`/services`}
                         onClick={() => setMobileMenuOpen(false)}
                         className={mobileMenuAccordionContentLinkClass}
                       >
-                        All Templates
+                        All Services
                       </Link>
-                      {CATEGORIES.map((category) => (
+                      {SERVICE_CATEGORIES.map((category) => (
                         <Link
                           key={category.id}
-                          href={`/?category=${category.slug}`}
+                          href={`/services?category=${category.slug}`}
                           onClick={() => setMobileMenuOpen(false)}
                           className={mobileMenuAccordionContentLinkClass}
                         >
@@ -328,7 +326,7 @@ export function Navbar() {
                       onClick={() => setMobileMenuOpen(false)}
                       className={mobileMenuMainItemClass}
                     >
-                       <LayoutGrid className="mr-2 h-5 w-5" /> <span>Admin Panel</span>
+                       <Briefcase className="mr-2 h-5 w-5" /> <span>Admin Panel</span>
                     </Link>
                      <Link
                       href="/admin/settings"
