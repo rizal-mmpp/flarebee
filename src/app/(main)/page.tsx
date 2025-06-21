@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Zap, Target, Brush } from 'lucide-react';
+import { ArrowRight, Zap, Target, Brush, Server, Palette, Rocket } from 'lucide-react';
 import type { Service } from '@/lib/types';
 import { getAllServicesFromFirestore } from '@/lib/firebase/firestoreServices';
 import { ServiceCard } from '@/components/shared/ServiceCard';
@@ -30,45 +31,76 @@ export default function HomePage() {
 
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col overflow-x-hidden">
       {/* Hero Section */}
-      <section className="text-center py-20 md:py-32 bg-gradient-to-b from-card to-background">
-        <div className="container mx-auto px-4 md:px-6">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight">
-            Turn Your Vision into a Digital Reality
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-10 leading-relaxed">
-            We provide professional services to build, automate, and scale your business online. From stunning websites to intelligent automation, we are your partners in innovation.
-          </p>
-          <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-primary-foreground px-10 py-6 text-lg rounded-full group">
-            <Link href="/services">
-              Explore Our Services <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
-            </Link>
-          </Button>
+      <section className="relative py-24 md:py-32 bg-gradient-to-b from-background via-background to-primary/5">
+         <div
+            aria-hidden="true"
+            className="absolute inset-0 -z-10 h-full w-full bg-background bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]"
+          ></div>
+        <div className="container mx-auto px-4 md:px-6 grid md:grid-cols-2 gap-12 items-center">
+            <div className="animate-fade-in-up">
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight">
+                    Turn Your Vision into a Digital Reality
+                </h1>
+                <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto md:mx-0 mb-10 leading-relaxed">
+                    We provide professional services to build, automate, and scale your business online. From stunning websites to intelligent automation, we are your partners in innovation.
+                </p>
+                <div className="flex gap-4">
+                    <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-primary-foreground px-10 py-6 text-lg rounded-full group">
+                        <Link href="/services">
+                        Explore Our Services <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+                        </Link>
+                    </Button>
+                     <Button size="lg" variant="outline" asChild className="px-10 py-6 text-lg rounded-full group">
+                        <Link href="/contact-us">
+                         Contact Sales
+                        </Link>
+                    </Button>
+                </div>
+            </div>
+             <div className="relative hidden md:block">
+              <div className="absolute -inset-4 bg-gradient-to-br from-primary via-purple-500 to-accent rounded-full opacity-20 blur-3xl animate-float"></div>
+                <Image
+                    src="https://placehold.co/600x400.png"
+                    alt="Abstract service illustration"
+                    width={600}
+                    height={400}
+                    priority
+                    className="relative rounded-3xl shadow-2xl animate-float"
+                    data-ai-hint="digital product interface"
+                />
+            </div>
         </div>
       </section>
 
       {/* Features Section */}
       <section className="py-16 md:py-24 bg-background">
         <div className="container mx-auto px-4 md:px-6">
+            <div className="text-center mb-12">
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Why Choose Us?</h2>
+                <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+                   We blend creativity with technology to deliver solutions that are not just beautiful, but also powerful and strategic.
+                </p>
+            </div>
             <div className="grid md:grid-cols-3 gap-8 text-center">
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center p-6 border border-transparent hover:border-border rounded-2xl hover:bg-card transition-all">
                     <div className="p-4 bg-primary/10 rounded-full mb-4">
-                        <Brush className="h-8 w-8 text-primary" />
+                        <Palette className="h-8 w-8 text-primary" />
                     </div>
                     <h3 className="text-xl font-semibold text-foreground mb-2">Bespoke Design</h3>
                     <p className="text-muted-foreground">Crafting unique and beautiful websites tailored to your brand identity.</p>
                 </div>
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center p-6 border border-transparent hover:border-border rounded-2xl hover:bg-card transition-all">
                     <div className="p-4 bg-primary/10 rounded-full mb-4">
                         <Zap className="h-8 w-8 text-primary" />
                     </div>
                     <h3 className="text-xl font-semibold text-foreground mb-2">AI & Automation</h3>
                     <p className="text-muted-foreground">Leveraging intelligent automation to streamline your business processes.</p>
                 </div>
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center p-6 border border-transparent hover:border-border rounded-2xl hover:bg-card transition-all">
                     <div className="p-4 bg-primary/10 rounded-full mb-4">
-                        <Target className="h-8 w-8 text-primary" />
+                        <Rocket className="h-8 w-8 text-primary" />
                     </div>
                     <h3 className="text-xl font-semibold text-foreground mb-2">Strategic Solutions</h3>
                     <p className="text-muted-foreground">Delivering technology solutions that align with your strategic goals.</p>
@@ -78,7 +110,7 @@ export default function HomePage() {
       </section>
 
       {/* Featured Services Section */}
-       <section className="py-16 md:py-24 bg-card">
+       <section className="py-16 md:py-24 bg-card border-t border-b">
         <div className="container mx-auto px-4 md:px-6">
            <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Featured Services</h2>

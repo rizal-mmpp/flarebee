@@ -7,13 +7,14 @@ import { notFound, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ServerCrash, Check, FileText, HelpCircle, Bot, Loader2, Send } from 'lucide-react'; 
+import { ArrowLeft, ServerCrash, Check, FileText, HelpCircle, Bot, Loader2, Send, Sparkles } from 'lucide-react'; 
 import Link from 'next/link';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 const formatIDR = (amount: number) => {
   return new Intl.NumberFormat('id-ID', {
@@ -146,8 +147,9 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
   return (
     <div className="bg-background text-foreground">
       {/* Hero Section */}
-      <section className="py-16 md:py-24 bg-card border-b">
-          <div className="container mx-auto px-4 md:px-6 grid md:grid-cols-2 gap-8 items-center">
+      <section className="py-16 md:py-24 bg-card border-b relative overflow-hidden">
+           <div aria-hidden="true" className="absolute inset-0 -z-0 h-full w-full bg-background bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]"></div>
+          <div className="container mx-auto px-4 md:px-6 grid md:grid-cols-2 gap-8 items-center relative z-10">
               <div className="space-y-4">
                   <Badge variant="secondary">{service.category.name}</Badge>
                   <h1 className="text-4xl md:text-5xl font-bold leading-tight">{service.title}</h1>
@@ -161,7 +163,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
                       </Button>
                   </div>
               </div>
-              <div className="relative w-full aspect-video rounded-xl overflow-hidden">
+              <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-2xl">
                   <Image src={service.imageUrl} alt={service.title} fill className="object-cover" data-ai-hint={service.dataAiHint || "service visual"}/>
               </div>
           </div>
@@ -174,10 +176,18 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
             <h2 className="text-3xl md:text-4xl font-bold">Find the Perfect Plan</h2>
             <p className="text-muted-foreground mt-2">Choose the package that best fits your needs. All plans are flexible and can be customized.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
             {examplePackages.map(pkg => (
-              <Card key={pkg.name} className={`flex flex-col ${pkg.isPopular ? 'border-primary border-2 shadow-xl' : ''}`}>
-                {pkg.isPopular && <Badge className="w-fit self-center -mt-3">Most Popular</Badge>}
+              <Card key={pkg.name} className={cn('flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-2', pkg.isPopular ? 'border-primary border-2 shadow-xl relative overflow-hidden' : 'shadow-lg')}>
+                {pkg.isPopular && (
+                  <>
+                    <div className="absolute -top-1 -right-1 z-10">
+                      <div className="w-32 h-8 absolute top-0 right-0 bg-primary transform translate-x-1/2 -translate-y-1/2 rotate-45"></div>
+                      <Sparkles className="absolute top-1 right-1 h-5 w-5 text-primary-foreground z-20"/>
+                    </div>
+                    <Badge className="w-fit self-center -mt-3 z-10">Most Popular</Badge>
+                  </>
+                )}
                 <CardHeader className="text-center">
                   <CardTitle className="text-2xl">{pkg.name}</CardTitle>
                   <CardDescription>{pkg.description}</CardDescription>
@@ -194,7 +204,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
                   </ul>
                 </CardContent>
                 <CardFooter>
-                  <Button className={`w-full ${pkg.isPopular ? '' : 'bg-primary/90 hover:bg-primary'}`} variant={pkg.isPopular ? 'default' : 'secondary'}>
+                  <Button size="lg" className={cn('w-full', pkg.isPopular ? '' : 'bg-primary/90 hover:bg-primary')} variant={pkg.isPopular ? 'default' : 'secondary'}>
                     {pkg.cta}
                   </Button>
                 </CardFooter>
@@ -211,7 +221,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
             <div className="space-y-4">
               <h2 className="text-3xl md:text-4xl font-bold">Still not sure?</h2>
               <p className="text-muted-foreground text-lg">Tell us about your project, and we'll craft a custom package tailored just for you. No obligations, just possibilities.</p>
-              <div className="flex items-start p-4 bg-primary/10 rounded-lg">
+              <div className="flex items-start p-4 bg-primary/10 rounded-2xl">
                 <Bot className="h-8 w-8 text-primary mr-4 mt-1 flex-shrink-0"/>
                 <p className="text-sm text-primary/80">Our team will analyze your needs and provide a personalized recommendation and quote within 24 hours.</p>
               </div>
