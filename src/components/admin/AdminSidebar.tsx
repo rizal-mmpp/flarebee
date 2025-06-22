@@ -69,7 +69,7 @@ export function AdminSidebar({ onLinkClick, logoUrl, siteTitle }: AdminSidebarPr
                 onClick={onLinkClick}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sidebar-foreground/80 transition-all hover:text-sidebar-primary hover:bg-sidebar-accent',
-                  (pathname === item.href || (item.href !== '/admin/dashboard' && pathname.startsWith(item.href))) && 'bg-sidebar-accent text-white font-semibold'
+                  (pathname === item.href || (item.href !== '/admin/dashboard' && pathname.startsWith(item.href))) && 'bg-sidebar-accent text-sidebar-primary font-semibold'
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -82,6 +82,3 @@ export function AdminSidebar({ onLinkClick, logoUrl, siteTitle }: AdminSidebarPr
     </div>
   );
 }
-
-
-    

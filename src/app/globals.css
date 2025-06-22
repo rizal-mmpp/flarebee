@@ -14,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 50 90% 55%; /* #6869F6 - Vivid Violet-Blue */
+    --primary: 38 92% 50%; /* Vibrant orange for active text/icon */
     --primary-foreground: 240 100% 98%; /* #F8F9FF - Near White */
 
     --secondary: 222 47% 11%; /* Dark Slate Blue as Secondary */
@@ -23,15 +23,15 @@
     --muted: 220 30% 94%; /* #E8ECF2 - Light Gray */
     --muted-foreground: 222 15% 45%; /* #646C7E - Muted Slate */
 
-    --accent: 30 84% 51%; /* #A369F6 - Bright Purple */
-    --accent-foreground: 0 0% 98%;
+    --accent: 45 100% 96%; /* Very light yellow for active background */
+    --accent-foreground: 38 92% 50%; /* Same as primary for consistency */
     
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
     --border: 220 20% 90%; /* #DFE4EB */
     --input: 220 30% 96%; /* #F2F5F9 */
-    --ring: 244 80% 65%; /* Primary color for rings */
+    --ring: 38 92% 50%; /* Primary color for rings */
 
     --radius: 1.25rem; /* Larger radius for modern look */
 
@@ -43,14 +43,14 @@
     --chart-5: 358 91% 69%;
 
     /* Sidebar Specific Variables */
-    --sidebar-background: 228 90% 97%;
-    --sidebar-foreground: 210 70% 25%;
-    --sidebar-primary: 244 80% 65%;
+    --sidebar-background: 228 100% 99%; /* Even lighter grey, almost white */
+    --sidebar-foreground: 222 15% 45%; /* Muted slate for non-active text */
+    --sidebar-primary: 38 92% 50%; /* Vibrant orange for active text/icon */
     --sidebar-primary-foreground: 240 100% 98%;
-    --sidebar-accent: 220 30% 94%;
-    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-accent: 45 100% 96%; /* Very light yellow for active background */
+    --sidebar-accent-foreground: 38 92% 50%; /* Same as primary for consistency */
     --sidebar-border: 220 20% 88%;
-    --sidebar-ring: 244 80% 65%;
+    --sidebar-ring: 38 92% 50%;
   }
 
   .dark {
@@ -63,7 +63,7 @@
     --popover: 222 40% 15%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 50 90% 60%; /* #8283FF - Brighter Violet-Blue */
+    --primary: 45 95% 60%; /* Bright orange/yellow for active text/icon */
     --primary-foreground: 240 100% 98%;
 
     --secondary: 210 40% 98%; /* Light Foreground as Secondary */
@@ -72,7 +72,7 @@
     --muted: 222 30% 20%; /* #242E42 */
     --muted-foreground: 222 15% 65%;
 
-    --accent: 30 84% 55%; /* #B982FF - Brighter Purple */
+    --accent: 40 95% 15%; /* Dark, desaturated orange for active background */
     --accent-foreground: 0 0% 98%; 
     
     --destructive: 0 70% 55%;
@@ -80,7 +80,7 @@
 
     --border: 222 25% 25%; /* #2F3B54 */
     --input: 222 30% 22%; /* #283246 */
-    --ring: 244 80% 70%;
+    --ring: 45 95% 60%;
     
     /* Charts */
     --chart-1: 244 80% 70%;
@@ -90,14 +90,14 @@
     --chart-5: 358 91% 72%;
 
     /* Sidebar Specific Variables for Dark Mode */
-    --sidebar-background: 222 47% 11%;
+    --sidebar-background: 222 40% 12%; /* Slightly lighter dark */
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 244 80% 70%;
+    --sidebar-primary: 45 95% 60%; /* Bright orange/yellow for active text/icon */
     --sidebar-primary-foreground: 240 100% 98%;
-    --sidebar-accent: 222 30% 20%;
+    --sidebar-accent: 40 95% 15%; /* Dark, desaturated orange for active background */
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 222 25% 25%;
-    --sidebar-ring: 244 80% 70%;
+    --sidebar-ring: 45 95% 60%;
   }
 }
 
