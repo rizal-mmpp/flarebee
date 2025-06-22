@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useTransition, useMemo } from 'react';
@@ -33,7 +32,6 @@ const settingsFormSchema = z.object({
   darkThemePrimaryColor: z.string().regex(hslColorStringRegex, 'Must be HSL'),
   darkThemeAccentColor: z.string().regex(hslColorStringRegex, 'Must be HSL'),
   darkThemeBackgroundColor: z.string().regex(hslColorStringRegex, 'Must be HSL'),
-  contactPageImageFile: z.instanceof(File).optional().nullable(),
   contactAddress: z.string().optional().nullable(),
   contactPhone: z.string().optional().nullable(),
   contactEmail: z.string().email("Invalid email format.").optional().nullable(),
@@ -133,11 +131,6 @@ export default function AdminSettingsPage() {
   const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
-  const [currentContactPageImageUrl, setCurrentContactPageImageUrl] = useState<string | null>(null);
-  const [selectedContactPageImageFile, setSelectedContactPageImageFile] = useState<File | null>(null);
-  const [contactPageImagePreview, setContactPageImagePreview] = useState<string | null>(null);
-
-
   const { control, handleSubmit, setValue, reset, watch, formState: { errors } } = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsFormSchema),
     defaultValues: {
@@ -149,7 +142,6 @@ export default function AdminSettingsPage() {
       darkThemePrimaryColor: DEFAULT_SETTINGS.darkThemePrimaryColor,
       darkThemeAccentColor: DEFAULT_SETTINGS.darkThemeAccentColor,
       darkThemeBackgroundColor: DEFAULT_SETTINGS.darkThemeBackgroundColor,
-      contactPageImageFile: null,
       contactAddress: DEFAULT_SETTINGS.contactAddress,
       contactPhone: DEFAULT_SETTINGS.contactPhone,
       contactEmail: DEFAULT_SETTINGS.contactEmail,
@@ -171,15 +163,12 @@ export default function AdminSettingsPage() {
           darkThemePrimaryColor: settings.darkThemePrimaryColor,
           darkThemeAccentColor: settings.darkThemeAccentColor,
           darkThemeBackgroundColor: settings.darkThemeBackgroundColor,
-          contactPageImageFile: null,
           contactAddress: settings.contactAddress,
           contactPhone: settings.contactPhone,
           contactEmail: settings.contactEmail,
         });
         setCurrentLogoUrl(settings.logoUrl);
         setLogoPreview(settings.logoUrl);
-        setCurrentContactPageImageUrl(settings.contactPageImageUrl);
-        setContactPageImagePreview(settings.contactPageImageUrl);
       } catch (error) {
         toast({
           title: 'Error Loading Settings',
@@ -206,28 +195,9 @@ export default function AdminSettingsPage() {
     };
   }, [selectedLogoFile, currentLogoUrl]);
 
-  useEffect(() => {
-    let objectUrl: string | undefined;
-    if (selectedContactPageImageFile) {
-      objectUrl = URL.createObjectURL(selectedContactPageImageFile);
-      setContactPageImagePreview(objectUrl);
-    } else {
-      setContactPageImagePreview(currentContactPageImageUrl);
-    }
-    return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [selectedContactPageImageFile, currentContactPageImageUrl]);
-
-
   const handleLogoFileChange = (file: File | null) => {
     setSelectedLogoFile(file);
     setValue('logo', file, { shouldValidate: true });
-  };
-
-  const handleContactFileChange = (file: File | null) => {
-    setSelectedContactPageImageFile(file);
-    setValue('contactPageImageFile', file, { shouldValidate: true });
   };
 
   const onSubmit: SubmitHandler<SettingsFormValues> = (data) => {
@@ -247,9 +217,6 @@ export default function AdminSettingsPage() {
       if (selectedLogoFile) {
         formData.append('logo', selectedLogoFile);
       }
-      if (selectedContactPageImageFile) {
-        formData.append('contactPageImageFile', selectedContactPageImageFile);
-      }
 
       const result = await updateSiteSettings(formData);
 
@@ -261,9 +228,6 @@ export default function AdminSettingsPage() {
         setCurrentLogoUrl(result.data.logoUrl);
         setLogoPreview(result.data.logoUrl);
         setSelectedLogoFile(null);
-        setCurrentContactPageImageUrl(result.data.contactPageImageUrl);
-        setContactPageImagePreview(result.data.contactPageImageUrl);
-        setSelectedContactPageImageFile(null);
         reset({ // Reset form with new data, ensuring file inputs are cleared
             siteTitle: result.data.siteTitle,
             logo: null, // Clear file input from form state
@@ -273,7 +237,6 @@ export default function AdminSettingsPage() {
             darkThemePrimaryColor: result.data.darkThemePrimaryColor,
             darkThemeAccentColor: result.data.darkThemeAccentColor,
             darkThemeBackgroundColor: result.data.darkThemeBackgroundColor,
-            contactPageImageFile: null, // Clear file input from form state
             contactAddress: result.data.contactAddress,
             contactPhone: result.data.contactPhone,
             contactEmail: result.data.contactEmail,
@@ -384,36 +347,13 @@ export default function AdminSettingsPage() {
             </div>
         </CardContent>
       </Card>
-
+      
       <Card>
         <CardHeader>
-            <CardTitle className="flex items-center"><Contact className="mr-2 h-5 w-5 text-primary/80" />Contact Information & Page</CardTitle>
-            <CardDescription>Manage contact details shown in the footer and the image for the Contact Us page.</CardDescription>
+            <CardTitle className="flex items-center"><Contact className="mr-2 h-5 w-5 text-primary/80" />Shared Contact Information</CardTitle>
+            <CardDescription>Manage contact details shown across the site, like in the footer.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-            <div>
-                <Label htmlFor="contactPageImageFile">Contact Page Image</Label>
-                <CustomDropzone
-                    onFileChange={handleContactFileChange}
-                    currentFileName={selectedContactPageImageFile?.name}
-                    accept={{ 'image/*': ['.png', '.jpeg', '.jpg', '.webp'] }}
-                    maxSize={1 * 1024 * 1024} // 1MB
-                    className="mt-1"
-                />
-                {errors.contactPageImageFile && <p className="text-sm text-destructive mt-1">{errors.contactPageImageFile.message as string}</p>}
-                {contactPageImagePreview && (
-                    <div className="mt-4 p-3 border border-border rounded-lg bg-muted/50 inline-block">
-                        <p className="text-xs text-muted-foreground mb-1.5">Contact Page Image Preview:</p>
-                        <Image src={contactPageImagePreview} alt="Contact page image preview" width={200} height={150} className="rounded-md object-contain max-h-[150px]" />
-                    </div>
-                )}
-                 {!contactPageImagePreview && (
-                   <div className="mt-3 p-4 border border-dashed border-input rounded-lg bg-muted/30 text-center text-muted-foreground max-w-xs">
-                      <ImageIcon className="mx-auto h-8 w-8 mb-1" />
-                      <p className="text-xs">No contact page image uploaded. (Recommended: 600x800px flat/abstract style).</p>
-                   </div>
-                 )}
-            </div>
             <div>
                 <Label htmlFor="contactAddress">Business Address</Label>
                 <Controller

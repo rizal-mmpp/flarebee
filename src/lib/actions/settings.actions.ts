@@ -1,4 +1,3 @@
-
 'use server';
 
 import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
@@ -58,7 +57,6 @@ export async function updateSiteSettings(
   try {
     const currentSettings = await getSiteSettings();
     let newLogoUrl = currentSettings.logoUrl;
-    let newContactPageImageUrl = currentSettings.contactPageImageUrl;
 
     const logoFile = formData.get('logo') as File | null;
     if (logoFile && logoFile.size > 0) {
@@ -70,17 +68,8 @@ export async function updateSiteSettings(
       }
       newLogoUrl = uploadResult.data.url;
     }
-
-    const contactImageFile = formData.get('contactPageImageFile') as File | null;
-    if (contactImageFile && contactImageFile.size > 0) {
-        const blobFormData = new FormData();
-        blobFormData.append('file', contactImageFile);
-        const uploadResult = await uploadFileToVercelBlob(blobFormData);
-        if (!uploadResult.success || !uploadResult.data?.url) {
-            return { success: false, error: uploadResult.error || 'Could not upload contact page image.' };
-        }
-        newContactPageImageUrl = uploadResult.data.url;
-    }
+    
+    // Note: contactPageImageFile is now handled in sitePage.actions.ts
 
     const siteTitle = formData.get('siteTitle') as string || currentSettings.siteTitle;
     const themePrimaryColor = formData.get('themePrimaryColor') as string || currentSettings.themePrimaryColor;
@@ -95,17 +84,16 @@ export async function updateSiteSettings(
     const contactEmail = formData.get('contactEmail') as string || currentSettings.contactEmail;
 
 
-    const settingsDataForFirestore: Omit<SiteSettings, 'id' | 'updatedAt'> & { updatedAt: any } = {
+    const settingsDataForFirestore: Omit<SiteSettings, 'id' | 'updatedAt' | 'contactPageImageUrl'> & { updatedAt: any, contactPageImageUrl?: string | null } = {
       siteTitle,
       logoUrl: newLogoUrl,
-      faviconUrl: currentSettings.faviconUrl, // Favicon management isn't part of this form for now
+      faviconUrl: currentSettings.faviconUrl,
       themePrimaryColor,
       themeAccentColor,
       themeBackgroundColor,
       darkThemePrimaryColor,
       darkThemeAccentColor,
       darkThemeBackgroundColor,
-      contactPageImageUrl: newContactPageImageUrl,
       contactAddress,
       contactPhone,
       contactEmail,
@@ -133,22 +121,11 @@ export async function updateSiteSettings(
     revalidatePath('/', 'layout'); 
     revalidatePath('/contact-us');
 
-
     const resultData: SiteSettings = {
+        ...DEFAULT_SETTINGS, // start with defaults
+        ...currentSettings, // override with current settings
+        ...settingsDataForFirestore, // override with new settings
         id: MAIN_SETTINGS_DOC_ID,
-        siteTitle: settingsDataForFirestore.siteTitle,
-        logoUrl: settingsDataForFirestore.logoUrl,
-        faviconUrl: settingsDataForFirestore.faviconUrl,
-        themePrimaryColor: settingsDataForFirestore.themePrimaryColor,
-        themeAccentColor: settingsDataForFirestore.themeAccentColor,
-        themeBackgroundColor: settingsDataForFirestore.themeBackgroundColor,
-        darkThemePrimaryColor: settingsDataForFirestore.darkThemePrimaryColor,
-        darkThemeAccentColor: settingsDataForFirestore.darkThemeAccentColor,
-        darkThemeBackgroundColor: settingsDataForFirestore.darkThemeBackgroundColor,
-        contactPageImageUrl: settingsDataForFirestore.contactPageImageUrl,
-        contactAddress: settingsDataForFirestore.contactAddress,
-        contactPhone: settingsDataForFirestore.contactPhone,
-        contactEmail: settingsDataForFirestore.contactEmail,
         updatedAt: new Date().toISOString(),
     };
 

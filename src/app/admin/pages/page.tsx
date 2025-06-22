@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -18,6 +17,7 @@ interface ManagedSitePage {
 
 const managedSitePages: ManagedSitePage[] = [
   { id: 'public-about', title: 'About Us (Public Page)', path: '/about', status: 'Published', type: 'Content-Managed' },
+  { id: 'contact-us', title: 'Contact Us Page', path: '/contact-us', status: 'Published', type: 'Content-Managed' },
   { id: 'privacy-policy', title: 'Privacy Policy', path: '/privacy', status: 'Published', type: 'Content-Managed' },
   { id: 'terms-of-service', title: 'Terms of Service', path: '/terms', status: 'Published', type: 'Content-Managed' },
   { id: 'refund-policy', title: 'Refund Policy', path: '/refund-policy', status: 'Published', type: 'Content-Managed' },

@@ -1,4 +1,3 @@
-
 import type { User as FirebaseUser } from 'firebase/auth';
 
 export interface Category {
@@ -7,7 +6,7 @@ export interface Category {
   slug: string;
 }
 
-// Retain Template type for existing public pages for now
+// Retain Template type for existing public pages until they are refactored
 export interface Template {
   id: string;
   title: string;
@@ -210,9 +209,14 @@ export interface PublicAboutPageContent {
   updatedAt?: string | null;
 }
 
-// Union type for SitePage
-export type SitePage = StandardSitePage | PublicAboutPageContent;
+export interface ContactPageContent {
+  id: 'contact-us';
+  imageUrl?: string | null;
+  updatedAt?: string | null;
+}
 
+// Union type for SitePage
+export type SitePage = StandardSitePage | PublicAboutPageContent | ContactPageContent;
 
 export interface SiteSettings {
   id: 'main';
@@ -252,4 +256,3 @@ export interface ContactFormValues {
   phone?: string;
   message: string;
 }
-

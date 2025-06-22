@@ -1,11 +1,11 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
 import { saveSitePageContent } from '@/lib/firebase/firestoreSitePages';
-import type { PublicAboutPageContent } from '@/lib/types'; // Import the new type
+import type { PublicAboutPageContent, ContactPageContent } from '@/lib/types';
+import { uploadFileToVercelBlob } from './vercelBlob.actions';
 
-// This server action now needs to handle both types of page content
+
 export async function updateSitePageContentAction(
   pageId: string,
   formData: FormData 
@@ -27,19 +27,28 @@ export async function updateSitePageContentAction(
         console.error("Error parsing pageDataJson:", e);
         return { success: false, error: 'Invalid JSON format for page data.' };
       }
-      
-      // Image uploads would be handled here if they were part of formData.
-      // For now, we assume image URLs are already in pageData.
-      // Example:
-      // const heroImageFile = formData.get('heroImageFile') as File | null;
-      // if (heroImageFile && heroImageFile.size > 0) {
-      //   // ... upload file, get URL, update pageData.heroSection.imageUrl ...
-      // }
-      // (Repeat for other image fields)
-
       await saveSitePageContent('public-about', pageData);
+    } else if (pageId === 'contact-us') {
+      const imageFile = formData.get('contactPageImageFile') as File | null;
+      const currentImageUrl = formData.get('currentImageUrl') as string | null;
+      let newImageUrl = currentImageUrl;
+
+      if (imageFile && imageFile.size > 0) {
+        const blobFormData = new FormData();
+        blobFormData.append('file', imageFile);
+        const uploadResult = await uploadFileToVercelBlob(blobFormData);
+        if (!uploadResult.success || !uploadResult.data?.url) {
+          return { success: false, error: uploadResult.error || 'Could not upload contact page image.' };
+        }
+        newImageUrl = uploadResult.data.url;
+      }
+      
+      const contactPageData: Omit<ContactPageContent, 'id' | 'updatedAt'> = {
+          imageUrl: newImageUrl
+      };
+      
+      await saveSitePageContent('contact-us', contactPageData);
     } else {
-      // Handle standard markdown pages
       const title = formData.get('title') as string | null;
       const content = formData.get('content') as string | null;
 
@@ -55,18 +64,16 @@ export async function updateSitePageContentAction(
       await saveSitePageContent(pageId, title, content);
     }
 
-    // Revalidate paths
     revalidatePath(`/admin/pages/edit/${pageId}`);
     revalidatePath('/admin/pages');
     revalidatePath('/admin/docs');
     
-    // Specific public paths
     if (pageId === 'public-about') revalidatePath('/about');
     if (pageId === 'privacy-policy') revalidatePath('/privacy');
     if (pageId === 'terms-of-service') revalidatePath('/terms');
     if (pageId === 'refund-policy') revalidatePath('/refund-policy');
+    if (pageId === 'contact-us') revalidatePath('/contact-us');
     
-    // Specific admin doc view paths (if they are still used as separate pages)
     if (pageId === 'about-rio') revalidatePath('/about-rio');
     if (pageId === 'business-model') revalidatePath('/business-model');
     if (pageId === 'developer-guide') revalidatePath('/developer-guide');

@@ -1,7 +1,6 @@
-
 import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
-import type { SitePage, StandardSitePage, PublicAboutPageContent, PublicAboutPageServiceItem } from '@/lib/types';
+import type { SitePage, StandardSitePage, PublicAboutPageContent, ContactPageContent } from '@/lib/types';
 
 const SITE_PAGES_COLLECTION = 'sitePages';
 
@@ -81,52 +80,30 @@ export async function getSitePageContent(pageId: string): Promise<SitePage | nul
         const mergedContent: PublicAboutPageContent = {
           id: 'public-about',
           pageTitle: contentFromDb.pageTitle ?? DEFAULT_PUBLIC_ABOUT_CONTENT.pageTitle,
-          heroSection: { 
-            ...DEFAULT_PUBLIC_ABOUT_CONTENT.heroSection, 
-            ...(contentFromDb.heroSection || {}) 
-          },
+          heroSection: { ...DEFAULT_PUBLIC_ABOUT_CONTENT.heroSection, ...(contentFromDb.heroSection || {}) },
           showHistorySection: contentFromDb.showHistorySection !== undefined ? contentFromDb.showHistorySection : DEFAULT_PUBLIC_ABOUT_CONTENT.showHistorySection,
-          historySection: { 
-            ...DEFAULT_PUBLIC_ABOUT_CONTENT.historySection, 
-            ...(contentFromDb.historySection || {}) 
-          },
+          historySection: { ...DEFAULT_PUBLIC_ABOUT_CONTENT.historySection, ...(contentFromDb.historySection || {}) },
           showFounderSection: contentFromDb.showFounderSection !== undefined ? contentFromDb.showFounderSection : DEFAULT_PUBLIC_ABOUT_CONTENT.showFounderSection,
-          founderSection: { 
-            ...DEFAULT_PUBLIC_ABOUT_CONTENT.founderSection, 
-            ...(contentFromDb.founderSection || {}) 
-          },
+          founderSection: { ...DEFAULT_PUBLIC_ABOUT_CONTENT.founderSection, ...(contentFromDb.founderSection || {}) },
           showMissionVisionSection: contentFromDb.showMissionVisionSection !== undefined ? contentFromDb.showMissionVisionSection : DEFAULT_PUBLIC_ABOUT_CONTENT.showMissionVisionSection,
-          missionVisionSection: contentFromDb.missionVisionSection 
-            ? { 
-                ...DEFAULT_PUBLIC_ABOUT_CONTENT.missionVisionSection,
-                ...(contentFromDb.missionVisionSection || {})
-              } 
-            : DEFAULT_PUBLIC_ABOUT_CONTENT.missionVisionSection,
+          missionVisionSection: contentFromDb.missionVisionSection ? { ...DEFAULT_PUBLIC_ABOUT_CONTENT.missionVisionSection, ...(contentFromDb.missionVisionSection || {}) } : DEFAULT_PUBLIC_ABOUT_CONTENT.missionVisionSection,
           showServicesIntroSection: contentFromDb.showServicesIntroSection !== undefined ? contentFromDb.showServicesIntroSection : DEFAULT_PUBLIC_ABOUT_CONTENT.showServicesIntroSection,
-          servicesIntroSection: contentFromDb.servicesIntroSection
-            ? {
-                ...DEFAULT_PUBLIC_ABOUT_CONTENT.servicesIntroSection,
-                ...(contentFromDb.servicesIntroSection || {})
-              }
-            : DEFAULT_PUBLIC_ABOUT_CONTENT.servicesIntroSection,
-          servicesHighlights: contentFromDb.servicesHighlights && contentFromDb.servicesHighlights.length > 0 
-            ? contentFromDb.servicesHighlights 
-            : DEFAULT_PUBLIC_ABOUT_CONTENT.servicesHighlights,
+          servicesIntroSection: contentFromDb.servicesIntroSection ? { ...DEFAULT_PUBLIC_ABOUT_CONTENT.servicesIntroSection, ...(contentFromDb.servicesIntroSection || {}) } : DEFAULT_PUBLIC_ABOUT_CONTENT.servicesIntroSection,
+          servicesHighlights: contentFromDb.servicesHighlights && contentFromDb.servicesHighlights.length > 0 ? contentFromDb.servicesHighlights : DEFAULT_PUBLIC_ABOUT_CONTENT.servicesHighlights,
           showCompanyOverviewSection: contentFromDb.showCompanyOverviewSection !== undefined ? contentFromDb.showCompanyOverviewSection : DEFAULT_PUBLIC_ABOUT_CONTENT.showCompanyOverviewSection,
-          companyOverviewSection: { 
-            ...DEFAULT_PUBLIC_ABOUT_CONTENT.companyOverviewSection, 
-            ...(contentFromDb.companyOverviewSection || {}) 
-          },
+          companyOverviewSection: { ...DEFAULT_PUBLIC_ABOUT_CONTENT.companyOverviewSection, ...(contentFromDb.companyOverviewSection || {}) },
           showCallToActionSection: contentFromDb.showCallToActionSection !== undefined ? contentFromDb.showCallToActionSection : DEFAULT_PUBLIC_ABOUT_CONTENT.showCallToActionSection,
-          callToActionSection: { 
-            ...DEFAULT_PUBLIC_ABOUT_CONTENT.callToActionSection, 
-            ...(contentFromDb.callToActionSection || {}) 
-          },
+          callToActionSection: { ...DEFAULT_PUBLIC_ABOUT_CONTENT.callToActionSection, ...(contentFromDb.callToActionSection || {}) },
           updatedAt: updatedAt,
         };
         return mergedContent;
+      } else if (pageId === 'contact-us') {
+          return {
+              id: 'contact-us',
+              imageUrl: data.imageUrl || null,
+              updatedAt: updatedAt
+          } as ContactPageContent;
       } else {
-        // Standard markdown page
         return {
           id: pageSnap.id,
           title: data.title || '',
@@ -136,11 +113,11 @@ export async function getSitePageContent(pageId: string): Promise<SitePage | nul
       }
     }
 
-    // If page doesn't exist, return default structure based on pageId
     if (pageId === 'public-about') {
       return { ...DEFAULT_PUBLIC_ABOUT_CONTENT, updatedAt: new Date().toISOString() };
+    } else if (pageId === 'contact-us') {
+      return { id: 'contact-us', imageUrl: null, updatedAt: new Date().toISOString() };
     } else {
-      // Default for new standard markdown pages
       return { id: pageId, title: 'New Page', content: `# ${pageId.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}\n\nEnter content here.`, updatedAt: new Date().toISOString() };
     }
 
@@ -153,23 +130,28 @@ export async function getSitePageContent(pageId: string): Promise<SitePage | nul
   }
 }
 
-// Overloaded function signature for saving
 export async function saveSitePageContent(pageId: 'public-about', data: PublicAboutPageContent): Promise<void>;
-export async function saveSitePageContent(pageId: string, title: string, content: string): Promise<void>; // Existing signature for markdown pages
+export async function saveSitePageContent(pageId: 'contact-us', data: Omit<ContactPageContent, 'id' | 'updatedAt'>): Promise<void>;
+export async function saveSitePageContent(pageId: string, title: string, content: string): Promise<void>;
 
 export async function saveSitePageContent(
   pageId: string,
-  titleOrData: string | PublicAboutPageContent,
+  titleOrData: string | PublicAboutPageContent | Omit<ContactPageContent, 'id' | 'updatedAt'>,
   content?: string
 ): Promise<void> {
   try {
     const pageRef = doc(db, SITE_PAGES_COLLECTION, pageId);
     let dataToSave: any;
 
-    if (pageId === 'public-about' && typeof titleOrData === 'object') {
+    if (pageId === 'public-about' && typeof titleOrData === 'object' && 'heroSection' in titleOrData) {
       const { id, ...saveableData } = titleOrData as PublicAboutPageContent;
       dataToSave = {
         ...saveableData, 
+        updatedAt: serverTimestamp(),
+      };
+    } else if (pageId === 'contact-us' && typeof titleOrData === 'object' && 'imageUrl' in titleOrData) {
+       dataToSave = {
+        imageUrl: titleOrData.imageUrl,
         updatedAt: serverTimestamp(),
       };
     } else if (typeof titleOrData === 'string' && typeof content === 'string') {

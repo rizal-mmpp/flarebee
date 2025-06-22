@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
@@ -15,8 +14,9 @@ import { Loader2, Send, Mail, MessageSquare, User, Building, Phone, Info, MapPin
 import Image from 'next/image';
 import { getSiteSettings } from '@/lib/actions/settings.actions';
 import { DEFAULT_SETTINGS } from '@/lib/constants';
-import type { ContactFormValues, SiteSettings } from '@/lib/types';
+import type { ContactFormValues, SiteSettings, ContactPageContent } from '@/lib/types';
 import { submitContactFormAction } from '@/lib/actions/contact.actions';
+import { getSitePageContent } from '@/lib/firebase/firestoreSitePages';
 import Link from 'next/link';
 
 const contactFormSchema = z.object({
@@ -31,26 +31,32 @@ export default function ContactUsPage() {
   const { toast } = useToast();
   const [isSubmitting, startSubmitTransition] = useTransition();
   const [settings, setSettings] = useState<SiteSettings | null>(null);
-  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [pageContent, setPageContent] = useState<ContactPageContent | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<ContactFormValues>({
     resolver: zodResolver(contactFormSchema),
   });
 
   useEffect(() => {
-    async function fetchSettings() {
-      setIsLoadingSettings(true);
+    async function fetchData() {
+      setIsLoading(true);
       try {
-        const siteSettings = await getSiteSettings();
+        const [siteSettings, contactPageData] = await Promise.all([
+          getSiteSettings(),
+          getSitePageContent('contact-us')
+        ]);
         setSettings(siteSettings);
+        setPageContent(contactPageData as ContactPageContent);
       } catch (error) {
-        console.error("Failed to fetch site settings for contact page:", error);
+        console.error("Failed to fetch contact page data:", error);
         setSettings(DEFAULT_SETTINGS); 
+        setPageContent(null);
       } finally {
-        setIsLoadingSettings(false);
+        setIsLoading(false);
       }
     }
-    fetchSettings();
+    fetchData();
   }, []);
 
   const onSubmit: SubmitHandler<ContactFormValues> = (data) => {
@@ -72,7 +78,7 @@ export default function ContactUsPage() {
     });
   };
 
-  const contactImageUrl = settings?.contactPageImageUrl || 'https://placehold.co/800x600.png';
+  const contactImageUrl = pageContent?.imageUrl || 'https://placehold.co/800x600.png';
   const contactImageAiHint = settings?.siteTitle ? `contact ${settings.siteTitle}` : "modern office contact";
   const siteTitle = settings?.siteTitle || DEFAULT_SETTINGS.siteTitle;
 
@@ -141,7 +147,7 @@ export default function ContactUsPage() {
 
         {/* Right Column: Contact Info & Image */}
         <div className="space-y-8">
-          {isLoadingSettings ? (
+          {isLoading ? (
             <div className="flex flex-col items-center justify-center p-10 bg-muted rounded-xl min-h-[300px]">
                 <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
                 <p className="text-muted-foreground">Loading contact info...</p>
