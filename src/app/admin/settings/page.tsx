@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useTransition, useMemo } from 'react';
@@ -10,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { CustomDropzone } from '@/components/ui/custom-dropzone';
-import { Settings as SettingsIcon, Save, Loader2, Image as ImageIcon, Palette, Type, AlertTriangle, Moon, Sun, Contact } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Loader2, Image as ImageIcon, Palette, Type, AlertTriangle, Moon, Sun, Contact, Webhook, SlidersHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getSiteSettings, updateSiteSettings } from '@/lib/actions/settings.actions';
 import { DEFAULT_SETTINGS } from '@/lib/constants';
@@ -19,6 +20,7 @@ import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 import { HslColorPicker, type HslColor } from 'react-colorful';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 
 const hslColorStringRegex = /^\d{1,3}\s+\d{1,3}%\s+\d{1,3}%$/;
@@ -272,118 +274,158 @@ export default function AdminSettingsPage() {
           Save Settings
         </Button>
       </header>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center"><Type className="mr-2 h-5 w-5 text-primary/80" />General</CardTitle>
-          <CardDescription>Manage your site's title and branding.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div>
-            <Label htmlFor="siteTitle">Site Title</Label>
-             <Controller
-                name="siteTitle"
-                control={control}
-                render={({ field }) => <Input {...field} id="siteTitle" className="mt-1" />}
-              />
-            {errors.siteTitle && <p className="text-sm text-destructive mt-1">{errors.siteTitle.message}</p>}
-          </div>
-          <div>
-            <Label htmlFor="logo">Site Logo</Label>
-            <CustomDropzone
-                onFileChange={handleLogoFileChange}
-                currentFileName={selectedLogoFile?.name}
-                accept={{ 'image/png': ['.png'], 'image/jpeg': ['.jpg', '.jpeg'], 'image/svg+xml': ['.svg'], 'image/webp': ['.webp'] }}
-                maxSize={1 * 1024 * 1024}
-                className="mt-1"
-            />
-            {errors.logo && <p className="text-sm text-destructive mt-1">{errors.logo.message as string}</p>}
-            {logoPreview && (
-                <div className="mt-4 p-3 border border-border rounded-lg bg-muted/50 inline-block">
-                    <p className="text-xs text-muted-foreground mb-1.5">Logo Preview:</p>
-                    <Image src={logoPreview} alt="Logo preview" width={150} height={50} className="rounded-md object-contain max-h-[50px]" />
-                </div>
-            )}
-            {!logoPreview && (
-               <div className="mt-3 p-4 border border-dashed border-input rounded-lg bg-muted/30 text-center text-muted-foreground max-w-xs">
-                  <ImageIcon className="mx-auto h-8 w-8 mb-1" />
-                  <p className="text-xs">No logo uploaded. Upload a PNG, JPG, SVG, or WEBP (max 1MB).</p>
-               </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center"><Palette className="mr-2 h-5 w-5 text-primary/80" />Theme Colors</CardTitle>
-          <CardDescription>
-            Customize HSL values for light and dark themes (e.g., <code className="bg-muted text-muted-foreground px-1 py-0.5 rounded-sm text-xs">228 100% 98%</code>). Changes apply to <code className="bg-muted text-muted-foreground px-1 py-0.5 rounded-sm text-xs">globals.css</code>.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-8">
-          <div>
-            <h3 className="text-lg font-semibold mb-4 flex items-center text-foreground/90"><Sun className="mr-2 h-5 w-5 text-yellow-500"/>Light Theme</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8">
-              <ColorPickerField name="themePrimaryColor" label="Primary Color" control={control} errors={errors} watch={watch} />
-              <ColorPickerField name="themeAccentColor" label="Accent Color" control={control} errors={errors} watch={watch} />
-              <ColorPickerField name="themeBackgroundColor" label="Background Color" control={control} errors={errors} watch={watch} />
-            </div>
-          </div>
-          <Separator />
-          <div>
-            <h3 className="text-lg font-semibold mb-4 flex items-center text-foreground/90"><Moon className="mr-2 h-5 w-5 text-indigo-400"/>Dark Theme</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8">
-              <ColorPickerField name="darkThemePrimaryColor" label="Primary Color" control={control} errors={errors} watch={watch} />
-              <ColorPickerField name="darkThemeAccentColor" label="Accent Color" control={control} errors={errors} watch={watch} />
-              <ColorPickerField name="darkThemeBackgroundColor" label="Background Color" control={control} errors={errors} watch={watch} />
-            </div>
-          </div>
-           <div className="mt-2 p-3 border border-blue-500/30 bg-blue-500/5 rounded-md">
-                <AlertTriangle className="h-5 w-5 text-blue-600 inline-block mr-2" />
-                <span className="text-xs text-blue-700 dark:text-blue-400">
-                    Note: Other theme colors like foregrounds, card colors, etc., are derived or set in <code className="bg-blue-200/50 px-0.5 rounded-sm">globals.css</code>. Adjust them there for finer control if needed.
-                </span>
-            </div>
-        </CardContent>
-      </Card>
       
-      <Card>
-        <CardHeader>
-            <CardTitle className="flex items-center"><Contact className="mr-2 h-5 w-5 text-primary/80" />Shared Contact Information</CardTitle>
-            <CardDescription>Manage contact details shown across the site, like in the footer.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-            <div>
-                <Label htmlFor="contactAddress">Business Address</Label>
-                <Controller
-                    name="contactAddress"
-                    control={control}
-                    render={({ field }) => <Textarea {...field} value={field.value ?? ""} id="contactAddress" className="mt-1" placeholder="e.g., Jl. Inovasi No. 1, Jakarta" rows={3} />}
-                />
-                 {errors.contactAddress && <p className="text-sm text-destructive mt-1">{errors.contactAddress.message}</p>}
-            </div>
-            <div>
-                <Label htmlFor="contactPhone">Business Phone</Label>
-                 <Controller
-                    name="contactPhone"
-                    control={control}
-                    render={({ field }) => <Input {...field} value={field.value ?? ""} id="contactPhone" className="mt-1" placeholder="e.g., +62 812 3456 7890" />}
-                />
-                {errors.contactPhone && <p className="text-sm text-destructive mt-1">{errors.contactPhone.message}</p>}
-            </div>
-            <div>
-                <Label htmlFor="contactEmail">Business Email</Label>
-                 <Controller
-                    name="contactEmail"
-                    control={control}
-                    render={({ field }) => <Input {...field} value={field.value ?? ""} type="email" id="contactEmail" className="mt-1" placeholder="e.g., info@example.com" />}
-                />
-                 {errors.contactEmail && <p className="text-sm text-destructive mt-1">{errors.contactEmail.message}</p>}
-            </div>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="general" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 mb-6">
+          <TabsTrigger value="general"><SettingsIcon className="mr-2 h-4 w-4 hidden sm:inline-block" />General</TabsTrigger>
+          <TabsTrigger value="appearance"><Palette className="mr-2 h-4 w-4 hidden sm:inline-block" />Appearance</TabsTrigger>
+          <TabsTrigger value="contact"><Contact className="mr-2 h-4 w-4 hidden sm:inline-block" />Contact</TabsTrigger>
+          <TabsTrigger value="integrations" disabled><Webhook className="mr-2 h-4 w-4 hidden sm:inline-block" />Integrations</TabsTrigger>
+          <TabsTrigger value="advanced" disabled><SlidersHorizontal className="mr-2 h-4 w-4 hidden sm:inline-block" />Advanced</TabsTrigger>
+        </TabsList>
 
+        <TabsContent value="general">
+          <Card>
+            <CardHeader>
+              <CardTitle>General Settings</CardTitle>
+              <CardDescription>Manage your site's title and branding.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <Label htmlFor="siteTitle">Site Title</Label>
+                <Controller
+                    name="siteTitle"
+                    control={control}
+                    render={({ field }) => <Input {...field} id="siteTitle" className="mt-1" />}
+                  />
+                {errors.siteTitle && <p className="text-sm text-destructive mt-1">{errors.siteTitle.message}</p>}
+              </div>
+              <div>
+                <Label htmlFor="logo">Site Logo</Label>
+                <CustomDropzone
+                    onFileChange={handleLogoFileChange}
+                    currentFileName={selectedLogoFile?.name}
+                    accept={{ 'image/png': ['.png'], 'image/jpeg': ['.jpg', '.jpeg'], 'image/svg+xml': ['.svg'], 'image/webp': ['.webp'] }}
+                    maxSize={1 * 1024 * 1024}
+                    className="mt-1"
+                />
+                {errors.logo && <p className="text-sm text-destructive mt-1">{errors.logo.message as string}</p>}
+                {logoPreview && (
+                    <div className="mt-4 p-3 border border-border rounded-lg bg-muted/50 inline-block">
+                        <p className="text-xs text-muted-foreground mb-1.5">Logo Preview:</p>
+                        <Image src={logoPreview} alt="Logo preview" width={150} height={50} className="rounded-md object-contain max-h-[50px]" />
+                    </div>
+                )}
+                {!logoPreview && (
+                  <div className="mt-3 p-4 border border-dashed border-input rounded-lg bg-muted/30 text-center text-muted-foreground max-w-xs">
+                      <ImageIcon className="mx-auto h-8 w-8 mb-1" />
+                      <p className="text-xs">No logo uploaded. Upload a PNG, JPG, SVG, or WEBP (max 1MB).</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="appearance">
+          <Card>
+            <CardHeader>
+              <CardTitle>Theme Colors</CardTitle>
+              <CardDescription>
+                Customize HSL values for light and dark themes (e.g., <code className="bg-muted text-muted-foreground px-1 py-0.5 rounded-sm text-xs">228 100% 98%</code>). Changes apply to <code className="bg-muted text-muted-foreground px-1 py-0.5 rounded-sm text-xs">globals.css</code>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              <div>
+                <h3 className="text-lg font-semibold mb-4 flex items-center text-foreground/90"><Sun className="mr-2 h-5 w-5 text-yellow-500"/>Light Theme</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8">
+                  <ColorPickerField name="themePrimaryColor" label="Primary Color" control={control} errors={errors} watch={watch} />
+                  <ColorPickerField name="themeAccentColor" label="Accent Color" control={control} errors={errors} watch={watch} />
+                  <ColorPickerField name="themeBackgroundColor" label="Background Color" control={control} errors={errors} watch={watch} />
+                </div>
+              </div>
+              <Separator />
+              <div>
+                <h3 className="text-lg font-semibold mb-4 flex items-center text-foreground/90"><Moon className="mr-2 h-5 w-5 text-indigo-400"/>Dark Theme</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8">
+                  <ColorPickerField name="darkThemePrimaryColor" label="Primary Color" control={control} errors={errors} watch={watch} />
+                  <ColorPickerField name="darkThemeAccentColor" label="Accent Color" control={control} errors={errors} watch={watch} />
+                  <ColorPickerField name="darkThemeBackgroundColor" label="Background Color" control={control} errors={errors} watch={watch} />
+                </div>
+              </div>
+              <div className="mt-2 p-3 border border-blue-500/30 bg-blue-500/5 rounded-md">
+                    <AlertTriangle className="h-5 w-5 text-blue-600 inline-block mr-2" />
+                    <span className="text-xs text-blue-700 dark:text-blue-400">
+                        Note: Other theme colors like foregrounds, card colors, etc., are derived or set in <code className="bg-blue-200/50 px-0.5 rounded-sm">globals.css</code>. Adjust them there for finer control if needed.
+                    </span>
+                </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="contact">
+          <Card>
+            <CardHeader>
+                <CardTitle>Shared Contact Information</CardTitle>
+                <CardDescription>Manage contact details shown across the site, like in the footer.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div>
+                    <Label htmlFor="contactAddress">Business Address</Label>
+                    <Controller
+                        name="contactAddress"
+                        control={control}
+                        render={({ field }) => <Textarea {...field} value={field.value ?? ""} id="contactAddress" className="mt-1" placeholder="e.g., Jl. Inovasi No. 1, Jakarta" rows={3} />}
+                    />
+                    {errors.contactAddress && <p className="text-sm text-destructive mt-1">{errors.contactAddress.message}</p>}
+                </div>
+                <div>
+                    <Label htmlFor="contactPhone">Business Phone</Label>
+                    <Controller
+                        name="contactPhone"
+                        control={control}
+                        render={({ field }) => <Input {...field} value={field.value ?? ""} id="contactPhone" className="mt-1" placeholder="e.g., +62 812 3456 7890" />}
+                    />
+                    {errors.contactPhone && <p className="text-sm text-destructive mt-1">{errors.contactPhone.message}</p>}
+                </div>
+                <div>
+                    <Label htmlFor="contactEmail">Business Email</Label>
+                    <Controller
+                        name="contactEmail"
+                        control={control}
+                        render={({ field }) => <Input {...field} value={field.value ?? ""} type="email" id="contactEmail" className="mt-1" placeholder="e.g., info@example.com" />}
+                    />
+                    {errors.contactEmail && <p className="text-sm text-destructive mt-1">{errors.contactEmail.message}</p>}
+                </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="integrations">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Integrations</CardTitle>
+                    <CardDescription>Manage third-party service integrations and API keys.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-muted-foreground">This section is not yet implemented. API key management for services like Xendit, iPaymu, etc., will be available here in the future.</p>
+                </CardContent>
+            </Card>
+        </TabsContent>
+        
+        <TabsContent value="advanced">
+             <Card>
+                <CardHeader>
+                    <CardTitle>Advanced Settings</CardTitle>
+                    <CardDescription>Advanced configuration options for the site.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-muted-foreground">This section is a placeholder for future advanced settings, such as custom script injection or feature flags.</p>
+                </CardContent>
+            </Card>
+        </TabsContent>
+      </Tabs>
+      
       <CardFooter className="pt-6 border-t border-border justify-end">
          <Button type="submit" className="w-full md:w-auto" disabled={isSaving}>
           {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
