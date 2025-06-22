@@ -1,3 +1,4 @@
+
 'use client'; 
 
 import { use, useEffect, useState } from 'react';
@@ -7,7 +8,7 @@ import { notFound, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ServerCrash, Check, FileText, HelpCircle, Bot, Loader2, Send, Sparkles } from 'lucide-react'; 
+import { ArrowLeft, ServerCrash, Check, FileText, HelpCircle, Bot, Loader2, Send, Sparkles, MessageSquare } from 'lucide-react'; 
 import Link from 'next/link';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -178,23 +179,19 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
             {examplePackages.map(pkg => (
-              <Card key={pkg.name} className={cn('flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-2', pkg.isPopular ? 'border-primary border-2 shadow-xl relative overflow-hidden' : 'shadow-lg')}>
-                {pkg.isPopular && (
-                  <>
-                    <div className="absolute -top-1 -right-1 z-10">
-                      <div className="w-32 h-8 absolute top-0 right-0 bg-primary transform translate-x-1/2 -translate-y-1/2 rotate-45"></div>
-                      <Sparkles className="absolute top-1 right-1 h-5 w-5 text-primary-foreground z-20"/>
-                    </div>
-                    <Badge className="w-fit self-center -mt-3 z-10">Most Popular</Badge>
-                  </>
-                )}
-                <CardHeader className="text-center">
+              <Card key={pkg.name} className={cn('flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 relative', pkg.isPopular ? 'border-primary border-2 shadow-xl' : 'shadow-lg')}>
+                 {pkg.isPopular && (
+                    <Badge variant="default" className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary hover:bg-primary text-primary-foreground font-bold uppercase tracking-wider text-xs px-4 py-1.5">
+                        Most Popular
+                    </Badge>
+                  )}
+                <CardHeader className="text-center pt-10">
                   <CardTitle className="text-2xl">{pkg.name}</CardTitle>
                   <CardDescription>{pkg.description}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex-grow space-y-6">
                   <p className="text-4xl font-bold text-center text-foreground">{formatIDR(parseInt(pkg.price.replace(/\./g, ''), 10))}</p>
-                  <ul className="space-y-3 text-muted-foreground">
+                  <ul className="space-y-3 text-foreground/80">
                     {pkg.features.map(feature => (
                       <li key={feature} className="flex items-center">
                         <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
@@ -259,7 +256,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
             {exampleFaq.map((item, i) => (
                 <AccordionItem key={i} value={`item-${i}`}>
                     <AccordionTrigger className="text-lg text-left hover:no-underline"><HelpCircle className="h-5 w-5 text-primary mr-3 flex-shrink-0"/>{item.q}</AccordionTrigger>
-                    <AccordionContent className="text-base text-muted-foreground pl-10">
+                    <AccordionContent className="text-base text-foreground/90 pl-10">
                         {item.a}
                     </AccordionContent>
                 </AccordionItem>
@@ -267,15 +264,25 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
           </Accordion>
         </div>
       </section>
-
-      <div className="container mx-auto px-4 md:px-6 py-12 text-center">
-          <Button variant="outline" asChild className="group">
-            <Link href="/services">
-              <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
-              Back to All Services
-            </Link>
-          </Button>
+      
+      {/* New Contact CTA Section */}
+      <section id="contact-cta" className="py-16 md:py-24 bg-card border-t">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="max-w-2xl mx-auto text-center">
+            <MessageSquare className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-3xl font-bold text-foreground mb-4">Still Have Questions?</h2>
+            <p className="text-muted-foreground mb-8 text-lg">
+              Our team is ready to provide you with a personalized consultation to ensure our service perfectly fits your vision.
+            </p>
+            <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-primary-foreground text-lg px-10 py-7">
+              <Link href="/contact-us">
+                Contact Our Experts
+              </Link>
+            </Button>
+          </div>
         </div>
+      </section>
+
     </div>
   );
 }
