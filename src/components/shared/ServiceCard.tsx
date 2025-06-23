@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from 'next/image';
@@ -27,7 +28,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
     : service.pricingModel;
 
   return (
-    <Card className="flex flex-col overflow-hidden rounded-2xl transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-1 group bg-card/80 backdrop-blur-sm">
+    <Card className="flex flex-col overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-1 group">
       <Link href={`/services/${service.id}`} className="flex-grow flex flex-col">
         <div className="aspect-[16/9] relative w-full overflow-hidden">
           <Image

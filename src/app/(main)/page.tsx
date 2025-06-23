@@ -9,6 +9,7 @@ import { getAllServicesFromFirestore } from '@/lib/firebase/firestoreServices';
 import { ServiceCard } from '@/components/shared/ServiceCard';
 import { getSitePageContent } from '@/lib/firebase/firestoreSitePages';
 import { HeroIllustration } from '@/components/shared/HeroIllustration';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default async function HomePage() {
   const [servicesResult, heroContentResult] = await Promise.all([
@@ -16,7 +17,7 @@ export default async function HomePage() {
     getSitePageContent('home-page'),
   ]);
 
-  const featuredServices = servicesResult.data;
+  const featuredServices = servicesResult.data.filter(s => s.status === 'active');
   const heroContent = heroContentResult as HomePageContent;
 
   return (
@@ -66,27 +67,33 @@ export default async function HomePage() {
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8 text-center">
-            <div className="flex flex-col items-center p-6 border border-transparent hover:border-border rounded-2xl hover:bg-card transition-all">
-              <div className="p-4 bg-primary/10 rounded-full mb-4">
-                <Palette className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">Bespoke Design</h3>
-              <p className="text-muted-foreground">Crafting unique and beautiful websites tailored to your brand identity.</p>
-            </div>
-            <div className="flex flex-col items-center p-6 border border-transparent hover:border-border rounded-2xl hover:bg-card transition-all">
-              <div className="p-4 bg-primary/10 rounded-full mb-4">
-                <Zap className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">AI & Automation</h3>
-              <p className="text-muted-foreground">Leveraging intelligent automation to streamline your business processes.</p>
-            </div>
-            <div className="flex flex-col items-center p-6 border border-transparent hover:border-border rounded-2xl hover:bg-card transition-all">
-              <div className="p-4 bg-primary/10 rounded-full mb-4">
-                <Rocket className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">Strategic Solutions</h3>
-              <p className="text-muted-foreground">Delivering technology solutions that align with your strategic goals.</p>
-            </div>
+            <Card className="transition-all duration-300 ease-in-out hover:-translate-y-1">
+              <CardContent className="p-6 flex flex-col items-center">
+                <div className="p-4 bg-primary/10 rounded-full mb-4">
+                  <Palette className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold text-foreground mb-2">Bespoke Design</h3>
+                <p className="text-muted-foreground">Crafting unique and beautiful websites tailored to your brand identity.</p>
+              </CardContent>
+            </Card>
+            <Card className="transition-all duration-300 ease-in-out hover:-translate-y-1">
+              <CardContent className="p-6 flex flex-col items-center">
+                <div className="p-4 bg-primary/10 rounded-full mb-4">
+                  <Zap className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold text-foreground mb-2">AI & Automation</h3>
+                <p className="text-muted-foreground">Leveraging intelligent automation to streamline your business processes.</p>
+              </CardContent>
+            </Card>
+            <Card className="transition-all duration-300 ease-in-out hover:-translate-y-1">
+              <CardContent className="p-6 flex flex-col items-center">
+                <div className="p-4 bg-primary/10 rounded-full mb-4">
+                  <Rocket className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold text-foreground mb-2">Strategic Solutions</h3>
+                <p className="text-muted-foreground">Delivering technology solutions that align with your strategic goals.</p>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
