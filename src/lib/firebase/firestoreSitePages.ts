@@ -1,8 +1,19 @@
 import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
-import type { SitePage, StandardSitePage, PublicAboutPageContent, ContactPageContent } from '@/lib/types';
+import type { SitePage, StandardSitePage, PublicAboutPageContent, ContactPageContent, HomePageContent } from '@/lib/types';
 
 const SITE_PAGES_COLLECTION = 'sitePages';
+
+const DEFAULT_HOME_PAGE_CONTENT: HomePageContent = {
+  id: 'home-page',
+  tagline: 'Turn Your Vision into a Digital Reality',
+  subTagline: 'We provide professional services to build, automate, and scale your business online. From stunning websites to intelligent automation, we are your partners in innovation.',
+  imageUrl: 'https://placehold.co/600x400.png',
+  imageAiHint: 'digital product interface',
+  ctaButtonText: 'Explore Our Services',
+  ctaButtonLink: '/services',
+  updatedAt: new Date().toISOString(),
+};
 
 const DEFAULT_PUBLIC_ABOUT_CONTENT: PublicAboutPageContent = {
   id: 'public-about',
@@ -74,7 +85,15 @@ export async function getSitePageContent(pageId: string): Promise<SitePage | nul
       const data = pageSnap.data();
       const updatedAt = (data.updatedAt as Timestamp)?.toDate()?.toISOString() || new Date().toISOString();
 
-      if (pageId === 'public-about') {
+      if (pageId === 'home-page') {
+        const contentFromDb = data as Partial<HomePageContent>;
+        return {
+          ...DEFAULT_HOME_PAGE_CONTENT,
+          ...contentFromDb,
+          id: 'home-page',
+          updatedAt: updatedAt,
+        };
+      } else if (pageId === 'public-about') {
         const contentFromDb = data as Partial<PublicAboutPageContent>;
         
         const mergedContent: PublicAboutPageContent = {
@@ -113,7 +132,9 @@ export async function getSitePageContent(pageId: string): Promise<SitePage | nul
       }
     }
 
-    if (pageId === 'public-about') {
+    if (pageId === 'home-page') {
+      return { ...DEFAULT_HOME_PAGE_CONTENT };
+    } else if (pageId === 'public-about') {
       return { ...DEFAULT_PUBLIC_ABOUT_CONTENT, updatedAt: new Date().toISOString() };
     } else if (pageId === 'contact-us') {
       return { id: 'contact-us', imageUrl: null, updatedAt: new Date().toISOString() };
@@ -123,6 +144,9 @@ export async function getSitePageContent(pageId: string): Promise<SitePage | nul
 
   } catch (error) {
     console.error(`Error getting site page content for ${pageId}:`, error);
+    if (pageId === 'home-page') {
+      return { ...DEFAULT_HOME_PAGE_CONTENT, tagline: 'Error Loading Content' };
+    }
     if (pageId === 'public-about') {
       return { ...DEFAULT_PUBLIC_ABOUT_CONTENT, updatedAt: new Date().toISOString(), pageTitle: 'Error Loading About Page' };
     }
@@ -130,20 +154,24 @@ export async function getSitePageContent(pageId: string): Promise<SitePage | nul
   }
 }
 
+export async function saveSitePageContent(pageId: 'home-page', data: Omit<HomePageContent, 'id' | 'updatedAt'>): Promise<void>;
 export async function saveSitePageContent(pageId: 'public-about', data: PublicAboutPageContent): Promise<void>;
 export async function saveSitePageContent(pageId: 'contact-us', data: Omit<ContactPageContent, 'id' | 'updatedAt'>): Promise<void>;
 export async function saveSitePageContent(pageId: string, title: string, content: string): Promise<void>;
 
 export async function saveSitePageContent(
   pageId: string,
-  titleOrData: string | PublicAboutPageContent | Omit<ContactPageContent, 'id' | 'updatedAt'>,
+  titleOrData: string | PublicAboutPageContent | Omit<ContactPageContent, 'id' | 'updatedAt'> | Omit<HomePageContent, 'id' | 'updatedAt'>,
   content?: string
 ): Promise<void> {
   try {
     const pageRef = doc(db, SITE_PAGES_COLLECTION, pageId);
     let dataToSave: any;
 
-    if (pageId === 'public-about' && typeof titleOrData === 'object' && 'heroSection' in titleOrData) {
+    if (pageId === 'home-page' && typeof titleOrData === 'object' && 'tagline' in titleOrData) {
+        const saveData = titleOrData as Omit<HomePageContent, 'id' | 'updatedAt'>;
+        dataToSave = { ...saveData, updatedAt: serverTimestamp() };
+    } else if (pageId === 'public-about' && typeof titleOrData === 'object' && 'heroSection' in titleOrData) {
       const { id, ...saveableData } = titleOrData as PublicAboutPageContent;
       dataToSave = {
         ...saveableData, 

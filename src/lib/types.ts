@@ -215,8 +215,19 @@ export interface ContactPageContent {
   updatedAt?: string | null;
 }
 
+export interface HomePageContent {
+  id: 'home-page';
+  tagline: string;
+  subTagline?: string;
+  imageUrl?: string | null;
+  imageAiHint?: string;
+  ctaButtonText?: string;
+  ctaButtonLink?: string;
+  updatedAt?: string | null;
+}
+
 // Union type for SitePage
-export type SitePage = StandardSitePage | PublicAboutPageContent | ContactPageContent;
+export type SitePage = StandardSitePage | PublicAboutPageContent | ContactPageContent | HomePageContent;
 
 export interface SiteSettings {
   id: 'main';

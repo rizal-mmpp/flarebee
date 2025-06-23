@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { saveSitePageContent } from '@/lib/firebase/firestoreSitePages';
-import type { PublicAboutPageContent, ContactPageContent } from '@/lib/types';
+import type { PublicAboutPageContent, ContactPageContent, HomePageContent } from '@/lib/types';
 import { uploadFileToVercelBlob } from './vercelBlob.actions';
 
 
@@ -15,7 +15,33 @@ export async function updateSitePageContentAction(
       return { success: false, error: 'Page ID is required.' };
     }
 
-    if (pageId === 'public-about') {
+    if (pageId === 'home-page') {
+      const imageFile = formData.get('heroImageFile') as File | null;
+      const currentImageUrl = formData.get('currentImageUrl') as string | null;
+      let newImageUrl = currentImageUrl;
+      
+      if (imageFile) {
+        const blobFormData = new FormData();
+        blobFormData.append('file', imageFile);
+        const uploadResult = await uploadFileToVercelBlob(blobFormData);
+        if (!uploadResult.success || !uploadResult.data?.url) {
+          return { success: false, error: uploadResult.error || 'Could not upload hero image.' };
+        }
+        newImageUrl = uploadResult.data.url;
+      }
+      
+      const dataToSave: Omit<HomePageContent, 'id' | 'updatedAt'> = {
+        tagline: formData.get('tagline') as string,
+        subTagline: formData.get('subTagline') as string | undefined,
+        imageUrl: newImageUrl,
+        imageAiHint: formData.get('imageAiHint') as string | undefined,
+        ctaButtonText: formData.get('ctaButtonText') as string | undefined,
+        ctaButtonLink: formData.get('ctaButtonLink') as string | undefined,
+      };
+      
+      await saveSitePageContent('home-page', dataToSave);
+
+    } else if (pageId === 'public-about') {
       const pageDataJson = formData.get('pageDataJson') as string | null;
       if (!pageDataJson) {
         return { success: false, error: 'Page data JSON is missing for public-about page.' };
@@ -68,6 +94,7 @@ export async function updateSitePageContentAction(
     revalidatePath('/admin/pages');
     revalidatePath('/admin/docs');
     
+    if (pageId === 'home-page') revalidatePath('/');
     if (pageId === 'public-about') revalidatePath('/about');
     if (pageId === 'privacy-policy') revalidatePath('/privacy');
     if (pageId === 'terms-of-service') revalidatePath('/terms');

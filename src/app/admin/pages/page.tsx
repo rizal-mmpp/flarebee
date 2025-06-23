@@ -16,6 +16,7 @@ interface ManagedSitePage {
 }
 
 const managedSitePages: ManagedSitePage[] = [
+  { id: 'home-page', title: 'Homepage Hero', path: '/', status: 'Published', type: 'Content-Managed' },
   { id: 'public-about', title: 'About Us (Public Page)', path: '/about', status: 'Published', type: 'Content-Managed' },
   { id: 'contact-us', title: 'Contact Us Page', path: '/contact-us', status: 'Published', type: 'Content-Managed' },
   { id: 'privacy-policy', title: 'Privacy Policy', path: '/privacy', status: 'Published', type: 'Content-Managed' },
@@ -27,7 +28,6 @@ const managedSitePages: ManagedSitePage[] = [
 ];
 
 const staticCodePages: ManagedSitePage[] = [
-    { id: 'home', title: 'Homepage', path: '/', status: 'Published', type: 'Static (Code)' },
     { id: 'templates-listing', title: 'Templates Listing (Part of Homepage)', path: '/#templates', status: 'Published', type: 'Static (Code)' },
     { id: 'checkout', title: 'Checkout Page', path: '/checkout', status: 'Published', type: 'Static (Code)' },
     { id: 'login', title: 'Login Page', path: '/auth/login', status: 'Published', type: 'Static (Code)' },
