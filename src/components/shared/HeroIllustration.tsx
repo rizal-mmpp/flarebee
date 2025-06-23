@@ -8,10 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowUp, MoreHorizontal, ArrowRight } from 'lucide-react';
 
 const pieChartData = [
-  { name: 'Group A', value: 400 },
-  { name: 'Group B', value: 300 },
-  { name: 'Group C', value: 300 },
-  { name: 'Group D', value: 200 },
+  { name: 'Organic', value: 400 },
+  { name: 'Social', value: 300 },
+  { name: 'Referral', value: 300 },
+  { name: 'Direct', value: 200 },
 ];
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
@@ -40,11 +40,11 @@ export function HeroIllustration() {
         style={{ top: '10%', left: '0%', transform: 'rotate(-10deg)', animationDelay: '0.5s' }}
       >
         <CardHeader className="p-0 mb-2 flex-row items-center justify-between">
-          <CardTitle className="text-base font-semibold">Business Oof</CardTitle>
-          <Badge variant="secondary" className="text-xs">Business</Badge>
+          <CardTitle className="text-base font-semibold">Project Onboarding</CardTitle>
+          <Badge variant="secondary" className="text-xs">In Progress</Badge>
         </CardHeader>
         <CardContent className="p-0">
-          <p className="text-xs text-muted-foreground mb-3">Wenketle Werage</p>
+          <p className="text-xs text-muted-foreground mb-3">Client discovery and initial mockups.</p>
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center -space-x-2">
               <UserAvatar src="https://placehold.co/32x32.png" fallback="A" hint="woman smiling"/>
@@ -52,7 +52,7 @@ export function HeroIllustration() {
               <UserAvatar src="https://placehold.co/32x32.png" fallback="C" hint="person sideprofile"/>
             </div>
             <span className="text-primary font-semibold flex items-center">
-              Go <ArrowRight className="ml-1 h-3 w-3" />
+              View Project <ArrowRight className="ml-1 h-3 w-3" />
             </span>
           </div>
         </CardContent>
@@ -66,13 +66,13 @@ export function HeroIllustration() {
         <CardHeader className="p-0 mb-3 flex-row items-center justify-between">
           <div className="flex items-center gap-2">
             <UserAvatar src="https://placehold.co/32x32.png" fallback="D" hint="man portrait"/>
-            <p className="text-sm font-medium">Data-driven marketing</p>
+            <p className="text-sm font-medium">Quarterly Growth</p>
           </div>
           <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent className="p-0 space-y-3">
-          <p className="text-4xl font-bold">1,209</p>
-          <p className="text-sm text-muted-foreground">Sorteretets togl destrie mof inoru ual.</p>
+          <p className="text-4xl font-bold">1,450</p>
+          <p className="text-sm text-muted-foreground">New users this quarter, exceeding projections by 15%.</p>
           <div className="flex items-center gap-4">
             <div className="w-20 h-20">
               <ResponsiveContainer width="100%" height="100%">
@@ -86,8 +86,8 @@ export function HeroIllustration() {
               </ResponsiveContainer>
             </div>
             <div className="text-sm space-y-1">
-              <p className="font-semibold flex items-center">Geco By <ArrowUp className="h-4 w-4 text-green-500 ml-1" /> 5.9%</p>
-              <p className="text-muted-foreground">850.0000</p>
+              <p className="font-semibold flex items-center">Revenue <ArrowUp className="h-4 w-4 text-green-500 ml-1" /> 12.1%</p>
+              <p className="text-muted-foreground">$85,210.00</p>
             </div>
           </div>
         </CardContent>
@@ -101,11 +101,11 @@ export function HeroIllustration() {
         <CardContent className="p-0 space-y-3">
           <div className="flex items-center gap-2">
             <UserAvatar src="https://placehold.co/32x32.png" fallback="E" hint="woman portrait"/>
-            <p className="text-sm font-medium">Cor ling vizaing</p>
+            <p className="text-sm font-medium">Sent proposal to Acme Inc.</p>
           </div>
           <div className="flex items-center gap-2">
             <UserAvatar src="https://placehold.co/32x32.png" fallback="F" hint="man profile"/>
-            <p className="text-sm font-medium">Geganv Marvodoas</p>
+            <p className="text-sm font-medium">Finalized Q3 marketing assets.</p>
           </div>
         </CardContent>
       </Card>
@@ -116,8 +116,8 @@ export function HeroIllustration() {
         style={{ bottom: '0%', right: '5%', transform: 'rotate(5deg)', animationDelay: '0.8s' }}
       >
         <CardHeader className="p-0 mb-2">
-            <CardTitle className="text-lg font-bold">Grvalvring</CardTitle>
-            <p className="text-sm text-muted-foreground">peenloct Dadk</p>
+            <CardTitle className="text-lg font-bold">User Engagement</CardTitle>
+            <p className="text-sm text-muted-foreground">Weekly active users</p>
         </CardHeader>
         <CardContent className="p-0">
             <div className="h-20 w-full">
