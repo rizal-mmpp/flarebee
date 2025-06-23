@@ -1,14 +1,14 @@
+
 'use server';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Zap, Palette, Rocket } from 'lucide-react';
 import type { Service, HomePageContent } from '@/lib/types';
 import { getAllServicesFromFirestore } from '@/lib/firebase/firestoreServices';
 import { ServiceCard } from '@/components/shared/ServiceCard';
-import { Loader2 } from 'lucide-react';
 import { getSitePageContent } from '@/lib/firebase/firestoreSitePages';
+import { HeroIllustration } from '@/components/shared/HeroIllustration';
 
 export default async function HomePage() {
   const [servicesResult, heroContentResult] = await Promise.all([
@@ -17,7 +17,7 @@ export default async function HomePage() {
   ]);
 
   const featuredServices = servicesResult.data;
-  const heroContent = heroContentResult as HomePageContent; // Type assertion
+  const heroContent = heroContentResult as HomePageContent;
 
   return (
     <div className="flex flex-col overflow-x-hidden">
@@ -35,7 +35,7 @@ export default async function HomePage() {
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto md:mx-0 mb-10 leading-relaxed">
               {heroContent.subTagline}
             </p>
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               {heroContent.ctaButtonText && heroContent.ctaButtonLink && (
                 <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-primary-foreground px-10 py-6 text-lg rounded-full group">
                   <Link href={heroContent.ctaButtonLink}>
@@ -50,19 +50,8 @@ export default async function HomePage() {
               </Button>
             </div>
           </div>
-          <div className="relative hidden md:block">
-            <div className="absolute -inset-4 bg-gradient-to-br from-primary via-purple-500 to-accent rounded-full opacity-20 blur-3xl animate-float"></div>
-            {heroContent.imageUrl && (
-              <Image
-                src={heroContent.imageUrl}
-                alt={heroContent.tagline || 'Hero image'}
-                width={600}
-                height={400}
-                priority
-                className="relative object-contain animate-float"
-                data-ai-hint={heroContent.imageAiHint || "digital product interface"}
-              />
-            )}
+          <div className="hidden md:block">
+            <HeroIllustration />
           </div>
         </div>
       </section>

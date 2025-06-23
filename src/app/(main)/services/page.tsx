@@ -1,3 +1,4 @@
+
 'use client'; 
 
 import { useState, useMemo, useEffect } from 'react';
@@ -56,21 +57,22 @@ export default function ServicesPage() {
   };
   
   const filteredServices = useMemo(() => {
-    const lowerSearchTerm = searchTerm.toLowerCase();
-    return allServices.filter((service) => {
-      const categoryMatch = selectedCategory ? service.category.slug === selectedCategory : true;
-      
-      let searchMatch = true;
-      if (lowerSearchTerm) {
-        const titleMatch = service.title.toLowerCase().includes(lowerSearchTerm);
-        const descriptionMatch = service.shortDescription.toLowerCase().includes(lowerSearchTerm);
-        const categoryNameMatch = service.category.name.toLowerCase().includes(lowerSearchTerm);
-        const tagsMatch = service.tags.some(tag => tag.toLowerCase().includes(lowerSearchTerm));
-        searchMatch = titleMatch || descriptionMatch || categoryNameMatch || tagsMatch;
-      }
-      
-      return categoryMatch && searchMatch;
-    });
+    return allServices
+      .filter(service => service.status === 'active') // Only show active services
+      .filter((service) => {
+        const categoryMatch = selectedCategory ? service.category.slug === selectedCategory : true;
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        let searchMatch = true;
+        if (lowerSearchTerm) {
+          const titleMatch = service.title.toLowerCase().includes(lowerSearchTerm);
+          const descriptionMatch = service.shortDescription.toLowerCase().includes(lowerSearchTerm);
+          const categoryNameMatch = service.category.name.toLowerCase().includes(lowerSearchTerm);
+          const tagsMatch = service.tags.some(tag => tag.toLowerCase().includes(lowerSearchTerm));
+          searchMatch = titleMatch || descriptionMatch || categoryNameMatch || tagsMatch;
+        }
+        
+        return categoryMatch && searchMatch;
+      });
   }, [selectedCategory, searchTerm, allServices]);
 
   return (
