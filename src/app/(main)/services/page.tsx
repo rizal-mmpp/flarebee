@@ -6,11 +6,12 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { SERVICE_CATEGORIES } from '@/lib/constants';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Search, X, ListFilter } from 'lucide-react';
+import { Loader2, Search, X, ListFilter, Briefcase } from 'lucide-react';
 import type { Service, ServiceCategory } from '@/lib/types';
 import { getAllServicesFromFirestore } from '@/lib/firebase/firestoreServices';
 import { cn } from '@/lib/utils';
 import { ServiceCard } from '@/components/shared/ServiceCard';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function ServicesPage() {
   const [allServices, setAllServices] = useState<Service[]>([]);
@@ -147,7 +148,19 @@ export default function ServicesPage() {
           </div>
         ) : (
           <div className="text-center py-16">
-            <p className="text-xl text-muted-foreground">No services found matching your criteria.</p>
+            <Card className="max-w-md mx-auto">
+                <CardHeader>
+                  <div className="mx-auto bg-primary/10 rounded-full p-3 w-fit mb-3">
+                    <Briefcase className="h-8 w-8 text-primary" />
+                  </div>
+                  <CardTitle>No Services Found</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    No services matched your current filter criteria. Try selecting a different category or clearing your search.
+                  </p>
+                </CardContent>
+            </Card>
           </div>
         )
       )}

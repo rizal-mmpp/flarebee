@@ -3,13 +3,13 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Zap, Palette, Rocket } from 'lucide-react';
+import { ArrowRight, Zap, Palette, Rocket, Briefcase } from 'lucide-react';
 import type { Service, HomePageContent } from '@/lib/types';
 import { getAllServicesFromFirestore } from '@/lib/firebase/firestoreServices';
 import { ServiceCard } from '@/components/shared/ServiceCard';
 import { getSitePageContent } from '@/lib/firebase/firestoreSitePages';
 import { HeroIllustration } from '@/components/shared/HeroIllustration';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default async function HomePage() {
   const [servicesResult, heroContentResult] = await Promise.all([
@@ -114,8 +114,20 @@ export default async function HomePage() {
               ))}
             </div>
           ) : (
-            <div className="flex justify-center items-center py-10">
-                <p className="text-center text-muted-foreground">No services are featured at the moment.</p>
+            <div className="text-center py-10">
+              <Card className="max-w-md mx-auto">
+                <CardHeader>
+                  <div className="mx-auto bg-primary/10 rounded-full p-3 w-fit mb-3">
+                    <Briefcase className="h-8 w-8 text-primary" />
+                  </div>
+                  <CardTitle>No Featured Services Yet</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    We are preparing our featured services. Please check back soon or explore all our offerings.
+                  </p>
+                </CardContent>
+              </Card>
             </div>
           )}
         </div>
