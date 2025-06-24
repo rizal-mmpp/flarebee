@@ -29,7 +29,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
 
   return (
     <Card className="flex flex-col overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-1 group">
-      <Link href={`/services/${service.id}`} className="flex-grow flex flex-col">
+      <Link href={`/services/${service.slug}`} className="flex-grow flex flex-col">
         <div className="aspect-[16/9] relative w-full overflow-hidden">
           <Image
             src={service.imageUrl}

@@ -44,6 +44,7 @@ export interface JourneyStage {
 
 export interface Service {
   id: string; 
+  slug: string;
   title: string;
   title_lowercase?: string;
   shortDescription: string;

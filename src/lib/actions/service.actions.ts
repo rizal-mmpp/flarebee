@@ -17,8 +17,19 @@ import type { Service, JourneyStage } from '@/lib/types';
 
 const SERVICES_COLLECTION = 'services'; 
 
+function slugify(text: string): string {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-') // Replace spaces with -
+    .replace(/[^\w\-]+/g, '') // Remove all non-word chars
+    .replace(/\-\-+/g, '-'); // Replace multiple - with single -
+}
+
 export interface ServiceFirestoreData {
   title: string;
+  slug: string;
   title_lowercase: string;
   shortDescription: string;
   longDescription: string;
@@ -55,6 +66,7 @@ export async function saveServiceAction(formData: FormData): Promise<{ success: 
     }
 
     const title = formData.get('title') as string;
+    const slug = slugify(title);
     const shortDescription = formData.get('shortDescription') as string;
     const longDescription = formData.get('longDescription') as string;
     const categoryId = formData.get('categoryId') as string;
@@ -80,6 +92,7 @@ export async function saveServiceAction(formData: FormData): Promise<{ success: 
 
     const dataToSave: ServiceFirestoreData = {
       title,
+      slug,
       title_lowercase: title.toLowerCase(),
       shortDescription,
       longDescription,
@@ -132,6 +145,7 @@ export async function updateServiceAction(id: string, formData: FormData): Promi
     }
 
     const title = formData.get('title') as string;
+    const slug = slugify(title);
     const shortDescription = formData.get('shortDescription') as string;
     const longDescription = formData.get('longDescription') as string;
     const categoryId = formData.get('categoryId') as string;
@@ -159,6 +173,7 @@ export async function updateServiceAction(id: string, formData: FormData): Promi
 
     const dataToUpdate: Partial<Omit<ServiceFirestoreData, 'customerJourneyStages'>> & { updatedAt: Timestamp } = { 
       title,
+      slug,
       title_lowercase: title.toLowerCase(),
       shortDescription,
       longDescription,
@@ -193,6 +208,7 @@ export async function updateServiceAction(id: string, formData: FormData): Promi
     revalidatePath('/admin/dashboard');
     revalidatePath(`/admin/services/${id}`);
     revalidatePath(`/admin/services/${id}/simulate-journey`);
+    revalidatePath(`/services/${slug}`); // Revalidate public slug page
 
 
     console.log(`updateServiceAction: Service "${title}" (ID: ${id}) updated successfully.`);
@@ -214,6 +230,7 @@ export async function deleteServiceAction(id: string): Promise<{ success: boolea
 
     revalidatePath('/admin/services');
     revalidatePath('/admin/dashboard');
+    revalidatePath('/services');
 
 
     console.log(`deleteServiceAction: Service with ID ${id} deleted successfully.`);

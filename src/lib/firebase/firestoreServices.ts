@@ -14,9 +14,10 @@ import {
   DocumentData,
   QueryDocumentSnapshot,
   documentId, 
+  where,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Service, FetchServicesParams, FetchServicesResult, ServiceCategory, JourneyStage } from '@/lib/types'; 
+import type { Service, FetchServicesParams, FetchServicesResult, JourneyStage } from '@/lib/types'; 
 import { SERVICE_CATEGORIES } from '@/lib/constants'; 
 
 const SERVICES_COLLECTION = 'services'; 
@@ -128,6 +129,7 @@ const fromFirestore = (docSnapshot: QueryDocumentSnapshot<DocumentData>): Servic
 
   return {
     id: docSnapshot.id,
+    slug: data.slug || '',
     title: data.title,
     title_lowercase: data.title_lowercase || data.title?.toLowerCase() || '',
     shortDescription: data.shortDescription || '',
@@ -230,3 +232,22 @@ export async function getServiceByIdFromFirestore(id: string): Promise<Service |
   }
 }
 
+export async function getServiceBySlugFromFirestore(slug: string): Promise<Service | null> {
+  try {
+    const q = query(
+      collection(db, SERVICES_COLLECTION),
+      where('slug', '==', slug),
+      firestoreLimit(1)
+    );
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      return fromFirestore(querySnapshot.docs[0]);
+    } else {
+      console.log(`No such service document with slug: ${slug}`);
+      return null;
+    }
+  } catch (error) {
+    console.error(`Error getting service by slug ${slug} from Firestore: `, error);
+    throw error;
+  }
+}

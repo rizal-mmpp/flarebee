@@ -3,7 +3,7 @@
 
 import { use, useEffect, useState } from 'react';
 import type { Service } from '@/lib/types';
-import { getServiceByIdFromFirestore } from '@/lib/firebase/firestoreServices';
+import { getServiceBySlugFromFirestore } from '@/lib/firebase/firestoreServices';
 import { notFound, useRouter } from 'next/navigation'; 
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
@@ -76,7 +76,7 @@ const exampleFaq = [
 
 export default function ServiceDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
   const params = use(paramsPromise);
-  const id = params.id;
+  const slug = params.id;
 
   const [service, setService] = useState<Service | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,7 +88,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
       setIsLoading(true);
       setError(null);
       try {
-        const fetchedService = await getServiceByIdFromFirestore(id);
+        const fetchedService = await getServiceBySlugFromFirestore(slug);
         if (!fetchedService) {
           notFound();
           return;
@@ -101,10 +101,10 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
         setIsLoading(false);
       }
     }
-    if (id) {
+    if (slug) {
       fetchService();
     }
-  }, [id]);
+  }, [slug]);
 
   const handleCustomQuoteSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -191,7 +191,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
                 </CardHeader>
                 <CardContent className="flex-grow space-y-6">
                   <p className="text-4xl font-bold text-center text-foreground">{formatIDR(parseInt(pkg.price.replace(/\./g, ''), 10))}</p>
-                  <ul className="space-y-3 text-foreground/80">
+                  <ul className="space-y-3 text-foreground/90">
                     {pkg.features.map(feature => (
                       <li key={feature} className="flex items-center">
                         <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
