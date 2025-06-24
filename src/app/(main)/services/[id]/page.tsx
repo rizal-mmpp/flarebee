@@ -134,17 +134,6 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
           </div>
       </section>
 
-      {/* Main Content Section */}
-      <section id="details" className="py-16 md:py-24">
-         <div className="container mx-auto px-4 md:px-6 max-w-4xl">
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Service Details</h2>
-            <article className="prose prose-sm sm:prose-base lg:prose-lg dark:prose-invert max-w-none prose-headings:font-semibold prose-a:text-primary hover:prose-a:text-primary/80">
-              <ReactMarkdown>{service.longDescription}</ReactMarkdown>
-            </article>
-         </div>
-      </section>
-
-
       {/* Packages Section */}
       {service.showPackagesSection && service.packages && service.packages.length > 0 && (
         <section id="packages" className="py-16 md:py-24 bg-card">
