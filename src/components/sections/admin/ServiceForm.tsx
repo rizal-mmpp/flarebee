@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Control, FieldErrors, UseFormRegister, UseFormWatch } from 'react-hook-form';
@@ -187,7 +186,7 @@ export function ServiceForm({
               alt="Service image preview"
               width={200}
               height={120}
-              className="rounded-md object-contain max-h-[120px]"
+              className="rounded-md object-cover max-h-[120px]"
               data-ai-hint="service image"
             />
           </div>
