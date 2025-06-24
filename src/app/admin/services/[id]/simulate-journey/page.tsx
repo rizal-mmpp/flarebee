@@ -553,7 +553,7 @@ export default function SimulateJourneyPage() {
                         </div>
                         <div className={cn("pt-1 pb-1 transition-colors duration-200 flex-grow min-w-0", 
                             currentStageIndex === index 
-                                ? "text-accent font-semibold" 
+                                ? "text-accent-foreground font-semibold" 
                                 : index < (currentStageIndex ?? -1) 
                                     ? "text-primary/80 font-medium" 
                                     : "text-muted-foreground group-hover:text-foreground"
