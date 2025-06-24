@@ -2,6 +2,22 @@
 import * as z from 'zod';
 import { SERVICE_CATEGORIES, PRICING_MODELS, SERVICE_STATUSES } from '@/lib/constants';
 
+const servicePackageSchema = z.object({
+  name: z.string().min(1, "Package name is required."),
+  description: z.string().min(1, "Package description is required."),
+  price: z.coerce.number().min(0, "Price must be a positive number."),
+  features: z.string().min(1, "Features (comma-separated) are required."), // Stored as comma-separated string in form
+  isPopular: z.boolean().default(false),
+  cta: z.string().optional(),
+});
+
+const faqItemSchema = z.object({
+  id: z.string(),
+  q: z.string().min(1, "Question is required."),
+  a: z.string().min(1, "Answer is required."),
+});
+
+
 export const serviceFormSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   shortDescription: z.string().min(10, 'Short description must be at least 10 characters'),
@@ -25,13 +41,20 @@ export const serviceFormSchema = z.object({
   targetAudience: z.string().optional(), // Comma-separated
   estimatedDuration: z.string().optional(),
   portfolioLink: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
+  
+  // New dynamic sections
+  showPackagesSection: z.boolean().default(false),
+  packages: z.array(servicePackageSchema).optional(),
+  showFaqSection: z.boolean().default(false),
+  faq: z.array(faqItemSchema).optional(),
+  
 }).refine(data => {
   if ((data.pricingModel === "Fixed Price" || data.pricingModel === "Starting At") && (data.priceMin === null || data.priceMin === undefined || isNaN(data.priceMin) || data.priceMin <= 0)) {
     return false;
   }
   return true;
 }, {
-  message: "Price Min is required and must be positive for Fixed Price or Starting At models.",
+  message: "Price is required and must be positive for this pricing model.",
   path: ["priceMin"],
 }).refine(data => {
   if (data.priceMin && data.priceMax && data.priceMin > data.priceMax) {

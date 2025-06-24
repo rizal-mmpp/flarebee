@@ -255,3 +255,4 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
 
     </div>
   );
+}

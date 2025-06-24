@@ -5,16 +5,15 @@ import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ServiceForm } from '@/components/sections/admin/ServiceForm'; // Updated import
-import { type ServiceFormValues, serviceFormSchema } from '@/components/sections/admin/ServiceFormTypes'; // Updated import
-import { saveServiceAction } from '@/lib/actions/service.actions'; // Updated import
-import { uploadFileToVercelBlob } from '@/lib/actions/vercelBlob.actions';
+import { ServiceForm } from '@/components/sections/admin/ServiceForm';
+import { type ServiceFormValues, serviceFormSchema } from '@/components/sections/admin/ServiceFormTypes';
+import { saveServiceAction } from '@/lib/actions/service.actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, PlusCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
-export default function CreateServicePage() { // Renamed component
+export default function CreateServicePage() { 
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -22,7 +21,7 @@ export default function CreateServicePage() { // Renamed component
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
 
-  const { register, handleSubmit, control, formState: { errors }, reset, watch } = useForm<ServiceFormValues>({ // Added watch
+  const { register, handleSubmit, control, formState: { errors }, reset, watch, setValue, getValues } = useForm<ServiceFormValues>({
     resolver: zodResolver(serviceFormSchema),
     defaultValues: {
       title: '',
@@ -41,6 +40,10 @@ export default function CreateServicePage() { // Renamed component
       targetAudience: '',
       estimatedDuration: '',
       portfolioLink: '',
+      showPackagesSection: false,
+      packages: [],
+      showFaqSection: false,
+      faq: [],
     }
   });
 
@@ -65,60 +68,48 @@ export default function CreateServicePage() { // Renamed component
 
   const onSubmit: SubmitHandler<ServiceFormValues> = (data) => {
     startTransition(async () => {
-      let uploadedImageUrl = '';
+      const formDataForAction = new FormData();
 
-      if (!selectedFile) {
-        toast({
+      if (selectedFile) {
+        formDataForAction.append('imageFile', selectedFile);
+      } else {
+         toast({
           title: 'Image Required',
-          description: 'Please select an image for the service.', // Updated message
+          description: 'Please select an image for the service.',
           variant: 'destructive',
         });
         return;
       }
       
-      const blobFormData = new FormData();
-      blobFormData.append('file', selectedFile);
-      const uploadResult = await uploadFileToVercelBlob(blobFormData);
-
-      if (!uploadResult.success || !uploadResult.data?.url) {
-        toast({
-          title: 'Image Upload Failed',
-          description: uploadResult.error || 'Could not upload the service image.', // Updated message
-          variant: 'destructive',
-        });
-        return;
-      }
-      uploadedImageUrl = uploadResult.data.url;
-
-      const serviceActionFormData = new FormData(); // Renamed
       (Object.keys(data) as Array<keyof ServiceFormValues>).forEach(key => {
-        const value = data[key];
-        if (key === 'imageUrl') {
-          // Skip, will be set explicitly
-        } else if (value !== undefined && value !== null && value !== '') { // Ensure empty strings aren't sent if not intended
+        if (key === 'packages' || key === 'faq') {
+          const value = data[key] || [];
+          formDataForAction.append(key, JSON.stringify(value));
+        } else {
+          const value = data[key];
+          if (value !== undefined && value !== null && value !== '') {
             if (typeof value === 'number' || typeof value === 'boolean') {
-                 serviceActionFormData.append(key, String(value));
+              formDataForAction.append(key, String(value));
             } else if (typeof value === 'string') {
-                serviceActionFormData.append(key, value);
+              formDataForAction.append(key, value);
             }
-        } else if (key === 'priceMin' || key === 'priceMax') {
-            // Allow null/undefined for optional price fields
-            serviceActionFormData.append(key, ''); // Send empty string if not set
+          } else if (key === 'priceMin' || key === 'priceMax') {
+            formDataForAction.append(key, '');
+          }
         }
       });
-      serviceActionFormData.set('imageUrl', uploadedImageUrl); 
       
-      const result = await saveServiceAction(serviceActionFormData); // Updated action call
+      const result = await saveServiceAction(formDataForAction); 
 
       if (result.error) {
          toast({
-          title: 'Error Saving Service', // Updated message
+          title: 'Error Saving Service',
           description: result.error,
           variant: "destructive",
         });
       } else {
         toast({
-          title: 'Service Saved Successfully', // Updated message
+          title: 'Service Saved Successfully',
           description: result.message || 'The service details have been processed.',
         });
         router.push('/admin/services'); 
@@ -150,11 +141,13 @@ export default function CreateServicePage() { // Renamed component
             </Button>
           </div>
         </div>
-        <ServiceForm // Updated component
+        <ServiceForm
           control={control} 
           register={register} 
           errors={errors}
-          watch={watch} // Pass watch
+          watch={watch}
+          setValue={setValue}
+          getValues={getValues}
           currentImageUrl={imagePreviewUrl}
           onFileChange={handleFileChange}
           selectedFileName={selectedFile?.name}

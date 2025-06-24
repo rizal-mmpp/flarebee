@@ -13,7 +13,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { SERVICE_CATEGORIES, PRICING_MODELS, SERVICE_STATUSES } from '../constants'; 
-import type { Service, JourneyStage } from '@/lib/types'; 
+import type { Service, JourneyStage, ServicePackage, FaqItem } from '@/lib/types';
+import { uploadFileToVercelBlob } from './vercelBlob.actions';
 
 const SERVICES_COLLECTION = 'services'; 
 
@@ -22,9 +23,9 @@ function slugify(text: string): string {
     .toString()
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, '-') // Replace spaces with -
-    .replace(/[^\w\-]+/g, '') // Remove all non-word chars
-    .replace(/\-\-+/g, '-'); // Replace multiple - with single -
+    .replace(/\s+/g, '-') 
+    .replace(/[^\w\-]+/g, '') 
+    .replace(/\-\-+/g, '-'); 
 }
 
 export interface ServiceFirestoreData {
@@ -46,6 +47,10 @@ export interface ServiceFirestoreData {
   targetAudience?: string[] | null;
   estimatedDuration?: string | null;
   portfolioLink?: string | null;
+  showPackagesSection?: boolean;
+  packages?: ServicePackage[];
+  showFaqSection?: boolean;
+  faq?: FaqItem[];
   customerJourneyStages?: JourneyStage[]; 
   createdAt?: Timestamp; 
   updatedAt?: Timestamp; 
@@ -56,79 +61,85 @@ function parseStringToArray(str?: string | null): string[] {
   return str.split(',').map(item => item.trim()).filter(item => item.length > 0);
 }
 
+// Helper to prepare data for Firestore from FormData
+function prepareDataFromFormData(formData: FormData, currentImageUrl?: string): Partial<ServiceFirestoreData> {
+    const title = formData.get('title') as string;
+    const data: Partial<ServiceFirestoreData> = {
+        title,
+        slug: slugify(title),
+        title_lowercase: title.toLowerCase(),
+        shortDescription: formData.get('shortDescription') as string,
+        longDescription: formData.get('longDescription') as string,
+        categoryId: formData.get('categoryId') as string,
+        pricingModel: formData.get('pricingModel') as typeof PRICING_MODELS[number],
+        currency: (formData.get('currency') as string) || 'IDR',
+        tags: parseStringToArray(formData.get('tags') as string | null),
+        imageUrl: currentImageUrl, // This will be updated if new image is uploaded
+        status: formData.get('status') as typeof SERVICE_STATUSES[number] || 'draft',
+        dataAiHint: (formData.get('dataAiHint') as string)?.trim() || null,
+        keyFeatures: parseStringToArray(formData.get('keyFeatures') as string | null),
+        targetAudience: parseStringToArray(formData.get('targetAudience') as string | null),
+        estimatedDuration: (formData.get('estimatedDuration') as string)?.trim() || null,
+        portfolioLink: (formData.get('portfolioLink') as string)?.trim() || null,
+        showPackagesSection: formData.get('showPackagesSection') === 'true',
+        showFaqSection: formData.get('showFaqSection') === 'true',
+    };
+
+    const priceMinStr = formData.get('priceMin') as string | null;
+    data.priceMin = priceMinStr && !isNaN(parseFloat(priceMinStr)) ? parseFloat(priceMinStr) : null;
+    
+    const priceMaxStr = formData.get('priceMax') as string | null;
+    data.priceMax = priceMaxStr && !isNaN(parseFloat(priceMaxStr)) ? parseFloat(priceMaxStr) : null;
+
+    try {
+        const packagesJson = formData.get('packages') as string | null;
+        if (packagesJson) {
+            const rawPackages = JSON.parse(packagesJson);
+            data.packages = rawPackages.map((pkg: any) => ({
+                ...pkg,
+                features: parseStringToArray(pkg.features as string | null),
+            }));
+        }
+    } catch(e) { console.error("Error parsing packages JSON", e); data.packages = []; }
+    
+    try {
+        const faqJson = formData.get('faq') as string | null;
+        if (faqJson) data.faq = JSON.parse(faqJson);
+    } catch(e) { console.error("Error parsing FAQ JSON", e); data.faq = []; }
+
+    return data;
+}
+
+
 export async function saveServiceAction(formData: FormData): Promise<{ success: boolean; message?: string; error?: string; serviceId?: string }> {
   console.log('saveServiceAction: Action started.');
   try {
-    const imageUrlFromBlob = formData.get('imageUrl') as string; 
-    if (!imageUrlFromBlob) {
-      console.error('saveServiceAction: Image URL from Vercel Blob is missing.');
-      return { success: false, error: "Service image URL from Vercel Blob is required." };
+    const imageFile = formData.get('imageFile') as File | null;
+    if (!imageFile) {
+        return { success: false, error: 'Service image is required.'};
     }
+    const blobFormData = new FormData();
+    blobFormData.append('file', imageFile);
+    const uploadResult = await uploadFileToVercelBlob(blobFormData);
+    if (!uploadResult.success || !uploadResult.data?.url) {
+        return { success: false, error: uploadResult.error || 'Could not upload service image.'};
+    }
+    const imageUrlFromBlob = uploadResult.data.url;
 
-    const title = formData.get('title') as string;
-    const slug = slugify(title);
-    const shortDescription = formData.get('shortDescription') as string;
-    const longDescription = formData.get('longDescription') as string;
-    const categoryId = formData.get('categoryId') as string;
-    const pricingModel = formData.get('pricingModel') as typeof PRICING_MODELS[number];
-    const status = formData.get('status') as typeof SERVICE_STATUSES[number];
-
-    if (!title || !shortDescription || !longDescription || !categoryId || !pricingModel || !status ) {
-      console.error('saveServiceAction: Missing required fields.');
-      return { success: false, error: "Missing required fields (Title, Short Description, Long Description, Category, Pricing Model, Status)." };
-    }
-    
-    const category = SERVICE_CATEGORIES.find(c => c.id === categoryId);
-    if (!category) {
-        console.error('saveServiceAction: Invalid category selected.');
-        return { success: false, error: "Invalid category." };
-    }
-    if (!PRICING_MODELS.includes(pricingModel)) {
-        return { success: false, error: "Invalid pricing model." };
-    }
-    if (!SERVICE_STATUSES.includes(status)) {
-        return { success: false, error: "Invalid status." };
-    }
-
-    const dataToSave: ServiceFirestoreData = {
-      title,
-      slug,
-      title_lowercase: title.toLowerCase(),
-      shortDescription,
-      longDescription,
-      categoryId,
-      pricingModel,
-      currency: (formData.get('currency') as string) || 'IDR',
-      tags: parseStringToArray(formData.get('tags') as string | null),
-      imageUrl: imageUrlFromBlob,
-      status,
-      customerJourneyStages: [], // Initialize with empty array
-      createdAt: serverTimestamp() as Timestamp,
-      updatedAt: serverTimestamp() as Timestamp,
-    };
-    
-    const priceMinStr = formData.get('priceMin') as string | null;
-    if (priceMinStr && !isNaN(parseFloat(priceMinStr))) dataToSave.priceMin = parseFloat(priceMinStr);
-    
-    const priceMaxStr = formData.get('priceMax') as string | null;
-    if (priceMaxStr && !isNaN(parseFloat(priceMaxStr))) dataToSave.priceMax = parseFloat(priceMaxStr);
-
-    dataToSave.keyFeatures = parseStringToArray(formData.get('keyFeatures') as string | null);
-    dataToSave.targetAudience = parseStringToArray(formData.get('targetAudience') as string | null);
-    dataToSave.estimatedDuration = (formData.get('estimatedDuration') as string)?.trim() || null;
-    dataToSave.portfolioLink = (formData.get('portfolioLink') as string)?.trim() || null;
-    dataToSave.dataAiHint = (formData.get('dataAiHint') as string)?.trim() || null;
+    const dataToSave = prepareDataFromFormData(formData, imageUrlFromBlob) as ServiceFirestoreData;
+    dataToSave.createdAt = serverTimestamp() as Timestamp;
+    dataToSave.updatedAt = serverTimestamp() as Timestamp;
+    dataToSave.customerJourneyStages = [];
 
     console.log('saveServiceAction: Data to save to Firestore:', dataToSave);
     const docRef = await addDoc(collection(db, SERVICES_COLLECTION), dataToSave);
     
-    revalidatePath('/admin/services');
-    revalidatePath('/admin/dashboard');
-    revalidatePath(`/admin/services/${docRef.id}/simulate-journey`);
+    revalidatePath('/admin/services', 'layout');
+    revalidatePath('/services', 'layout');
+    revalidatePath('/', 'layout');
 
-
-    console.log(`saveServiceAction: Service "${title}" created successfully with ID: ${docRef.id}`);
-    return { success: true, message: `Service "${title}" created successfully.`, serviceId: docRef.id };
+    console.log(`saveServiceAction: Service "${dataToSave.title}" created with ID: ${docRef.id}`);
+    return { success: true, message: `Service "${dataToSave.title}" created successfully.`, serviceId: docRef.id };
   } catch (error: any) {
     console.error("Detailed error in saveServiceAction: ", error);
     return { success: false, error: error.message || "Failed to create service." };
@@ -138,81 +149,34 @@ export async function saveServiceAction(formData: FormData): Promise<{ success: 
 export async function updateServiceAction(id: string, formData: FormData): Promise<{ success: boolean; message?: string; error?: string; serviceId?: string }> {
   console.log(`updateServiceAction: Action started for service ID: ${id}`);
   try {
-    const imageUrlFromBlob = formData.get('imageUrl') as string; 
-    if (!imageUrlFromBlob) {
-      console.error('updateServiceAction: Image URL from Vercel Blob is missing.');
-      return { success: false, error: "Service image URL from Vercel Blob is required." };
-    }
-
-    const title = formData.get('title') as string;
-    const slug = slugify(title);
-    const shortDescription = formData.get('shortDescription') as string;
-    const longDescription = formData.get('longDescription') as string;
-    const categoryId = formData.get('categoryId') as string;
-    const pricingModel = formData.get('pricingModel') as typeof PRICING_MODELS[number];
-    const status = formData.get('status') as typeof SERVICE_STATUSES[number];
-
-
-    if (!id || !title || !shortDescription || !longDescription || !categoryId || !pricingModel || !status) {
-      console.error('updateServiceAction: Missing required fields.');
-      return { success: false, error: "Missing required fields." };
+    let finalImageUrl = formData.get('currentImageUrl') as string;
+    const imageFile = formData.get('imageFile') as File | null;
+    if (imageFile) {
+        const blobFormData = new FormData();
+        blobFormData.append('file', imageFile);
+        const uploadResult = await uploadFileToVercelBlob(blobFormData);
+        if (!uploadResult.success || !uploadResult.data?.url) {
+            return { success: false, error: uploadResult.error || 'Could not upload new service image.'};
+        }
+        finalImageUrl = uploadResult.data.url;
     }
     
-    const category = SERVICE_CATEGORIES.find(c => c.id === categoryId);
-    if (!category) {
-        console.error('updateServiceAction: Invalid category selected.');
-        return { success: false, error: "Invalid category." };
-    }
-     if (!PRICING_MODELS.includes(pricingModel)) {
-        return { success: false, error: "Invalid pricing model." };
-    }
-    if (!SERVICE_STATUSES.includes(status)) {
-        return { success: false, error: "Invalid status." };
-    }
-
-
-    const dataToUpdate: Partial<Omit<ServiceFirestoreData, 'customerJourneyStages'>> & { updatedAt: Timestamp } = { 
-      title,
-      slug,
-      title_lowercase: title.toLowerCase(),
-      shortDescription,
-      longDescription,
-      categoryId,
-      pricingModel,
-      currency: (formData.get('currency') as string) || 'IDR',
-      tags: parseStringToArray(formData.get('tags') as string | null),
-      imageUrl: imageUrlFromBlob,
-      status,
-      updatedAt: serverTimestamp() as Timestamp,
-    };
-
-    const priceMinStr = formData.get('priceMin') as string | null;
-    dataToUpdate.priceMin = priceMinStr && !isNaN(parseFloat(priceMinStr)) ? parseFloat(priceMinStr) : null;
-    
-    const priceMaxStr = formData.get('priceMax') as string | null;
-    dataToUpdate.priceMax = priceMaxStr && !isNaN(parseFloat(priceMaxStr)) ? parseFloat(priceMaxStr) : null;
-    
-    dataToUpdate.keyFeatures = parseStringToArray(formData.get('keyFeatures') as string | null);
-    dataToUpdate.targetAudience = parseStringToArray(formData.get('targetAudience') as string | null);
-    dataToUpdate.estimatedDuration = (formData.get('estimatedDuration') as string)?.trim() || null;
-    dataToUpdate.portfolioLink = (formData.get('portfolioLink') as string)?.trim() || null;
-    dataToUpdate.dataAiHint = (formData.get('dataAiHint') as string)?.trim() || null;
-    
-    // Note: customerJourneyStages are updated separately by updateServiceJourneyStagesAction
+    const dataToUpdate = prepareDataFromFormData(formData, finalImageUrl) as Partial<ServiceFirestoreData>;
+    dataToUpdate.updatedAt = serverTimestamp() as Timestamp;
     
     console.log('updateServiceAction: Data to update in Firestore:', dataToUpdate);
     const docRef = doc(db, SERVICES_COLLECTION, id);
     await updateDoc(docRef, dataToUpdate);
 
-    revalidatePath('/admin/services');
-    revalidatePath('/admin/dashboard');
-    revalidatePath(`/admin/services/${id}`);
-    revalidatePath(`/admin/services/${id}/simulate-journey`);
-    revalidatePath(`/services/${slug}`); // Revalidate public slug page
+    revalidatePath('/admin/services', 'layout');
+    revalidatePath(`/admin/services/${dataToUpdate.slug}`);
+    revalidatePath(`/admin/services/edit/${dataToUpdate.slug}`);
+    revalidatePath(`/services/${dataToUpdate.slug}`);
+    revalidatePath('/services', 'layout');
+    revalidatePath('/', 'layout');
 
-
-    console.log(`updateServiceAction: Service "${title}" (ID: ${id}) updated successfully.`);
-    return { success: true, message: `Service "${title}" updated successfully.`, serviceId: id };
+    console.log(`updateServiceAction: Service "${dataToUpdate.title}" (ID: ${id}) updated successfully.`);
+    return { success: true, message: `Service "${dataToUpdate.title}" updated successfully.`, serviceId: id };
   } catch (error: any) {
     console.error(`Detailed error in updateServiceAction for ID ${id}: `, error);
     return { success: false, error: error.message || "Failed to update service." };
@@ -227,11 +191,10 @@ export async function deleteServiceAction(id: string): Promise<{ success: boolea
       return { success: false, error: "Service ID is required for deletion." };
     }
     await deleteDoc(doc(db, SERVICES_COLLECTION, id));
-
-    revalidatePath('/admin/services');
-    revalidatePath('/admin/dashboard');
-    revalidatePath('/services');
-
+    
+    revalidatePath('/admin/services', 'layout');
+    revalidatePath('/services', 'layout');
+    revalidatePath('/', 'layout');
 
     console.log(`deleteServiceAction: Service with ID ${id} deleted successfully.`);
     return { success: true, message: `Service with ID ${id} deleted successfully.` };
@@ -255,12 +218,17 @@ export async function updateServiceJourneyStagesAction(
   try {
     const serviceRef = doc(db, SERVICES_COLLECTION, serviceId);
     await updateDoc(serviceRef, {
-      customerJourneyStages: stages, // Ensure stages are serializable (no custom classes)
+      customerJourneyStages: stages,
       updatedAt: serverTimestamp(),
     });
 
+    const serviceDoc = await getDoc(serviceRef);
+    if(serviceDoc.exists()) {
+      revalidatePath(`/services/${serviceDoc.data().slug}`);
+    }
+
     revalidatePath(`/admin/services/${serviceId}/simulate-journey`);
-    revalidatePath(`/admin/services/${serviceId}`); // Also revalidate the main service detail page
+    revalidatePath(`/admin/services/edit/${serviceId}`);
 
     console.log(`Journey stages updated for service ${serviceId}`);
     return { success: true };

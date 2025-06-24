@@ -1,3 +1,4 @@
+
 import type { User as FirebaseUser } from 'firebase/auth';
 
 export interface Category {
@@ -6,7 +7,6 @@ export interface Category {
   slug: string;
 }
 
-// Retain Template type for existing public pages until they are refactored
 export interface Template {
   id: string;
   title: string;
@@ -42,6 +42,22 @@ export interface JourneyStage {
   imageAiHint?: string | null;
 }
 
+export interface ServicePackage {
+  name: string;
+  description: string;
+  price: number;
+  features: string[]; // Stored as comma-separated string in form, but array in Firestore
+  isPopular?: boolean;
+  cta?: string;
+}
+
+export interface FaqItem {
+  id: string; // For react key
+  q: string; // Question
+  a: string; // Answer
+}
+
+
 export interface Service {
   id: string; 
   slug: string;
@@ -62,6 +78,10 @@ export interface Service {
   targetAudience?: string[]; 
   estimatedDuration?: string; 
   portfolioLink?: string; 
+  showPackagesSection?: boolean;
+  packages?: ServicePackage[];
+  showFaqSection?: boolean;
+  faq?: FaqItem[];
   customerJourneyStages?: JourneyStage[]; 
   createdAt: string; 
   updatedAt?: string; 
