@@ -165,7 +165,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
                   </div>
               </div>
               <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-2xl">
-                  <Image src={service.imageUrl} alt={service.title} fill className="object-cover" data-ai-hint={service.dataAiHint || "service visual"}/>
+                  <Image src={service.imageUrl} alt={service.title} fill style={{objectFit:"fill"}} data-ai-hint={service.dataAiHint || "service visual"}/>
               </div>
           </div>
       </section>

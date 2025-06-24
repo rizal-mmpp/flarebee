@@ -35,7 +35,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
             src={service.imageUrl}
             alt={service.title}
             fill
-            style={{objectFit:"cover"}}
+            style={{objectFit:"fill"}}
             className="transition-transform duration-300 ease-in-out group-hover:scale-105"
             data-ai-hint={service.dataAiHint || "service abstract"}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
