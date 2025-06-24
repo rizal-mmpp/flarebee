@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
-import { getServiceByIdFromFirestore } from '@/lib/firebase/firestoreServices';
+import { getServiceBySlugFromFirestore } from '@/lib/firebase/firestoreServices';
 import type { Service } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -42,17 +42,17 @@ const getStatusBadgeVariant = (status: Service['status']) => {
 export default function ServiceDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const serviceId = params.id as string;
+  const slug = params.id as string;
 
   const [service, setService] = useState<Service | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (serviceId) {
+    if (slug) {
       setIsLoading(true);
       setError(null);
-      getServiceByIdFromFirestore(serviceId)
+      getServiceBySlugFromFirestore(slug)
         .then((fetchedService) => {
           if (fetchedService) {
             setService(fetchedService);
@@ -68,7 +68,7 @@ export default function ServiceDetailPage() {
           setIsLoading(false);
         });
     }
-  }, [serviceId]);
+  }, [slug]);
 
   if (isLoading) {
     return (
@@ -133,7 +133,7 @@ export default function ServiceDetailPage() {
             </Tooltip>
              <Tooltip>
               <TooltipTrigger asChild>
-                 <Button variant="outline" size="icon" onClick={() => router.push(`/admin/services/edit/${service.id}`)}>
+                 <Button variant="outline" size="icon" onClick={() => router.push(`/admin/services/edit/${service.slug}`)}>
                   <Edit className="h-4 w-4" />
                   <span className="sr-only">Edit Service</span>
                 </Button>
@@ -142,7 +142,7 @@ export default function ServiceDetailPage() {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="default" size="icon" onClick={() => router.push(`/admin/services/${service.id}/simulate-journey`)} className="bg-primary hover:bg-primary/90">
+                <Button variant="default" size="icon" onClick={() => router.push(`/admin/services/${service.slug}/simulate-journey`)} className="bg-primary hover:bg-primary/90">
                   <Play className="h-4 w-4" />
                   <span className="sr-only">Simulate Customer Journey</span>
                 </Button>
@@ -267,5 +267,3 @@ export default function ServiceDetailPage() {
     </div>
   );
 }
-
-    

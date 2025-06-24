@@ -181,7 +181,7 @@ export default function AdminServicesPage() {
       accessorKey: "title",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Title" />,
       cell: ({ row }) => (
-        <Link href={`/admin/services/${row.original.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
+        <Link href={`/admin/services/${row.original.slug}`} className="font-medium text-foreground hover:text-primary hover:underline">
           {row.original.title}
         </Link>
       ),
@@ -224,17 +224,17 @@ export default function AdminServicesPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/admin/services/${row.original.id}`}>
+                <Link href={`/admin/services/${row.original.slug}`}>
                   <Eye className="mr-2 h-4 w-4" /> View Details
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={`/admin/services/edit/${row.original.id}`}>
+                <Link href={`/admin/services/edit/${row.original.slug}`}>
                   <Edit2 className="mr-2 h-4 w-4" /> Edit
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={`/admin/services/${row.original.id}/simulate-journey`}>
+                <Link href={`/admin/services/${row.original.slug}/simulate-journey`}>
                   <Play className="mr-2 h-4 w-4" /> Run Simulation
                 </Link>
               </DropdownMenuItem>

@@ -7,11 +7,11 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ServiceForm } from '@/components/sections/admin/ServiceForm'; // Updated import
 import { type ServiceFormValues, serviceFormSchema } from '@/components/sections/admin/ServiceFormTypes'; // Updated import
-import { getServiceByIdFromFirestore } from '@/lib/firebase/firestoreServices'; // Updated import
+import { getServiceBySlugFromFirestore } from '@/lib/firebase/firestoreServices';
 import { updateServiceAction } from '@/lib/actions/service.actions'; // Updated import
 import { uploadFileToVercelBlob } from '@/lib/actions/vercelBlob.actions';
 import type { Service } from '@/lib/types'; // Updated type
-import { SERVICE_CATEGORIES, PRICING_MODELS } from '@/lib/constants'; // Updated constants
+import { SERVICE_CATEGORIES, PRICING_MODELS, SERVICE_STATUSES } from '@/lib/constants'; // Updated constants
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Loader2, ServerCrash, Edit3, ArrowLeft } from 'lucide-react';
@@ -20,7 +20,7 @@ import Link from 'next/link';
 export default function EditServicePage() { // Renamed component
   const router = useRouter();
   const params = useParams();
-  const id = params.id as string;
+  const slug = params.id as string;
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
@@ -57,10 +57,10 @@ export default function EditServicePage() { // Renamed component
   const watchedImageUrl = watch('imageUrl'); // Changed from previewImageUrl
 
   useEffect(() => {
-    if (id) {
+    if (slug) {
       setIsLoading(true);
       setError(null);
-      getServiceByIdFromFirestore(id) // Updated function call
+      getServiceBySlugFromFirestore(slug)
         .then((fetchedService) => { // Updated variable name
           if (fetchedService) {
             setService(fetchedService);
@@ -99,7 +99,7 @@ export default function EditServicePage() { // Renamed component
           setIsLoading(false);
         });
     }
-  }, [id, setValue]);
+  }, [slug, setValue]);
 
   useEffect(() => {
     let objectUrl: string | undefined;

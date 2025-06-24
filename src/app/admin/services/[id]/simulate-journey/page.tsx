@@ -5,7 +5,7 @@ import React, { useEffect, useState, useCallback, useTransition, useMemo } from 
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import NextImage from 'next/image';
-import { getServiceByIdFromFirestore } from '@/lib/firebase/firestoreServices';
+import { getServiceBySlugFromFirestore } from '@/lib/firebase/firestoreServices';
 import { updateServiceJourneyStagesAction } from '@/lib/actions/service.actions';
 import { uploadFileToVercelBlob } from '@/lib/actions/vercelBlob.actions';
 import type { Service, JourneyStage } from '@/lib/types';
@@ -33,7 +33,7 @@ export default function SimulateJourneyPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const serviceId = params.id as string;
+  const slug = params.id as string;
 
   const [service, setService] = useState<Service | null>(null);
   const [isLoadingService, setIsLoadingService] = useState(true);
@@ -57,11 +57,11 @@ export default function SimulateJourneyPage() {
   
 
   const loadServiceAndJourney = useCallback(async () => {
-    if (!serviceId) return;
+    if (!slug) return;
     setIsLoadingService(true);
     setError(null);
     try {
-      const fetchedService = await getServiceByIdFromFirestore(serviceId);
+      const fetchedService = await getServiceBySlugFromFirestore(slug);
       if (fetchedService) {
         setService(fetchedService);
         const stages = fetchedService.customerJourneyStages && fetchedService.customerJourneyStages.length > 0
@@ -90,7 +90,7 @@ export default function SimulateJourneyPage() {
     } finally {
       setIsLoadingService(false);
     }
-  }, [serviceId]);
+  }, [slug]);
 
   useEffect(() => {
     loadServiceAndJourney();
@@ -330,7 +330,7 @@ export default function SimulateJourneyPage() {
         <h2 className="text-2xl font-semibold text-destructive mb-2">Error Loading Service</h2>
         <p className="text-muted-foreground mb-6">{error}</p>
         <Button variant="outline" asChild className="group">
-          <Link href={`/admin/services/${serviceId}`}>
+          <Link href={`/admin/services/${slug}`}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Service Details
           </Link>
         </Button>
@@ -368,7 +368,7 @@ export default function SimulateJourneyPage() {
           <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end flex-wrap">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => router.push(`/admin/services/${serviceId}`)} disabled={isSavingJourney}>
+                <Button variant="outline" size="icon" onClick={() => router.push(`/admin/services/${slug}`)} disabled={isSavingJourney}>
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
@@ -618,4 +618,3 @@ export default function SimulateJourneyPage() {
     </TooltipProvider>
   );
 }
-
