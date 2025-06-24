@@ -11,10 +11,11 @@ import type { Service } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, ServerCrash, Briefcase, Edit, Tag, Info, DollarSign, Clock, Users, LinkIcon, ExternalLink, ListChecks, Play } from 'lucide-react';
+import { ArrowLeft, Loader2, ServerCrash, Briefcase, Edit, Tag, Info, DollarSign, Clock, Users, LinkIcon, ExternalLink, ListChecks, Play, Check, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const formatIDR = (amount?: number) => {
   if (amount === undefined || amount === null) return 'N/A';
@@ -257,6 +258,57 @@ export default function ServiceDetailPage() {
             </CardContent>
         </Card>
       ) : null}
+      
+      {/* Packages Section */}
+      {service.showPackagesSection && service.packages && service.packages.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-xl">Pricing Packages</CardTitle></CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {service.packages.map((pkg, index) => (
+              <Card key={`pkg-${index}`} className={cn('flex flex-col', pkg.isPopular && 'border-primary')}>
+                {pkg.isPopular && <Badge className="w-fit self-center -mt-3 mb-2">Most Popular</Badge>}
+                <CardHeader>
+                  <CardTitle>{pkg.name}</CardTitle>
+                  <CardDescription>{pkg.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                  <p className="text-3xl font-bold mb-4">{formatIDR(pkg.price)}</p>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    {pkg.features.map((feature, fIndex) => (
+                      <li key={`feat-${fIndex}`} className="flex items-center">
+                        <Check className="h-4 w-4 mr-2 text-green-500"/>
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+                <CardFooter>
+                  <Button variant={pkg.isPopular ? 'default' : 'outline'} className="w-full">{pkg.cta || 'Choose Plan'}</Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* FAQ Section */}
+      {service.showFaqSection && service.faq && service.faq.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-xl">Frequently Asked Questions</CardTitle></CardHeader>
+          <CardContent>
+            <Accordion type="single" collapsible className="w-full">
+              {service.faq.map((item, i) => (
+                  <AccordionItem key={item.id || `faq-${i}`} value={`item-${i}`}>
+                      <AccordionTrigger className="text-left"><HelpCircle className="h-5 w-5 text-primary mr-3 flex-shrink-0"/>{item.q}</AccordionTrigger>
+                      <AccordionContent className="text-base text-muted-foreground pl-10">
+                          {item.a}
+                      </AccordionContent>
+                  </AccordionItem>
+              ))}
+            </Accordion>
+          </CardContent>
+        </Card>
+      )}
 
       <CardFooter className="flex justify-end border-t pt-6">
            <Button variant="outline" onClick={() => router.push('/admin/services')} className="group">
