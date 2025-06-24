@@ -12,8 +12,9 @@ import { updateServiceAction } from '@/lib/actions/service.actions';
 import type { Service } from '@/lib/types'; 
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { Loader2, ServerCrash, Edit3, ArrowLeft, Play } from 'lucide-react';
+import { Loader2, ServerCrash, Edit3, ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function EditServicePage() {
   const router = useRouter();
@@ -44,6 +45,13 @@ export default function EditServicePage() {
         .then((fetchedService) => { 
           if (fetchedService) {
             setService(fetchedService);
+            
+            // Transform packages.features from array to string for form compatibility
+            const packagesForForm = fetchedService.packages?.map(pkg => ({
+              ...pkg,
+              features: Array.isArray(pkg.features) ? pkg.features.join(', ') : pkg.features,
+            })) || [];
+
             setValue('title', fetchedService.title);
             setValue('shortDescription', fetchedService.shortDescription || '');
             setValue('longDescription', fetchedService.longDescription || '');
@@ -62,7 +70,7 @@ export default function EditServicePage() {
             setValue('estimatedDuration', fetchedService.estimatedDuration || '');
             setValue('portfolioLink', fetchedService.portfolioLink || '');
             setValue('showPackagesSection', fetchedService.showPackagesSection || false);
-            setValue('packages', fetchedService.packages || []);
+            setValue('packages', packagesForForm);
             setValue('showFaqSection', fetchedService.showFaqSection || false);
             setValue('faq', fetchedService.faq || []);
 
@@ -150,7 +158,8 @@ export default function EditServicePage() {
           title: 'Service Updated Successfully',
           description: result.message || 'The service details have been updated.',
         });
-        router.push('/admin/services'); 
+        // No longer redirecting, user stays on the page
+        // router.push('/admin/services'); 
       }
     });
   };
@@ -201,21 +210,33 @@ export default function EditServicePage() {
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <div className="space-y-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
-            <Edit3 className="mr-3 h-8 w-8 text-primary" />
-            Edit Service: {service.title} 
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground flex items-center">
+            <Edit3 className="mr-3 h-7 w-7 md:h-8 md:w-8 text-primary flex-shrink-0" />
+            <span className="truncate" title={service.title}>Edit: {service.title}</span>
           </h1>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
-            <Button variant="outline" type="button" onClick={handleCancel} className="w-full sm:w-auto group">
-                <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
-                Cancel
-            </Button>
-            <Button type="submit" className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isPending}>
-                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Edit3 className="mr-2 h-4 w-4" />}
-                Update Service 
-            </Button>
-          </div>
+          <TooltipProvider delayDuration={0}>
+            <div className="flex items-center justify-start sm:justify-end gap-2 w-full sm:w-auto flex-shrink-0">
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button variant="outline" size="icon" type="button" onClick={handleCancel} disabled={isPending}>
+                            <ArrowLeft className="h-4 w-4" />
+                            <span className="sr-only">Cancel</span>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>Cancel & Go Back</p></TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                         <Button type="submit" size="icon" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isPending}>
+                            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            <span className="sr-only">Update Service</span>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>Update Service</p></TooltipContent>
+                </Tooltip>
+            </div>
+          </TooltipProvider>
         </div>
         <ServiceForm 
             control={control} 
