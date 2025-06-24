@@ -11,11 +11,12 @@ import type { Service } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, ServerCrash, Briefcase, Edit, Tag, Info, DollarSign, Clock, Users, LinkIcon, ExternalLink, ListChecks, Play, Check, HelpCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, ServerCrash, Briefcase, Edit, Tag, Info, DollarSign, Clock, Users, LinkIcon, ExternalLink, ListChecks, Check, HelpCircle, Rocket, FileText, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const formatIDR = (amount?: number) => {
   if (amount === undefined || amount === null) return 'N/A';
@@ -39,6 +40,16 @@ const getStatusBadgeVariant = (status: Service['status']) => {
       return 'bg-muted text-muted-foreground border-border';
   }
 };
+
+const InfoRow = ({ label, value, icon: Icon }: { label: string, value: React.ReactNode, icon?: React.ElementType }) => (
+    <div className="space-y-1">
+        <h4 className="font-semibold text-muted-foreground flex items-center">
+            {Icon && <Icon className="mr-2 h-4 w-4 text-primary/80" />}
+            {label}
+        </h4>
+        <div className="text-foreground text-sm">{value}</div>
+    </div>
+);
 
 export default function ServiceDetailPage() {
   const params = useParams();
@@ -113,209 +124,127 @@ export default function ServiceDetailPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="flex-grow">
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
             <Briefcase className="mr-3 h-8 w-8 text-primary flex-shrink-0" />
-            <span className="truncate">{service.title}</span>
+            <span className="truncate" title={service.title}>{service.title}</span>
           </h1>
         </div>
         <TooltipProvider delayDuration={0}>
           <div className="flex items-center justify-start sm:justify-end gap-2 w-full sm:w-auto flex-shrink-0">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => router.push('/admin/services')}>
-                  <ArrowLeft className="h-4 w-4" />
-                  <span className="sr-only">Back to Services</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent><p>Back to Services</p></TooltipContent>
-            </Tooltip>
-             <Tooltip>
-              <TooltipTrigger asChild>
-                 <Button variant="outline" size="icon" onClick={() => router.push(`/admin/services/edit/${service.slug}`)}>
-                  <Edit className="h-4 w-4" />
-                  <span className="sr-only">Edit Service</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent><p>Edit Service</p></TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="default" size="icon" onClick={() => router.push(`/admin/services/${service.slug}/simulate-journey`)} className="bg-primary hover:bg-primary/90">
-                  <Play className="h-4 w-4" />
-                  <span className="sr-only">Simulate Customer Journey</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent><p>Simulate Customer Journey</p></TooltipContent>
-            </Tooltip>
+            <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" onClick={() => router.push('/admin/services')}><ArrowLeft className="h-4 w-4" /><span className="sr-only">Back to Services</span></Button></TooltipTrigger><TooltipContent><p>Back to Services</p></TooltipContent></Tooltip>
+            <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" onClick={() => router.push(`/admin/services/edit/${service.slug}`)}><Edit className="h-4 w-4" /><span className="sr-only">Edit Service</span></Button></TooltipTrigger><TooltipContent><p>Edit Service</p></TooltipContent></Tooltip>
+            <Tooltip><TooltipTrigger asChild><Button variant="default" size="icon" onClick={() => router.push(`/admin/services/${service.slug}/simulate-journey`)} className="bg-primary hover:bg-primary/90"><Rocket className="h-4 w-4" /><span className="sr-only">Customer Journey</span></Button></TooltipTrigger><TooltipContent><p>Customer Journey</p></TooltipContent></Tooltip>
           </div>
         </TooltipProvider>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl">Service Overview</CardTitle>
-          <CardDescription>{service.shortDescription}</CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 text-sm">
-            <div className="space-y-1">
-              <h4 className="font-semibold text-muted-foreground flex items-center"><Tag className="mr-2 h-4 w-4 text-primary/80" />Category</h4>
-              <p className="text-foreground">{service.category.name}</p>
-            </div>
-             <div className="space-y-1">
-              <h4 className="font-semibold text-muted-foreground flex items-center"><Info className="mr-2 h-4 w-4 text-primary/80" />Status</h4>
-              <Badge variant="outline" className={cn("capitalize", getStatusBadgeVariant(service.status))}>
-                {service.status}
-              </Badge>
-            </div>
-            <div className="space-y-1">
-              <h4 className="font-semibold text-muted-foreground flex items-center"><DollarSign className="mr-2 h-4 w-4 text-primary/80" />Pricing Model</h4>
-              <p className="text-foreground">{service.pricingModel}</p>
-            </div>
-             {(service.pricingModel === "Fixed Price" || service.pricingModel === "Starting At" || service.pricingModel === "Hourly" || service.pricingModel === "Subscription") && (
-                <div className="space-y-1">
-                    <h4 className="font-semibold text-muted-foreground flex items-center"><DollarSign className="mr-2 h-4 w-4 text-primary/80" />Price</h4>
-                    <p className="text-foreground">{formatIDR(service.priceMin)} {service.priceMax ? `- ${formatIDR(service.priceMax)}` : ''} ({service.currency})</p>
-                </div>
-            )}
-            {service.estimatedDuration && (
-                <div className="space-y-1">
-                    <h4 className="font-semibold text-muted-foreground flex items-center"><Clock className="mr-2 h-4 w-4 text-primary/80" />Est. Duration</h4>
-                    <p className="text-foreground">{service.estimatedDuration}</p>
-                </div>
-            )}
-            {service.portfolioLink && (
-                 <div className="space-y-1">
-                    <h4 className="font-semibold text-muted-foreground flex items-center"><LinkIcon className="mr-2 h-4 w-4 text-primary/80" />Portfolio</h4>
-                    <Link href={service.portfolioLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
-                      View Portfolio <ExternalLink className="inline-block ml-1 h-3 w-3" />
-                    </Link>
-                </div>
-            )}
-        </CardContent>
-      </Card>
+       <Tabs defaultValue="general" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
+          <TabsTrigger value="general"><Settings className="mr-2 h-4 w-4 hidden sm:inline-block"/>General</TabsTrigger>
+          <TabsTrigger value="content"><FileText className="mr-2 h-4 w-4 hidden sm:inline-block"/>Content</TabsTrigger>
+          <TabsTrigger value="pricing"><DollarSign className="mr-2 h-4 w-4 hidden sm:inline-block"/>Pricing</TabsTrigger>
+          <TabsTrigger value="faq"><HelpCircle className="mr-2 h-4 w-4 hidden sm:inline-block"/>FAQ</TabsTrigger>
+        </TabsList>
 
-      {service.imageUrl && (
-        <Card>
-          <CardHeader><CardTitle className="text-xl">Service Image</CardTitle></CardHeader>
-          <CardContent>
-             <div className="relative w-full max-w-md aspect-[16/9] rounded-lg overflow-hidden border bg-muted">
-                <Image
-                    src={service.imageUrl}
-                    alt={service.title}
-                    fill
-                    style={{objectFit:"cover"}}
-                    data-ai-hint={service.dataAiHint || "service image"}
-                />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl">Detailed Description</CardTitle>
-        </CardHeader>
-        <CardContent>
-           <article className="prose prose-sm sm:prose-base lg:prose-lg xl:prose-xl dark:prose-invert max-w-none prose-headings:font-semibold prose-a:text-primary hover:prose-a:text-primary/80">
-             <ReactMarkdown>{service.longDescription}</ReactMarkdown>
-           </article>
-        </CardContent>
-      </Card>
-      
-      {(service.keyFeatures && service.keyFeatures.length > 0) || (service.targetAudience && service.targetAudience.length > 0) || (service.tags && service.tags.length > 0) ? (
-        <Card>
-            <CardHeader><CardTitle className="text-xl">Additional Details</CardTitle></CardHeader>
-            <CardContent className="space-y-6">
-                {service.keyFeatures && service.keyFeatures.length > 0 && (
-                <div>
-                    <h4 className="font-semibold text-foreground mb-2 flex items-center"><ListChecks className="mr-2 h-5 w-5 text-primary/80" />Key Features</h4>
-                    <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                        {service.keyFeatures.map((feature, index) => <li key={`kf-${index}`}>{feature}</li>)}
-                    </ul>
-                </div>
-                )}
-                {service.targetAudience && service.targetAudience.length > 0 && (
-                <div>
-                    <h4 className="font-semibold text-foreground mb-2 flex items-center"><Users className="mr-2 h-5 w-5 text-primary/80" />Target Audience</h4>
-                    <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                        {service.targetAudience.map((audience, index) => <li key={`ta-${index}`}>{audience}</li>)}
-                    </ul>
-                </div>
-                )}
-                {service.tags && service.tags.length > 0 && (
-                <div>
-                    <h4 className="font-semibold text-foreground mb-2 flex items-center"><Tag className="mr-2 h-5 w-5 text-primary/80" />Tags</h4>
-                    <div className="flex flex-wrap gap-2">
-                    {service.tags.map((tag) => (
-                        <Badge key={tag} variant="outline">{tag}</Badge>
-                    ))}
-                    </div>
-                </div>
-                )}
-            </CardContent>
-        </Card>
-      ) : null}
-      
-      {/* Packages Section */}
-      {service.showPackagesSection && service.packages && service.packages.length > 0 && (
-        <Card>
-          <CardHeader><CardTitle className="text-xl">Pricing Packages</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {service.packages.map((pkg, index) => (
-              <Card key={`pkg-${index}`} className={cn('flex flex-col', pkg.isPopular && 'border-primary')}>
-                {pkg.isPopular && <Badge className="w-fit self-center -mt-3 mb-2">Most Popular</Badge>}
+        <TabsContent value="general">
+            <Card>
                 <CardHeader>
-                  <CardTitle>{pkg.name}</CardTitle>
-                  <CardDescription>{pkg.description}</CardDescription>
+                    <CardTitle className="text-xl">General Information</CardTitle>
+                    <CardDescription>{service.shortDescription}</CardDescription>
                 </CardHeader>
-                <CardContent className="flex-grow">
-                  <p className="text-3xl font-bold mb-4">{formatIDR(pkg.price)}</p>
-                  <ul className="space-y-2 text-sm text-muted-foreground">
-                    {pkg.features.map((feature, fIndex) => (
-                      <li key={`feat-${fIndex}`} className="flex items-center">
-                        <Check className="h-4 w-4 mr-2 text-green-500"/>
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <InfoRow label="Category" value={service.category.name} icon={Tag} />
+                    <InfoRow label="Status" value={<Badge variant="outline" className={cn("capitalize", getStatusBadgeVariant(service.status))}>{service.status}</Badge>} icon={Info} />
+                    <InfoRow label="Estimated Duration" value={service.estimatedDuration || 'N/A'} icon={Clock} />
+                    <div className="md:col-span-2 lg:col-span-3">
+                        <h4 className="font-semibold text-muted-foreground mb-2 flex items-center"><ImageIcon className="mr-2 h-4 w-4 text-primary/80" />Service Image</h4>
+                        {service.imageUrl && (
+                             <div className="relative w-full max-w-sm aspect-[16/9] rounded-lg overflow-hidden border bg-muted">
+                                <Image src={service.imageUrl} alt={service.title} fill style={{objectFit:"cover"}} data-ai-hint={service.dataAiHint || "service image"} />
+                            </div>
+                        )}
+                    </div>
                 </CardContent>
-                <CardFooter>
-                  <Button variant={pkg.isPopular ? 'default' : 'outline'} className="w-full">{pkg.cta || 'Choose Plan'}</Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* FAQ Section */}
-      {service.showFaqSection && service.faq && service.faq.length > 0 && (
-        <Card>
-          <CardHeader><CardTitle className="text-xl">Frequently Asked Questions</CardTitle></CardHeader>
-          <CardContent>
-            <Accordion type="single" collapsible className="w-full">
-              {service.faq.map((item, i) => (
-                  <AccordionItem key={item.id || `faq-${i}`} value={`item-${i}`}>
-                      <AccordionTrigger className="text-left"><HelpCircle className="h-5 w-5 text-primary mr-3 flex-shrink-0"/>{item.q}</AccordionTrigger>
-                      <AccordionContent className="text-base text-muted-foreground pl-10">
-                          {item.a}
-                      </AccordionContent>
-                  </AccordionItem>
-              ))}
-            </Accordion>
-          </CardContent>
-        </Card>
-      )}
-
-      <CardFooter className="flex justify-end border-t pt-6">
-           <Button variant="outline" onClick={() => router.push('/admin/services')} className="group">
-             <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
-             Back to Services
-           </Button>
-        </CardFooter>
+            </Card>
+        </TabsContent>
+        <TabsContent value="content">
+            <Card>
+                <CardHeader><CardTitle className="text-xl">Detailed Content</CardTitle></CardHeader>
+                <CardContent className="space-y-6">
+                     <div>
+                        <h4 className="font-semibold text-foreground mb-2">Detailed Description</h4>
+                        <article className="prose prose-sm sm:prose-base dark:prose-invert max-w-none prose-headings:font-semibold prose-a:text-primary hover:prose-a:text-primary/80"><ReactMarkdown>{service.longDescription}</ReactMarkdown></article>
+                    </div>
+                    {service.keyFeatures && service.keyFeatures.length > 0 && (
+                        <div>
+                            <h4 className="font-semibold text-foreground mb-2 flex items-center"><ListChecks className="mr-2 h-5 w-5 text-primary/80" />Key Features</h4>
+                            <ul className="list-disc list-inside space-y-1 text-muted-foreground">{service.keyFeatures.map((feature, index) => <li key={`kf-${index}`}>{feature}</li>)}</ul>
+                        </div>
+                    )}
+                    {service.targetAudience && service.targetAudience.length > 0 && (
+                        <div>
+                            <h4 className="font-semibold text-foreground mb-2 flex items-center"><Users className="mr-2 h-5 w-5 text-primary/80" />Target Audience</h4>
+                            <ul className="list-disc list-inside space-y-1 text-muted-foreground">{service.targetAudience.map((audience, index) => <li key={`ta-${index}`}>{audience}</li>)}</ul>
+                        </div>
+                    )}
+                    {service.tags && service.tags.length > 0 && (
+                        <div>
+                            <h4 className="font-semibold text-foreground mb-2 flex items-center"><Tag className="mr-2 h-5 w-5 text-primary/80" />Tags</h4>
+                            <div className="flex flex-wrap gap-2">{service.tags.map((tag) => (<Badge key={tag} variant="outline">{tag}</Badge>))}</div>
+                        </div>
+                    )}
+                    <InfoRow label="Portfolio" value={service.portfolioLink ? <Link href={service.portfolioLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">View Portfolio <ExternalLink className="inline-block ml-1 h-3 w-3" /></Link> : 'N/A'} icon={LinkIcon} />
+                </CardContent>
+            </Card>
+        </TabsContent>
+        <TabsContent value="pricing">
+            <Card>
+                <CardHeader><CardTitle className="text-xl">Pricing Information</CardTitle></CardHeader>
+                <CardContent className="space-y-6">
+                    <InfoRow label="Pricing Model" value={service.pricingModel} icon={DollarSign} />
+                    {(service.pricingModel === "Fixed Price" || service.pricingModel === "Starting At" || service.pricingModel === "Hourly" || service.pricingModel === "Subscription") && (
+                        <InfoRow label="Base Price" value={`${formatIDR(service.priceMin)} ${service.priceMax ? `- ${formatIDR(service.priceMax)}` : ''} (${service.currency})`} icon={DollarSign} />
+                    )}
+                    
+                    <h4 className="font-semibold text-foreground mt-6 pt-6 border-t flex items-center"><Briefcase className="mr-2 h-5 w-5 text-primary/80" />Pricing Packages</h4>
+                    {service.showPackagesSection && service.packages && service.packages.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {service.packages.map((pkg, index) => (
+                          <Card key={`pkg-${index}`} className={cn('flex flex-col', pkg.isPopular && 'border-primary')}>
+                            {pkg.isPopular && <Badge className="w-fit self-center -mt-3 mb-2">Most Popular</Badge>}
+                            <CardHeader><CardTitle>{pkg.name}</CardTitle><CardDescription>{pkg.description}</CardDescription></CardHeader>
+                            <CardContent className="flex-grow">
+                              <p className="text-3xl font-bold mb-4">{formatIDR(pkg.price)}</p>
+                              <ul className="space-y-2 text-sm text-muted-foreground">{pkg.features.map((feature, fIndex) => (<li key={`feat-${fIndex}`} className="flex items-center"><Check className="h-4 w-4 mr-2 text-green-500"/>{feature}</li>))}</ul>
+                            </CardContent>
+                            <CardFooter><Button variant={pkg.isPopular ? 'default' : 'outline'} className="w-full" disabled>{pkg.cta || 'Choose Plan'}</Button></CardFooter>
+                          </Card>
+                        ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">The packages section is not enabled for this service.</p>
+                    )}
+                </CardContent>
+            </Card>
+        </TabsContent>
+        <TabsContent value="faq">
+            <Card>
+                <CardHeader><CardTitle className="text-xl">Frequently Asked Questions</CardTitle></CardHeader>
+                <CardContent>
+                    {service.showFaqSection && service.faq && service.faq.length > 0 ? (
+                         <Accordion type="single" collapsible className="w-full">
+                            {service.faq.map((item, i) => (<AccordionItem key={item.id || `faq-${i}`} value={`item-${i}`}><AccordionTrigger className="text-left"><HelpCircle className="h-5 w-5 text-primary mr-3 flex-shrink-0"/>{item.q}</AccordionTrigger><AccordionContent className="text-base text-muted-foreground pl-10">{item.a}</AccordionContent></AccordionItem>))}
+                        </Accordion>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">The FAQ section is not enabled for this service.</p>
+                    )}
+                </CardContent>
+            </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

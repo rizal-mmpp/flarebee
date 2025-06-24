@@ -4,17 +4,16 @@
 import type { Control, FieldErrors, UseFormRegister, UseFormWatch, UseFormSetValue, UseFormGetValues } from 'react-hook-form';
 import { Controller, useFieldArray } from 'react-hook-form';
 import React from 'react'; 
-import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SERVICE_CATEGORIES, PRICING_MODELS, SERVICE_STATUSES } from '@/lib/constants';
 import type { ServiceFormValues } from './ServiceFormTypes';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { ImageIcon, Trash2, PlusCircle, Link as LinkIcon, Briefcase, HelpCircle, FileText, Settings, Rocket } from 'lucide-react';
+import { ImageIcon, Trash2, PlusCircle, DollarSign, Briefcase, HelpCircle, FileText, Settings } from 'lucide-react';
 import { CustomDropzone } from '@/components/ui/custom-dropzone';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -62,18 +61,11 @@ export function ServiceForm({
 
   return (
     <Tabs defaultValue="general" className="w-full">
-      <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
+      <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
         <TabsTrigger value="general"><Settings className="mr-2 h-4 w-4 hidden sm:inline-block"/>General</TabsTrigger>
         <TabsTrigger value="content"><FileText className="mr-2 h-4 w-4 hidden sm:inline-block"/>Content</TabsTrigger>
-        <TabsTrigger value="packages"><Briefcase className="mr-2 h-4 w-4 hidden sm:inline-block"/>Packages</TabsTrigger>
+        <TabsTrigger value="pricing"><DollarSign className="mr-2 h-4 w-4 hidden sm:inline-block"/>Pricing</TabsTrigger>
         <TabsTrigger value="faq"><HelpCircle className="mr-2 h-4 w-4 hidden sm:inline-block"/>FAQ</TabsTrigger>
-        <TabsTrigger value="journey" disabled={!isEditMode}>
-            <Link href={isEditMode ? `/admin/services/${getValues('title') && getValues('title').toLowerCase().replace(/\s+/g, '-')}/simulate-journey` : '#'} passHref legacyBehavior>
-                <a className="flex items-center" onClick={(e) => !isEditMode && e.preventDefault()}>
-                    <Rocket className="mr-2 h-4 w-4 hidden sm:inline-block"/>Journey
-                </a>
-            </Link>
-        </TabsTrigger>
       </TabsList>
       
       <TabsContent value="general">
@@ -86,7 +78,7 @@ export function ServiceForm({
               <div><Label htmlFor="status">Status *</Label><Controller name="status" control={control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value || 'draft'}><SelectTrigger id="status" className={cn("mt-1", errors.status && "border-destructive")}><SelectValue placeholder="Select status" /></SelectTrigger><SelectContent>{SERVICE_STATUSES.map(stat => (<SelectItem key={stat} value={stat} className="capitalize">{stat.replace('_', ' ')}</SelectItem>))}</SelectContent></Select>)}/>{errors.status && <p className="text-sm text-destructive mt-1">{errors.status.message}</p>}</div>
             </div>
             <div><Label>Service Image *</Label><CustomDropzone onFileChange={onFileChange} currentFileName={selectedFileName} accept={{ 'image/*': ['.png', '.jpeg', '.jpg', '.gif', '.webp', '.avif'] }} maxSize={MAX_FILE_SIZE_BYTES} className="mt-1"/><input type="hidden" {...register('imageUrl')} />{errors.imageUrl && <p className="text-sm text-destructive mt-1">{errors.imageUrl.message}</p>}</div>
-            {currentImageUrl ? (<div className="mt-3 p-2 border border-border rounded-lg bg-muted/50 max-w-xs"><p className="text-xs text-muted-foreground mb-1">Preview:</p><Image src={currentImageUrl} alt="Service image preview" width={200} height={120} className="rounded-md object-cover max-h-[120px]" data-ai-hint="service image"/></div>) : !selectedFileName && (<div className="mt-3 p-4 border border-dashed border-input rounded-lg bg-muted/30 text-center text-muted-foreground max-w-xs"><ImageIcon className="mx-auto h-8 w-8 mb-1" /><p className="text-xs">Upload an image.</p></div>)}
+            {currentImageUrl ? (<div className="mt-3 p-2 border border-border rounded-lg bg-muted/50 max-w-xs"><p className="text-xs text-muted-foreground mb-1">Preview:</p><Image src={currentImageUrl} alt="Service image preview" width={200} height={120} style={{objectFit: 'fill'}} className="rounded-md max-h-[120px]" data-ai-hint="service image"/></div>) : !selectedFileName && (<div className="mt-3 p-4 border border-dashed border-input rounded-lg bg-muted/30 text-center text-muted-foreground max-w-xs"><ImageIcon className="mx-auto h-8 w-8 mb-1" /><p className="text-xs">Upload an image.</p></div>)}
             <div><Label htmlFor="dataAiHint">AI Hint for Image (Optional)</Label><Input id="dataAiHint" {...register('dataAiHint')} className="mt-1" placeholder="e.g., modern website, ai chat" />{errors.dataAiHint && <p className="text-sm text-destructive mt-1">{errors.dataAiHint.message}</p>}</div>
           </CardContent>
         </Card>
@@ -108,22 +100,29 @@ export function ServiceForm({
         </Card>
       </TabsContent>
 
-      <TabsContent value="packages">
+      <TabsContent value="pricing">
         <Card>
-            <CardHeader><CardTitle>Pricing Packages</CardTitle><CardDescription>Define tiered pricing options for this service.</CardDescription></CardHeader>
+            <CardHeader><CardTitle>Pricing Model & Packages</CardTitle><CardDescription>Define how this service is priced and create optional packages.</CardDescription></CardHeader>
             <CardContent className="space-y-6">
+                 <div><Label htmlFor="pricingModel">Pricing Model *</Label><Controller name="pricingModel" control={control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value || 'Custom Quote'}><SelectTrigger id="pricingModel" className={cn("mt-1", errors.pricingModel && "border-destructive")}><SelectValue placeholder="Select pricing model" /></SelectTrigger><SelectContent>{PRICING_MODELS.map(model => (<SelectItem key={model} value={model}>{model}</SelectItem>))}</SelectContent></Select>)}/>{errors.pricingModel && <p className="text-sm text-destructive mt-1">{errors.pricingModel.message}</p>}</div>
+                 
+                 {(watchedPricingModel === "Fixed Price" || watchedPricingModel === "Starting At" || watchedPricingModel === "Hourly" || watchedPricingModel === "Subscription") && (
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <div><Label htmlFor="priceMin">Price (IDR)</Label><Input {...register('priceMin', { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 500000"/>{errors.priceMin && <p className="text-sm text-destructive mt-1">{errors.priceMin.message}</p>}</div>
+                     </div>
+                 )}
+                 
+                <Separator/>
                 <div className="flex items-center space-x-2"><Controller name="showPackagesSection" control={control} render={({ field }) => <Switch id="showPackagesSection" checked={field.value} onCheckedChange={field.onChange} />} /><Label htmlFor="showPackagesSection">Show Packages Section on Public Page</Label></div>
                 {watch('showPackagesSection') && (
-                    <>
-                    <Separator/>
-                    <div className="space-y-4">
+                    <div className="space-y-4 pt-4 border-t">
                         {packageFields.map((item, index) => (
                         <Card key={item.id} className="p-4 bg-muted/50">
                             <div className="flex justify-between items-center mb-4"><p className="font-semibold">Package #{index + 1}</p><Button type="button" variant="ghost" size="icon" onClick={() => removePackage(index)} className="text-destructive h-8 w-8"><Trash2 className="h-4 w-4"/></Button></div>
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div><Label htmlFor={`packages.${index}.name`}>Name</Label><Input {...register(`packages.${index}.name`)} className="mt-1" placeholder="e.g., Basic, Pro"/>{errors.packages?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.packages[index]?.name?.message}</p>}</div>
-                                    <div><Label htmlFor={`packages.${index}.price`}>Price (IDR)</Label><Input {...register(`packages.${index}.price`)} type="number" className="mt-1" placeholder="e.g., 500000"/>{errors.packages?.[index]?.price && <p className="text-sm text-destructive mt-1">{errors.packages[index]?.price?.message}</p>}</div>
+                                    <div><Label htmlFor={`packages.${index}.price`}>Price (IDR)</Label><Input {...register(`packages.${index}.price`, { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 500000"/>{errors.packages?.[index]?.price && <p className="text-sm text-destructive mt-1">{errors.packages[index]?.price?.message}</p>}</div>
                                 </div>
                                 <div><Label htmlFor={`packages.${index}.description`}>Description</Label><Input {...register(`packages.${index}.description`)} className="mt-1" placeholder="Best for small projects"/>{errors.packages?.[index]?.description && <p className="text-sm text-destructive mt-1">{errors.packages[index]?.description?.message}</p>}</div>
                                 <div><Label htmlFor={`packages.${index}.features`}>Features (comma-separated)</Label><Textarea {...register(`packages.${index}.features`)} className="mt-1" rows={3} placeholder="Feature A, Feature B, Feature C"/>{errors.packages?.[index]?.features && <p className="text-sm text-destructive mt-1">{errors.packages[index]?.features?.message}</p>}</div>
@@ -132,9 +131,8 @@ export function ServiceForm({
                             </div>
                         </Card>
                         ))}
+                         <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ name: '', description: '', price: 0, features: '', isPopular: false, cta: 'Choose Plan' })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package</Button>
                     </div>
-                    <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ name: '', description: '', price: 0, features: '', isPopular: false, cta: 'Choose Plan' })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package</Button>
-                    </>
                 )}
             </CardContent>
         </Card>
@@ -146,9 +144,7 @@ export function ServiceForm({
             <CardContent className="space-y-6">
                 <div className="flex items-center space-x-2"><Controller name="showFaqSection" control={control} render={({ field }) => <Switch id="showFaqSection" checked={field.value} onCheckedChange={field.onChange} />} /><Label htmlFor="showFaqSection">Show FAQ Section on Public Page</Label></div>
                  {watch('showFaqSection') && (
-                    <>
-                    <Separator/>
-                     <div className="space-y-4">
+                    <div className="space-y-4 pt-4 border-t">
                         {faqFields.map((item, index) => (
                         <Card key={item.id} className="p-4 bg-muted/50">
                              <div className="flex justify-between items-center mb-4"><p className="font-semibold">FAQ #{index + 1}</p><Button type="button" variant="ghost" size="icon" onClick={() => removeFaq(index)} className="text-destructive h-8 w-8"><Trash2 className="h-4 w-4"/></Button></div>
@@ -159,25 +155,9 @@ export function ServiceForm({
                              </div>
                         </Card>
                         ))}
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendFaq({ id: `faq-${Date.now()}`, q: '', a: '' })}><PlusCircle className="mr-2 h-4 w-4"/>Add FAQ</Button>
                     </div>
-                    <Button type="button" variant="outline" size="sm" onClick={() => appendFaq({ id: `faq-${Date.now()}`, q: '', a: '' })}><PlusCircle className="mr-2 h-4 w-4"/>Add FAQ</Button>
-                    </>
                 )}
-            </CardContent>
-         </Card>
-      </TabsContent>
-      
-       <TabsContent value="journey">
-         <Card>
-            <CardHeader><CardTitle>Customer Journey</CardTitle><CardDescription>Map out and simulate the customer's experience for this service.</CardDescription></CardHeader>
-            <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">Click the button below to go to the journey simulation editor. This is where you can define each stage of the customer interaction, from discovery to post-launch.</p>
-                <Button asChild variant="outline">
-                    <Link href={`/admin/services/${getValues('title') ? getValues('title').toLowerCase().replace(/\s+/g, '-') : ''}/simulate-journey`}>
-                        <Rocket className="mr-2 h-4 w-4" />
-                        Go to Journey Editor
-                    </Link>
-                </Button>
             </CardContent>
          </Card>
       </TabsContent>

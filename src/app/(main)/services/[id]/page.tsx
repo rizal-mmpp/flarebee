@@ -8,7 +8,7 @@ import { notFound, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ServerCrash, Check, FileText, HelpCircle, Bot, Loader2, Send, Sparkles, MessageSquare } from 'lucide-react'; 
+import { ArrowLeft, ServerCrash, Check, HelpCircle, Bot, Loader2, Send, MessageSquare, DollarSign } from 'lucide-react'; 
 import Link from 'next/link';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,7 +19,8 @@ import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 
 
-const formatIDR = (amount: number | string) => {
+const formatIDR = (amount: number | string | undefined | null) => {
+  if (amount === undefined || amount === null) return 'N/A';
   const numericAmount = typeof amount === 'string' ? parseFloat(amount.replace(/[^0-9.-]+/g,"")) : amount;
   if (isNaN(numericAmount)) return 'N/A';
   return new Intl.NumberFormat('id-ID', {
@@ -47,7 +48,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
       setError(null);
       try {
         const fetchedService = await getServiceBySlugFromFirestore(slug);
-        if (!fetchedService) {
+        if (!fetchedService || fetchedService.status !== 'active') {
           notFound();
           return;
         }
@@ -97,6 +98,13 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
   if (!service) {
     return notFound(); 
   }
+  
+  const displayPrice = (service.pricingModel === 'Fixed Price' || service.pricingModel === 'Starting At') 
+    ? `${service.pricingModel}: ${formatIDR(service.priceMin)}`
+    : service.pricingModel === 'Hourly' ? `${formatIDR(service.priceMin)} / hour`
+    : service.pricingModel === 'Subscription' ? `${formatIDR(service.priceMin)} / month`
+    : null;
+
 
   return (
     <div className="bg-background text-foreground">
@@ -108,6 +116,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
                   <Badge variant="secondary">{service.category.name}</Badge>
                   <h1 className="text-4xl md:text-5xl font-bold leading-tight">{service.title}</h1>
                   <p className="text-lg text-muted-foreground">{service.shortDescription}</p>
+                   {displayPrice && <p className="text-2xl font-bold text-primary flex items-center"><DollarSign className="mr-2 h-6 w-6"/>{displayPrice}</p>}
                   <div className="flex gap-4 pt-4">
                       {service.showPackagesSection && service.packages && service.packages.length > 0 && (
                           <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-primary-foreground">
