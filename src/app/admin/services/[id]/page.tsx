@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -11,7 +10,7 @@ import type { Service } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, ServerCrash, Briefcase, Edit, Tag, Info, DollarSign, Clock, Users, LinkIcon, ExternalLink, ListChecks, Check, HelpCircle, Rocket, FileText, Settings } from 'lucide-react';
+import { ArrowLeft, Loader2, ServerCrash, Briefcase, Edit, Tag, Info, DollarSign, Clock, Users, LinkIcon, ExternalLink, ListChecks, Check, HelpCircle, Rocket, FileText, Settings, ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
