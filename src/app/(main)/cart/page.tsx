@@ -138,9 +138,11 @@ export default function CartPage() {
   const getDisplayPrice = () => {
     if (!isSubscription || !selectedPackage) return { monthly: 0, original: 0, saving: 0 };
     
-    const baseMonthlyPrice = selectedPackage.priceMonthly;
+    // The monthly price from the package is already the discounted rate for the base term (12mo)
+    let baseMonthlyPrice = selectedPackage.priceMonthly;
     let discountPercentage = 0;
     
+    // Apply additional term discounts
     switch (selection.billingCycle) {
         case 24:
             discountPercentage = 0.05; // 5%
@@ -152,14 +154,21 @@ export default function CartPage() {
             discountPercentage = 0;
     }
 
-    const discountedMonthlyPrice = baseMonthlyPrice * (1 - discountPercentage);
-    const totalSaving = (baseMonthlyPrice - discountedMonthlyPrice) * selection.billingCycle;
+    const finalMonthlyPrice = baseMonthlyPrice * (1 - discountPercentage);
+    const originalMonthlyPrice = selectedPackage.originalPriceMonthly || baseMonthlyPrice;
+    
+    // Saving is calculated from the highest original price vs the final price for the whole term
+    const totalSaving = (originalMonthlyPrice - finalMonthlyPrice) * selection.billingCycle;
 
-    return { monthly: discountedMonthlyPrice, original: baseMonthlyPrice, saving: totalSaving };
+    return { monthly: finalMonthlyPrice, original: originalMonthlyPrice, saving: totalSaving };
   };
   
   const { monthly: monthlyPrice, original: originalPrice, saving } = getDisplayPrice();
   const subtotal = isFixedPrice ? service.pricing?.fixedPriceDetails?.price || 0 : monthlyPrice * selection.billingCycle;
+  
+  const renewalText = selectedPackage?.renewalInfo 
+    ? selectedPackage.renewalInfo 
+    : `Renews at ${formatIDR(originalPrice)}/mo. Cancel anytime.`;
 
 
   return (
@@ -185,7 +194,7 @@ export default function CartPage() {
             {isSubscription && selectedPackage && (
               <Card className="shadow-lg border-border/60">
                 <CardHeader>
-                    <CardTitle className="text-xl">{selectedPackage.name}</CardTitle>
+                    <CardTitle className="text-xl">{service.title} ({selectedPackage.name})</CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -205,6 +214,7 @@ export default function CartPage() {
                                     <SelectItem value="36">36 Months (Save 10%)</SelectItem>
                                 </SelectContent>
                             </Select>
+                            <p className="text-xs text-muted-foreground mt-2">{renewalText}</p>
                         </div>
 
                         <div className="flex items-center gap-4">
@@ -222,13 +232,17 @@ export default function CartPage() {
                             </div>
                         </div>
                     </div>
+                     <div className="flex items-center p-3 bg-primary/10 rounded-lg text-primary-foreground/90">
+                        <Info className="h-5 w-5 mr-3 flex-shrink-0 text-primary" />
+                        <p className="text-sm font-medium text-primary/90">Want a free domain? Choose a package for at least 12 months.</p>
+                     </div>
                 </CardContent>
               </Card>
             )}
             {isFixedPrice && service.pricing?.fixedPriceDetails && (
               <Card className="shadow-lg border-border/60">
                 <CardContent className="p-6">
-                  <h4 className="font-semibold text-lg">{service.pricing.fixedPriceDetails.title || 'One-Time Project'}</h4>
+                  <h4 className="font-semibold text-lg">{service.title} ({service.pricing.fixedPriceDetails.title || 'One-Time Project'})</h4>
                   <p className="text-3xl font-bold text-foreground mt-2">{formatIDR(service.pricing.fixedPriceDetails.price)}</p>
                   <p className="text-sm text-muted-foreground mt-1">One-time payment for a defined scope.</p>
                 </CardContent>
