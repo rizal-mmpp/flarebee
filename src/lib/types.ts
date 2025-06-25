@@ -45,8 +45,9 @@ export interface JourneyStage {
 export interface ServicePackage {
   name: string;
   description: string;
-  price: number;
-  features: string[]; // Stored as comma-separated string in form, but array in Firestore
+  priceMonthly: number;
+  priceAnnually: number;
+  features: string[];
   isPopular?: boolean;
   cta?: string;
 }
@@ -55,6 +56,22 @@ export interface FaqItem {
   id: string; // For react key
   q: string; // Question
   a: string; // Answer
+}
+
+export interface PricingDetails {
+  isFixedPriceActive?: boolean;
+  fixedPriceDetails?: {
+    price: number;
+  };
+  isSubscriptionActive?: boolean;
+  subscriptionDetails?: {
+    annualDiscountPercentage?: number;
+    packages: ServicePackage[];
+  };
+  isCustomQuoteActive?: boolean;
+  customQuoteDetails?: {
+    description?: string;
+  };
 }
 
 
@@ -66,10 +83,7 @@ export interface Service {
   shortDescription: string;
   longDescription: string; 
   category: ServiceCategory;
-  pricingModel: "Fixed Price" | "Starting At" | "Hourly" | "Subscription" | "Custom Quote";
-  priceMin?: number; 
-  priceMax?: number; 
-  currency: string; 
+  pricing?: PricingDetails;
   tags: string[];
   imageUrl: string; 
   dataAiHint?: string;
@@ -78,8 +92,6 @@ export interface Service {
   targetAudience?: string[]; 
   estimatedDuration?: string; 
   portfolioLink?: string; 
-  showPackagesSection?: boolean;
-  packages?: ServicePackage[];
   showFaqSection?: boolean;
   faq?: FaqItem[];
   customerJourneyStages?: JourneyStage[]; 

@@ -9,16 +9,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { SERVICE_CATEGORIES, PRICING_MODELS, SERVICE_STATUSES } from '@/lib/constants';
+import { SERVICE_CATEGORIES, SERVICE_STATUSES } from '@/lib/constants';
 import type { ServiceFormValues } from './ServiceFormTypes';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { ImageIcon, Trash2, PlusCircle, DollarSign, Briefcase, HelpCircle, FileText, Settings } from 'lucide-react';
+import { ImageIcon, Trash2, PlusCircle, DollarSign, Briefcase, HelpCircle, FileText, Settings, Sparkles, Repeat } from 'lucide-react';
 import { CustomDropzone } from '@/components/ui/custom-dropzone';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from '@/components/ui/separator';
+import { Rocket } from 'lucide-react';
+import Link from 'next/link';
 
 interface ServiceFormProps {
   control: Control<ServiceFormValues>;
@@ -47,17 +49,18 @@ export function ServiceForm({
 }: ServiceFormProps) {
   
   const MAX_FILE_SIZE_BYTES = 0.95 * 1024 * 1024; 
-  const watchedPricingModel = watch("pricingModel");
 
   const { fields: packageFields, append: appendPackage, remove: removePackage } = useFieldArray({
     control,
-    name: "packages",
+    name: "pricing.subscriptionDetails.packages",
   });
   
   const { fields: faqFields, append: appendFaq, remove: removeFaq } = useFieldArray({
     control,
     name: "faq",
   });
+  
+  const watchedPricing = watch('pricing');
 
   return (
     <Tabs defaultValue="general" className="w-full">
@@ -102,38 +105,67 @@ export function ServiceForm({
 
       <TabsContent value="pricing">
         <Card>
-            <CardHeader><CardTitle>Pricing Model & Packages</CardTitle><CardDescription>Define how this service is priced and create optional packages.</CardDescription></CardHeader>
+            <CardHeader><CardTitle>Pricing Models</CardTitle><CardDescription>Activate and configure one or more pricing models for this service.</CardDescription></CardHeader>
             <CardContent className="space-y-6">
-                 <div><Label htmlFor="pricingModel">Pricing Model *</Label><Controller name="pricingModel" control={control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value || 'Custom Quote'}><SelectTrigger id="pricingModel" className={cn("mt-1", errors.pricingModel && "border-destructive")}><SelectValue placeholder="Select pricing model" /></SelectTrigger><SelectContent>{PRICING_MODELS.map(model => (<SelectItem key={model} value={model}>{model}</SelectItem>))}</SelectContent></Select>)}/>{errors.pricingModel && <p className="text-sm text-destructive mt-1">{errors.pricingModel.message}</p>}</div>
-                 
-                 {(watchedPricingModel === "Fixed Price" || watchedPricingModel === "Starting At" || watchedPricingModel === "Hourly" || watchedPricingModel === "Subscription") && (
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                         <div><Label htmlFor="priceMin">Price (IDR)</Label><Input {...register('priceMin', { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 500000"/>{errors.priceMin && <p className="text-sm text-destructive mt-1">{errors.priceMin.message}</p>}</div>
-                     </div>
-                 )}
-                 
-                <Separator/>
-                <div className="flex items-center space-x-2"><Controller name="showPackagesSection" control={control} render={({ field }) => <Switch id="showPackagesSection" checked={field.value} onCheckedChange={field.onChange} />} /><Label htmlFor="showPackagesSection">Show Packages Section on Public Page</Label></div>
-                {watch('showPackagesSection') && (
-                    <div className="space-y-4 pt-4 border-t">
-                        {packageFields.map((item, index) => (
-                        <Card key={item.id} className="p-4 bg-muted/50">
-                            <div className="flex justify-between items-center mb-4"><p className="font-semibold">Package #{index + 1}</p><Button type="button" variant="ghost" size="icon" onClick={() => removePackage(index)} className="text-destructive h-8 w-8"><Trash2 className="h-4 w-4"/></Button></div>
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div><Label htmlFor={`packages.${index}.name`}>Name</Label><Input {...register(`packages.${index}.name`)} className="mt-1" placeholder="e.g., Basic, Pro"/>{errors.packages?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.packages[index]?.name?.message}</p>}</div>
-                                    <div><Label htmlFor={`packages.${index}.price`}>Price (IDR)</Label><Input {...register(`packages.${index}.price`, { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 500000"/>{errors.packages?.[index]?.price && <p className="text-sm text-destructive mt-1">{errors.packages[index]?.price?.message}</p>}</div>
-                                </div>
-                                <div><Label htmlFor={`packages.${index}.description`}>Description</Label><Input {...register(`packages.${index}.description`)} className="mt-1" placeholder="Best for small projects"/>{errors.packages?.[index]?.description && <p className="text-sm text-destructive mt-1">{errors.packages[index]?.description?.message}</p>}</div>
-                                <div><Label htmlFor={`packages.${index}.features`}>Features (comma-separated)</Label><Textarea {...register(`packages.${index}.features`)} className="mt-1" rows={3} placeholder="Feature A, Feature B, Feature C"/>{errors.packages?.[index]?.features && <p className="text-sm text-destructive mt-1">{errors.packages[index]?.features?.message}</p>}</div>
-                                <div><Label htmlFor={`packages.${index}.cta`}>CTA Text</Label><Input {...register(`packages.${index}.cta`)} className="mt-1" placeholder="e.g., Get Started, Choose Pro"/>{errors.packages?.[index]?.cta && <p className="text-sm text-destructive mt-1">{errors.packages[index]?.cta?.message}</p>}</div>
-                                <div className="flex items-center space-x-2"><Controller name={`packages.${index}.isPopular`} control={control} render={({ field }) => <Switch id={`packages.${index}.isPopular`} checked={field.value} onCheckedChange={field.onChange} />} /><Label htmlFor={`packages.${index}.isPopular`}>Mark as Most Popular</Label></div>
-                            </div>
-                        </Card>
-                        ))}
-                         <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ name: '', description: '', price: 0, features: '', isPopular: false, cta: 'Choose Plan' })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package</Button>
+                {/* One-Time Project / Fixed Price */}
+                <div className="p-4 border rounded-lg space-y-4">
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="isFixedPriceActive" className="flex items-center gap-2 text-base font-semibold"><DollarSign className="h-5 w-5 text-primary"/>One-Time Project</Label>
+                        <Controller name="pricing.isFixedPriceActive" control={control} render={({ field }) => <Switch id="isFixedPriceActive" checked={field.value} onCheckedChange={field.onChange} />} />
                     </div>
-                )}
+                    {watchedPricing?.isFixedPriceActive && (
+                        <div className="pl-7 space-y-2">
+                             <div><Label htmlFor="fixedPricePrice">Price (IDR)</Label><Input {...register('pricing.fixedPriceDetails.price', { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 500000"/>{errors.pricing?.fixedPriceDetails?.price && <p className="text-sm text-destructive mt-1">{errors.pricing.fixedPriceDetails.price.message}</p>}</div>
+                        </div>
+                    )}
+                </div>
+                
+                {/* Subscription Model */}
+                <div className="p-4 border rounded-lg space-y-4">
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="isSubscriptionActive" className="flex items-center gap-2 text-base font-semibold"><Repeat className="h-5 w-5 text-primary"/>Subscription Plans</Label>
+                        <Controller name="pricing.isSubscriptionActive" control={control} render={({ field }) => <Switch id="isSubscriptionActive" checked={field.value} onCheckedChange={field.onChange} />} />
+                    </div>
+                     {watchedPricing?.isSubscriptionActive && (
+                        <div className="pl-7 space-y-6">
+                            <div><Label htmlFor="annualDiscount">Annual Discount (%)</Label><Input {...register('pricing.subscriptionDetails.annualDiscountPercentage', { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 15 for 15%"/>{errors.pricing?.subscriptionDetails?.annualDiscountPercentage && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.annualDiscountPercentage.message}</p>}</div>
+                            <Separator/>
+                             <Label className="text-md font-medium mb-2 block">Subscription Packages ({packageFields.length})</Label>
+                            {packageFields.map((item, index) => (
+                            <Card key={item.id} className="p-4 bg-muted/50">
+                                <div className="flex justify-between items-center mb-4"><p className="font-semibold">Package #{index + 1}</p><Button type="button" variant="ghost" size="icon" onClick={() => removePackage(index)} className="text-destructive h-8 w-8"><Trash2 className="h-4 w-4"/></Button></div>
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div><Label htmlFor={`pricing.subscriptionDetails.packages.${index}.name`}>Name</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.name`)} className="mt-1" placeholder="e.g., Basic, Pro"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.name?.message}</p>}</div>
+                                        <div className="flex items-center space-x-2 pt-6"><Controller name={`pricing.subscriptionDetails.packages.${index}.isPopular`} control={control} render={({ field }) => <Switch id={`packages.${index}.isPopular`} checked={field.value} onCheckedChange={field.onChange} />} /><Label htmlFor={`packages.${index}.isPopular`}>Most Popular?</Label></div>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div><Label htmlFor={`pricing.subscriptionDetails.packages.${index}.priceMonthly`}>Monthly Price (IDR)</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.priceMonthly`, { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 100000"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.priceMonthly && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.priceMonthly?.message}</p>}</div>
+                                        <div><Label htmlFor={`pricing.subscriptionDetails.packages.${index}.priceAnnually`}>Annual Price (IDR)</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.priceAnnually`, { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 1000000"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.priceAnnually && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.priceAnnually?.message}</p>}</div>
+                                    </div>
+                                    <div><Label htmlFor={`pricing.subscriptionDetails.packages.${index}.description`}>Description</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.description`)} className="mt-1" placeholder="Best for small projects"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.description && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.description?.message}</p>}</div>
+                                    <div><Label htmlFor={`pricing.subscriptionDetails.packages.${index}.features`}>Features (comma-separated)</Label><Textarea {...register(`pricing.subscriptionDetails.packages.${index}.features`)} className="mt-1" rows={3} placeholder="Feature A, Feature B, Feature C"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.features && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.features?.message}</p>}</div>
+                                    <div><Label htmlFor={`pricing.subscriptionDetails.packages.${index}.cta`}>CTA Text</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.cta`)} className="mt-1" placeholder="e.g., Get Started, Choose Pro"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.cta && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.cta?.message}</p>}</div>
+                                </div>
+                            </Card>
+                            ))}
+                            <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ name: '', description: '', priceMonthly: 0, priceAnnually: 0, features: '', isPopular: false, cta: 'Choose Plan' })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package</Button>
+                        </div>
+                    )}
+                </div>
+
+                {/* Custom Quote Model */}
+                 <div className="p-4 border rounded-lg space-y-4">
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="isCustomQuoteActive" className="flex items-center gap-2 text-base font-semibold"><Sparkles className="h-5 w-5 text-primary"/>Custom Quote</Label>
+                        <Controller name="pricing.isCustomQuoteActive" control={control} render={({ field }) => <Switch id="isCustomQuoteActive" checked={field.value} onCheckedChange={field.onChange} />} />
+                    </div>
+                     {watchedPricing?.isCustomQuoteActive && (
+                        <div className="pl-7 space-y-2">
+                             <div><Label htmlFor="customQuoteDescription">Description</Label><Textarea {...register('pricing.customQuoteDetails.description')} rows={2} className="mt-1" placeholder="e.g., Contact us for enterprise solutions."/>{errors.pricing?.customQuoteDetails?.description && <p className="text-sm text-destructive mt-1">{errors.pricing.customQuoteDetails.description.message}</p>}</div>
+                        </div>
+                    )}
+                </div>
             </CardContent>
         </Card>
       </TabsContent>

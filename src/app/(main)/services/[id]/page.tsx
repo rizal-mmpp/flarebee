@@ -2,13 +2,13 @@
 'use client'; 
 
 import { use, useEffect, useState } from 'react';
-import type { Service } from '@/lib/types';
+import type { Service, ServicePackage } from '@/lib/types';
 import { getServiceBySlugFromFirestore } from '@/lib/firebase/firestoreServices';
 import { notFound, useRouter } from 'next/navigation'; 
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ServerCrash, Check, HelpCircle, Bot, Loader2, Send, MessageSquare, DollarSign } from 'lucide-react'; 
+import { ArrowLeft, ServerCrash, Check, HelpCircle, Bot, Loader2, Send, MessageSquare, DollarSign, Repeat, Calendar, Sparkles } from 'lucide-react'; 
 import Link from 'next/link';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
+import { Switch } from '@/components/ui/switch';
 
 
 const formatIDR = (amount: number | string | undefined | null) => {
@@ -32,6 +33,51 @@ const formatIDR = (amount: number | string | undefined | null) => {
 };
 
 
+const SubscriptionPackageCard: React.FC<{
+  pkg: ServicePackage;
+  billingCycle: 'monthly' | 'annually';
+  annualDiscountPercentage?: number;
+}> = ({ pkg, billingCycle, annualDiscountPercentage }) => {
+  const price = billingCycle === 'monthly' ? pkg.priceMonthly : pkg.priceAnnually;
+  const periodText = billingCycle === 'monthly' ? '/month' : '/year';
+  
+  return (
+    <Card key={pkg.name} className={cn('flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 relative', pkg.isPopular ? 'border-primary border-2 shadow-xl' : 'shadow-lg')}>
+      {pkg.isPopular && (
+        <Badge variant="default" className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary hover:bg-primary text-primary-foreground font-bold uppercase tracking-wider text-xs px-4 py-1.5">
+          Most Popular
+        </Badge>
+      )}
+      <CardHeader className="text-center pt-10">
+        <CardTitle className="text-2xl">{pkg.name}</CardTitle>
+        <CardDescription>{pkg.description}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex-grow space-y-6">
+        <div className="text-center">
+            <p className="text-4xl font-bold text-foreground">{formatIDR(price)}<span className="text-base font-normal text-muted-foreground ml-1">{periodText}</span></p>
+             {billingCycle === 'annually' && annualDiscountPercentage && (
+                <p className="text-xs text-green-600 font-semibold mt-1">Includes {annualDiscountPercentage}% discount!</p>
+            )}
+        </div>
+        <ul className="space-y-3 text-foreground/90">
+          {pkg.features.map(feature => (
+            <li key={feature} className="flex items-center">
+              <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
+              <span>{feature}</span>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+      <CardFooter>
+        <Button size="lg" className={cn('w-full', pkg.isPopular ? '' : 'bg-primary/90 hover:bg-primary')} variant={pkg.isPopular ? 'default' : 'secondary'}>
+          {pkg.cta || 'Get Started'}
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+};
+
+
 export default function ServiceDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
   const params = use(paramsPromise);
   const slug = params.id;
@@ -40,6 +86,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
 
   useEffect(() => {
     async function fetchService() {
@@ -99,11 +146,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
     return notFound(); 
   }
   
-  const displayPrice = (service.pricingModel === 'Fixed Price' || service.pricingModel === 'Starting At') 
-    ? `${service.pricingModel}: ${formatIDR(service.priceMin)}`
-    : service.pricingModel === 'Hourly' ? `${formatIDR(service.priceMin)} / hour`
-    : service.pricingModel === 'Subscription' ? `${formatIDR(service.priceMin)} / month`
-    : null;
+  const hasActivePricing = service.pricing?.isFixedPriceActive || service.pricing?.isSubscriptionActive || service.pricing?.isCustomQuoteActive;
 
 
   return (
@@ -116,15 +159,14 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
                   <Badge variant="secondary">{service.category.name}</Badge>
                   <h1 className="text-4xl md:text-5xl font-bold leading-tight">{service.title}</h1>
                   <p className="text-lg text-muted-foreground">{service.shortDescription}</p>
-                   {displayPrice && <p className="text-2xl font-bold text-primary flex items-center"><DollarSign className="mr-2 h-6 w-6"/>{displayPrice}</p>}
                   <div className="flex gap-4 pt-4">
-                      {service.showPackagesSection && service.packages && service.packages.length > 0 && (
+                      {hasActivePricing && (
                           <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                              <a href="#packages">Choose a Package</a>
+                              <a href="#pricing">View Pricing</a>
                           </Button>
                       )}
                       <Button size="lg" variant="outline" asChild>
-                          <a href="#custom-quote">Get a Custom Quote</a>
+                          <Link href="/contact-us">Contact Us</Link>
                       </Button>
                   </div>
               </div>
@@ -133,52 +175,59 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
               </div>
           </div>
       </section>
-
-      {/* Packages Section */}
-      {service.showPackagesSection && service.packages && service.packages.length > 0 && (
-        <section id="packages" className="py-16 md:py-24 bg-card">
-          <div className="container mx-auto px-4 md:px-6">
-            <div className="text-center max-w-2xl mx-auto mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold">Find the Perfect Plan</h2>
-              <p className="text-muted-foreground mt-2">Choose the package that best fits your needs. All plans are flexible and can be customized.</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
-              {service.packages.map(pkg => (
-                <Card key={pkg.name} className={cn('flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 relative', pkg.isPopular ? 'border-primary border-2 shadow-xl' : 'shadow-lg')}>
-                  {pkg.isPopular && (
-                      <Badge variant="default" className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary hover:bg-primary text-primary-foreground font-bold uppercase tracking-wider text-xs px-4 py-1.5">
-                          Most Popular
-                      </Badge>
+      
+      {/* Dynamic Pricing Section */}
+      {hasActivePricing && (
+         <section id="pricing" className="py-16 md:py-24 bg-background">
+            <div className="container mx-auto px-4 md:px-6">
+                <div className="text-center max-w-3xl mx-auto mb-12">
+                    <h2 className="text-3xl md:text-4xl font-bold">Find the Perfect Plan</h2>
+                    <p className="text-muted-foreground mt-2">Choose the option that best fits your needs. All plans are flexible and can be customized.</p>
+                </div>
+                
+                {service.pricing?.isSubscriptionActive && service.pricing.subscriptionDetails && service.pricing.subscriptionDetails.packages.length > 0 && (
+                    <div className="mb-12">
+                        <div className="flex justify-center items-center gap-4 mb-8">
+                            <span className={cn('font-medium', billingCycle === 'monthly' ? 'text-primary' : 'text-muted-foreground')}>Monthly</span>
+                            <Switch checked={billingCycle === 'annually'} onCheckedChange={(checked) => setBillingCycle(checked ? 'annually' : 'monthly')} aria-label="Toggle billing cycle"/>
+                            <span className={cn('font-medium', billingCycle === 'annually' ? 'text-primary' : 'text-muted-foreground')}>
+                                Annually
+                                {service.pricing.subscriptionDetails.annualDiscountPercentage && (
+                                    <Badge variant="secondary" className="ml-2 bg-green-500/20 text-green-700 border-none">Save {service.pricing.subscriptionDetails.annualDiscountPercentage}%</Badge>
+                                )}
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
+                            {service.pricing.subscriptionDetails.packages.map(pkg => (
+                               <SubscriptionPackageCard key={pkg.name} pkg={pkg} billingCycle={billingCycle} annualDiscountPercentage={service.pricing?.subscriptionDetails?.annualDiscountPercentage} />
+                            ))}
+                        </div>
+                    </div>
+                )}
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
+                    {service.pricing?.isFixedPriceActive && service.pricing.fixedPriceDetails && (
+                        <Card className="flex flex-col justify-between">
+                            <CardHeader><CardTitle className="flex items-center"><DollarSign className="mr-2 h-6 w-6 text-primary"/>One-Time Project</CardTitle><CardDescription>A single payment for a defined scope of work.</CardDescription></CardHeader>
+                            <CardContent><p className="text-3xl font-bold">{formatIDR(service.pricing.fixedPriceDetails.price)}</p></CardContent>
+                            <CardFooter><Button className="w-full">Get Started</Button></CardFooter>
+                        </Card>
                     )}
-                  <CardHeader className="text-center pt-10">
-                    <CardTitle className="text-2xl">{pkg.name}</CardTitle>
-                    <CardDescription>{pkg.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-grow space-y-6">
-                    <p className="text-4xl font-bold text-center text-foreground">{formatIDR(pkg.price)}</p>
-                    <ul className="space-y-3 text-foreground/90">
-                      {pkg.features.map(feature => (
-                        <li key={feature} className="flex items-center">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                  <CardFooter>
-                    <Button size="lg" className={cn('w-full', pkg.isPopular ? '' : 'bg-primary/90 hover:bg-primary')} variant={pkg.isPopular ? 'default' : 'secondary'}>
-                      {pkg.cta || 'Get Started'}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
+                    {service.pricing?.isCustomQuoteActive && (
+                        <Card className="flex flex-col justify-between">
+                             <CardHeader><CardTitle className="flex items-center"><Sparkles className="mr-2 h-6 w-6 text-primary"/>Custom Project</CardTitle><CardDescription>Need something different? Let's build a custom plan together.</CardDescription></CardHeader>
+                            <CardContent><p className="text-muted-foreground">{service.pricing.customQuoteDetails?.description || "Tell us about your project, and we'll craft a custom package tailored just for you. No obligations, just possibilities."}</p></CardContent>
+                            <CardFooter><Button asChild variant="outline" className="w-full"><Link href="/contact-us">Request a Quote</Link></Button></CardFooter>
+                        </Card>
+                    )}
+                </div>
             </div>
-          </div>
-        </section>
+         </section>
       )}
 
-      {/* Custom Quote Section */}
-      <section id="custom-quote" className="py-16 md:py-24">
+
+      {/* Custom Quote Section (Legacy - can be removed or kept as alternative CTA) */}
+      <section id="custom-quote-form" className="py-16 md:py-24 bg-card">
         <div className="container mx-auto px-4 md:px-6">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="space-y-4">
@@ -214,7 +263,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
 
       {/* FAQ Section */}
       {service.showFaqSection && service.faq && service.faq.length > 0 && (
-        <section id="faq" className="py-16 md:py-24 bg-card">
+        <section id="faq" className="py-16 md:py-24 bg-background">
           <div className="container mx-auto px-4 md:px-6 max-w-3xl">
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold">Frequently Asked Questions</h2>

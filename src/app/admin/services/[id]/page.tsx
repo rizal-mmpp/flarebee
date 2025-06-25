@@ -11,14 +11,14 @@ import type { Service } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, ServerCrash, Briefcase, Edit, Tag, Info, DollarSign, Clock, Users, LinkIcon, ExternalLink, ListChecks, Check, HelpCircle, Rocket, FileText, Settings, ImageIcon } from 'lucide-react';
+import { ArrowLeft, Loader2, ServerCrash, Briefcase, Edit, Tag, Info, DollarSign, Clock, Users, LinkIcon, ExternalLink, ListChecks, Check, HelpCircle, Rocket, FileText, Settings, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const formatIDR = (amount?: number) => {
+const formatIDR = (amount?: number | null) => {
   if (amount === undefined || amount === null) return 'N/A';
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -160,7 +160,7 @@ export default function ServiceDetailPage() {
                     <InfoRow label="Status" value={<Badge variant="outline" className={cn("capitalize", getStatusBadgeVariant(service.status))}>{service.status}</Badge>} icon={Info} />
                     <InfoRow label="Estimated Duration" value={service.estimatedDuration || 'N/A'} icon={Clock} />
                     <div className="md:col-span-2 lg:col-span-3">
-                        <h4 className="font-semibold text-muted-foreground mb-2 flex items-center"><ImageIcon className="mr-2 h-4 w-4 text-primary/80" />Service Image</h4>
+                        <h4 className="font-semibold text-muted-foreground mb-2 flex items-center"><Image className="mr-2 h-4 w-4 text-primary/80" />Service Image</h4>
                         {service.imageUrl && (
                              <div className="relative w-full max-w-sm aspect-[16/9] rounded-lg overflow-hidden border bg-muted">
                                 <Image src={service.imageUrl} alt={service.title} fill style={{objectFit:"cover"}} data-ai-hint={service.dataAiHint || "service image"} />
@@ -204,28 +204,37 @@ export default function ServiceDetailPage() {
             <Card>
                 <CardHeader><CardTitle className="text-xl">Pricing Information</CardTitle></CardHeader>
                 <CardContent className="space-y-6">
-                    <InfoRow label="Pricing Model" value={service.pricingModel} icon={DollarSign} />
-                    {(service.pricingModel === "Fixed Price" || service.pricingModel === "Starting At" || service.pricingModel === "Hourly" || service.pricingModel === "Subscription") && (
-                        <InfoRow label="Base Price" value={`${formatIDR(service.priceMin)} ${service.priceMax ? `- ${formatIDR(service.priceMax)}` : ''} (${service.currency})`} icon={DollarSign} />
+                    {service.pricing?.isFixedPriceActive && service.pricing.fixedPriceDetails && (
+                        <InfoRow label="Fixed Price" value={formatIDR(service.pricing.fixedPriceDetails.price)} icon={DollarSign} />
+                    )}
+
+                    {service.pricing?.isCustomQuoteActive && (
+                        <InfoRow label="Custom Quote" value={service.pricing.customQuoteDetails?.description || "Available"} icon={Sparkles} />
                     )}
                     
-                    <h4 className="font-semibold text-foreground mt-6 pt-6 border-t flex items-center"><Briefcase className="mr-2 h-5 w-5 text-primary/80" />Pricing Packages</h4>
-                    {service.showPackagesSection && service.packages && service.packages.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {service.packages.map((pkg, index) => (
-                          <Card key={`pkg-${index}`} className={cn('flex flex-col', pkg.isPopular && 'border-primary')}>
-                            {pkg.isPopular && <Badge className="w-fit self-center -mt-3 mb-2">Most Popular</Badge>}
-                            <CardHeader><CardTitle>{pkg.name}</CardTitle><CardDescription>{pkg.description}</CardDescription></CardHeader>
-                            <CardContent className="flex-grow">
-                              <p className="text-3xl font-bold mb-4">{formatIDR(pkg.price)}</p>
-                              <ul className="space-y-2 text-sm text-muted-foreground">{pkg.features.map((feature, fIndex) => (<li key={`feat-${fIndex}`} className="flex items-center"><Check className="h-4 w-4 mr-2 text-green-500"/>{feature}</li>))}</ul>
-                            </CardContent>
-                            <CardFooter><Button variant={pkg.isPopular ? 'default' : 'outline'} className="w-full" disabled>{pkg.cta || 'Choose Plan'}</Button></CardFooter>
-                          </Card>
-                        ))}
+                    {service.pricing?.isSubscriptionActive && service.pricing.subscriptionDetails && (
+                        <div>
+                            <h4 className="font-semibold text-foreground mb-2 flex items-center"><Briefcase className="mr-2 h-5 w-5 text-primary/80" />Subscription Packages</h4>
+                            <p className="text-sm text-muted-foreground mb-1">Annual Discount: {service.pricing.subscriptionDetails.annualDiscountPercentage || 0}%</p>
+                            {service.pricing.subscriptionDetails.packages && service.pricing.subscriptionDetails.packages.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {service.pricing.subscriptionDetails.packages.map((pkg, index) => (
+                                <Card key={`pkg-${index}`} className={cn('flex flex-col', pkg.isPopular && 'border-primary')}>
+                                    {pkg.isPopular && <Badge className="w-fit self-center -mt-3 mb-2">Most Popular</Badge>}
+                                    <CardHeader><CardTitle>{pkg.name}</CardTitle><CardDescription>{pkg.description}</CardDescription></CardHeader>
+                                    <CardContent className="flex-grow">
+                                    <p className="text-xl font-bold mb-1">{formatIDR(pkg.priceMonthly)} / month</p>
+                                    <p className="text-lg font-semibold text-muted-foreground mb-4">{formatIDR(pkg.priceAnnually)} / year</p>
+                                    <ul className="space-y-2 text-sm text-muted-foreground">{pkg.features.map((feature, fIndex) => (<li key={`feat-${fIndex}`} className="flex items-center"><Check className="h-4 w-4 mr-2 text-green-500"/>{feature}</li>))}</ul>
+                                    </CardContent>
+                                    <CardFooter><Button variant="outline" className="w-full" disabled>{pkg.cta || 'Choose Plan'}</Button></CardFooter>
+                                </Card>
+                                ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No subscription packages defined for this service.</p>
+                            )}
                         </div>
-                    ) : (
-                        <p className="text-sm text-muted-foreground">The packages section is not enabled for this service.</p>
                     )}
                 </CardContent>
             </Card>

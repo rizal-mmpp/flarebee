@@ -21,14 +21,6 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
   { id: 'other', name: 'Other Services', slug: 'other-services' },
 ];
 
-export const PRICING_MODELS = [
-  "Fixed Price",
-  "Starting At",
-  "Hourly",
-  "Subscription",
-  "Custom Quote",
-] as const;
-
 export const SERVICE_STATUSES = [
   "active",
   "inactive",
@@ -53,4 +45,3 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   contactEmail: "r124ltech@gmail.com",
   updatedAt: null,
 };
-

@@ -9,11 +9,12 @@ import {
   serverTimestamp,
   updateDoc,
   deleteDoc,
+  getDoc,
   type Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
-import { SERVICE_CATEGORIES, PRICING_MODELS, SERVICE_STATUSES } from '../constants'; 
-import type { Service, JourneyStage, ServicePackage, FaqItem } from '@/lib/types';
+import { SERVICE_CATEGORIES, SERVICE_STATUSES } from '../constants'; 
+import type { Service, JourneyStage, ServicePackage, FaqItem, PricingDetails } from '@/lib/types';
 import { uploadFileToVercelBlob } from './vercelBlob.actions';
 
 const SERVICES_COLLECTION = 'services'; 
@@ -28,33 +29,20 @@ function slugify(text: string): string {
     .replace(/\-\-+/g, '-'); 
 }
 
-export interface ServiceFirestoreData {
-  title: string;
+export interface ServiceFirestoreData extends Omit<Service, 'id' | 'slug' | 'category' | 'createdAt' | 'updatedAt' | 'customerJourneyStages' | 'packages' | 'faq' | 'keyFeatures' | 'targetAudience' | 'tags' | 'pricing'> {
   slug: string;
-  title_lowercase: string;
-  shortDescription: string;
-  longDescription: string;
-  categoryId: string; 
-  pricingModel: typeof PRICING_MODELS[number];
-  priceMin?: number | null;
-  priceMax?: number | null;
-  currency: string;
+  categoryId: string;
   tags: string[];
-  imageUrl: string;
-  dataAiHint?: string | null;
-  status: typeof SERVICE_STATUSES[number];
   keyFeatures?: string[] | null;
   targetAudience?: string[] | null;
-  estimatedDuration?: string | null;
-  portfolioLink?: string | null;
-  showPackagesSection?: boolean;
   packages?: ServicePackage[];
-  showFaqSection?: boolean;
   faq?: FaqItem[];
-  customerJourneyStages?: JourneyStage[]; 
+  customerJourneyStages?: JourneyStage[];
+  pricing: PricingDetails;
   createdAt?: Timestamp; 
   updatedAt?: Timestamp; 
 }
+
 
 function parseStringToArray(str?: string | null): string[] {
   if (!str) return [];
@@ -64,6 +52,34 @@ function parseStringToArray(str?: string | null): string[] {
 // Helper to prepare data for Firestore from FormData
 function prepareDataFromFormData(formData: FormData, currentImageUrl?: string): Partial<ServiceFirestoreData> {
     const title = formData.get('title') as string;
+    
+    let pricingData: PricingDetails = {
+      isFixedPriceActive: false,
+      isSubscriptionActive: false,
+      isCustomQuoteActive: false,
+    };
+    try {
+      const pricingJson = formData.get('pricing') as string | null;
+      if (pricingJson) {
+        const rawPricing = JSON.parse(pricingJson);
+        pricingData = {
+          isFixedPriceActive: rawPricing.isFixedPriceActive || false,
+          fixedPriceDetails: rawPricing.isFixedPriceActive ? { price: Number(rawPricing.fixedPriceDetails?.price || 0) } : undefined,
+          isSubscriptionActive: rawPricing.isSubscriptionActive || false,
+          subscriptionDetails: rawPricing.isSubscriptionActive ? {
+            annualDiscountPercentage: Number(rawPricing.subscriptionDetails?.annualDiscountPercentage || 0),
+            packages: (rawPricing.subscriptionDetails?.packages || []).map((pkg: any) => ({
+              ...pkg,
+              features: parseStringToArray(pkg.features as string | null),
+            }))
+          } : undefined,
+          isCustomQuoteActive: rawPricing.isCustomQuoteActive || false,
+          customQuoteDetails: rawPricing.isCustomQuoteActive ? { description: rawPricing.customQuoteDetails?.description || '' } : undefined,
+        };
+      }
+    } catch(e) { console.error("Error parsing pricing JSON", e); }
+
+
     const data: Partial<ServiceFirestoreData> = {
         title,
         slug: slugify(title),
@@ -71,36 +87,19 @@ function prepareDataFromFormData(formData: FormData, currentImageUrl?: string): 
         shortDescription: formData.get('shortDescription') as string,
         longDescription: formData.get('longDescription') as string,
         categoryId: formData.get('categoryId') as string,
-        pricingModel: formData.get('pricingModel') as typeof PRICING_MODELS[number],
-        currency: (formData.get('currency') as string) || 'IDR',
         tags: parseStringToArray(formData.get('tags') as string | null),
-        imageUrl: currentImageUrl, // This will be updated if new image is uploaded
+        imageUrl: currentImageUrl,
         status: formData.get('status') as typeof SERVICE_STATUSES[number] || 'draft',
         dataAiHint: (formData.get('dataAiHint') as string)?.trim() || null,
         keyFeatures: parseStringToArray(formData.get('keyFeatures') as string | null),
         targetAudience: parseStringToArray(formData.get('targetAudience') as string | null),
         estimatedDuration: (formData.get('estimatedDuration') as string)?.trim() || null,
         portfolioLink: (formData.get('portfolioLink') as string)?.trim() || null,
-        showPackagesSection: formData.get('showPackagesSection') === 'true',
+        
+        pricing: pricingData,
+
         showFaqSection: formData.get('showFaqSection') === 'true',
     };
-
-    const priceMinStr = formData.get('priceMin') as string | null;
-    data.priceMin = priceMinStr && !isNaN(parseFloat(priceMinStr)) ? parseFloat(priceMinStr) : null;
-    
-    const priceMaxStr = formData.get('priceMax') as string | null;
-    data.priceMax = priceMaxStr && !isNaN(parseFloat(priceMaxStr)) ? parseFloat(priceMaxStr) : null;
-
-    try {
-        const packagesJson = formData.get('packages') as string | null;
-        if (packagesJson) {
-            const rawPackages = JSON.parse(packagesJson);
-            data.packages = rawPackages.map((pkg: any) => ({
-                ...pkg,
-                features: parseStringToArray(pkg.features as string | null),
-            }));
-        }
-    } catch(e) { console.error("Error parsing packages JSON", e); data.packages = []; }
     
     try {
         const faqJson = formData.get('faq') as string | null;
