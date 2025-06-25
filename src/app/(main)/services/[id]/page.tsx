@@ -8,7 +8,7 @@ import { notFound, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ServerCrash, Check, HelpCircle, Bot, Loader2, Send, MessageSquare, DollarSign, Repeat, Calendar, Sparkles, Package, Minus } from 'lucide-react'; 
+import { ArrowLeft, ServerCrash, Check, HelpCircle, Bot, Loader2, Send, MessageSquare, DollarSign, Repeat, Calendar, Sparkles, Package, X } from 'lucide-react'; 
 import Link from 'next/link';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -92,7 +92,11 @@ const SubscriptionPackageCard: React.FC<{
           <ul className="space-y-3 text-foreground/90">
             {pkg.features.map((feature, index) => (
               <li key={feature.id || index} className="flex items-start gap-3">
-                {feature.isIncluded ? <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" /> : <Minus className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />}
+                {feature.isIncluded ? (
+                  <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                ) : (
+                  <X className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+                )}
                 <span className={cn(!feature.isIncluded && "text-muted-foreground line-through")}>{feature.text}</span>
               </li>
             ))}
