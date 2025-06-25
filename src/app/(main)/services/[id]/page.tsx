@@ -175,85 +175,81 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
               </div>
           </div>
       </section>
-      
-      {/* Dynamic Pricing Section */}
-      {hasActivePricing && (
-         <section id="pricing" className="py-16 md:py-24 bg-background">
-            <div className="container mx-auto px-4 md:px-6">
-                <div className="text-center max-w-3xl mx-auto mb-12">
-                    <h2 className="text-3xl md:text-4xl font-bold">Find the Perfect Plan</h2>
-                    <p className="text-muted-foreground mt-2">Choose the option that best fits your needs. All plans are flexible and can be customized.</p>
-                </div>
-                
-                {service.pricing?.isSubscriptionActive && service.pricing.subscriptionDetails && service.pricing.subscriptionDetails.packages.length > 0 && (
-                    <div className="mb-12">
-                        <div className="flex justify-center items-center gap-4 mb-8">
-                            <span className={cn('font-medium', billingCycle === 'monthly' ? 'text-primary' : 'text-muted-foreground')}>Monthly</span>
-                            <Switch checked={billingCycle === 'annually'} onCheckedChange={(checked) => setBillingCycle(checked ? 'annually' : 'monthly')} aria-label="Toggle billing cycle"/>
-                            <span className={cn('font-medium', billingCycle === 'annually' ? 'text-primary' : 'text-muted-foreground')}>
-                                Annually
-                                {service.pricing.subscriptionDetails.annualDiscountPercentage && (
-                                    <Badge variant="secondary" className="ml-2 bg-green-500/20 text-green-700 border-none">Save {service.pricing.subscriptionDetails.annualDiscountPercentage}%</Badge>
-                                )}
-                            </span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
-                            {service.pricing.subscriptionDetails.packages.map(pkg => (
-                               <SubscriptionPackageCard key={pkg.name} pkg={pkg} billingCycle={billingCycle} annualDiscountPercentage={service.pricing?.subscriptionDetails?.annualDiscountPercentage} />
-                            ))}
-                        </div>
-                    </div>
-                )}
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
-                   {service.pricing?.isFixedPriceActive && service.pricing.fixedPriceDetails && (
-                        <Card className="flex flex-col md:flex-row overflow-hidden group">
-                           {service.pricing.fixedPriceDetails.imageUrl && (
-                             <div className="md:w-2/5 relative min-h-[200px] md:min-h-full">
-                               <Image 
-                                 src={service.pricing.fixedPriceDetails.imageUrl} 
-                                 alt={service.pricing.fixedPriceDetails.title || 'One-time project image'} 
-                                 fill 
-                                 style={{objectFit:"cover"}} 
-                                 className="transition-transform duration-300 ease-in-out group-hover:scale-105"
-                                 data-ai-hint={service.pricing.fixedPriceDetails.imageAiHint || "project abstract"}
-                               />
-                             </div>
-                           )}
-                           <div className={cn("flex flex-col justify-between p-6", service.pricing.fixedPriceDetails.imageUrl ? 'md:w-3/5' : 'w-full')}>
-                              <div>
-                                <CardTitle className="flex items-center text-xl mb-2">
-                                  <Package className="mr-2 h-6 w-6 text-primary flex-shrink-0"/>
-                                  {service.pricing.fixedPriceDetails.title || 'One-Time Project'}
-                                </CardTitle>
-                                <CardDescription className="mb-4">{service.pricing.fixedPriceDetails.description || 'A single payment for a defined scope of work.'}</CardDescription>
-                                <p className="text-3xl font-bold text-foreground">{formatIDR(service.pricing.fixedPriceDetails.price)}</p>
-                              </div>
-                              <Button className="w-full mt-6">Get Started</Button>
-                           </div>
-                        </Card>
-                    )}
-                    {service.pricing?.isCustomQuoteActive && (
-                        <Card className="flex flex-col justify-between">
-                             <CardHeader><CardTitle className="flex items-center"><Sparkles className="mr-2 h-6 w-6 text-primary"/>Custom Project</CardTitle><CardDescription>Need something different? Let's build a custom plan together.</CardDescription></CardHeader>
-                            <CardContent><p className="text-muted-foreground">{service.pricing.customQuoteDetails?.formDescription || "Tell us about your project, and we'll craft a custom package tailored just for you. No obligations, just possibilities."}</p></CardContent>
-                            <CardFooter><Button asChild variant="outline" className="w-full"><Link href="/contact-us">Request a Quote</Link></Button></CardFooter>
-                        </Card>
-                    )}
-                </div>
+
+      {/* Subscription Plans Section */}
+      {service.pricing?.isSubscriptionActive && service.pricing.subscriptionDetails && service.pricing.subscriptionDetails.packages.length > 0 && (
+        <section id="pricing" className="py-16 md:py-24 bg-card border-t">
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="text-center max-w-3xl mx-auto mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold">Flexible Plans</h2>
+              <p className="text-muted-foreground mt-2">Choose the subscription that best fits your needs.</p>
             </div>
-         </section>
+            <div className="flex justify-center items-center gap-4 mb-8">
+              <span className={cn('font-medium', billingCycle === 'monthly' ? 'text-primary' : 'text-muted-foreground')}>Monthly</span>
+              <Switch checked={billingCycle === 'annually'} onCheckedChange={(checked) => setBillingCycle(checked ? 'annually' : 'monthly')} aria-label="Toggle billing cycle" />
+              <span className={cn('font-medium', billingCycle === 'annually' ? 'text-primary' : 'text-muted-foreground')}>
+                Annually
+                {service.pricing.subscriptionDetails.annualDiscountPercentage && (
+                  <Badge variant="secondary" className="ml-2 bg-green-500/20 text-green-700 border-none">Save {service.pricing.subscriptionDetails.annualDiscountPercentage}%</Badge>
+                )}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
+              {service.pricing.subscriptionDetails.packages.map(pkg => (
+                <SubscriptionPackageCard key={pkg.name} pkg={pkg} billingCycle={billingCycle} annualDiscountPercentage={service.pricing?.subscriptionDetails?.annualDiscountPercentage} />
+              ))}
+            </div>
+          </div>
+        </section>
       )}
 
+      {/* One-Time Project Section */}
+      {service.pricing?.isFixedPriceActive && service.pricing.fixedPriceDetails && (
+        <section id="one-time-project" className="py-16 md:py-24 bg-background border-t">
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              <div className="order-2 md:order-1">
+                <div className="inline-flex items-center rounded-full bg-primary/10 px-4 py-1.5 text-sm font-semibold text-primary mb-4">
+                  <Package className="mr-2 h-5 w-5" /> One-Time Project
+                </div>
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">{service.pricing.fixedPriceDetails.title || 'Complete Project Delivery'}</h2>
+                <p className="text-muted-foreground text-lg mb-6 leading-relaxed">{service.pricing.fixedPriceDetails.description || 'Get a complete, one-and-done solution with a single upfront payment.'}</p>
+                <div className="space-y-4">
+                  <p className="text-4xl font-extrabold text-foreground">{formatIDR(service.pricing.fixedPriceDetails.price)}</p>
+                  <Button size="lg" className="w-full sm:w-auto">Get Started with this Project</Button>
+                </div>
+              </div>
+              <div className="order-1 md:order-2">
+                {service.pricing.fixedPriceDetails.imageUrl ? (
+                  <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl">
+                    <Image
+                      src={service.pricing.fixedPriceDetails.imageUrl}
+                      alt={service.pricing.fixedPriceDetails.title || 'One-time project image'}
+                      fill
+                      style={{ objectFit: "cover" }}
+                      className="transition-transform duration-300 ease-in-out group-hover:scale-105"
+                      data-ai-hint={service.pricing.fixedPriceDetails.imageAiHint || "project abstract"}
+                    />
+                  </div>
+                ) : (
+                  <div className="relative w-full aspect-video rounded-2xl bg-muted flex items-center justify-center">
+                    <Package className="h-24 w-24 text-muted-foreground/30" />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Custom Quote Section */}
       {service.pricing?.isCustomQuoteActive && service.pricing.customQuoteDetails && (
-        <section id="custom-quote-form" className="py-16 md:py-24 bg-card">
+        <section id="custom-quote-form" className="py-16 md:py-24 bg-card border-t">
           <div className="container mx-auto px-4 md:px-6">
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div className="space-y-4">
-                <h2 className="text-3xl md:text-4xl font-bold">{service.pricing.customQuoteDetails.title || "Still not sure?"}</h2>
-                <p className="text-muted-foreground text-lg">{service.pricing.customQuoteDetails.text || "Tell us about your project, and we'll craft a custom package tailored just for you. No obligations, just possibilities."}</p>
+                <h2 className="text-3xl md:text-4xl font-bold">{service.pricing.customQuoteDetails.title || "Need a Custom Solution?"}</h2>
+                <p className="text-muted-foreground text-lg">{service.pricing.customQuoteDetails.text || "Every great project has unique needs. Tell us about yours, and we'll craft a personalized quote and plan to bring your vision to life."}</p>
                 {service.pricing.customQuoteDetails.infoBoxText && (
                   <div className="flex items-start p-4 bg-primary/10 rounded-2xl">
                     <Bot className="h-8 w-8 text-primary mr-4 mt-1 flex-shrink-0"/>
@@ -287,7 +283,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
 
       {/* FAQ Section */}
       {service.showFaqSection && service.faq && service.faq.length > 0 && (
-        <section id="faq" className="py-16 md:py-24 bg-background">
+        <section id="faq" className="py-16 md:py-24 bg-background border-t">
           <div className="container mx-auto px-4 md:px-6 max-w-3xl">
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold">Frequently Asked Questions</h2>
