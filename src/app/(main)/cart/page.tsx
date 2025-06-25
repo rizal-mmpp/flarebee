@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, ArrowLeft, Info, HelpCircle, ArrowRight, ShoppingCart, ServerCrash, CheckCircle } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 interface ServiceSelection {
   serviceSlug: string;
@@ -39,6 +40,8 @@ export default function CartPage() {
   const [selectedPackage, setSelectedPackage] = useState<ServicePackage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [couponCode, setCouponCode] = useState('');
+  const { toast } = useToast();
 
   useEffect(() => {
     const storedSelection = localStorage.getItem('serviceSelection');
@@ -87,6 +90,22 @@ export default function CartPage() {
     }
   }, []);
   
+  const handleApplyCoupon = () => {
+    if (couponCode.trim() === '') {
+      toast({
+        title: "No Coupon Entered",
+        description: "Please enter a coupon code to apply.",
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({
+      title: "Invalid Coupon Code",
+      description: `The coupon code "${couponCode}" is not valid or has expired.`,
+      variant: "destructive",
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-16 flex justify-center items-center min-h-[calc(100vh-10rem)]">
@@ -138,16 +157,13 @@ export default function CartPage() {
   const getDisplayPrice = () => {
     if (!isSubscription || !selectedPackage) return { monthly: 0, original: 0, saving: 0 };
     
-    // The monthly price for the 12-month commitment. This is our base discounted rate.
     const discountedPricePerMonth = selectedPackage.priceMonthly;
-    // The standard, non-discounted monthly price (used for strikethrough).
     const regularMonthlyPrice = selectedPackage.originalPriceMonthly || discountedPricePerMonth;
 
     let finalMonthlyPrice;
     
     switch (selection.billingCycle) {
       case 1:
-        // Use the discounted price for the 1-month option to show the discount.
         finalMonthlyPrice = discountedPricePerMonth;
         break;
       case 12:
@@ -163,7 +179,6 @@ export default function CartPage() {
         finalMonthlyPrice = discountedPricePerMonth;
     }
 
-    // Saving is always calculated against the highest price (regular price) for the entire duration
     const totalSaving = (regularMonthlyPrice * selection.billingCycle) - (finalMonthlyPrice * selection.billingCycle);
 
     return { 
@@ -282,8 +297,21 @@ export default function CartPage() {
                 <div className="pt-2">
                     <Label htmlFor="coupon" className="text-xs font-medium">Have a coupon code?</Label>
                     <div className="flex gap-2 mt-1">
-                        <Input id="coupon" placeholder="Enter code" className="h-9"/>
-                        <Button variant="secondary" className="h-9 text-secondary-foreground">Apply</Button>
+                        <Input
+                          id="coupon"
+                          placeholder="Enter code"
+                          className="h-9"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value)}
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="h-9 text-secondary-foreground"
+                          onClick={handleApplyCoupon}
+                        >
+                          Apply
+                        </Button>
                     </div>
                 </div>
               </CardContent>
@@ -299,3 +327,4 @@ export default function CartPage() {
     </div>
   );
 }
+
