@@ -8,7 +8,7 @@ import { notFound, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ServerCrash, Check, HelpCircle, Bot, Loader2, Send, MessageSquare, DollarSign, Repeat, Calendar, Sparkles } from 'lucide-react'; 
+import { ArrowLeft, ServerCrash, Check, HelpCircle, Bot, Loader2, Send, MessageSquare, DollarSign, Repeat, Calendar, Sparkles, Package } from 'lucide-react'; 
 import Link from 'next/link';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -206,11 +206,31 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
                 )}
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
-                    {service.pricing?.isFixedPriceActive && service.pricing.fixedPriceDetails && (
-                        <Card className="flex flex-col justify-between">
-                            <CardHeader><CardTitle className="flex items-center"><DollarSign className="mr-2 h-6 w-6 text-primary"/>One-Time Project</CardTitle><CardDescription>A single payment for a defined scope of work.</CardDescription></CardHeader>
-                            <CardContent><p className="text-3xl font-bold">{formatIDR(service.pricing.fixedPriceDetails.price)}</p></CardContent>
-                            <CardFooter><Button className="w-full">Get Started</Button></CardFooter>
+                   {service.pricing?.isFixedPriceActive && service.pricing.fixedPriceDetails && (
+                        <Card className="flex flex-col md:flex-row overflow-hidden group">
+                           {service.pricing.fixedPriceDetails.imageUrl && (
+                             <div className="md:w-2/5 relative min-h-[200px] md:min-h-full">
+                               <Image 
+                                 src={service.pricing.fixedPriceDetails.imageUrl} 
+                                 alt={service.pricing.fixedPriceDetails.title || 'One-time project image'} 
+                                 fill 
+                                 style={{objectFit:"cover"}} 
+                                 className="transition-transform duration-300 ease-in-out group-hover:scale-105"
+                                 data-ai-hint={service.pricing.fixedPriceDetails.imageAiHint || "project abstract"}
+                               />
+                             </div>
+                           )}
+                           <div className={cn("flex flex-col justify-between p-6", service.pricing.fixedPriceDetails.imageUrl ? 'md:w-3/5' : 'w-full')}>
+                              <div>
+                                <CardTitle className="flex items-center text-xl mb-2">
+                                  <Package className="mr-2 h-6 w-6 text-primary flex-shrink-0"/>
+                                  {service.pricing.fixedPriceDetails.title || 'One-Time Project'}
+                                </CardTitle>
+                                <CardDescription className="mb-4">{service.pricing.fixedPriceDetails.description || 'A single payment for a defined scope of work.'}</CardDescription>
+                                <p className="text-3xl font-bold text-foreground">{formatIDR(service.pricing.fixedPriceDetails.price)}</p>
+                              </div>
+                              <Button className="w-full mt-6">Get Started</Button>
+                           </div>
                         </Card>
                     )}
                     {service.pricing?.isCustomQuoteActive && (
@@ -307,4 +327,3 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
     </div>
   );
 }
-

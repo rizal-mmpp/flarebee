@@ -21,7 +21,11 @@ const faqItemSchema = z.object({
 const pricingDetailsSchema = z.object({
   isFixedPriceActive: z.boolean().default(false),
   fixedPriceDetails: z.object({
+    title: z.string().optional(),
+    description: z.string().optional(),
     price: z.coerce.number().min(0, "Price must be positive."),
+    imageUrl: z.string().url('Must be a valid URL or empty string.').optional().nullable(),
+    imageAiHint: z.string().optional(),
   }).optional(),
   
   isSubscriptionActive: z.boolean().default(false),
@@ -39,7 +43,7 @@ const pricingDetailsSchema = z.object({
     formDescription: z.string().optional(),
   }).optional(),
 }).refine(data => {
-    if (data.isFixedPriceActive && (!data.fixedPriceDetails || data.fixedPriceDetails.price <= 0)) {
+    if (data.isFixedPriceActive && (!data.fixedPriceDetails || data.fixedPriceDetails.price < 0)) { // Allow 0
         return false;
     }
     return true;

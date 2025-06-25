@@ -13,7 +13,7 @@ import { SERVICE_CATEGORIES, SERVICE_STATUSES } from '@/lib/constants';
 import type { ServiceFormValues } from './ServiceFormTypes';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { ImageIcon, Trash2, PlusCircle, DollarSign, Briefcase, HelpCircle, FileText, Settings, Sparkles, Repeat } from 'lucide-react';
+import { ImageIcon, Trash2, PlusCircle, DollarSign, Briefcase, HelpCircle, FileText, Settings, Sparkles, Repeat, Package } from 'lucide-react';
 import { CustomDropzone } from '@/components/ui/custom-dropzone';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -30,6 +30,9 @@ interface ServiceFormProps {
   currentImageUrl?: string | null; 
   onFileChange: (file: File | null) => void; 
   selectedFileName?: string | null; 
+  currentFixedPriceImageUrl?: string | null;
+  onFixedPriceFileChange: (file: File | null) => void;
+  selectedFixedPriceFileName?: string | null;
   isEditMode?: boolean;
 }
 
@@ -43,6 +46,9 @@ export function ServiceForm({
   currentImageUrl,
   onFileChange,
   selectedFileName, 
+  currentFixedPriceImageUrl,
+  onFixedPriceFileChange,
+  selectedFixedPriceFileName,
   isEditMode = false,
 }: ServiceFormProps) {
   
@@ -108,12 +114,17 @@ export function ServiceForm({
                 {/* One-Time Project / Fixed Price */}
                 <div className="p-4 border rounded-lg space-y-4">
                     <div className="flex items-center justify-between">
-                        <Label htmlFor="isFixedPriceActive" className="flex items-center gap-2 text-base font-semibold"><DollarSign className="h-5 w-5 text-primary"/>One-Time Project</Label>
+                        <Label htmlFor="isFixedPriceActive" className="flex items-center gap-2 text-base font-semibold"><Package className="h-5 w-5 text-primary"/>One-Time Project</Label>
                         <Controller name="pricing.isFixedPriceActive" control={control} render={({ field }) => <Switch id="isFixedPriceActive" checked={field.value} onCheckedChange={field.onChange} />} />
                     </div>
                     {watchedPricing?.isFixedPriceActive && (
-                        <div className="pl-7 space-y-2">
+                        <div className="pl-7 space-y-4">
+                             <div><Label htmlFor="fixedPriceTitle">Display Title</Label><Input {...register('pricing.fixedPriceDetails.title')} className="mt-1" placeholder="e.g., One-Time Project"/></div>
+                             <div><Label htmlFor="fixedPriceDescription">Description</Label><Textarea {...register('pricing.fixedPriceDetails.description')} rows={2} className="mt-1" placeholder="e.g., A single payment for a defined scope of work."/></div>
                              <div><Label htmlFor="fixedPricePrice">Price (IDR)</Label><Input {...register('pricing.fixedPriceDetails.price', { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 500000"/>{errors.pricing?.fixedPriceDetails?.price && <p className="text-sm text-destructive mt-1">{errors.pricing.fixedPriceDetails.price.message}</p>}</div>
+                             <div><Label>Display Image (Optional)</Label><CustomDropzone onFileChange={onFixedPriceFileChange} currentFileName={selectedFixedPriceFileName} accept={{ 'image/*': ['.png', '.jpeg', '.jpg', '.webp'] }} maxSize={MAX_FILE_SIZE_BYTES} className="mt-1"/><input type="hidden" {...register('pricing.fixedPriceDetails.imageUrl')} /></div>
+                             {currentFixedPriceImageUrl && (<div className="mt-3 p-2 border rounded-lg bg-muted/50 max-w-xs"><p className="text-xs text-muted-foreground mb-1">Preview:</p><Image src={currentFixedPriceImageUrl} alt="Fixed price image preview" width={150} height={100} style={{objectFit: 'cover'}} className="rounded-md"/></div>)}
+                             <div><Label htmlFor="fixedPriceAiHint">AI Hint for Image</Label><Input {...register('pricing.fixedPriceDetails.imageAiHint')} className="mt-1" placeholder="e.g., project deliverable"/></div>
                         </div>
                     )}
                 </div>

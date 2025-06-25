@@ -49,10 +49,9 @@ function parseStringToArray(str?: string | null): string[] {
 }
 
 // Helper to prepare data for Firestore from FormData
-function prepareDataFromFormData(formData: FormData, currentImageUrl?: string): Partial<ServiceFirestoreData> {
+function prepareDataFromFormData(formData: FormData, imageUrl: string | null, fixedPriceImageUrl: string | null): Partial<ServiceFirestoreData> {
     const title = formData.get('title') as string;
     
-    // The main object to build pricing data
     const pricingData: PricingDetails = {};
     
     try {
@@ -65,7 +64,13 @@ function prepareDataFromFormData(formData: FormData, currentImageUrl?: string): 
         pricingData.isCustomQuoteActive = rawPricing.isCustomQuoteActive || false;
         
         if (pricingData.isFixedPriceActive) {
-            pricingData.fixedPriceDetails = { price: Number(rawPricing.fixedPriceDetails?.price || 0) };
+            pricingData.fixedPriceDetails = { 
+                title: rawPricing.fixedPriceDetails?.title || '',
+                description: rawPricing.fixedPriceDetails?.description || '',
+                price: Number(rawPricing.fixedPriceDetails?.price || 0),
+                imageUrl: fixedPriceImageUrl, // Use the passed URL
+                imageAiHint: rawPricing.fixedPriceDetails?.imageAiHint || '',
+            };
         }
 
         if (pricingData.isSubscriptionActive) {
@@ -79,7 +84,7 @@ function prepareDataFromFormData(formData: FormData, currentImageUrl?: string): 
         }
 
         if (pricingData.isCustomQuoteActive) {
-            pricingData.customQuoteDetails = { description: rawPricing.customQuoteDetails?.description || '' };
+            pricingData.customQuoteDetails = rawPricing.customQuoteDetails || {};
         }
       }
     } catch(e) { console.error("Error parsing pricing JSON", e); }
@@ -92,7 +97,7 @@ function prepareDataFromFormData(formData: FormData, currentImageUrl?: string): 
         longDescription: formData.get('longDescription') as string,
         categoryId: formData.get('categoryId') as string,
         tags: parseStringToArray(formData.get('tags') as string | null),
-        imageUrl: currentImageUrl,
+        imageUrl,
         status: formData.get('status') as typeof SERVICE_STATUSES[number] || 'draft',
         dataAiHint: (formData.get('dataAiHint') as string)?.trim() || null,
         keyFeatures: parseStringToArray(formData.get('keyFeatures') as string | null),
@@ -117,6 +122,9 @@ function prepareDataFromFormData(formData: FormData, currentImageUrl?: string): 
 export async function saveServiceAction(formData: FormData): Promise<{ success: boolean; message?: string; error?: string; serviceId?: string }> {
   console.log('saveServiceAction: Action started.');
   try {
+    let imageUrlFromBlob: string | null = null;
+    let fixedPriceImageUrlFromBlob: string | null = null;
+    
     const imageFile = formData.get('imageFile') as File | null;
     if (!imageFile) {
         return { success: false, error: 'Service image is required.'};
@@ -127,9 +135,20 @@ export async function saveServiceAction(formData: FormData): Promise<{ success: 
     if (!uploadResult.success || !uploadResult.data?.url) {
         return { success: false, error: uploadResult.error || 'Could not upload service image.'};
     }
-    const imageUrlFromBlob = uploadResult.data.url;
+    imageUrlFromBlob = uploadResult.data.url;
 
-    const dataToSave = prepareDataFromFormData(formData, imageUrlFromBlob) as ServiceFirestoreData;
+    const fixedPriceImageFile = formData.get('fixedPriceImageFile') as File | null;
+    if (fixedPriceImageFile) {
+      const fixedPriceBlobFormData = new FormData();
+      fixedPriceBlobFormData.append('file', fixedPriceImageFile);
+      const fixedPriceUploadResult = await uploadFileToVercelBlob(fixedPriceBlobFormData);
+      if (fixedPriceUploadResult.success && fixedPriceUploadResult.data?.url) {
+        fixedPriceImageUrlFromBlob = fixedPriceUploadResult.data.url;
+      }
+    }
+
+
+    const dataToSave = prepareDataFromFormData(formData, imageUrlFromBlob, fixedPriceImageUrlFromBlob) as ServiceFirestoreData;
     dataToSave.createdAt = serverTimestamp() as Timestamp;
     dataToSave.updatedAt = serverTimestamp() as Timestamp;
     dataToSave.customerJourneyStages = [];
@@ -152,7 +171,9 @@ export async function saveServiceAction(formData: FormData): Promise<{ success: 
 export async function updateServiceAction(id: string, formData: FormData): Promise<{ success: boolean; message?: string; error?: string; serviceId?: string }> {
   console.log(`updateServiceAction: Action started for service ID: ${id}`);
   try {
-    let finalImageUrl = formData.get('currentImageUrl') as string;
+    let finalImageUrl = formData.get('currentImageUrl') as string | null;
+    let finalFixedPriceImageUrl = formData.get('currentFixedPriceImageUrl') as string | null;
+
     const imageFile = formData.get('imageFile') as File | null;
     if (imageFile) {
         const blobFormData = new FormData();
@@ -164,11 +185,29 @@ export async function updateServiceAction(id: string, formData: FormData): Promi
         finalImageUrl = uploadResult.data.url;
     }
     
-    const dataToUpdate = prepareDataFromFormData(formData, finalImageUrl) as Partial<ServiceFirestoreData>;
+    const fixedPriceImageFile = formData.get('fixedPriceImageFile') as File | null;
+    if (fixedPriceImageFile) {
+        const fixedPriceBlobFormData = new FormData();
+        fixedPriceBlobFormData.append('file', fixedPriceImageFile);
+        const fixedPriceUploadResult = await uploadFileToVercelBlob(fixedPriceBlobFormData);
+        if (!fixedPriceUploadResult.success || !fixedPriceUploadResult.data?.url) {
+            return { success: false, error: fixedPriceUploadResult.error || 'Could not upload new fixed price image.'};
+        }
+        finalFixedPriceImageUrl = fixedPriceUploadResult.data.url;
+    }
+
+    const docRef = doc(db, SERVICES_COLLECTION, id);
+    const dataToUpdate = prepareDataFromFormData(formData, finalImageUrl, finalFixedPriceImageUrl);
+    
+    if (dataToUpdate.pricing?.isFixedPriceActive === false) {
+      if (dataToUpdate.pricing.fixedPriceDetails) {
+        dataToUpdate.pricing.fixedPriceDetails = undefined;
+      }
+    }
+    
     dataToUpdate.updatedAt = serverTimestamp() as Timestamp;
     
     console.log('updateServiceAction: Data to update in Firestore:', dataToUpdate);
-    const docRef = doc(db, SERVICES_COLLECTION, id);
     await updateDoc(docRef, dataToUpdate);
 
     revalidatePath('/admin/services', 'layout');

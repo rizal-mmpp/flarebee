@@ -30,6 +30,9 @@ export default function EditServicePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
+  const [selectedFixedPriceImageFile, setSelectedFixedPriceImageFile] = useState<File | null>(null);
+  const [fixedPriceImagePreviewUrl, setFixedPriceImagePreviewUrl] = useState<string | null>(null);
+
 
   const { register, handleSubmit, control, formState: { errors }, setValue, watch, getValues } = useForm<ServiceFormValues>({ 
     resolver: zodResolver(serviceFormSchema),
@@ -38,7 +41,7 @@ export default function EditServicePage() {
         isFixedPriceActive: false,
         isSubscriptionActive: false,
         isCustomQuoteActive: false,
-        fixedPriceDetails: { price: 0 },
+        fixedPriceDetails: { price: 0, title: '', description: '', imageAiHint: '' },
         subscriptionDetails: { annualDiscountPercentage: 0, packages: [] },
         customQuoteDetails: { description: '' }
       },
@@ -48,6 +51,7 @@ export default function EditServicePage() {
   });
   
   const watchedImageUrl = watch('imageUrl'); 
+  const watchedFixedPriceImageUrl = watch('pricing.fixedPriceDetails.imageUrl');
 
   useEffect(() => {
     if (slug) {
@@ -78,14 +82,20 @@ export default function EditServicePage() {
             setValue('portfolioLink', fetchedService.portfolioLink || '');
             
             setValue('pricing.isFixedPriceActive', fetchedService.pricing?.isFixedPriceActive || false);
+            setValue('pricing.fixedPriceDetails.title', fetchedService.pricing?.fixedPriceDetails?.title || 'One-Time Project');
+            setValue('pricing.fixedPriceDetails.description', fetchedService.pricing?.fixedPriceDetails?.description || 'A single payment for a defined scope of work.');
             setValue('pricing.fixedPriceDetails.price', fetchedService.pricing?.fixedPriceDetails?.price || 0);
+            setValue('pricing.fixedPriceDetails.imageUrl', fetchedService.pricing?.fixedPriceDetails?.imageUrl || null);
+            setValue('pricing.fixedPriceDetails.imageAiHint', fetchedService.pricing?.fixedPriceDetails?.imageAiHint || '');
+            setFixedPriceImagePreviewUrl(fetchedService.pricing?.fixedPriceDetails?.imageUrl || null);
+
 
             setValue('pricing.isSubscriptionActive', fetchedService.pricing?.isSubscriptionActive || false);
             setValue('pricing.subscriptionDetails.annualDiscountPercentage', fetchedService.pricing?.subscriptionDetails?.annualDiscountPercentage || 0);
             setValue('pricing.subscriptionDetails.packages', packagesForForm);
             
             setValue('pricing.isCustomQuoteActive', fetchedService.pricing?.isCustomQuoteActive || false);
-            setValue('pricing.customQuoteDetails.description', fetchedService.pricing?.customQuoteDetails?.description || '');
+            setValue('pricing.customQuoteDetails', fetchedService.pricing?.customQuoteDetails || { title: '', text: '', infoBoxText: '', formTitle: '', formDescription: '' });
 
             setValue('showFaqSection', fetchedService.showFaqSection || false);
             setValue('faq', fetchedService.faq || []);
@@ -121,11 +131,35 @@ export default function EditServicePage() {
     };
   }, [selectedFile, watchedImageUrl]);
 
+  useEffect(() => {
+    let objectUrl: string | undefined;
+    if (selectedFixedPriceImageFile) {
+      objectUrl = URL.createObjectURL(selectedFixedPriceImageFile);
+      setFixedPriceImagePreviewUrl(objectUrl);
+    } else if (watchedFixedPriceImageUrl) {
+      setFixedPriceImagePreviewUrl(watchedFixedPriceImageUrl);
+    } else {
+      setFixedPriceImagePreviewUrl(null);
+    }
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [selectedFixedPriceImageFile, watchedFixedPriceImageUrl]);
+
+
   const handleFileChange = (file: File | null) => {
     setSelectedFile(file);
     if (!file && service) {
         setImagePreviewUrl(service.imageUrl);
         setValue('imageUrl', service.imageUrl); 
+    }
+  };
+
+   const handleFixedPriceImageFileChange = (file: File | null) => {
+    setSelectedFixedPriceImageFile(file);
+    if (!file && service?.pricing?.fixedPriceDetails?.imageUrl) {
+        setFixedPriceImagePreviewUrl(service.pricing.fixedPriceDetails.imageUrl);
+        setValue('pricing.fixedPriceDetails.imageUrl', service.pricing.fixedPriceDetails.imageUrl);
     }
   };
 
@@ -138,6 +172,12 @@ export default function EditServicePage() {
         formDataForAction.append('imageFile', selectedFile);
       }
       formDataForAction.append('currentImageUrl', data.imageUrl || service.imageUrl || '');
+
+      if (selectedFixedPriceImageFile) {
+        formDataForAction.append('fixedPriceImageFile', selectedFixedPriceImageFile);
+      }
+      formDataForAction.append('currentFixedPriceImageUrl', data.pricing?.fixedPriceDetails?.imageUrl || service.pricing?.fixedPriceDetails?.imageUrl || '');
+
 
       // Append primitive values directly
       formDataForAction.append('title', data.title);
@@ -258,6 +298,9 @@ export default function EditServicePage() {
             currentImageUrl={imagePreviewUrl}
             onFileChange={handleFileChange}
             selectedFileName={selectedFile?.name}
+            currentFixedPriceImageUrl={fixedPriceImagePreviewUrl}
+            onFixedPriceFileChange={handleFixedPriceImageFileChange}
+            selectedFixedPriceFileName={selectedFixedPriceImageFile?.name}
             isEditMode={true}
         />
       </div>

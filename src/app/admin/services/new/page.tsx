@@ -19,6 +19,8 @@ export default function CreateServicePage() {
   const [isPending, startTransition] = useTransition();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [selectedFixedPriceImageFile, setSelectedFixedPriceImageFile] = useState<File | null>(null);
+  const [fixedPriceImagePreviewUrl, setFixedPriceImagePreviewUrl] = useState<string | null>(null);
 
 
   const { register, handleSubmit, control, formState: { errors }, reset, watch, setValue, getValues } = useForm<ServiceFormValues>({
@@ -39,10 +41,10 @@ export default function CreateServicePage() {
       pricing: {
         isFixedPriceActive: false,
         isSubscriptionActive: false,
-        isCustomQuoteActive: true, // Default to custom quote active for new services
-        fixedPriceDetails: { price: 0 },
+        isCustomQuoteActive: true,
+        fixedPriceDetails: { price: 0, title: 'One-Time Project', description: 'A single payment for a defined scope of work.', imageAiHint: '' },
         subscriptionDetails: { annualDiscountPercentage: 0, packages: [] },
-        customQuoteDetails: { description: '' }
+        customQuoteDetails: { title: 'Still not sure?', text: "Tell us about your project, and we'll craft a custom package tailored just for you.", infoBoxText: '', formTitle: 'Describe Your Project', formDescription: 'The more details you provide, the better we can assist you.' },
       },
       showFaqSection: false,
       faq: [],
@@ -64,9 +66,27 @@ export default function CreateServicePage() {
     };
   }, [selectedFile]);
 
+  useEffect(() => {
+    let objectUrl: string | undefined;
+    if (selectedFixedPriceImageFile) {
+      objectUrl = URL.createObjectURL(selectedFixedPriceImageFile);
+      setFixedPriceImagePreviewUrl(objectUrl);
+    } else {
+      setFixedPriceImagePreviewUrl(null);
+    }
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [selectedFixedPriceImageFile]);
+
   const handleFileChange = (file: File | null) => {
     setSelectedFile(file);
   };
+  
+  const handleFixedPriceImageFileChange = (file: File | null) => {
+    setSelectedFixedPriceImageFile(file);
+  };
+
 
   const onSubmit: SubmitHandler<ServiceFormValues> = (data) => {
     startTransition(async () => {
@@ -77,12 +97,16 @@ export default function CreateServicePage() {
       } else {
          toast({
           title: 'Image Required',
-          description: 'Please select an image for the service.',
+          description: 'Please select a main image for the service.',
           variant: 'destructive',
         });
         return;
       }
       
+      if (selectedFixedPriceImageFile) {
+        formDataForAction.append('fixedPriceImageFile', selectedFixedPriceImageFile);
+      }
+
       // Append primitive values directly
       formDataForAction.append('title', data.title);
       formDataForAction.append('shortDescription', data.shortDescription);
@@ -168,6 +192,9 @@ export default function CreateServicePage() {
           currentImageUrl={imagePreviewUrl}
           onFileChange={handleFileChange}
           selectedFileName={selectedFile?.name}
+          currentFixedPriceImageUrl={fixedPriceImagePreviewUrl}
+          onFixedPriceFileChange={handleFixedPriceImageFileChange}
+          selectedFixedPriceFileName={selectedFixedPriceImageFile?.name}
           isEditMode={false}
         />
       </div>

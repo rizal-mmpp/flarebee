@@ -61,7 +61,11 @@ export interface FaqItem {
 export interface PricingDetails {
   isFixedPriceActive?: boolean;
   fixedPriceDetails?: {
+    title?: string;
+    description?: string;
     price: number;
+    imageUrl?: string | null;
+    imageAiHint?: string;
   };
   isSubscriptionActive?: boolean;
   subscriptionDetails?: {
