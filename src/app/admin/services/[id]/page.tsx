@@ -215,7 +215,7 @@ export default function ServiceDetailPage() {
                     {service.pricing?.isSubscriptionActive && service.pricing.subscriptionDetails && (
                         <div>
                             <h4 className="font-semibold text-foreground mb-2 flex items-center"><Briefcase className="mr-2 h-5 w-5 text-primary/80" />Subscription Packages</h4>
-                             <p className="text-sm text-muted-foreground mb-3">Background Class: <Badge variant="outline">{service.pricing.subscriptionDetails.bgClassName || 'Not Set'}</Badge></p>
+                             <div className="text-sm text-muted-foreground mb-3">Background Class: <Badge variant="outline">{service.pricing.subscriptionDetails.bgClassName || 'Not Set'}</Badge></div>
                             {service.pricing.subscriptionDetails.packages && service.pricing.subscriptionDetails.packages.length > 0 ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {service.pricing.subscriptionDetails.packages.map((pkg, index) => (
@@ -224,10 +224,10 @@ export default function ServiceDetailPage() {
                                     <CardHeader><CardTitle>{pkg.name}</CardTitle><CardDescription>{pkg.description}</CardDescription></CardHeader>
                                     <CardContent className="flex-grow space-y-2">
                                     <p className="text-xl font-bold mb-1">{formatIDR(pkg.priceMonthly)} / month</p>
-                                    <p className="text-lg font-semibold text-muted-foreground">Annual Price: {formatIDR(pkg.priceAnnually)}</p>
                                     <p className="text-sm text-muted-foreground">Original Monthly: {formatIDR(pkg.originalPriceMonthly)}</p>
                                     <p className="text-sm text-muted-foreground">Discount Method: {pkg.annualPriceCalcMethod}</p>
                                     <p className="text-sm text-muted-foreground">Discount %: {pkg.annualDiscountPercentage}%</p>
+                                    <p className="text-sm text-muted-foreground">Discounted Monthly: {formatIDR(pkg.discountedMonthlyPrice)}</p>
                                     <p className="text-xs text-muted-foreground mt-2">{pkg.renewalInfo}</p>
                                     <h5 className="font-semibold text-sm pt-2">Features:</h5>
                                     <ul className="space-y-1 text-xs text-muted-foreground">{pkg.features.map((feature, fIndex) => (<li key={feature.id || `feat-${fIndex}`} className={cn("flex items-center", feature.isIncluded ? "text-foreground" : "text-muted-foreground line-through")}><Check className="h-3 w-3 mr-2 text-green-500"/>{feature.text}</li>))}</ul>
