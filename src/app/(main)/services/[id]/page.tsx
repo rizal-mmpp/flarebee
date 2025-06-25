@@ -39,15 +39,23 @@ const SubscriptionPackageCard: React.FC<{
 }> = ({ pkg, billingCycle }) => {
   const isAnnual = billingCycle === 'annually';
 
-  // Calculate annual price if based on percentage
-  const calculatedAnnualPrice = pkg.annualPriceCalcMethod === 'percentage'
-    ? pkg.priceMonthly * 12 * (1 - (pkg.annualDiscountPercentage / 100))
-    : pkg.priceAnnually;
+  let displayPrice: number;
+  let originalDisplayPrice: number | undefined = undefined;
 
-  const displayPrice = isAnnual ? (calculatedAnnualPrice / 12) : pkg.priceMonthly;
-  const originalDisplayPrice = isAnnual ? pkg.priceMonthly : pkg.originalPriceMonthly;
+  if (isAnnual) {
+    if (pkg.annualPriceCalcMethod === 'percentage') {
+      const annualPrice = pkg.priceMonthly * 12 * (1 - ((pkg.annualDiscountPercentage || 0) / 100));
+      displayPrice = annualPrice / 12;
+    } else { // 'fixed'
+      displayPrice = pkg.discountedMonthlyPrice || 0;
+    }
+    originalDisplayPrice = pkg.priceMonthly;
+  } else { // monthly view
+    displayPrice = pkg.priceMonthly;
+    originalDisplayPrice = pkg.originalPriceMonthly;
+  }
 
-  const discountPercentage = (originalDisplayPrice && originalDisplayPrice > displayPrice)
+  const discountPercentage = (originalDisplayPrice && displayPrice > 0 && originalDisplayPrice > displayPrice)
     ? Math.round(((originalDisplayPrice - displayPrice) / originalDisplayPrice) * 100)
     : 0;
 
@@ -74,6 +82,7 @@ const SubscriptionPackageCard: React.FC<{
                 {formatIDR(displayPrice)}
                 <span className="text-base font-normal text-muted-foreground ml-1">/bln</span>
             </p>
+            {isAnnual && pkg.annualPriceCalcMethod !== 'percentage' && <p className="text-xs text-muted-foreground mt-2">Billed annually at {formatIDR(displayPrice * 12)}</p>}
             {pkg.renewalInfo && <p className="text-xs text-muted-foreground mt-2">{pkg.renewalInfo}</p>}
         </div>
         <Button size="lg" className={cn('w-full', pkg.isPopular ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : '')} variant={pkg.isPopular ? 'default' : 'outline'}>

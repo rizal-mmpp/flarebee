@@ -11,7 +11,7 @@ const servicePackageSchema = z.object({
   
   annualPriceCalcMethod: z.enum(['percentage', 'fixed']).default('percentage'),
   annualDiscountPercentage: z.coerce.number().min(0).max(100).default(0),
-  priceAnnually: z.coerce.number().min(0).default(0),
+  discountedMonthlyPrice: z.coerce.number().min(0).default(0), // Renamed from priceAnnually
 
   renewalInfo: z.string().optional(),
   features: z.string().optional(), // Changed to string for comma-separated input

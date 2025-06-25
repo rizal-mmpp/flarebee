@@ -171,7 +171,7 @@ export function ServiceForm({
                                                             <SelectTrigger className="mt-1"><SelectValue placeholder="Select calculation method" /></SelectTrigger>
                                                             <SelectContent>
                                                                 <SelectItem value="percentage">By Percentage Discount</SelectItem>
-                                                                <SelectItem value="fixed">By Fixed Annual Price</SelectItem>
+                                                                <SelectItem value="fixed">By Fixed Monthly Price (Billed Annually)</SelectItem>
                                                             </SelectContent>
                                                         </Select>
                                                     )}
@@ -181,7 +181,7 @@ export function ServiceForm({
                                             {currentPackage?.annualPriceCalcMethod === 'percentage' ? (
                                                 <div><Label htmlFor={`packages.${index}.annualDiscountPercentage`}>Annual Discount (%)</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.annualDiscountPercentage`, { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 15 for 15%"/></div>
                                             ) : (
-                                                 <div><Label htmlFor={`packages.${index}.priceAnnually`}>Fixed Annual Price (IDR)</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.priceAnnually`, { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 1000000"/></div>
+                                                 <div><Label htmlFor={`packages.${index}.discountedMonthlyPrice`}>Discounted Monthly Price (for annual plan)</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.discountedMonthlyPrice`, { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 85000"/></div>
                                             )}
 
                                             <Separator />
@@ -193,7 +193,7 @@ export function ServiceForm({
                                     </Card>
                                 );
                             })}
-                            <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}${Math.random().toString(36).substring(2, 8)}`, name: '', description: '', priceMonthly: 0, originalPriceMonthly: 0, annualPriceCalcMethod: 'percentage', annualDiscountPercentage: 0, priceAnnually: 0, features: '', isPopular: false, cta: 'Choose Plan' })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package</Button>
+                            <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}${Math.random().toString(36).substring(2, 8)}`, name: '', description: '', priceMonthly: 0, originalPriceMonthly: 0, annualPriceCalcMethod: 'percentage', annualDiscountPercentage: 0, discountedMonthlyPrice: 0, features: '', isPopular: false, cta: 'Choose Plan' })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package</Button>
                         </div>
                     )}
                 </div>

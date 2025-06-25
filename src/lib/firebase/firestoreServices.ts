@@ -145,7 +145,7 @@ const fromFirestore = (docSnapshot: QueryDocumentSnapshot<DocumentData>): Servic
       originalPriceMonthly: pkg.originalPriceMonthly,
       annualPriceCalcMethod: pkg.annualPriceCalcMethod || 'percentage',
       annualDiscountPercentage: pkg.annualDiscountPercentage || 0,
-      priceAnnually: pkg.priceAnnually || 0,
+      discountedMonthlyPrice: pkg.discountedMonthlyPrice || 0,
       renewalInfo: pkg.renewalInfo || '',
       features: (pkg.features || []).map((feat: any): PackageFeature => ({
         id: feat.id || `feat-${Math.random().toString(36).substring(2, 8)}`,

@@ -10,11 +10,22 @@ import { ServiceForm } from '@/components/sections/admin/ServiceForm';
 import { type ServiceFormValues, serviceFormSchema } from '@/components/sections/admin/ServiceFormTypes'; 
 import { getServiceBySlugFromFirestore } from '@/lib/firebase/firestoreServices';
 import { updateServiceAction } from '@/lib/actions/service.actions'; 
-import type { Service } from '@/lib/types'; 
+import type { Service, ServicePackage } from '@/lib/types'; 
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Loader2, ServerCrash, Edit3, ArrowLeft, Save, Rocket, Copy } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+// Helper to transform features array of objects back to comma-separated string for the form
+function formatFeaturesForForm(packages: ServicePackage[] | undefined): any[] {
+  if (!packages) return [];
+  return packages.map(pkg => ({
+    ...pkg,
+    features: (pkg.features || [])
+      .map(f => (f.isIncluded ? '' : '-') + f.text)
+      .join(', '),
+  }));
+}
 
 export default function EditServicePage() {
   const router = useRouter();
@@ -89,15 +100,10 @@ export default function EditServicePage() {
             setValue('pricing.isSubscriptionActive', fetchedService.pricing?.isSubscriptionActive || false);
             setValue('pricing.subscriptionDetails.bgClassName', fetchedService.pricing?.subscriptionDetails?.bgClassName || 'bg-card');
             
-            // Transform features array of objects to comma-separated string for the form
-            const packagesForForm = (fetchedService.pricing?.subscriptionDetails?.packages || []).map(pkg => ({
-              ...pkg,
-              features: (pkg.features || []).map(f => f.text).join(', '),
-            }));
+            const packagesForForm = formatFeaturesForForm(fetchedService.pricing?.subscriptionDetails?.packages);
             setValue('pricing.subscriptionDetails.packages', packagesForForm);
             
             setValue('pricing.isCustomQuoteActive', fetchedService.pricing?.isCustomQuoteActive || false);
-            setValue('pricing.customQuoteDetails.bgClassName', fetchedService.pricing?.customQuoteDetails?.bgClassName || 'bg-background');
             setValue('pricing.customQuoteDetails', fetchedService.pricing?.customQuoteDetails || { title: '', text: '', infoBoxText: '', formTitle: '', formDescription: '' });
 
             setValue('showFaqSection', fetchedService.showFaqSection || false);
@@ -233,7 +239,7 @@ export default function EditServicePage() {
   };
 
   const handleCancel = () => {
-    router.push('/admin/services'); 
+    router.back(); 
   };
 
   if (isLoading) {

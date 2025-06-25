@@ -55,8 +55,8 @@ export interface ServicePackage {
   priceMonthly: number;
   originalPriceMonthly?: number; // The "slash-through" price for display
   annualPriceCalcMethod: 'percentage' | 'fixed';
-  annualDiscountPercentage: number; // Used if method is 'percentage'
-  priceAnnually: number; // Used if method is 'fixed'
+  annualDiscountPercentage?: number; // Used if method is 'percentage'
+  discountedMonthlyPrice?: number; // Renamed from priceAnnually, used if method is 'fixed'
   renewalInfo?: string;
   features: PackageFeature[];
   isPopular?: boolean;
