@@ -138,34 +138,37 @@ export default function CartPage() {
   const getDisplayPrice = () => {
     if (!isSubscription || !selectedPackage) return { monthly: 0, original: 0, saving: 0 };
     
-    // The price for a 12-month commitment, billed monthly.
-    const twelveMonthPrice = selectedPackage.priceMonthly;
-    // The price for a 1-month commitment, typically higher.
-    const oneMonthPrice = selectedPackage.originalPriceMonthly || twelveMonthPrice;
+    // The monthly price for the 12-month commitment. This is our base discounted rate.
+    const discountedPricePerMonth = selectedPackage.priceMonthly;
+    // The standard, non-discounted monthly price (used for strikethrough).
+    const regularMonthlyPrice = selectedPackage.originalPriceMonthly || discountedPricePerMonth;
 
-    let finalMonthlyPrice = twelveMonthPrice;
+    let finalMonthlyPrice;
     
     switch (selection.billingCycle) {
       case 1:
-        finalMonthlyPrice = oneMonthPrice;
+        // Use the discounted price for the 1-month option to show the discount.
+        finalMonthlyPrice = discountedPricePerMonth;
         break;
       case 12:
-        finalMonthlyPrice = twelveMonthPrice;
+        finalMonthlyPrice = discountedPricePerMonth;
         break;
       case 24:
-        finalMonthlyPrice = twelveMonthPrice * (1 - 0.10); // 10% discount
+        finalMonthlyPrice = discountedPricePerMonth * (1 - 0.10); // 10% discount
         break;
       case 48:
-        finalMonthlyPrice = twelveMonthPrice * (1 - 0.20); // 20% discount
+        finalMonthlyPrice = discountedPricePerMonth * (1 - 0.20); // 20% discount
         break;
+      default:
+        finalMonthlyPrice = discountedPricePerMonth;
     }
 
-    // Saving is always calculated against the highest price (1-month price) for the entire duration
-    const totalSaving = (oneMonthPrice * selection.billingCycle) - (finalMonthlyPrice * selection.billingCycle);
+    // Saving is always calculated against the highest price (regular price) for the entire duration
+    const totalSaving = (regularMonthlyPrice * selection.billingCycle) - (finalMonthlyPrice * selection.billingCycle);
 
     return { 
       monthly: finalMonthlyPrice, 
-      original: oneMonthPrice, // The original price for comparison is always the 1-month price
+      original: regularMonthlyPrice, // The "was" price
       saving: totalSaving 
     };
   };
@@ -253,7 +256,7 @@ export default function CartPage() {
                 <CardContent className="p-6">
                   <h4 className="font-semibold text-lg">{service.title} ({service.pricing.fixedPriceDetails.title || 'One-Time Project'})</h4>
                   <p className="text-3xl font-bold text-foreground mt-2">{formatIDR(service.pricing.fixedPriceDetails.price)}</p>
-                  <p className="text-sm text-muted-foreground mt-1">One-time payment for a defined scope.</p>
+                  <p className="text-sm text-muted-foreground mt-1">One-time payment for a defined scope of work.</p>
                 </CardContent>
               </Card>
             )}
