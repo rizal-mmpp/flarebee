@@ -232,14 +232,6 @@ export default function CartPage() {
                   <span className="text-muted-foreground">{service.title} ({isFixedPrice ? 'Fixed Price' : selectedPackage?.name})</span>
                   <span className="font-medium text-foreground">{isFixedPrice ? formatIDR(subtotal) : `${formatIDR(monthlyPrice)} x ${selection.billingCycle === 'annually' ? '12' : '1'}`}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                   <span className="text-muted-foreground flex items-center gap-1.5">Domain Name <HelpCircle className="h-3.5 w-3.5" /></span>
-                   <span className="text-green-600 font-medium">Free</span>
-                </div>
-                 <div className="flex justify-between items-center">
-                   <span className="text-muted-foreground flex items-center gap-1.5">Privacy Protection <HelpCircle className="h-3.5 w-3.5" /></span>
-                   <span className="text-green-600 font-medium">Free</span>
-                </div>
                 <Separator className="my-3"/>
                 <div className="flex justify-between font-bold text-lg text-foreground">
                   <span>Subtotal</span>
