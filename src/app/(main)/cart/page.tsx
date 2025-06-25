@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ArrowLeft, Info, HelpCircle, ArrowRight, ShoppingCart, ServerCrash, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, Info, HelpCircle, ArrowRight, ShoppingCart, ServerCrash, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
@@ -289,20 +289,37 @@ export default function CartPage() {
                 <div className="pt-2">
                     <Label htmlFor="coupon" className="text-xs font-medium">Have a coupon code?</Label>
                     <div className="flex gap-2 mt-1">
-                        <Input
-                          id="coupon"
-                          placeholder="Enter code"
-                          className={cn("h-9", couponError && "border-destructive focus-visible:ring-destructive")}
-                          value={couponCode}
-                          onChange={(e) => {
-                            setCouponCode(e.target.value);
-                            if (couponError) setCouponError(null);
-                          }}
-                        />
+                        <div className="relative w-full">
+                            <Input
+                                id="coupon"
+                                placeholder="Enter code"
+                                className={cn("h-9 pr-9", couponError && "border-destructive focus-visible:ring-destructive")}
+                                value={couponCode}
+                                onChange={(e) => {
+                                setCouponCode(e.target.value);
+                                if (couponError) setCouponError(null);
+                                }}
+                            />
+                             {couponCode && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-full"
+                                    onClick={() => {
+                                        setCouponCode('');
+                                        setCouponError(null);
+                                    }}
+                                    aria-label="Clear coupon code"
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            )}
+                        </div>
                         <Button
                           type="button"
                           variant="secondary"
-                          className="h-9 text-secondary-foreground"
+                          className="h-9 text-secondary-foreground flex-shrink-0"
                           onClick={handleApplyCoupon}
                         >
                           Apply
