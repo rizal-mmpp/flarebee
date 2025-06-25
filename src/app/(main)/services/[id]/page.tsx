@@ -36,7 +36,8 @@ const formatIDR = (amount: number | string | undefined | null) => {
 const SubscriptionPackageCard: React.FC<{
   pkg: ServicePackage;
   billingCycle: 'monthly' | 'annually';
-}> = ({ pkg, billingCycle }) => {
+  onSelect: (pkg: ServicePackage, billingCycle: 'monthly' | 'annually') => void;
+}> = ({ pkg, billingCycle, onSelect }) => {
   const isAnnual = billingCycle === 'annually';
 
   let displayPrice: number;
@@ -85,8 +86,8 @@ const SubscriptionPackageCard: React.FC<{
             {isAnnual && pkg.annualPriceCalcMethod !== 'percentage' && <p className="text-xs text-muted-foreground mt-2">Billed annually at {formatIDR(displayPrice * 12)}</p>}
             {pkg.renewalInfo && <p className="text-xs text-muted-foreground mt-2">{pkg.renewalInfo}</p>}
         </div>
-        <Button size="lg" className={cn('w-full', pkg.isPopular ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : '')} variant={pkg.isPopular ? 'default' : 'outline'}>
-          {pkg.cta || 'Pilih Paket'}
+        <Button size="lg" className={cn('w-full', pkg.isPopular ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : '')} variant={pkg.isPopular ? 'default' : 'outline'} onClick={() => onSelect(pkg, billingCycle)}>
+          {pkg.cta || 'Choose Plan'}
         </Button>
         <div className="pt-4 border-t border-border">
           <ul className="space-y-3 text-foreground/90">
@@ -111,6 +112,7 @@ const SubscriptionPackageCard: React.FC<{
 export default function ServiceDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
   const params = use(paramsPromise);
   const slug = params.id;
+  const router = useRouter();
 
   const [service, setService] = useState<Service | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -139,6 +141,30 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
     }
     fetchService();
   }, [slug]);
+  
+  const handleSelectSubscription = (pkg: ServicePackage, cycle: 'monthly' | 'annually') => {
+    if (!service) return;
+    const selection = {
+      serviceSlug: service.slug,
+      packageId: pkg.id,
+      billingCycle: cycle,
+      type: 'subscription'
+    };
+    localStorage.setItem('serviceSelection', JSON.stringify(selection));
+    router.push('/cart');
+  };
+
+  const handleSelectFixedPrice = () => {
+    if (!service) return;
+     const selection = {
+      serviceSlug: service.slug,
+      packageId: 'fixed_price', // A special identifier for the fixed price model
+      billingCycle: 'one-time',
+      type: 'fixed'
+    };
+    localStorage.setItem('serviceSelection', JSON.stringify(selection));
+    router.push('/cart');
+  };
 
   const handleCustomQuoteSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -223,7 +249,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch max-w-5xl mx-auto">
               {service.pricing.subscriptionDetails.packages.map(pkg => (
-                <SubscriptionPackageCard key={pkg.id} pkg={pkg} billingCycle={billingCycle} />
+                <SubscriptionPackageCard key={pkg.id} pkg={pkg} billingCycle={billingCycle} onSelect={handleSelectSubscription} />
               ))}
             </div>
           </div>
@@ -243,7 +269,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
                 <p className="text-muted-foreground text-lg mb-6 leading-relaxed">{service.pricing.fixedPriceDetails.description || 'Get a complete, one-and-done solution with a single upfront payment.'}</p>
                 <div className="space-y-4">
                   <p className="text-4xl font-extrabold text-foreground">{formatIDR(service.pricing.fixedPriceDetails.price)}</p>
-                  <Button size="lg" className="w-full sm:w-auto">Get Started with this Project</Button>
+                  <Button size="lg" className="w-full sm:w-auto" onClick={handleSelectFixedPrice}>Get Started with this Project</Button>
                 </div>
               </div>
               <div className="order-1 md:order-2">

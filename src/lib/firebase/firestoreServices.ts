@@ -40,12 +40,12 @@ const DEFAULT_JOURNEY_STAGES: JourneyStage[] = [
     imageAiHint: null,
   },
   { 
-    id: 'smart-onboarding', 
-    title: 'Smart Onboarding', 
-    details: "- Inline, 3-step lightweight wizard: Business Name & Type, Domain options ('I have one', 'Search domain', 'Skip for now' → subdomain), Select preferred style/template (quick preview).\n- All fields optional. 'Continue' active if at least 1 field filled.", 
-    placeholder: "Design the wizard steps. How are domain options presented? How does the style/template quick preview work visually? What's the feel of this onboarding?",
+    id: 'cart', 
+    title: 'Cart', 
+    details: "Halaman ini langsung ditampilkan di depan untuk memastikan keseriusan customer.\n\nNote:\n- Data ini disimpan di localStorage",
+    placeholder: "Visualize the cart/selection page. It should confirm the user's choice (e.g., Business Website Builder, Annual Plan) and show a clear order summary. Include options to change billing duration and a prominent CTA to continue.",
     imageUrl: null,
-    imageAiHint: null,
+    imageAiHint: "shopping cart summary",
   },
   { 
     id: 'sign-in-up', 
