@@ -235,10 +235,6 @@ export default function CartPage() {
                                 <p className="text-sm font-medium text-foreground">Congratulations! You're saving {formatIDR(saving)} with this plan.</p>
                             </div>
                         )}
-                         <div className="flex items-center p-3 bg-green-100 dark:bg-green-900/40 rounded-lg">
-                            <Info className="h-5 w-5 mr-3 flex-shrink-0 text-green-600 dark:text-green-400" />
-                            <p className="text-sm font-medium text-foreground">Want a free domain? Choose a package for at least 12 months.</p>
-                         </div>
                     </div>
 
                 </CardContent>
