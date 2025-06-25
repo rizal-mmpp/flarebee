@@ -28,10 +28,6 @@ export default function CreateServicePage() {
       shortDescription: '',
       longDescription: '',
       categoryId: '',
-      pricingModel: 'Custom Quote',
-      priceMin: undefined,
-      priceMax: undefined,
-      currency: 'IDR',
       tags: '',
       imageUrl: '', 
       dataAiHint: '',
@@ -40,8 +36,14 @@ export default function CreateServicePage() {
       targetAudience: '',
       estimatedDuration: '',
       portfolioLink: '',
-      showPackagesSection: false,
-      packages: [],
+      pricing: {
+        isFixedPriceActive: false,
+        isSubscriptionActive: false,
+        isCustomQuoteActive: true, // Default to custom quote active for new services
+        fixedPriceDetails: { price: 0 },
+        subscriptionDetails: { annualDiscountPercentage: 0, packages: [] },
+        customQuoteDetails: { description: '' }
+      },
       showFaqSection: false,
       faq: [],
     }
@@ -81,23 +83,23 @@ export default function CreateServicePage() {
         return;
       }
       
-      (Object.keys(data) as Array<keyof ServiceFormValues>).forEach(key => {
-        if (key === 'packages' || key === 'faq') {
-          const value = data[key] || [];
-          formDataForAction.append(key, JSON.stringify(value));
-        } else {
-          const value = data[key];
-          if (value !== undefined && value !== null && value !== '') {
-            if (typeof value === 'number' || typeof value === 'boolean') {
-              formDataForAction.append(key, String(value));
-            } else if (typeof value === 'string') {
-              formDataForAction.append(key, value);
-            }
-          } else if (key === 'priceMin' || key === 'priceMax') {
-            formDataForAction.append(key, '');
-          }
-        }
-      });
+      // Append primitive values directly
+      formDataForAction.append('title', data.title);
+      formDataForAction.append('shortDescription', data.shortDescription);
+      formDataForAction.append('longDescription', data.longDescription);
+      formDataForAction.append('categoryId', data.categoryId);
+      formDataForAction.append('tags', data.tags);
+      formDataForAction.append('dataAiHint', data.dataAiHint || '');
+      formDataForAction.append('status', data.status);
+      formDataForAction.append('keyFeatures', data.keyFeatures || '');
+      formDataForAction.append('targetAudience', data.targetAudience || '');
+      formDataForAction.append('estimatedDuration', data.estimatedDuration || '');
+      formDataForAction.append('portfolioLink', data.portfolioLink || '');
+      formDataForAction.append('showFaqSection', String(data.showFaqSection));
+
+      // Stringify complex objects
+      formDataForAction.append('pricing', JSON.stringify(data.pricing));
+      formDataForAction.append('faq', JSON.stringify(data.faq));
       
       const result = await saveServiceAction(formDataForAction); 
 

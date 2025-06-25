@@ -17,7 +17,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Service, FetchServicesParams, FetchServicesResult, JourneyStage } from '@/lib/types'; 
+import type { Service, FetchServicesParams, FetchServicesResult, JourneyStage, PricingDetails } from '@/lib/types'; 
 import { SERVICE_CATEGORIES } from '@/lib/constants'; 
 
 const SERVICES_COLLECTION = 'services'; 
@@ -122,10 +122,18 @@ const fromFirestore = (docSnapshot: QueryDocumentSnapshot<DocumentData>): Servic
       imageAiHint: stage.imageAiHint || null,
     }));
   } else {
-    // If customerJourneyStages is missing, empty, or not an array, use default.
-    customerJourneyStages = DEFAULT_JOURNEY_STAGES.map(stage => ({...stage})); // Ensure a fresh copy
+    customerJourneyStages = DEFAULT_JOURNEY_STAGES.map(stage => ({...stage}));
   }
 
+  // Safely build the pricing object, providing defaults for each model
+  const pricingData: PricingDetails = {
+    isFixedPriceActive: data.pricing?.isFixedPriceActive ?? false,
+    fixedPriceDetails: data.pricing?.fixedPriceDetails ?? { price: 0 },
+    isSubscriptionActive: data.pricing?.isSubscriptionActive ?? false,
+    subscriptionDetails: data.pricing?.subscriptionDetails ?? { annualDiscountPercentage: 0, packages: [] },
+    isCustomQuoteActive: data.pricing?.isCustomQuoteActive ?? false,
+    customQuoteDetails: data.pricing?.customQuoteDetails ?? { description: '' }
+  };
 
   return {
     id: docSnapshot.id,
@@ -135,7 +143,7 @@ const fromFirestore = (docSnapshot: QueryDocumentSnapshot<DocumentData>): Servic
     shortDescription: data.shortDescription || '',
     longDescription: data.longDescription || '',
     category: category,
-    pricing: data.pricing,
+    pricing: pricingData,
     tags: data.tags || [],
     imageUrl: data.imageUrl || 'https://placehold.co/600x400.png',
     dataAiHint: data.dataAiHint || '',

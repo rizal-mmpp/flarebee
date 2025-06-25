@@ -12,7 +12,7 @@ import { updateServiceAction } from '@/lib/actions/service.actions';
 import type { Service } from '@/lib/types'; 
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { Loader2, ServerCrash, Edit3, ArrowLeft, Save } from 'lucide-react';
+import { Loader2, ServerCrash, Edit3, ArrowLeft, Save, Rocket } from 'lucide-react';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -33,6 +33,18 @@ export default function EditServicePage() {
 
   const { register, handleSubmit, control, formState: { errors }, setValue, watch, getValues } = useForm<ServiceFormValues>({ 
     resolver: zodResolver(serviceFormSchema),
+    defaultValues: {
+      pricing: {
+        isFixedPriceActive: false,
+        isSubscriptionActive: false,
+        isCustomQuoteActive: false,
+        fixedPriceDetails: { price: 0 },
+        subscriptionDetails: { annualDiscountPercentage: 0, packages: [] },
+        customQuoteDetails: { description: '' }
+      },
+      showFaqSection: false,
+      faq: []
+    }
   });
   
   const watchedImageUrl = watch('imageUrl'); 
@@ -46,8 +58,7 @@ export default function EditServicePage() {
           if (fetchedService) {
             setService(fetchedService);
             
-            // Transform packages.features from array to string for form compatibility
-            const packagesForForm = fetchedService.packages?.map(pkg => ({
+            const packagesForForm = fetchedService.pricing?.subscriptionDetails?.packages?.map(pkg => ({
               ...pkg,
               features: Array.isArray(pkg.features) ? pkg.features.join(', ') : pkg.features,
             })) || [];
@@ -56,10 +67,6 @@ export default function EditServicePage() {
             setValue('shortDescription', fetchedService.shortDescription || '');
             setValue('longDescription', fetchedService.longDescription || '');
             setValue('categoryId', fetchedService.category.id);
-            setValue('pricingModel', fetchedService.pricingModel || 'Custom Quote');
-            setValue('priceMin', fetchedService.priceMin);
-            setValue('priceMax', fetchedService.priceMax);
-            setValue('currency', fetchedService.currency || 'IDR');
             setValue('tags', fetchedService.tags.join(', '));
             setValue('imageUrl', fetchedService.imageUrl);
             setImagePreviewUrl(fetchedService.imageUrl);
@@ -69,8 +76,17 @@ export default function EditServicePage() {
             setValue('targetAudience', fetchedService.targetAudience?.join(', ') || '');
             setValue('estimatedDuration', fetchedService.estimatedDuration || '');
             setValue('portfolioLink', fetchedService.portfolioLink || '');
-            setValue('showPackagesSection', fetchedService.showPackagesSection || false);
-            setValue('packages', packagesForForm);
+            
+            setValue('pricing.isFixedPriceActive', fetchedService.pricing?.isFixedPriceActive || false);
+            setValue('pricing.fixedPriceDetails.price', fetchedService.pricing?.fixedPriceDetails?.price || 0);
+
+            setValue('pricing.isSubscriptionActive', fetchedService.pricing?.isSubscriptionActive || false);
+            setValue('pricing.subscriptionDetails.annualDiscountPercentage', fetchedService.pricing?.subscriptionDetails?.annualDiscountPercentage || 0);
+            setValue('pricing.subscriptionDetails.packages', packagesForForm);
+            
+            setValue('pricing.isCustomQuoteActive', fetchedService.pricing?.isCustomQuoteActive || false);
+            setValue('pricing.customQuoteDetails.description', fetchedService.pricing?.customQuoteDetails?.description || '');
+
             setValue('showFaqSection', fetchedService.showFaqSection || false);
             setValue('faq', fetchedService.faq || []);
 
@@ -118,32 +134,28 @@ export default function EditServicePage() {
     startTransition(async () => {
       const formDataForAction = new FormData();
       
-      // Handle file upload separately to get URL first
       if (selectedFile) {
-        const blobFormData = new FormData();
-        blobFormData.append('file', selectedFile);
         formDataForAction.append('imageFile', selectedFile);
       }
-      
       formDataForAction.append('currentImageUrl', data.imageUrl || service.imageUrl || '');
 
-      (Object.keys(data) as Array<keyof ServiceFormValues>).forEach(key => {
-        if (key === 'packages' || key === 'faq') {
-          const value = data[key] || [];
-          formDataForAction.append(key, JSON.stringify(value));
-        } else {
-          const value = data[key];
-          if (value !== undefined && value !== null && value !== '') {
-             if (typeof value === 'number' || typeof value === 'boolean') {
-                 formDataForAction.append(key, String(value));
-            } else if (typeof value === 'string') {
-                formDataForAction.append(key, value);
-            }
-          } else if (key === 'priceMin' || key === 'priceMax') {
-             formDataForAction.append(key, '');
-          }
-        }
-      });
+      // Append primitive values directly
+      formDataForAction.append('title', data.title);
+      formDataForAction.append('shortDescription', data.shortDescription);
+      formDataForAction.append('longDescription', data.longDescription);
+      formDataForAction.append('categoryId', data.categoryId);
+      formDataForAction.append('tags', data.tags);
+      formDataForAction.append('dataAiHint', data.dataAiHint || '');
+      formDataForAction.append('status', data.status);
+      formDataForAction.append('keyFeatures', data.keyFeatures || '');
+      formDataForAction.append('targetAudience', data.targetAudience || '');
+      formDataForAction.append('estimatedDuration', data.estimatedDuration || '');
+      formDataForAction.append('portfolioLink', data.portfolioLink || '');
+      formDataForAction.append('showFaqSection', String(data.showFaqSection));
+
+      // Stringify complex objects
+      formDataForAction.append('pricing', JSON.stringify(data.pricing));
+      formDataForAction.append('faq', JSON.stringify(data.faq));
       
       const result = await updateServiceAction(service.id, formDataForAction);
 
@@ -158,8 +170,6 @@ export default function EditServicePage() {
           title: 'Service Updated Successfully',
           description: result.message || 'The service details have been updated.',
         });
-        // No longer redirecting, user stays on the page
-        // router.push('/admin/services'); 
       }
     });
   };
@@ -217,24 +227,9 @@ export default function EditServicePage() {
           </h1>
           <TooltipProvider delayDuration={0}>
             <div className="flex items-center justify-start sm:justify-end gap-2 w-full sm:w-auto flex-shrink-0">
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" type="button" onClick={handleCancel} disabled={isPending}>
-                            <ArrowLeft className="h-4 w-4" />
-                            <span className="sr-only">Cancel</span>
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent><p>Cancel & Go Back</p></TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                         <Button type="submit" size="icon" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isPending}>
-                            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                            <span className="sr-only">Update Service</span>
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent><p>Update Service</p></TooltipContent>
-                </Tooltip>
+                <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" type="button" onClick={handleCancel} disabled={isPending}><ArrowLeft className="h-4 w-4" /><span className="sr-only">Cancel</span></Button></TooltipTrigger><TooltipContent><p>Cancel & Go Back</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><Button asChild variant="outline" size="icon" type="button" disabled={isPending}><Link href={`/admin/services/${slug}/simulate-journey`}><Rocket className="h-4 w-4" /><span className="sr-only">Customer Journey</span></Link></Button></TooltipTrigger><TooltipContent><p>Customer Journey</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><Button type="submit" size="icon" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isPending}>{isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}<span className="sr-only">Update Service</span></Button></TooltipTrigger><TooltipContent><p>Update Service</p></TooltipContent></Tooltip>
             </div>
           </TooltipProvider>
         </div>

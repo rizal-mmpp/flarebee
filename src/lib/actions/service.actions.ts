@@ -29,16 +29,15 @@ function slugify(text: string): string {
     .replace(/\-\-+/g, '-'); 
 }
 
-export interface ServiceFirestoreData extends Omit<Service, 'id' | 'slug' | 'category' | 'createdAt' | 'updatedAt' | 'customerJourneyStages' | 'packages' | 'faq' | 'keyFeatures' | 'targetAudience' | 'tags' | 'pricing'> {
+export interface ServiceFirestoreData extends Omit<Service, 'id' | 'slug' | 'category' | 'createdAt' | 'updatedAt' | 'customerJourneyStages' | 'pricing' | 'keyFeatures' | 'targetAudience' | 'tags'> {
   slug: string;
   categoryId: string;
   tags: string[];
   keyFeatures?: string[] | null;
   targetAudience?: string[] | null;
-  packages?: ServicePackage[];
+  pricing: PricingDetails;
   faq?: FaqItem[];
   customerJourneyStages?: JourneyStage[];
-  pricing: PricingDetails;
   createdAt?: Timestamp; 
   updatedAt?: Timestamp; 
 }
@@ -83,7 +82,6 @@ function prepareDataFromFormData(formData: FormData, currentImageUrl?: string): 
     const data: Partial<ServiceFirestoreData> = {
         title,
         slug: slugify(title),
-        title_lowercase: title.toLowerCase(),
         shortDescription: formData.get('shortDescription') as string,
         longDescription: formData.get('longDescription') as string,
         categoryId: formData.get('categoryId') as string,
