@@ -16,16 +16,6 @@ import { Button } from '@/components/ui/button';
 import { Loader2, ServerCrash, Edit3, ArrowLeft, Save, Rocket, Copy } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-// Helper to transform features array of objects back to comma-separated string for the form
-function formatFeaturesForForm(packages: ServicePackage[] | undefined): any[] {
-  if (!packages) return [];
-  return packages.map(pkg => ({
-    ...pkg,
-    features: (pkg.features || [])
-      .map(f => (f.isIncluded ? '' : '-') + f.text)
-      .join(', '),
-  }));
-}
 
 export default function EditServicePage() {
   const router = useRouter();
@@ -100,8 +90,8 @@ export default function EditServicePage() {
             setValue('pricing.isSubscriptionActive', fetchedService.pricing?.isSubscriptionActive || false);
             setValue('pricing.subscriptionDetails.bgClassName', fetchedService.pricing?.subscriptionDetails?.bgClassName || 'bg-card');
             
-            const packagesForForm = formatFeaturesForForm(fetchedService.pricing?.subscriptionDetails?.packages);
-            setValue('pricing.subscriptionDetails.packages', packagesForForm);
+            // Set packages directly, no more string formatting for features
+            setValue('pricing.subscriptionDetails.packages', fetchedService.pricing?.subscriptionDetails?.packages || []);
             
             setValue('pricing.isCustomQuoteActive', fetchedService.pricing?.isCustomQuoteActive || false);
             setValue('pricing.customQuoteDetails', fetchedService.pricing?.customQuoteDetails || { title: '', text: '', infoBoxText: '', formTitle: '', formDescription: '' });

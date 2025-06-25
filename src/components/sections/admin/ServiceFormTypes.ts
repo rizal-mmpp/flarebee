@@ -2,6 +2,12 @@
 import * as z from 'zod';
 import { SERVICE_CATEGORIES, SERVICE_STATUSES } from '@/lib/constants';
 
+const packageFeatureSchema = z.object({
+  id: z.string(),
+  text: z.string().min(1, 'Feature text cannot be empty.'),
+  isIncluded: z.boolean().default(true),
+});
+
 const servicePackageSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Package name is required."),
@@ -11,10 +17,10 @@ const servicePackageSchema = z.object({
   
   annualPriceCalcMethod: z.enum(['percentage', 'fixed']).default('percentage'),
   annualDiscountPercentage: z.coerce.number().min(0).max(100).default(0),
-  discountedMonthlyPrice: z.coerce.number().min(0).default(0), // Renamed from priceAnnually
+  discountedMonthlyPrice: z.coerce.number().min(0).default(0),
 
   renewalInfo: z.string().optional(),
-  features: z.string().optional(), // Changed to string for comma-separated input
+  features: z.array(packageFeatureSchema).optional(),
   isPopular: z.boolean().default(false),
   cta: z.string().optional(),
 });

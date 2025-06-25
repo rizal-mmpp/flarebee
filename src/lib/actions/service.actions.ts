@@ -48,21 +48,6 @@ function parseStringToArray(str?: string | null): string[] {
   return str.split(',').map(item => item.trim()).filter(item => item.length > 0);
 }
 
-// Helper to parse comma-separated features string into PackageFeature[]
-function parseFeaturesString(featuresString?: string | null): PackageFeature[] {
-  if (!featuresString) return [];
-  return featuresString.split(',').map(f => f.trim()).filter(f => f).map(text => {
-    const isIncluded = !text.startsWith('-');
-    const featureText = isIncluded ? text : text.substring(1).trim();
-    return {
-      id: `feat-${Math.random().toString(36).substring(2, 8)}`,
-      text: featureText,
-      isIncluded: isIncluded,
-    };
-  });
-}
-
-
 // Helper to prepare data for Firestore from FormData
 function prepareDataFromFormData(formData: FormData, imageUrl: string | null, fixedPriceImageUrl: string | null): Partial<ServiceFirestoreData> {
     const title = formData.get('title') as string;
@@ -92,10 +77,7 @@ function prepareDataFromFormData(formData: FormData, imageUrl: string | null, fi
         if (pricingData.isSubscriptionActive) {
             pricingData.subscriptionDetails = {
                 bgClassName: rawPricing.subscriptionDetails?.bgClassName || 'bg-card',
-                packages: (rawPricing.subscriptionDetails?.packages || []).map((pkg: any) => ({
-                    ...pkg,
-                    features: parseFeaturesString(pkg.features as string | null), // Convert string to feature array
-                }))
+                packages: rawPricing.subscriptionDetails?.packages || [], // Data is now correctly structured in the form
             };
         }
 

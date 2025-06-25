@@ -36,6 +36,56 @@ interface ServiceFormProps {
   isEditMode?: boolean;
 }
 
+const FeatureInputRow: React.FC<{
+  packageIndex: number;
+  control: Control<ServiceFormValues>;
+  register: UseFormRegister<ServiceFormValues>;
+}> = ({ packageIndex, control, register }) => {
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: `pricing.subscriptionDetails.packages.${packageIndex}.features`,
+  });
+
+  return (
+    <div className="space-y-3">
+      <Label>Features</Label>
+      {fields.map((field, featureIndex) => (
+        <div key={field.id} className="flex items-center gap-2">
+          <Controller
+            name={`pricing.subscriptionDetails.packages.${packageIndex}.features.${featureIndex}.isIncluded`}
+            control={control}
+            render={({ field }) => (
+              <Switch
+                checked={field.value}
+                onCheckedChange={field.onChange}
+                aria-label="Is feature included"
+              />
+            )}
+          />
+          <Input
+            {...register(`pricing.subscriptionDetails.packages.${packageIndex}.features.${featureIndex}.text`)}
+            placeholder={`Feature ${featureIndex + 1}`}
+            className="flex-grow"
+          />
+          <Button type="button" variant="ghost" size="icon" onClick={() => remove(featureIndex)} className="text-destructive h-8 w-8 flex-shrink-0">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+       <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-2"
+          onClick={() => append({ id: `feat-${Date.now()}`, text: '', isIncluded: true })}
+        >
+          <PlusCircle className="mr-2 h-4 w-4" /> Add Feature
+        </Button>
+    </div>
+  );
+};
+
+
 export function ServiceForm({
   control,
   register,
@@ -186,14 +236,17 @@ export function ServiceForm({
 
                                             <Separator />
 
-                                            <div><Label htmlFor={`packages.${index}.features`}>Features (comma-separated)</Label><Textarea {...register(`pricing.subscriptionDetails.packages.${index}.features`)} className="mt-1" rows={3} placeholder="Feature A, Feature B, -Excluded Feature C"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.features && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.features?.message}</p>}</div>
+                                            <FeatureInputRow packageIndex={index} control={control} register={register} />
+                                            
+                                            <Separator />
+
                                             <div><Label htmlFor={`packages.${index}.cta`}>CTA Text</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.cta`)} className="mt-1" placeholder="e.g., Get Started, Choose Pro"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.cta && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.cta?.message}</p>}</div>
                                             <div><Label htmlFor={`packages.${index}.renewalInfo`}>Renewal Info (Optional)</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.renewalInfo`)} className="mt-1" placeholder="e.g., Renews at full price"/></div>
                                         </div>
                                     </Card>
                                 );
                             })}
-                            <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}${Math.random().toString(36).substring(2, 8)}`, name: '', description: '', priceMonthly: 0, originalPriceMonthly: 0, annualPriceCalcMethod: 'percentage', annualDiscountPercentage: 0, discountedMonthlyPrice: 0, features: '', isPopular: false, cta: 'Choose Plan' })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package</Button>
+                            <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}${Math.random().toString(36).substring(2, 8)}`, name: '', description: '', priceMonthly: 0, originalPriceMonthly: 0, annualPriceCalcMethod: 'percentage', annualDiscountPercentage: 0, discountedMonthlyPrice: 0, features: [], isPopular: false, cta: 'Choose Plan' })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package</Button>
                         </div>
                     )}
                 </div>
