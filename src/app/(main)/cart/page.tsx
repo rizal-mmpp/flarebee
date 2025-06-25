@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ArrowLeft, Info, HelpCircle, ArrowRight, ShoppingCart, ServerCrash } from 'lucide-react';
+import { Loader2, ArrowLeft, Info, HelpCircle, ArrowRight, ShoppingCart, ServerCrash, CheckCircle } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 
 interface ServiceSelection {
@@ -217,25 +217,30 @@ export default function CartPage() {
                             <p className="text-xs text-muted-foreground mt-2">{renewalText}</p>
                         </div>
 
-                        <div className="flex items-center gap-4">
-                            {saving > 0 && (
-                                <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white font-semibold">SAVE {formatIDR(saving)}</Badge>
-                            )}
-                            <div className="text-right flex-shrink-0">
-                                <div className="flex items-baseline justify-end gap-1">
-                                    <p className="text-4xl font-bold text-foreground">{formatIDR(monthlyPrice)}</p>
-                                    <span className="text-lg font-normal text-muted-foreground">/mo</span>
-                                </div>
-                                {originalPrice > monthlyPrice && (
-                                    <p className="text-base text-muted-foreground line-through">{formatIDR(originalPrice)}/mo</p>
-                                )}
+                        <div className="text-right flex-shrink-0">
+                            <div className="flex items-baseline justify-end gap-1">
+                                <p className="text-4xl font-bold text-foreground">{formatIDR(monthlyPrice)}</p>
+                                <span className="text-lg font-normal text-muted-foreground">/mo</span>
                             </div>
+                            {originalPrice > monthlyPrice && (
+                                <p className="text-base text-muted-foreground line-through">{formatIDR(originalPrice)}/mo</p>
+                            )}
                         </div>
                     </div>
-                     <div className="flex items-center p-3 bg-primary/10 rounded-lg text-primary-foreground/90">
-                        <Info className="h-5 w-5 mr-3 flex-shrink-0 text-primary" />
-                        <p className="text-sm font-medium text-primary/90">Want a free domain? Choose a package for at least 12 months.</p>
-                     </div>
+
+                    <div className="space-y-2 pt-4">
+                        {saving > 0 && (
+                            <div className="flex items-center p-3 bg-green-100 dark:bg-green-900/40 rounded-lg">
+                                <CheckCircle className="h-5 w-5 mr-3 flex-shrink-0 text-green-600 dark:text-green-400" />
+                                <p className="text-sm font-medium text-foreground">Congratulations! You're saving {formatIDR(saving)} with this plan.</p>
+                            </div>
+                        )}
+                         <div className="flex items-center p-3 bg-green-100 dark:bg-green-900/40 rounded-lg">
+                            <Info className="h-5 w-5 mr-3 flex-shrink-0 text-green-600 dark:text-green-400" />
+                            <p className="text-sm font-medium text-foreground">Want a free domain? Choose a package for at least 12 months.</p>
+                         </div>
+                    </div>
+
                 </CardContent>
               </Card>
             )}
