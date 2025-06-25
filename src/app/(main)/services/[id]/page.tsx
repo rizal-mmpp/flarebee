@@ -60,8 +60,8 @@ const SubscriptionPackageCard: React.FC<{
             )}
         </div>
         <ul className="space-y-3 text-foreground/90">
-          {pkg.features.map(feature => (
-            <li key={feature} className="flex items-center">
+          {pkg.features.map((feature, index) => (
+            <li key={index} className="flex items-center">
               <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
               <span>{feature}</span>
             </li>
@@ -216,7 +216,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
                     {service.pricing?.isCustomQuoteActive && (
                         <Card className="flex flex-col justify-between">
                              <CardHeader><CardTitle className="flex items-center"><Sparkles className="mr-2 h-6 w-6 text-primary"/>Custom Project</CardTitle><CardDescription>Need something different? Let's build a custom plan together.</CardDescription></CardHeader>
-                            <CardContent><p className="text-muted-foreground">{service.pricing.customQuoteDetails?.description || "Tell us about your project, and we'll craft a custom package tailored just for you. No obligations, just possibilities."}</p></CardContent>
+                            <CardContent><p className="text-muted-foreground">{service.pricing.customQuoteDetails?.formDescription || "Tell us about your project, and we'll craft a custom package tailored just for you. No obligations, just possibilities."}</p></CardContent>
                             <CardFooter><Button asChild variant="outline" className="w-full"><Link href="/contact-us">Request a Quote</Link></Button></CardFooter>
                         </Card>
                     )}
@@ -226,40 +226,44 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
       )}
 
 
-      {/* Custom Quote Section (Legacy - can be removed or kept as alternative CTA) */}
-      <section id="custom-quote-form" className="py-16 md:py-24 bg-card">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div className="space-y-4">
-              <h2 className="text-3xl md:text-4xl font-bold">Still not sure?</h2>
-              <p className="text-muted-foreground text-lg">Tell us about your project, and we'll craft a custom package tailored just for you. No obligations, just possibilities.</p>
-              <div className="flex items-start p-4 bg-primary/10 rounded-2xl">
-                <Bot className="h-8 w-8 text-primary mr-4 mt-1 flex-shrink-0"/>
-                <p className="text-sm text-primary/80">Our team will analyze your needs and provide a personalized recommendation and quote within 24 hours.</p>
+      {/* Custom Quote Section */}
+      {service.pricing?.isCustomQuoteActive && service.pricing.customQuoteDetails && (
+        <section id="custom-quote-form" className="py-16 md:py-24 bg-card">
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              <div className="space-y-4">
+                <h2 className="text-3xl md:text-4xl font-bold">{service.pricing.customQuoteDetails.title || "Still not sure?"}</h2>
+                <p className="text-muted-foreground text-lg">{service.pricing.customQuoteDetails.text || "Tell us about your project, and we'll craft a custom package tailored just for you. No obligations, just possibilities."}</p>
+                {service.pricing.customQuoteDetails.infoBoxText && (
+                  <div className="flex items-start p-4 bg-primary/10 rounded-2xl">
+                    <Bot className="h-8 w-8 text-primary mr-4 mt-1 flex-shrink-0"/>
+                    <p className="text-sm text-primary/80">{service.pricing.customQuoteDetails.infoBoxText}</p>
+                  </div>
+                )}
               </div>
+              <Card className="shadow-lg">
+                  <CardHeader>
+                      <CardTitle>{service.pricing.customQuoteDetails.formTitle || "Describe Your Project"}</CardTitle>
+                      <CardDescription>{service.pricing.customQuoteDetails.formDescription || "The more details you provide, the better we can assist you."}</CardDescription>
+                  </CardHeader>
+                  <form onSubmit={handleCustomQuoteSubmit}>
+                      <CardContent className="space-y-4">
+                          <div><Label htmlFor="businessType">Type of Business</Label><Input id="businessType" placeholder="e.g., Cafe, Online Store, Consultant" required /></div>
+                          <div><Label htmlFor="budget">Estimated Budget (IDR)</Label><Input id="budget" placeholder="e.g., 2,000,000" type="text" required /></div>
+                          <div><Label htmlFor="needs">Project Needs & Features</Label><Textarea id="needs" rows={4} placeholder="Describe the features you need, like a booking system, photo gallery, blog, etc." required/></div>
+                      </CardContent>
+                      <CardFooter>
+                          <Button type="submit" className="w-full" disabled={isSubmitting}>
+                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4" />}
+                             Submit Inquiry
+                          </Button>
+                      </CardFooter>
+                  </form>
+              </Card>
             </div>
-            <Card className="shadow-lg">
-                <CardHeader>
-                    <CardTitle>Describe Your Project</CardTitle>
-                    <CardDescription>The more details you provide, the better we can assist you.</CardDescription>
-                </CardHeader>
-                <form onSubmit={handleCustomQuoteSubmit}>
-                    <CardContent className="space-y-4">
-                        <div><Label htmlFor="businessType">Type of Business</Label><Input id="businessType" placeholder="e.g., Cafe, Online Store, Consultant" required /></div>
-                        <div><Label htmlFor="budget">Estimated Budget (IDR)</Label><Input id="budget" placeholder="e.g., 2,000,000" type="text" required /></div>
-                        <div><Label htmlFor="needs">Project Needs & Features</Label><Textarea id="needs" rows={4} placeholder="Describe the features you need, like a booking system, photo gallery, blog, etc." required/></div>
-                    </CardContent>
-                    <CardFooter>
-                        <Button type="submit" className="w-full" disabled={isSubmitting}>
-                           {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4" />}
-                           Submit Inquiry
-                        </Button>
-                    </CardFooter>
-                </form>
-            </Card>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* FAQ Section */}
       {service.showFaqSection && service.faq && service.faq.length > 0 && (
@@ -303,3 +307,4 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
     </div>
   );
 }
+

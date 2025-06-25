@@ -19,8 +19,6 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from '@/components/ui/separator';
-import { Rocket } from 'lucide-react';
-import Link from 'next/link';
 
 interface ServiceFormProps {
   control: Control<ServiceFormValues>;
@@ -161,8 +159,13 @@ export function ServiceForm({
                         <Controller name="pricing.isCustomQuoteActive" control={control} render={({ field }) => <Switch id="isCustomQuoteActive" checked={field.value} onCheckedChange={field.onChange} />} />
                     </div>
                      {watchedPricing?.isCustomQuoteActive && (
-                        <div className="pl-7 space-y-2">
-                             <div><Label htmlFor="customQuoteDescription">Description</Label><Textarea {...register('pricing.customQuoteDetails.description')} rows={2} className="mt-1" placeholder="e.g., Contact us for enterprise solutions."/>{errors.pricing?.customQuoteDetails?.description && <p className="text-sm text-destructive mt-1">{errors.pricing.customQuoteDetails.description.message}</p>}</div>
+                        <div className="pl-7 space-y-4">
+                             <div><Label htmlFor="customQuoteTitle">Section Title</Label><Input {...register('pricing.customQuoteDetails.title')} className="mt-1" placeholder="e.g., Still not sure?"/></div>
+                             <div><Label htmlFor="customQuoteText">Introductory Text</Label><Textarea {...register('pricing.customQuoteDetails.text')} rows={3} className="mt-1" placeholder="e.g., Tell us about your project..."/></div>
+                             <div><Label htmlFor="customQuoteInfoBoxText">Info Box Text (Optional)</Label><Textarea {...register('pricing.customQuoteDetails.infoBoxText')} rows={2} className="mt-1" placeholder="e.g., Our team will analyze your needs..."/></div>
+                             <Separator />
+                             <div><Label htmlFor="customQuoteFormTitle">Form Title</Label><Input {...register('pricing.customQuoteDetails.formTitle')} className="mt-1" placeholder="e.g., Describe Your Project"/></div>
+                             <div><Label htmlFor="customQuoteFormDescription">Form Description</Label><Textarea {...register('pricing.customQuoteDetails.formDescription')} rows={2} className="mt-1" placeholder="e.g., The more details you provide..."/></div>
                         </div>
                     )}
                 </div>

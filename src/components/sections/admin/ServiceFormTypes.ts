@@ -32,7 +32,11 @@ const pricingDetailsSchema = z.object({
 
   isCustomQuoteActive: z.boolean().default(false),
   customQuoteDetails: z.object({
-    description: z.string().optional(),
+    title: z.string().optional(),
+    text: z.string().optional(),
+    infoBoxText: z.string().optional(),
+    formTitle: z.string().optional(),
+    formDescription: z.string().optional(),
   }).optional(),
 }).refine(data => {
     if (data.isFixedPriceActive && (!data.fixedPriceDetails || data.fixedPriceDetails.price <= 0)) {

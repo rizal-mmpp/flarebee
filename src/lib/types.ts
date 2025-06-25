@@ -70,7 +70,11 @@ export interface PricingDetails {
   };
   isCustomQuoteActive?: boolean;
   customQuoteDetails?: {
-    description?: string;
+    title?: string;
+    text?: string;
+    infoBoxText?: string;
+    formTitle?: string;
+    formDescription?: string;
   };
 }
 
