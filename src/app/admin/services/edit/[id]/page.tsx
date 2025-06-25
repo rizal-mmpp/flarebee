@@ -3,6 +3,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ServiceForm } from '@/components/sections/admin/ServiceForm'; 
@@ -12,8 +13,7 @@ import { updateServiceAction } from '@/lib/actions/service.actions';
 import type { Service } from '@/lib/types'; 
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { Loader2, ServerCrash, Edit3, ArrowLeft, Save, Rocket } from 'lucide-react';
-import Link from 'next/link';
+import { Loader2, ServerCrash, Edit3, ArrowLeft, Save, Rocket, Copy } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function EditServicePage() {
@@ -160,10 +160,25 @@ export default function EditServicePage() {
       const result = await updateServiceAction(service.id, formDataForAction);
 
       if (result.error) {
-         toast({
+        const errorMessage = result.error;
+        toast({
           title: 'Error Updating Service',
-          description: result.error,
+          description: (
+            <div className="flex w-full items-start justify-between gap-4">
+              <p className="text-sm pr-4 break-words">{errorMessage}</p>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 flex-shrink-0 text-destructive-foreground/80 hover:bg-destructive-foreground/20 hover:text-destructive-foreground"
+                onClick={() => navigator.clipboard.writeText(errorMessage)}
+                aria-label="Copy error message"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          ),
           variant: "destructive",
+          duration: Infinity, // Keep it visible
         });
       } else {
         toast({

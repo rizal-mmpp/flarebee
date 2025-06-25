@@ -10,7 +10,7 @@ import { type ServiceFormValues, serviceFormSchema } from '@/components/sections
 import { saveServiceAction } from '@/lib/actions/service.actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, PlusCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, PlusCircle, Loader2, Copy } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CreateServicePage() { 
@@ -104,11 +104,26 @@ export default function CreateServicePage() {
       const result = await saveServiceAction(formDataForAction); 
 
       if (result.error) {
-         toast({
-          title: 'Error Saving Service',
-          description: result.error,
-          variant: "destructive",
-        });
+        const errorMessage = result.error;
+        toast({
+         title: 'Error Saving Service',
+         description: (
+           <div className="flex w-full items-start justify-between gap-4">
+             <p className="text-sm pr-4 break-words">{errorMessage}</p>
+             <Button
+               variant="ghost"
+               size="icon"
+               className="h-7 w-7 flex-shrink-0 text-destructive-foreground/80 hover:bg-destructive-foreground/20 hover:text-destructive-foreground"
+               onClick={() => navigator.clipboard.writeText(errorMessage)}
+               aria-label="Copy error message"
+             >
+               <Copy className="h-4 w-4" />
+             </Button>
+           </div>
+         ),
+         variant: "destructive",
+         duration: Infinity,
+       });
       } else {
         toast({
           title: 'Service Saved Successfully',

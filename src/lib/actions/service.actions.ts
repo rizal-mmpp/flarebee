@@ -52,29 +52,35 @@ function parseStringToArray(str?: string | null): string[] {
 function prepareDataFromFormData(formData: FormData, currentImageUrl?: string): Partial<ServiceFirestoreData> {
     const title = formData.get('title') as string;
     
-    let pricingData: PricingDetails = {
-      isFixedPriceActive: false,
-      isSubscriptionActive: false,
-      isCustomQuoteActive: false,
-    };
+    // The main object to build pricing data
+    const pricingData: PricingDetails = {};
+    
     try {
       const pricingJson = formData.get('pricing') as string | null;
       if (pricingJson) {
         const rawPricing = JSON.parse(pricingJson);
-        pricingData = {
-          isFixedPriceActive: rawPricing.isFixedPriceActive || false,
-          fixedPriceDetails: rawPricing.isFixedPriceActive ? { price: Number(rawPricing.fixedPriceDetails?.price || 0) } : undefined,
-          isSubscriptionActive: rawPricing.isSubscriptionActive || false,
-          subscriptionDetails: rawPricing.isSubscriptionActive ? {
-            annualDiscountPercentage: Number(rawPricing.subscriptionDetails?.annualDiscountPercentage || 0),
-            packages: (rawPricing.subscriptionDetails?.packages || []).map((pkg: any) => ({
-              ...pkg,
-              features: parseStringToArray(pkg.features as string | null),
-            }))
-          } : undefined,
-          isCustomQuoteActive: rawPricing.isCustomQuoteActive || false,
-          customQuoteDetails: rawPricing.isCustomQuoteActive ? { description: rawPricing.customQuoteDetails?.description || '' } : undefined,
-        };
+        
+        pricingData.isFixedPriceActive = rawPricing.isFixedPriceActive || false;
+        pricingData.isSubscriptionActive = rawPricing.isSubscriptionActive || false;
+        pricingData.isCustomQuoteActive = rawPricing.isCustomQuoteActive || false;
+        
+        if (pricingData.isFixedPriceActive) {
+            pricingData.fixedPriceDetails = { price: Number(rawPricing.fixedPriceDetails?.price || 0) };
+        }
+
+        if (pricingData.isSubscriptionActive) {
+            pricingData.subscriptionDetails = {
+                annualDiscountPercentage: Number(rawPricing.subscriptionDetails?.annualDiscountPercentage || 0),
+                packages: (rawPricing.subscriptionDetails?.packages || []).map((pkg: any) => ({
+                    ...pkg,
+                    features: parseStringToArray(pkg.features as string | null),
+                }))
+            };
+        }
+
+        if (pricingData.isCustomQuoteActive) {
+            pricingData.customQuoteDetails = { description: rawPricing.customQuoteDetails?.description || '' };
+        }
       }
     } catch(e) { console.error("Error parsing pricing JSON", e); }
 
