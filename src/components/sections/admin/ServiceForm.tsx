@@ -13,7 +13,7 @@ import { SERVICE_CATEGORIES, SERVICE_STATUSES } from '@/lib/constants';
 import type { ServiceFormValues } from './ServiceFormTypes';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { ImageIcon, Trash2, PlusCircle, DollarSign, Briefcase, HelpCircle, FileText, Settings, Sparkles, Repeat, Package } from 'lucide-react';
+import { ImageIcon, Trash2, PlusCircle, DollarSign, HelpCircle, FileText, Settings, Sparkles, Repeat, Package } from 'lucide-react';
 import { CustomDropzone } from '@/components/ui/custom-dropzone';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -119,6 +119,7 @@ export function ServiceForm({
                     </div>
                     {watchedPricing?.isFixedPriceActive && (
                         <div className="pl-7 space-y-4">
+                             <div><Label htmlFor="fixedPriceBgClassName">Background Color</Label><Controller name="pricing.fixedPriceDetails.bgClassName" control={control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value || 'bg-background'}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="bg-background">Background</SelectItem><SelectItem value="bg-card">Card</SelectItem></SelectContent></Select>)} /></div>
                              <div><Label htmlFor="fixedPriceTitle">Display Title</Label><Input {...register('pricing.fixedPriceDetails.title')} className="mt-1" placeholder="e.g., One-Time Project"/></div>
                              <div><Label htmlFor="fixedPriceDescription">Description</Label><Textarea {...register('pricing.fixedPriceDetails.description')} rows={2} className="mt-1" placeholder="e.g., A single payment for a defined scope of work."/></div>
                              <div><Label htmlFor="fixedPricePrice">Price (IDR)</Label><Input {...register('pricing.fixedPriceDetails.price', { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 500000"/>{errors.pricing?.fixedPriceDetails?.price && <p className="text-sm text-destructive mt-1">{errors.pricing.fixedPriceDetails.price.message}</p>}</div>
@@ -137,28 +138,62 @@ export function ServiceForm({
                     </div>
                      {watchedPricing?.isSubscriptionActive && (
                         <div className="pl-7 space-y-6">
-                            <div><Label htmlFor="annualDiscount">Annual Discount (%)</Label><Input {...register('pricing.subscriptionDetails.annualDiscountPercentage', { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 15 for 15%"/>{errors.pricing?.subscriptionDetails?.annualDiscountPercentage && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.annualDiscountPercentage.message}</p>}</div>
+                            <div><Label htmlFor="subscriptionBgClassName">Background Color</Label><Controller name="pricing.subscriptionDetails.bgClassName" control={control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value || 'bg-card'}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="bg-background">Background</SelectItem><SelectItem value="bg-card">Card</SelectItem></SelectContent></Select>)} /></div>
                             <Separator/>
                              <Label className="text-md font-medium mb-2 block">Subscription Packages ({packageFields.length})</Label>
-                            {packageFields.map((item, index) => (
-                            <Card key={item.id} className="p-4 bg-muted/50">
-                                <div className="flex justify-between items-center mb-4"><p className="font-semibold">Package #{index + 1}</p><Button type="button" variant="ghost" size="icon" onClick={() => removePackage(index)} className="text-destructive h-8 w-8"><Trash2 className="h-4 w-4"/></Button></div>
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div><Label htmlFor={`pricing.subscriptionDetails.packages.${index}.name`}>Name</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.name`)} className="mt-1" placeholder="e.g., Basic, Pro"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.name?.message}</p>}</div>
-                                        <div className="flex items-center space-x-2 pt-6"><Controller name={`pricing.subscriptionDetails.packages.${index}.isPopular`} control={control} render={({ field }) => <Switch id={`packages.${index}.isPopular`} checked={field.value} onCheckedChange={field.onChange} />} /><Label htmlFor={`packages.${index}.isPopular`}>Most Popular?</Label></div>
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div><Label htmlFor={`pricing.subscriptionDetails.packages.${index}.priceMonthly`}>Monthly Price (IDR)</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.priceMonthly`, { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 100000"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.priceMonthly && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.priceMonthly?.message}</p>}</div>
-                                        <div><Label htmlFor={`pricing.subscriptionDetails.packages.${index}.priceAnnually`}>Annual Price (IDR)</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.priceAnnually`, { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 1000000"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.priceAnnually && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.priceAnnually?.message}</p>}</div>
-                                    </div>
-                                    <div><Label htmlFor={`pricing.subscriptionDetails.packages.${index}.description`}>Description</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.description`)} className="mt-1" placeholder="Best for small projects"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.description && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.description?.message}</p>}</div>
-                                    <div><Label htmlFor={`pricing.subscriptionDetails.packages.${index}.features`}>Features (comma-separated)</Label><Textarea {...register(`pricing.subscriptionDetails.packages.${index}.features`)} className="mt-1" rows={3} placeholder="Feature A, Feature B, Feature C"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.features && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.features?.message}</p>}</div>
-                                    <div><Label htmlFor={`pricing.subscriptionDetails.packages.${index}.cta`}>CTA Text</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.cta`)} className="mt-1" placeholder="e.g., Get Started, Choose Pro"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.cta && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.cta?.message}</p>}</div>
-                                </div>
-                            </Card>
-                            ))}
-                            <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ name: '', description: '', priceMonthly: 0, priceAnnually: 0, features: '', isPopular: false, cta: 'Choose Plan' })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package</Button>
+                            {packageFields.map((item, index) => {
+                                const currentPackage = watch(`pricing.subscriptionDetails.packages.${index}`);
+                                return (
+                                    <Card key={item.id} className="p-4 bg-muted/50">
+                                        <div className="flex justify-between items-center mb-4"><p className="font-semibold">Package #{index + 1}</p><Button type="button" variant="ghost" size="icon" onClick={() => removePackage(index)} className="text-destructive h-8 w-8"><Trash2 className="h-4 w-4"/></Button></div>
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div><Label htmlFor={`packages.${index}.name`}>Name</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.name`)} className="mt-1" placeholder="e.g., Basic, Pro"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.name?.message}</p>}</div>
+                                                <div className="flex items-center space-x-2 pt-6"><Controller name={`pricing.subscriptionDetails.packages.${index}.isPopular`} control={control} render={({ field }) => <Switch id={`packages.${index}.isPopular`} checked={field.value} onCheckedChange={field.onChange} />} /><Label htmlFor={`packages.${index}.isPopular`}>Most Popular?</Label></div>
+                                            </div>
+                                             <div><Label htmlFor={`packages.${index}.description`}>Description</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.description`)} className="mt-1" placeholder="Best for small projects"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.description && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.description?.message}</p>}</div>
+                                             
+                                            <Separator />
+                                            <h4 className="text-sm font-medium">Pricing</h4>
+                                            
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div><Label htmlFor={`packages.${index}.priceMonthly`}>Monthly Price (IDR)</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.priceMonthly`, { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 100000"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.priceMonthly && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.priceMonthly?.message}</p>}</div>
+                                                <div><Label htmlFor={`packages.${index}.originalPriceMonthly`}>Original Monthly Price (IDR)</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.originalPriceMonthly`, { valueAsNumber: true })} type="number" className="mt-1" placeholder="Optional, for discounts"/></div>
+                                            </div>
+                                            
+                                            <div>
+                                                <Label>Annual Price Calculation Method</Label>
+                                                <Controller
+                                                    name={`pricing.subscriptionDetails.packages.${index}.annualPriceCalcMethod`}
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <Select onValueChange={field.onChange} value={field.value || 'percentage'}>
+                                                            <SelectTrigger className="mt-1"><SelectValue placeholder="Select calculation method" /></SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="percentage">By Percentage Discount</SelectItem>
+                                                                <SelectItem value="fixed">By Fixed Annual Price</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            {currentPackage?.annualPriceCalcMethod === 'percentage' ? (
+                                                <div><Label htmlFor={`packages.${index}.annualDiscountPercentage`}>Annual Discount (%)</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.annualDiscountPercentage`, { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 15 for 15%"/></div>
+                                            ) : (
+                                                 <div><Label htmlFor={`packages.${index}.priceAnnually`}>Fixed Annual Price (IDR)</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.priceAnnually`, { valueAsNumber: true })} type="number" className="mt-1" placeholder="e.g., 1000000"/></div>
+                                            )}
+
+                                            <Separator />
+
+                                            <div><Label htmlFor={`packages.${index}.features`}>Features (comma-separated)</Label><Textarea {...register(`pricing.subscriptionDetails.packages.${index}.features`)} className="mt-1" rows={3} placeholder="Feature A, Feature B, -Excluded Feature C"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.features && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.features?.message}</p>}</div>
+                                            <div><Label htmlFor={`packages.${index}.cta`}>CTA Text</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.cta`)} className="mt-1" placeholder="e.g., Get Started, Choose Pro"/>{errors.pricing?.subscriptionDetails?.packages?.[index]?.cta && <p className="text-sm text-destructive mt-1">{errors.pricing.subscriptionDetails.packages[index]?.cta?.message}</p>}</div>
+                                            <div><Label htmlFor={`packages.${index}.renewalInfo`}>Renewal Info (Optional)</Label><Input {...register(`pricing.subscriptionDetails.packages.${index}.renewalInfo`)} className="mt-1" placeholder="e.g., Renews at full price"/></div>
+                                        </div>
+                                    </Card>
+                                );
+                            })}
+                            <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}${Math.random().toString(36).substring(2, 8)}`, name: '', description: '', priceMonthly: 0, originalPriceMonthly: 0, annualPriceCalcMethod: 'percentage', annualDiscountPercentage: 0, priceAnnually: 0, features: '', isPopular: false, cta: 'Choose Plan' })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package</Button>
                         </div>
                     )}
                 </div>
@@ -171,6 +206,7 @@ export function ServiceForm({
                     </div>
                      {watchedPricing?.isCustomQuoteActive && (
                         <div className="pl-7 space-y-4">
+                             <div><Label htmlFor="customQuoteBgClassName">Background Color</Label><Controller name="pricing.customQuoteDetails.bgClassName" control={control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value || 'bg-background'}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="bg-background">Background</SelectItem><SelectItem value="bg-card">Card</SelectItem></SelectContent></Select>)} /></div>
                              <div><Label htmlFor="customQuoteTitle">Section Title</Label><Input {...register('pricing.customQuoteDetails.title')} className="mt-1" placeholder="e.g., Still not sure?"/></div>
                              <div><Label htmlFor="customQuoteText">Introductory Text</Label><Textarea {...register('pricing.customQuoteDetails.text')} rows={3} className="mt-1" placeholder="e.g., Tell us about your project..."/></div>
                              <div><Label htmlFor="customQuoteInfoBoxText">Info Box Text (Optional)</Label><Textarea {...register('pricing.customQuoteDetails.infoBoxText')} rows={2} className="mt-1" placeholder="e.g., Our team will analyze your needs..."/></div>

@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { SERVICE_CATEGORIES, SERVICE_STATUSES } from '../constants'; 
-import type { Service, JourneyStage, ServicePackage, FaqItem, PricingDetails } from '@/lib/types';
+import type { Service, JourneyStage, ServicePackage, FaqItem, PricingDetails, PackageFeature } from '@/lib/types';
 import { uploadFileToVercelBlob } from './vercelBlob.actions';
 
 const SERVICES_COLLECTION = 'services'; 
@@ -48,6 +48,21 @@ function parseStringToArray(str?: string | null): string[] {
   return str.split(',').map(item => item.trim()).filter(item => item.length > 0);
 }
 
+// Helper to parse comma-separated features string into PackageFeature[]
+function parseFeaturesString(featuresString?: string | null): PackageFeature[] {
+  if (!featuresString) return [];
+  return featuresString.split(',').map(f => f.trim()).filter(f => f).map(text => {
+    const isIncluded = !text.startsWith('-');
+    const featureText = isIncluded ? text : text.substring(1).trim();
+    return {
+      id: `feat-${Math.random().toString(36).substring(2, 8)}`,
+      text: featureText,
+      isIncluded: isIncluded,
+    };
+  });
+}
+
+
 // Helper to prepare data for Firestore from FormData
 function prepareDataFromFormData(formData: FormData, imageUrl: string | null, fixedPriceImageUrl: string | null): Partial<ServiceFirestoreData> {
     const title = formData.get('title') as string;
@@ -65,6 +80,7 @@ function prepareDataFromFormData(formData: FormData, imageUrl: string | null, fi
         
         if (pricingData.isFixedPriceActive) {
             pricingData.fixedPriceDetails = { 
+                bgClassName: rawPricing.fixedPriceDetails?.bgClassName || 'bg-background',
                 title: rawPricing.fixedPriceDetails?.title || '',
                 description: rawPricing.fixedPriceDetails?.description || '',
                 price: Number(rawPricing.fixedPriceDetails?.price || 0),
@@ -75,16 +91,19 @@ function prepareDataFromFormData(formData: FormData, imageUrl: string | null, fi
 
         if (pricingData.isSubscriptionActive) {
             pricingData.subscriptionDetails = {
-                annualDiscountPercentage: Number(rawPricing.subscriptionDetails?.annualDiscountPercentage || 0),
+                bgClassName: rawPricing.subscriptionDetails?.bgClassName || 'bg-card',
                 packages: (rawPricing.subscriptionDetails?.packages || []).map((pkg: any) => ({
                     ...pkg,
-                    features: parseStringToArray(pkg.features as string | null),
+                    features: parseFeaturesString(pkg.features as string | null), // Convert string to feature array
                 }))
             };
         }
 
         if (pricingData.isCustomQuoteActive) {
-            pricingData.customQuoteDetails = rawPricing.customQuoteDetails || {};
+            pricingData.customQuoteDetails = {
+                bgClassName: rawPricing.customQuoteDetails?.bgClassName || 'bg-background',
+                ...rawPricing.customQuoteDetails,
+            };
         }
       }
     } catch(e) { console.error("Error parsing pricing JSON", e); }
@@ -199,9 +218,20 @@ export async function updateServiceAction(id: string, formData: FormData): Promi
     const docRef = doc(db, SERVICES_COLLECTION, id);
     const dataToUpdate = prepareDataFromFormData(formData, finalImageUrl, finalFixedPriceImageUrl);
     
+    // Explicitly remove pricing model details if they are inactive
     if (dataToUpdate.pricing?.isFixedPriceActive === false) {
       if (dataToUpdate.pricing.fixedPriceDetails) {
         dataToUpdate.pricing.fixedPriceDetails = undefined;
+      }
+    }
+    if (dataToUpdate.pricing?.isSubscriptionActive === false) {
+      if (dataToUpdate.pricing.subscriptionDetails) {
+        dataToUpdate.pricing.subscriptionDetails = undefined;
+      }
+    }
+     if (dataToUpdate.pricing?.isCustomQuoteActive === false) {
+      if (dataToUpdate.pricing.customQuoteDetails) {
+        dataToUpdate.pricing.customQuoteDetails = undefined;
       }
     }
     

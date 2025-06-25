@@ -43,7 +43,7 @@ export default function EditServicePage() {
         isCustomQuoteActive: false,
         fixedPriceDetails: { bgClassName: 'bg-background', price: 0, title: '', description: '', imageAiHint: '' },
         subscriptionDetails: { bgClassName: 'bg-card', packages: [] },
-        customQuoteDetails: { bgClassName: 'bg-background', description: '' }
+        customQuoteDetails: { bgClassName: 'bg-background', title: '', text: '', infoBoxText: '', formTitle: '', formDescription: '' }
       },
       showFaqSection: false,
       faq: []
@@ -88,7 +88,13 @@ export default function EditServicePage() {
 
             setValue('pricing.isSubscriptionActive', fetchedService.pricing?.isSubscriptionActive || false);
             setValue('pricing.subscriptionDetails.bgClassName', fetchedService.pricing?.subscriptionDetails?.bgClassName || 'bg-card');
-            setValue('pricing.subscriptionDetails.packages', fetchedService.pricing?.subscriptionDetails?.packages || []);
+            
+            // Transform features array of objects to comma-separated string for the form
+            const packagesForForm = (fetchedService.pricing?.subscriptionDetails?.packages || []).map(pkg => ({
+              ...pkg,
+              features: (pkg.features || []).map(f => f.text).join(', '),
+            }));
+            setValue('pricing.subscriptionDetails.packages', packagesForForm);
             
             setValue('pricing.isCustomQuoteActive', fetchedService.pricing?.isCustomQuoteActive || false);
             setValue('pricing.customQuoteDetails.bgClassName', fetchedService.pricing?.customQuoteDetails?.bgClassName || 'bg-background');
