@@ -17,7 +17,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
-import { Switch } from '@/components/ui/switch';
 
 
 const formatIDR = (amount: number | string | undefined | null) => {
@@ -35,26 +34,11 @@ const formatIDR = (amount: number | string | undefined | null) => {
 
 const SubscriptionPackageCard: React.FC<{
   pkg: ServicePackage;
-  billingCycle: 'monthly' | 'annually';
-  onSelect: (pkg: ServicePackage, billingCycle: 'monthly' | 'annually') => void;
-}> = ({ pkg, billingCycle, onSelect }) => {
-  const isAnnual = billingCycle === 'annually';
-
-  let displayPrice: number;
-  let originalDisplayPrice: number | undefined = undefined;
-
-  if (isAnnual) {
-    if (pkg.annualPriceCalcMethod === 'percentage') {
-      const annualPrice = pkg.priceMonthly * 12 * (1 - ((pkg.annualDiscountPercentage || 0) / 100));
-      displayPrice = annualPrice / 12;
-    } else { // 'fixed'
-      displayPrice = pkg.discountedMonthlyPrice || 0;
-    }
-    originalDisplayPrice = pkg.priceMonthly;
-  } else { // monthly view
-    displayPrice = pkg.priceMonthly;
-    originalDisplayPrice = pkg.originalPriceMonthly;
-  }
+  onSelect: () => void;
+}> = ({ pkg, onSelect }) => {
+  
+  const displayPrice = pkg.priceMonthly;
+  const originalDisplayPrice = pkg.originalPriceMonthly;
 
   const discountPercentage = (originalDisplayPrice && displayPrice > 0 && originalDisplayPrice > displayPrice)
     ? Math.round(((originalDisplayPrice - displayPrice) / originalDisplayPrice) * 100)
@@ -83,10 +67,9 @@ const SubscriptionPackageCard: React.FC<{
                 {formatIDR(displayPrice)}
                 <span className="text-base font-normal text-muted-foreground ml-1">/mo</span>
             </p>
-            {isAnnual && pkg.annualPriceCalcMethod !== 'percentage' && <p className="text-xs text-muted-foreground mt-2">Billed annually at {formatIDR(displayPrice * 12)}</p>}
             {pkg.renewalInfo && <p className="text-xs text-muted-foreground mt-2">{pkg.renewalInfo}</p>}
         </div>
-        <Button size="lg" className={cn('w-full', pkg.isPopular ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : '')} variant={pkg.isPopular ? 'default' : 'outline'} onClick={() => onSelect(pkg, billingCycle)}>
+        <Button size="lg" className={cn('w-full', pkg.isPopular ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : '')} variant={pkg.isPopular ? 'default' : 'outline'} onClick={onSelect}>
           {pkg.cta || 'Choose Plan'}
         </Button>
         <div className="pt-4 border-t border-border">
@@ -118,7 +101,6 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('annually');
 
   useEffect(() => {
     async function fetchService() {
@@ -142,12 +124,12 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
     fetchService();
   }, [slug]);
   
-  const handleSelectSubscription = (pkg: ServicePackage, cycle: 'monthly' | 'annually') => {
+  const handleSelectSubscription = (pkg: ServicePackage) => {
     if (!service) return;
     const selection = {
       serviceSlug: service.slug,
       packageId: pkg.id,
-      billingCycle: cycle,
+      billingCycle: 12, // Default to 12 months when coming from this page
       type: 'subscription'
     };
     localStorage.setItem('serviceSelection', JSON.stringify(selection));
@@ -159,7 +141,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
      const selection = {
       serviceSlug: service.slug,
       packageId: 'fixed_price', // A special identifier for the fixed price model
-      billingCycle: 'one-time',
+      billingCycle: 1, // Not relevant for one-time, but need a value
       type: 'fixed'
     };
     localStorage.setItem('serviceSelection', JSON.stringify(selection));
@@ -238,18 +220,11 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto mb-12">
               <h2 className="text-3xl md:text-4xl font-bold">Flexible Plans</h2>
-              <p className="text-muted-foreground mt-2">Choose the subscription that best fits your needs.</p>
-            </div>
-            <div className="flex justify-center items-center gap-4 mb-8">
-              <span className={cn('font-medium', billingCycle === 'monthly' ? 'text-primary' : 'text-muted-foreground')}>Monthly</span>
-              <Switch checked={billingCycle === 'annually'} onCheckedChange={(checked) => setBillingCycle(checked ? 'annually' : 'monthly')} aria-label="Toggle billing cycle" />
-              <span className={cn('font-medium', billingCycle === 'annually' ? 'text-primary' : 'text-muted-foreground')}>
-                Annually
-              </span>
+              <p className="text-muted-foreground mt-2">Choose the subscription that best fits your needs. Configure your term in the cart.</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch max-w-5xl mx-auto">
               {service.pricing.subscriptionDetails.packages.map(pkg => (
-                <SubscriptionPackageCard key={pkg.id} pkg={pkg} billingCycle={billingCycle} onSelect={handleSelectSubscription} />
+                <SubscriptionPackageCard key={pkg.id} pkg={pkg} onSelect={() => handleSelectSubscription(pkg)} />
               ))}
             </div>
           </div>

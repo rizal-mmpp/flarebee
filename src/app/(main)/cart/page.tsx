@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 interface ServiceSelection {
   serviceSlug: string;
   packageId: string;
-  billingCycle: 'monthly' | 'annually' | 'one-time';
+  billingCycle: 1 | 12 | 24 | 36;
   type: 'subscription' | 'fixed';
 }
 
@@ -44,8 +44,18 @@ export default function CartPage() {
     const storedSelection = localStorage.getItem('serviceSelection');
     if (storedSelection) {
       try {
-        const parsedSelection: ServiceSelection = JSON.parse(storedSelection);
-        setSelection(parsedSelection);
+        const parsedSelection: any = JSON.parse(storedSelection);
+
+        // Handle migration from old 'monthly'/'annually' to new numeric cycle
+        if (parsedSelection.billingCycle === 'annually') {
+          parsedSelection.billingCycle = 12;
+        } else if (parsedSelection.billingCycle === 'monthly') {
+          parsedSelection.billingCycle = 1;
+        } else if (typeof parsedSelection.billingCycle !== 'number') {
+            parsedSelection.billingCycle = 12; // Default for safety
+        }
+
+        setSelection(parsedSelection as ServiceSelection);
 
         const fetchServiceData = async () => {
           setIsLoading(true);
@@ -127,30 +137,29 @@ export default function CartPage() {
 
   const getDisplayPrice = () => {
     if (!isSubscription || !selectedPackage) return { monthly: 0, original: 0, saving: 0 };
-    const isAnnual = selection.billingCycle === 'annually';
-    let displayPrice: number;
-    let originalDisplayPrice: number | undefined = undefined;
-
-    if (isAnnual) {
-      if (selectedPackage.annualPriceCalcMethod === 'percentage') {
-        const annualPrice = selectedPackage.priceMonthly * 12 * (1 - ((selectedPackage.annualDiscountPercentage || 0) / 100));
-        displayPrice = annualPrice / 12;
-      } else {
-        displayPrice = selectedPackage.discountedMonthlyPrice || 0;
-      }
-      originalDisplayPrice = selectedPackage.priceMonthly;
-    } else {
-      displayPrice = selectedPackage.priceMonthly;
-      originalDisplayPrice = selectedPackage.originalPriceMonthly;
+    
+    const baseMonthlyPrice = selectedPackage.priceMonthly;
+    let discountPercentage = 0;
+    
+    switch (selection.billingCycle) {
+        case 24:
+            discountPercentage = 0.05; // 5%
+            break;
+        case 36:
+            discountPercentage = 0.10; // 10%
+            break;
+        default: // 1 or 12 months
+            discountPercentage = 0;
     }
 
-    const saving = originalDisplayPrice && originalDisplayPrice > displayPrice ? (originalDisplayPrice - displayPrice) * 12 : 0;
-    
-    return { monthly: displayPrice, original: originalDisplayPrice, saving };
+    const discountedMonthlyPrice = baseMonthlyPrice * (1 - discountPercentage);
+    const totalSaving = (baseMonthlyPrice - discountedMonthlyPrice) * selection.billingCycle;
+
+    return { monthly: discountedMonthlyPrice, original: baseMonthlyPrice, saving: totalSaving };
   };
   
   const { monthly: monthlyPrice, original: originalPrice, saving } = getDisplayPrice();
-  const subtotal = isFixedPrice ? service.pricing?.fixedPriceDetails?.price || 0 : monthlyPrice * (selection.billingCycle === 'annually' ? 12 : 1);
+  const subtotal = isFixedPrice ? service.pricing?.fixedPriceDetails?.price || 0 : monthlyPrice * selection.billingCycle;
 
 
   return (
@@ -173,39 +182,45 @@ export default function CartPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 xl:gap-12 items-start">
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">{service.title}</h2>
             {isSubscription && selectedPackage && (
               <Card className="shadow-lg border-border/60">
+                <CardHeader>
+                    <CardTitle className="text-xl">{selectedPackage.name}</CardTitle>
+                </CardHeader>
                 <CardContent className="p-6 space-y-6">
-                    <div className="flex justify-between items-end gap-4">
-                        <div className="space-y-4">
-                            <div>
-                                <Label htmlFor="duration">Billing Duration</Label>
-                                <Select defaultValue={selection.billingCycle} onValueChange={(value) => setSelection({...selection, billingCycle: value as 'monthly' | 'annually'})}>
-                                    <SelectTrigger id="duration" className="w-full sm:w-[180px] mt-1">
-                                        <SelectValue placeholder="Select duration" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="monthly">Monthly</SelectItem>
-                                        <SelectItem value="annually">Annually</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            {selection.billingCycle === 'annually' && saving > 0 && (
+                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                        <div>
+                            <Label htmlFor="duration">Duration</Label>
+                            <Select 
+                                value={String(selection.billingCycle)} 
+                                onValueChange={(value) => setSelection({...selection, billingCycle: Number(value) as 1 | 12 | 24 | 36})}
+                            >
+                                <SelectTrigger id="duration" className="w-full sm:w-[180px] mt-1">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="1">1 Month</SelectItem>
+                                    <SelectItem value="12">12 Months</SelectItem>
+                                    <SelectItem value="24">24 Months (Save 5%)</SelectItem>
+                                    <SelectItem value="36">36 Months (Save 10%)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                            {saving > 0 && (
                                 <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white font-semibold">SAVE {formatIDR(saving)}</Badge>
                             )}
+                            <div className="text-right flex-shrink-0">
+                                <div className="flex items-baseline justify-end gap-1">
+                                    <p className="text-4xl font-bold text-foreground">{formatIDR(monthlyPrice)}</p>
+                                    <span className="text-lg font-normal text-muted-foreground">/mo</span>
+                                </div>
+                                {originalPrice > monthlyPrice && (
+                                    <p className="text-base text-muted-foreground line-through">{formatIDR(originalPrice)}/mo</p>
+                                )}
+                            </div>
                         </div>
-                        <div className="text-right flex-shrink-0">
-                            {originalPrice && originalPrice > monthlyPrice && (
-                                <p className="text-lg text-muted-foreground line-through">{formatIDR(originalPrice)}/mo</p>
-                            )}
-                            <p className="text-4xl font-bold text-foreground">{formatIDR(monthlyPrice)}<span className="text-base font-normal text-muted-foreground">/mo</span></p>
-                        </div>
-                    </div>
-                  
-                    <div className="p-4 bg-amber-100/60 dark:bg-amber-900/20 rounded-xl text-sm text-amber-900 dark:text-amber-200 flex items-start gap-3">
-                        <Info className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                        <p>Congratulations! You get a FREE domain and 3 months FREE with this package.</p>
                     </div>
                 </CardContent>
               </Card>
@@ -230,7 +245,7 @@ export default function CartPage() {
               <CardContent className="space-y-4 text-sm">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">{service.title} ({isFixedPrice ? 'Fixed Price' : selectedPackage?.name})</span>
-                  <span className="font-medium text-foreground">{isFixedPrice ? formatIDR(subtotal) : `${formatIDR(monthlyPrice)} x ${selection.billingCycle === 'annually' ? '12' : '1'}`}</span>
+                  <span className="font-medium text-foreground">{isFixedPrice ? formatIDR(subtotal) : `${formatIDR(monthlyPrice)} x ${selection.billingCycle}`}</span>
                 </div>
                 <Separator className="my-3"/>
                 <div className="flex justify-between font-bold text-lg text-foreground">
