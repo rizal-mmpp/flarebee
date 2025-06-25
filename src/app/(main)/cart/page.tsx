@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -12,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, ArrowLeft, Info, HelpCircle, ArrowRight, ShoppingCart, ServerCrash } from 'lucide-react';
-import Image from 'next/image';
 import { Label } from '@/components/ui/label';
 
 interface ServiceSelection {
@@ -154,104 +154,112 @@ export default function CartPage() {
 
 
   return (
-    <div className="container mx-auto px-4 md:px-6 py-12">
-      <Button variant="outline" asChild className="mb-8 group">
-        <Link href={`/services/${service.slug}`}>
-          <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
-          Back to Service
-        </Link>
-      </Button>
-      
-      <Card className="w-full max-w-4xl mx-auto shadow-xl">
-        <CardHeader>
-          <CardTitle className="text-2xl md:text-3xl">Your Cart</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-          {/* Left Side */}
-          <div className="lg:col-span-3 space-y-6">
-            <h3 className="text-xl font-semibold text-foreground">{service.title}</h3>
+    <div className="relative isolate overflow-hidden bg-background">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 -z-10 h-full w-full bg-background bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]"
+      ></div>
+      <div className="container mx-auto px-4 md:px-6 py-12 md:py-16">
+        <Button variant="outline" asChild className="mb-8 group">
+          <Link href={`/services/${service.slug}`}>
+            <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
+            Back to Service
+          </Link>
+        </Button>
+        
+        <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">Review Your Cart</h1>
+        <p className="text-lg text-muted-foreground mb-8">Confirm your service selection and proceed to checkout.</p>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 xl:gap-12 items-start">
+          {/* Left Column */}
+          <div className="lg:col-span-2 space-y-4">
+            <h2 className="text-2xl font-semibold text-foreground">{service.title}</h2>
             {isSubscription && selectedPackage && (
-              <div className="p-4 border rounded-xl space-y-4 bg-muted/30">
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                  <div>
-                    <Label htmlFor="duration">Duration</Label>
-                    <Select defaultValue={selection.billingCycle} onValueChange={(value) => setSelection({...selection, billingCycle: value as 'monthly' | 'annually'})}>
-                      <SelectTrigger id="duration" className="w-full sm:w-[180px] mt-1">
-                        <SelectValue placeholder="Select duration" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                        <SelectItem value="annually">Annually</SelectItem>
-                      </SelectContent>
-                    </Select>
+              <Card className="shadow-lg border-border/60">
+                <CardContent className="p-6 space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                    <div>
+                      <Label htmlFor="duration">Billing Duration</Label>
+                      <Select defaultValue={selection.billingCycle} onValueChange={(value) => setSelection({...selection, billingCycle: value as 'monthly' | 'annually'})}>
+                        <SelectTrigger id="duration" className="w-full sm:w-[200px] mt-1">
+                          <SelectValue placeholder="Select duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="annually">Annually</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="text-right flex-grow">
+                      {originalPrice && originalPrice > monthlyPrice && (
+                        <p className="text-base text-muted-foreground line-through">{formatIDR(originalPrice)}/mo</p>
+                      )}
+                      <p className="text-3xl font-bold text-foreground">{formatIDR(monthlyPrice)}<span className="text-base font-normal text-muted-foreground">/mo</span></p>
+                    </div>
                   </div>
-                  <div className="text-right flex-grow">
-                     {originalPrice && originalPrice > monthlyPrice && (
-                       <p className="text-sm text-muted-foreground line-through">{formatIDR(originalPrice)}/mo</p>
-                     )}
-                     <p className="text-2xl font-bold text-foreground">{formatIDR(monthlyPrice)}<span className="text-base font-normal text-muted-foreground">/mo</span></p>
+                  {selection.billingCycle === 'annually' && saving > 0 && (
+                    <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white font-semibold">SAVE {formatIDR(saving)}</Badge>
+                  )}
+                  <div className="p-4 bg-primary/10 rounded-xl text-sm text-primary-foreground/90 flex items-start gap-3">
+                      <Info className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                      <p>Congratulations! You get a FREE domain and 3 months FREE with this package.</p>
                   </div>
-                </div>
-                 {selection.billingCycle === 'annually' && saving > 0 && (
-                   <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white">SAVE {formatIDR(saving)}</Badge>
-                 )}
-                 <div className="p-3 bg-primary/10 rounded-lg text-sm text-primary-foreground/90 flex items-start gap-2">
-                    <Info className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                    <p>Congratulations! You get a FREE domain and 3 months FREE with this package.</p>
-                 </div>
-              </div>
+                </CardContent>
+              </Card>
             )}
             {isFixedPrice && service.pricing?.fixedPriceDetails && (
-                <div className="p-4 border rounded-xl space-y-2 bg-muted/30">
-                    <h4 className="font-semibold">{service.pricing.fixedPriceDetails.title || 'One-Time Project'}</h4>
-                    <p className="text-2xl font-bold text-foreground">{formatIDR(service.pricing.fixedPriceDetails.price)}</p>
-                    <p className="text-sm text-muted-foreground">One-time payment.</p>
-                </div>
+              <Card className="shadow-lg border-border/60">
+                <CardContent className="p-6">
+                  <h4 className="font-semibold text-lg">{service.pricing.fixedPriceDetails.title || 'One-Time Project'}</h4>
+                  <p className="text-3xl font-bold text-foreground mt-2">{formatIDR(service.pricing.fixedPriceDetails.price)}</p>
+                  <p className="text-sm text-muted-foreground mt-1">One-time payment for a defined scope.</p>
+                </CardContent>
+              </Card>
             )}
           </div>
           
-          {/* Right Side */}
-          <div className="lg:col-span-2">
-            <Card className="bg-muted/40">
+          {/* Right Column */}
+          <div className="lg:col-span-1">
+            <Card className="sticky top-24 shadow-xl border-border/60 bg-card/95 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-lg">Order Summary</CardTitle>
+                <CardTitle className="text-xl">Order Summary</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between">
+              <CardContent className="space-y-4 text-sm">
+                <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">{service.title} ({isFixedPrice ? 'Fixed Price' : selectedPackage?.name})</span>
-                  <span>{isFixedPrice ? formatIDR(subtotal) : `${formatIDR(monthlyPrice)} x ${selection.billingCycle === 'annually' ? '12' : '1'}`}</span>
+                  <span className="font-medium">{isFixedPrice ? formatIDR(subtotal) : `${formatIDR(monthlyPrice)} x ${selection.billingCycle === 'annually' ? '12' : '1'}`}</span>
                 </div>
-                <div className="flex justify-between">
-                   <span className="text-muted-foreground">Domain Name <HelpCircle className="inline h-3 w-3" /></span>
-                   <span className="text-green-600">Free</span>
+                <div className="flex justify-between items-center">
+                   <span className="text-muted-foreground flex items-center gap-1">Domain Name <HelpCircle className="h-3.5 w-3.5" /></span>
+                   <span className="text-green-600 font-medium">Free</span>
                 </div>
-                 <div className="flex justify-between">
-                   <span className="text-muted-foreground">Privacy Protection <HelpCircle className="inline h-3 w-3" /></span>
-                   <span className="text-green-600">Free</span>
+                 <div className="flex justify-between items-center">
+                   <span className="text-muted-foreground flex items-center gap-1">Privacy Protection <HelpCircle className="h-3.5 w-3.5" /></span>
+                   <span className="text-green-600 font-medium">Free</span>
                 </div>
-                <Separator />
-                <div className="flex justify-between font-bold text-base text-foreground">
+                <Separator className="my-3"/>
+                <div className="flex justify-between font-bold text-lg text-foreground">
                   <span>Subtotal</span>
                   <span>{formatIDR(subtotal)}</span>
                 </div>
-                <p className="text-xs text-muted-foreground text-center pt-2">Taxes will be calculated at the next step.</p>
-                <div>
-                    <Label htmlFor="coupon" className="text-xs">Have a coupon code?</Label>
+                <p className="text-xs text-muted-foreground text-center pt-2">Taxes and final total will be calculated at checkout.</p>
+                <div className="pt-2">
+                    <Label htmlFor="coupon" className="text-xs font-medium">Have a coupon code?</Label>
                     <div className="flex gap-2 mt-1">
                         <Input id="coupon" placeholder="Enter code" className="h-9"/>
-                        <Button variant="secondary" className="h-9">Apply</Button>
+                        <Button variant="secondary" className="h-9 text-secondary-foreground">Apply</Button>
                     </div>
                 </div>
               </CardContent>
-               <CardFooter>
-                 <Button className="w-full group" size="lg">
+              <CardFooter>
+                 <Button className="w-full group bg-primary hover:bg-primary/90 text-primary-foreground" size="lg">
                     Continue to Checkout <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
                 </Button>
               </CardFooter>
             </Card>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
