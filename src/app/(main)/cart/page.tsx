@@ -176,34 +176,37 @@ export default function CartPage() {
             <h2 className="text-2xl font-semibold text-foreground">{service.title}</h2>
             {isSubscription && selectedPackage && (
               <Card className="shadow-lg border-border/60">
-                <CardContent className="p-6 space-y-5">
-                  <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                    <div>
-                      <Label htmlFor="duration">Billing Duration</Label>
-                      <Select defaultValue={selection.billingCycle} onValueChange={(value) => setSelection({...selection, billingCycle: value as 'monthly' | 'annually'})}>
-                        <SelectTrigger id="duration" className="w-full sm:w-[200px] mt-1">
-                          <SelectValue placeholder="Select duration" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="monthly">Monthly</SelectItem>
-                          <SelectItem value="annually">Annually</SelectItem>
-                        </SelectContent>
-                      </Select>
+                <CardContent className="p-6 space-y-6">
+                    <div className="flex justify-between items-end gap-4">
+                        <div className="space-y-4">
+                            <div>
+                                <Label htmlFor="duration">Billing Duration</Label>
+                                <Select defaultValue={selection.billingCycle} onValueChange={(value) => setSelection({...selection, billingCycle: value as 'monthly' | 'annually'})}>
+                                    <SelectTrigger id="duration" className="w-full sm:w-[180px] mt-1">
+                                        <SelectValue placeholder="Select duration" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="monthly">Monthly</SelectItem>
+                                        <SelectItem value="annually">Annually</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {selection.billingCycle === 'annually' && saving > 0 && (
+                                <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white font-semibold">SAVE {formatIDR(saving)}</Badge>
+                            )}
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                            {originalPrice && originalPrice > monthlyPrice && (
+                                <p className="text-lg text-muted-foreground line-through">{formatIDR(originalPrice)}/mo</p>
+                            )}
+                            <p className="text-4xl font-bold text-foreground">{formatIDR(monthlyPrice)}<span className="text-base font-normal text-muted-foreground">/mo</span></p>
+                        </div>
                     </div>
-                    <div className="text-right flex-grow">
-                      {originalPrice && originalPrice > monthlyPrice && (
-                        <p className="text-base text-muted-foreground line-through">{formatIDR(originalPrice)}/mo</p>
-                      )}
-                      <p className="text-3xl font-bold text-foreground">{formatIDR(monthlyPrice)}<span className="text-base font-normal text-muted-foreground">/mo</span></p>
+                  
+                    <div className="p-4 bg-amber-100/60 dark:bg-amber-900/20 rounded-xl text-sm text-amber-900 dark:text-amber-200 flex items-start gap-3">
+                        <Info className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                        <p>Congratulations! You get a FREE domain and 3 months FREE with this package.</p>
                     </div>
-                  </div>
-                  {selection.billingCycle === 'annually' && saving > 0 && (
-                    <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white font-semibold">SAVE {formatIDR(saving)}</Badge>
-                  )}
-                  <div className="p-4 bg-primary/10 rounded-xl text-sm text-primary-foreground/90 flex items-start gap-3">
-                      <Info className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                      <p>Congratulations! You get a FREE domain and 3 months FREE with this package.</p>
-                  </div>
                 </CardContent>
               </Card>
             )}
@@ -227,14 +230,14 @@ export default function CartPage() {
               <CardContent className="space-y-4 text-sm">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">{service.title} ({isFixedPrice ? 'Fixed Price' : selectedPackage?.name})</span>
-                  <span className="font-medium">{isFixedPrice ? formatIDR(subtotal) : `${formatIDR(monthlyPrice)} x ${selection.billingCycle === 'annually' ? '12' : '1'}`}</span>
+                  <span className="font-medium text-foreground">{isFixedPrice ? formatIDR(subtotal) : `${formatIDR(monthlyPrice)} x ${selection.billingCycle === 'annually' ? '12' : '1'}`}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                   <span className="text-muted-foreground flex items-center gap-1">Domain Name <HelpCircle className="h-3.5 w-3.5" /></span>
+                   <span className="text-muted-foreground flex items-center gap-1.5">Domain Name <HelpCircle className="h-3.5 w-3.5" /></span>
                    <span className="text-green-600 font-medium">Free</span>
                 </div>
                  <div className="flex justify-between items-center">
-                   <span className="text-muted-foreground flex items-center gap-1">Privacy Protection <HelpCircle className="h-3.5 w-3.5" /></span>
+                   <span className="text-muted-foreground flex items-center gap-1.5">Privacy Protection <HelpCircle className="h-3.5 w-3.5" /></span>
                    <span className="text-green-600 font-medium">Free</span>
                 </div>
                 <Separator className="my-3"/>
