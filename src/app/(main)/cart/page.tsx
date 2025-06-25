@@ -12,14 +12,14 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ArrowLeft, Info, HelpCircle, ArrowRight, ShoppingCart, ServerCrash, CheckCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, Info, HelpCircle, ArrowRight, ShoppingCart, ServerCrash, CheckCircle, AlertCircle } from 'lucide-react';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface ServiceSelection {
   serviceSlug: string;
   packageId: string;
-  billingCycle: 1 | 12 | 24 | 48; // Updated
+  billingCycle: 1 | 12 | 24 | 48;
   type: 'subscription' | 'fixed';
 }
 
@@ -41,7 +41,7 @@ export default function CartPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [couponCode, setCouponCode] = useState('');
-  const { toast } = useToast();
+  const [couponError, setCouponError] = useState<string | null>(null);
 
   useEffect(() => {
     const storedSelection = localStorage.getItem('serviceSelection');
@@ -92,18 +92,10 @@ export default function CartPage() {
   
   const handleApplyCoupon = () => {
     if (couponCode.trim() === '') {
-      toast({
-        title: "No Coupon Entered",
-        description: "Please enter a coupon code to apply.",
-        variant: "destructive",
-      });
+      setCouponError("Please enter a coupon code.");
       return;
     }
-    toast({
-      title: "Invalid Coupon Code",
-      description: `The coupon code "${couponCode}" is not valid or has expired.`,
-      variant: "destructive",
-    });
+    setCouponError(`The coupon code "${couponCode}" is not valid or has expired.`);
   };
 
   if (isLoading) {
@@ -300,9 +292,12 @@ export default function CartPage() {
                         <Input
                           id="coupon"
                           placeholder="Enter code"
-                          className="h-9"
+                          className={cn("h-9", couponError && "border-destructive focus-visible:ring-destructive")}
                           value={couponCode}
-                          onChange={(e) => setCouponCode(e.target.value)}
+                          onChange={(e) => {
+                            setCouponCode(e.target.value);
+                            if (couponError) setCouponError(null);
+                          }}
                         />
                         <Button
                           type="button"
@@ -313,6 +308,12 @@ export default function CartPage() {
                           Apply
                         </Button>
                     </div>
+                     {couponError && (
+                      <p className="text-xs text-destructive mt-1.5 flex items-center gap-1">
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        {couponError}
+                      </p>
+                    )}
                 </div>
               </CardContent>
               <CardFooter>
@@ -327,4 +328,3 @@ export default function CartPage() {
     </div>
   );
 }
-
