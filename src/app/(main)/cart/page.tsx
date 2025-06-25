@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, ArrowLeft, Info, HelpCircle, ArrowRight, ShoppingCart, ServerCrash } from 'lucide-react';
 import Image from 'next/image';
+import { Label } from '@/components/ui/label';
 
 interface ServiceSelection {
   serviceSlug: string;
