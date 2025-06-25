@@ -80,7 +80,7 @@ const SubscriptionPackageCard: React.FC<{
             )}
             <p className="text-4xl font-bold text-foreground">
                 {formatIDR(displayPrice)}
-                <span className="text-base font-normal text-muted-foreground ml-1">/bln</span>
+                <span className="text-base font-normal text-muted-foreground ml-1">/mo</span>
             </p>
             {isAnnual && pkg.annualPriceCalcMethod !== 'percentage' && <p className="text-xs text-muted-foreground mt-2">Billed annually at {formatIDR(displayPrice * 12)}</p>}
             {pkg.renewalInfo && <p className="text-xs text-muted-foreground mt-2">{pkg.renewalInfo}</p>}
