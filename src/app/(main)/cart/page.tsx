@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 interface ServiceSelection {
   serviceSlug: string;
   packageId: string;
-  billingCycle: 1 | 12 | 24 | 36;
+  billingCycle: 1 | 12 | 24 | 48; // Updated
   type: 'subscription' | 'fixed';
 }
 
@@ -51,7 +51,7 @@ export default function CartPage() {
           parsedSelection.billingCycle = 12;
         } else if (parsedSelection.billingCycle === 'monthly') {
           parsedSelection.billingCycle = 1;
-        } else if (typeof parsedSelection.billingCycle !== 'number') {
+        } else if (typeof parsedSelection.billingCycle !== 'number' || ![1, 12, 24, 36, 48].includes(parsedSelection.billingCycle)) { // 36 is for old data
             parsedSelection.billingCycle = 12; // Default for safety
         }
 
@@ -138,29 +138,36 @@ export default function CartPage() {
   const getDisplayPrice = () => {
     if (!isSubscription || !selectedPackage) return { monthly: 0, original: 0, saving: 0 };
     
-    // The monthly price from the package is already the discounted rate for the base term (12mo)
-    let baseMonthlyPrice = selectedPackage.priceMonthly;
-    let discountPercentage = 0;
+    // The price for a 12-month commitment, billed monthly.
+    const twelveMonthPrice = selectedPackage.priceMonthly;
+    // The price for a 1-month commitment, typically higher.
+    const oneMonthPrice = selectedPackage.originalPriceMonthly || twelveMonthPrice;
+
+    let finalMonthlyPrice = twelveMonthPrice;
     
-    // Apply additional term discounts
     switch (selection.billingCycle) {
-        case 24:
-            discountPercentage = 0.05; // 5%
-            break;
-        case 36:
-            discountPercentage = 0.10; // 10%
-            break;
-        default: // 1 or 12 months
-            discountPercentage = 0;
+      case 1:
+        finalMonthlyPrice = oneMonthPrice;
+        break;
+      case 12:
+        finalMonthlyPrice = twelveMonthPrice;
+        break;
+      case 24:
+        finalMonthlyPrice = twelveMonthPrice * (1 - 0.10); // 10% discount
+        break;
+      case 48:
+        finalMonthlyPrice = twelveMonthPrice * (1 - 0.20); // 20% discount
+        break;
     }
 
-    const finalMonthlyPrice = baseMonthlyPrice * (1 - discountPercentage);
-    const originalMonthlyPrice = selectedPackage.originalPriceMonthly || baseMonthlyPrice;
-    
-    // Saving is calculated from the highest original price vs the final price for the whole term
-    const totalSaving = (originalMonthlyPrice - finalMonthlyPrice) * selection.billingCycle;
+    // Saving is always calculated against the highest price (1-month price) for the entire duration
+    const totalSaving = (oneMonthPrice * selection.billingCycle) - (finalMonthlyPrice * selection.billingCycle);
 
-    return { monthly: finalMonthlyPrice, original: originalMonthlyPrice, saving: totalSaving };
+    return { 
+      monthly: finalMonthlyPrice, 
+      original: oneMonthPrice, // The original price for comparison is always the 1-month price
+      saving: totalSaving 
+    };
   };
   
   const { monthly: monthlyPrice, original: originalPrice, saving } = getDisplayPrice();
@@ -196,22 +203,23 @@ export default function CartPage() {
                 <CardHeader>
                     <CardTitle className="text-xl">{service.title} ({selectedPackage.name})</CardTitle>
                 </CardHeader>
+                <Separator />
                 <CardContent className="p-6 space-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                         <div>
                             <Label htmlFor="duration">Duration</Label>
                             <Select 
                                 value={String(selection.billingCycle)} 
-                                onValueChange={(value) => setSelection({...selection, billingCycle: Number(value) as 1 | 12 | 24 | 36})}
+                                onValueChange={(value) => setSelection({...selection, billingCycle: Number(value) as 1 | 12 | 24 | 48})}
                             >
-                                <SelectTrigger id="duration" className="w-full sm:w-[180px] mt-1">
+                                <SelectTrigger id="duration" className="w-full sm:w-[220px] mt-1">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="1">1 Month</SelectItem>
                                     <SelectItem value="12">12 Months</SelectItem>
-                                    <SelectItem value="24">24 Months (Save 5%)</SelectItem>
-                                    <SelectItem value="36">36 Months (Save 10%)</SelectItem>
+                                    <SelectItem value="24">24 Months (Save 10%)</SelectItem>
+                                    <SelectItem value="48">48 Months (Save 20%)</SelectItem>
                                 </SelectContent>
                             </Select>
                             <p className="text-xs text-muted-foreground mt-2">{renewalText}</p>
