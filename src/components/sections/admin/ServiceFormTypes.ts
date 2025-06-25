@@ -2,12 +2,25 @@
 import * as z from 'zod';
 import { SERVICE_CATEGORIES, SERVICE_STATUSES } from '@/lib/constants';
 
+const packageFeatureSchema = z.object({
+  id: z.string(),
+  text: z.string().min(1, 'Feature text cannot be empty.'),
+  isIncluded: z.boolean().default(true),
+});
+
 const servicePackageSchema = z.object({
+  id: z.string(),
   name: z.string().min(1, "Package name is required."),
   description: z.string().min(1, "Package description is required."),
   priceMonthly: z.coerce.number().min(0, "Monthly price must be a positive number."),
-  priceAnnually: z.coerce.number().min(0, "Annual price must be a positive number."),
-  features: z.string().min(1, "Features (comma-separated) are required."),
+  originalPriceMonthly: z.coerce.number().min(0, "Original price must be positive.").optional(),
+  
+  annualPriceCalcMethod: z.enum(['percentage', 'fixed']).default('percentage'),
+  annualDiscountPercentage: z.coerce.number().min(0).max(100).default(0),
+  priceAnnually: z.coerce.number().min(0).default(0),
+
+  renewalInfo: z.string().optional(),
+  features: z.array(packageFeatureSchema).optional(),
   isPopular: z.boolean().default(false),
   cta: z.string().optional(),
 });
@@ -21,6 +34,7 @@ const faqItemSchema = z.object({
 const pricingDetailsSchema = z.object({
   isFixedPriceActive: z.boolean().default(false),
   fixedPriceDetails: z.object({
+    bgClassName: z.enum(['bg-background', 'bg-card']).default('bg-background'),
     title: z.string().optional(),
     description: z.string().optional(),
     price: z.coerce.number().min(0, "Price must be positive."),
@@ -30,12 +44,13 @@ const pricingDetailsSchema = z.object({
   
   isSubscriptionActive: z.boolean().default(false),
   subscriptionDetails: z.object({
-    annualDiscountPercentage: z.coerce.number().min(0).max(100).optional(),
+    bgClassName: z.enum(['bg-background', 'bg-card']).default('bg-card'),
     packages: z.array(servicePackageSchema).optional(),
   }).optional(),
 
   isCustomQuoteActive: z.boolean().default(false),
   customQuoteDetails: z.object({
+    bgClassName: z.enum(['bg-background', 'bg-card']).default('bg-background'),
     title: z.string().optional(),
     text: z.string().optional(),
     infoBoxText: z.string().optional(),

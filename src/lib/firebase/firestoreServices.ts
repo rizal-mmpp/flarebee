@@ -17,7 +17,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Service, FetchServicesParams, FetchServicesResult, JourneyStage, PricingDetails } from '@/lib/types'; 
+import type { Service, FetchServicesParams, FetchServicesResult, JourneyStage, PricingDetails, ServicePackage, PackageFeature } from '@/lib/types'; 
 import { SERVICE_CATEGORIES } from '@/lib/constants'; 
 
 const SERVICES_COLLECTION = 'services'; 
@@ -128,12 +128,35 @@ const fromFirestore = (docSnapshot: QueryDocumentSnapshot<DocumentData>): Servic
   // Safely build the pricing object, providing defaults for each model
   const pricingData: PricingDetails = {
     isFixedPriceActive: data.pricing?.isFixedPriceActive ?? false,
-    fixedPriceDetails: data.pricing?.fixedPriceDetails ?? { price: 0 },
+    fixedPriceDetails: data.pricing?.fixedPriceDetails ?? { price: 0, bgClassName: 'bg-background' },
     isSubscriptionActive: data.pricing?.isSubscriptionActive ?? false,
-    subscriptionDetails: data.pricing?.subscriptionDetails ?? { annualDiscountPercentage: 0, packages: [] },
+    subscriptionDetails: data.pricing?.subscriptionDetails ?? { packages: [], bgClassName: 'bg-card' },
     isCustomQuoteActive: data.pricing?.isCustomQuoteActive ?? false,
-    customQuoteDetails: data.pricing?.customQuoteDetails ?? { description: '' }
+    customQuoteDetails: data.pricing?.customQuoteDetails ?? { description: '', bgClassName: 'bg-background' }
   };
+  
+  // Ensure subscription packages have all required fields, providing defaults where necessary
+  if (pricingData.isSubscriptionActive && pricingData.subscriptionDetails) {
+    pricingData.subscriptionDetails.packages = pricingData.subscriptionDetails.packages.map((pkg: any): ServicePackage => ({
+      id: pkg.id || `pkg-${Math.random().toString(36).substring(2, 8)}`,
+      name: pkg.name || 'Unnamed Package',
+      description: pkg.description || '',
+      priceMonthly: pkg.priceMonthly || 0,
+      originalPriceMonthly: pkg.originalPriceMonthly,
+      annualPriceCalcMethod: pkg.annualPriceCalcMethod || 'percentage',
+      annualDiscountPercentage: pkg.annualDiscountPercentage || 0,
+      priceAnnually: pkg.priceAnnually || 0,
+      renewalInfo: pkg.renewalInfo || '',
+      features: (pkg.features || []).map((feat: any): PackageFeature => ({
+        id: feat.id || `feat-${Math.random().toString(36).substring(2, 8)}`,
+        text: feat.text || '',
+        isIncluded: feat.isIncluded !== undefined ? feat.isIncluded : true,
+      })),
+      isPopular: pkg.isPopular || false,
+      cta: pkg.cta || 'Choose Plan',
+    }));
+  }
+
 
   return {
     id: docSnapshot.id,

@@ -8,7 +8,7 @@ import { notFound, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ServerCrash, Check, HelpCircle, Bot, Loader2, Send, MessageSquare, DollarSign, Repeat, Calendar, Sparkles, Package } from 'lucide-react'; 
+import { ArrowLeft, ServerCrash, Check, HelpCircle, Bot, Loader2, Send, MessageSquare, DollarSign, Repeat, Calendar, Sparkles, Package, Minus } from 'lucide-react'; 
 import Link from 'next/link';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,43 +36,60 @@ const formatIDR = (amount: number | string | undefined | null) => {
 const SubscriptionPackageCard: React.FC<{
   pkg: ServicePackage;
   billingCycle: 'monthly' | 'annually';
-  annualDiscountPercentage?: number;
-}> = ({ pkg, billingCycle, annualDiscountPercentage }) => {
-  const price = billingCycle === 'monthly' ? pkg.priceMonthly : pkg.priceAnnually;
-  const periodText = billingCycle === 'monthly' ? '/month' : '/year';
-  
+}> = ({ pkg, billingCycle }) => {
+  const isAnnual = billingCycle === 'annually';
+
+  // Calculate annual price if based on percentage
+  const calculatedAnnualPrice = pkg.annualPriceCalcMethod === 'percentage'
+    ? pkg.priceMonthly * 12 * (1 - (pkg.annualDiscountPercentage / 100))
+    : pkg.priceAnnually;
+
+  const displayPrice = isAnnual ? (calculatedAnnualPrice / 12) : pkg.priceMonthly;
+  const originalDisplayPrice = isAnnual ? pkg.priceMonthly : pkg.originalPriceMonthly;
+
+  const discountPercentage = (originalDisplayPrice && originalDisplayPrice > displayPrice)
+    ? Math.round(((originalDisplayPrice - displayPrice) / originalDisplayPrice) * 100)
+    : 0;
+
   return (
-    <Card key={pkg.name} className={cn('flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 relative', pkg.isPopular ? 'border-primary border-2 shadow-xl' : 'shadow-lg')}>
+    <Card className={cn('flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 relative border-2', pkg.isPopular ? 'border-primary shadow-xl' : 'shadow-lg border-transparent')}>
       {pkg.isPopular && (
         <Badge variant="default" className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary hover:bg-primary text-primary-foreground font-bold uppercase tracking-wider text-xs px-4 py-1.5">
           Most Popular
         </Badge>
       )}
-      <CardHeader className="text-center pt-10">
-        <CardTitle className="text-2xl">{pkg.name}</CardTitle>
+      <CardHeader className="text-left pt-10 px-6">
+        <CardTitle className="text-2xl font-bold">{pkg.name}</CardTitle>
         <CardDescription>{pkg.description}</CardDescription>
       </CardHeader>
-      <CardContent className="flex-grow space-y-6">
-        <div className="text-center">
-            <p className="text-4xl font-bold text-foreground">{formatIDR(price)}<span className="text-base font-normal text-muted-foreground ml-1">{periodText}</span></p>
-             {billingCycle === 'annually' && annualDiscountPercentage && (
-                <p className="text-xs text-green-600 font-semibold mt-1">Includes {annualDiscountPercentage}% discount!</p>
+      <CardContent className="flex-grow space-y-4 px-6">
+        <div className="text-left">
+           {originalDisplayPrice && originalDisplayPrice > displayPrice && (
+                <div className='flex items-center gap-3'>
+                    <p className="text-lg text-muted-foreground line-through">{formatIDR(originalDisplayPrice)}</p>
+                    {discountPercentage > 0 && <Badge variant="secondary" className="bg-destructive/10 text-destructive border-none">DISKON {discountPercentage}%</Badge>}
+                </div>
             )}
+            <p className="text-4xl font-bold text-foreground">
+                {formatIDR(displayPrice)}
+                <span className="text-base font-normal text-muted-foreground ml-1">/bln</span>
+            </p>
+            {pkg.renewalInfo && <p className="text-xs text-muted-foreground mt-2">{pkg.renewalInfo}</p>}
         </div>
-        <ul className="space-y-3 text-foreground/90">
-          {pkg.features.map((feature, index) => (
-            <li key={index} className="flex items-center">
-              <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-              <span>{feature}</span>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-      <CardFooter>
-        <Button size="lg" className={cn('w-full', pkg.isPopular ? '' : 'bg-primary/90 hover:bg-primary')} variant={pkg.isPopular ? 'default' : 'secondary'}>
-          {pkg.cta || 'Get Started'}
+        <Button size="lg" className={cn('w-full', pkg.isPopular ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : '')} variant={pkg.isPopular ? 'default' : 'outline'}>
+          {pkg.cta || 'Pilih Paket'}
         </Button>
-      </CardFooter>
+        <div className="pt-4 border-t border-border">
+          <ul className="space-y-3 text-foreground/90">
+            {pkg.features.map((feature, index) => (
+              <li key={feature.id || index} className="flex items-start gap-3">
+                {feature.isIncluded ? <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" /> : <Minus className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />}
+                <span className={cn(!feature.isIncluded && "text-muted-foreground line-through")}>{feature.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </CardContent>
     </Card>
   );
 };
@@ -86,7 +103,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('annually');
 
   useEffect(() => {
     async function fetchService() {
@@ -178,7 +195,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
 
       {/* Subscription Plans Section */}
       {service.pricing?.isSubscriptionActive && service.pricing.subscriptionDetails && service.pricing.subscriptionDetails.packages.length > 0 && (
-        <section id="pricing" className="py-16 md:py-24 bg-card border-t">
+        <section id="pricing" className={cn("py-16 md:py-24 border-t", service.pricing?.subscriptionDetails?.bgClassName)}>
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto mb-12">
               <h2 className="text-3xl md:text-4xl font-bold">Flexible Plans</h2>
@@ -189,14 +206,11 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
               <Switch checked={billingCycle === 'annually'} onCheckedChange={(checked) => setBillingCycle(checked ? 'annually' : 'monthly')} aria-label="Toggle billing cycle" />
               <span className={cn('font-medium', billingCycle === 'annually' ? 'text-primary' : 'text-muted-foreground')}>
                 Annually
-                {service.pricing.subscriptionDetails.annualDiscountPercentage && (
-                  <Badge variant="secondary" className="ml-2 bg-green-500/20 text-green-700 border-none">Save {service.pricing.subscriptionDetails.annualDiscountPercentage}%</Badge>
-                )}
               </span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch max-w-5xl mx-auto">
               {service.pricing.subscriptionDetails.packages.map(pkg => (
-                <SubscriptionPackageCard key={pkg.name} pkg={pkg} billingCycle={billingCycle} annualDiscountPercentage={service.pricing?.subscriptionDetails?.annualDiscountPercentage} />
+                <SubscriptionPackageCard key={pkg.id} pkg={pkg} billingCycle={billingCycle} />
               ))}
             </div>
           </div>
@@ -205,7 +219,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
 
       {/* One-Time Project Section */}
       {service.pricing?.isFixedPriceActive && service.pricing.fixedPriceDetails && (
-        <section id="one-time-project" className="py-16 md:py-24 bg-background border-t">
+        <section id="one-time-project" className={cn("py-16 md:py-24 border-t", service.pricing?.fixedPriceDetails?.bgClassName)}>
           <div className="container mx-auto px-4 md:px-6">
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div className="order-2 md:order-1">
@@ -244,7 +258,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
 
       {/* Custom Quote Section */}
       {service.pricing?.isCustomQuoteActive && service.pricing.customQuoteDetails && (
-        <section id="custom-quote-form" className="py-16 md:py-24 bg-card border-t">
+        <section id="custom-quote-form" className={cn("py-16 md:py-24 border-t", service.pricing?.customQuoteDetails?.bgClassName)}>
           <div className="container mx-auto px-4 md:px-6">
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div className="space-y-4">

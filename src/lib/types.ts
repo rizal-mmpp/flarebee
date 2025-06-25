@@ -42,15 +42,27 @@ export interface JourneyStage {
   imageAiHint?: string | null;
 }
 
+export interface PackageFeature {
+  id: string;
+  text: string;
+  isIncluded: boolean;
+}
+
 export interface ServicePackage {
+  id: string;
   name: string;
   description: string;
   priceMonthly: number;
-  priceAnnually: number;
-  features: string[];
+  originalPriceMonthly?: number; // The "slash-through" price for display
+  annualPriceCalcMethod: 'percentage' | 'fixed';
+  annualDiscountPercentage: number; // Used if method is 'percentage'
+  priceAnnually: number; // Used if method is 'fixed'
+  renewalInfo?: string;
+  features: PackageFeature[];
   isPopular?: boolean;
   cta?: string;
 }
+
 
 export interface FaqItem {
   id: string; // For react key
@@ -61,6 +73,7 @@ export interface FaqItem {
 export interface PricingDetails {
   isFixedPriceActive?: boolean;
   fixedPriceDetails?: {
+    bgClassName?: 'bg-background' | 'bg-card';
     title?: string;
     description?: string;
     price: number;
@@ -69,11 +82,12 @@ export interface PricingDetails {
   };
   isSubscriptionActive?: boolean;
   subscriptionDetails?: {
-    annualDiscountPercentage?: number;
+    bgClassName?: 'bg-background' | 'bg-card';
     packages: ServicePackage[];
   };
   isCustomQuoteActive?: boolean;
   customQuoteDetails?: {
+    bgClassName?: 'bg-background' | 'bg-card';
     title?: string;
     text?: string;
     infoBoxText?: string;

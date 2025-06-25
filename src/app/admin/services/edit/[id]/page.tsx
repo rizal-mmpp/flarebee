@@ -41,9 +41,9 @@ export default function EditServicePage() {
         isFixedPriceActive: false,
         isSubscriptionActive: false,
         isCustomQuoteActive: false,
-        fixedPriceDetails: { price: 0, title: '', description: '', imageAiHint: '' },
-        subscriptionDetails: { annualDiscountPercentage: 0, packages: [] },
-        customQuoteDetails: { description: '' }
+        fixedPriceDetails: { bgClassName: 'bg-background', price: 0, title: '', description: '', imageAiHint: '' },
+        subscriptionDetails: { bgClassName: 'bg-card', packages: [] },
+        customQuoteDetails: { bgClassName: 'bg-background', description: '' }
       },
       showFaqSection: false,
       faq: []
@@ -62,11 +62,6 @@ export default function EditServicePage() {
           if (fetchedService) {
             setService(fetchedService);
             
-            const packagesForForm = fetchedService.pricing?.subscriptionDetails?.packages?.map(pkg => ({
-              ...pkg,
-              features: Array.isArray(pkg.features) ? pkg.features.join(', ') : pkg.features,
-            })) || [];
-
             setValue('title', fetchedService.title);
             setValue('shortDescription', fetchedService.shortDescription || '');
             setValue('longDescription', fetchedService.longDescription || '');
@@ -82,6 +77,7 @@ export default function EditServicePage() {
             setValue('portfolioLink', fetchedService.portfolioLink || '');
             
             setValue('pricing.isFixedPriceActive', fetchedService.pricing?.isFixedPriceActive || false);
+            setValue('pricing.fixedPriceDetails.bgClassName', fetchedService.pricing?.fixedPriceDetails?.bgClassName || 'bg-background');
             setValue('pricing.fixedPriceDetails.title', fetchedService.pricing?.fixedPriceDetails?.title || 'One-Time Project');
             setValue('pricing.fixedPriceDetails.description', fetchedService.pricing?.fixedPriceDetails?.description || 'A single payment for a defined scope of work.');
             setValue('pricing.fixedPriceDetails.price', fetchedService.pricing?.fixedPriceDetails?.price || 0);
@@ -91,10 +87,11 @@ export default function EditServicePage() {
 
 
             setValue('pricing.isSubscriptionActive', fetchedService.pricing?.isSubscriptionActive || false);
-            setValue('pricing.subscriptionDetails.annualDiscountPercentage', fetchedService.pricing?.subscriptionDetails?.annualDiscountPercentage || 0);
-            setValue('pricing.subscriptionDetails.packages', packagesForForm);
+            setValue('pricing.subscriptionDetails.bgClassName', fetchedService.pricing?.subscriptionDetails?.bgClassName || 'bg-card');
+            setValue('pricing.subscriptionDetails.packages', fetchedService.pricing?.subscriptionDetails?.packages || []);
             
             setValue('pricing.isCustomQuoteActive', fetchedService.pricing?.isCustomQuoteActive || false);
+            setValue('pricing.customQuoteDetails.bgClassName', fetchedService.pricing?.customQuoteDetails?.bgClassName || 'bg-background');
             setValue('pricing.customQuoteDetails', fetchedService.pricing?.customQuoteDetails || { title: '', text: '', infoBoxText: '', formTitle: '', formDescription: '' });
 
             setValue('showFaqSection', fetchedService.showFaqSection || false);
