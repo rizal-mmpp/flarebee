@@ -97,7 +97,7 @@ const SubscriptionPackageCard: React.FC<{
                 ) : (
                   <X className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
                 )}
-                <span className={cn(!feature.isIncluded && "text-muted-foreground line-through")}>{feature.text}</span>
+                <span className={cn(!feature.isIncluded && "text-muted-foreground")}>{feature.text}</span>
               </li>
             ))}
           </ul>
