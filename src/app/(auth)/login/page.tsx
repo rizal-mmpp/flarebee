@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,6 +23,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, signInWithEmailPassword, signInWithGoogle, loading } = useAuth();
   const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
   const [isSubmittingGoogle, setIsSubmittingGoogle] = useState(false);
@@ -34,13 +35,14 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      router.replace('/dashboard');
+      const redirectUrl = searchParams.get('redirect');
+      router.replace(redirectUrl || '/dashboard');
     }
-  }, [user, router]);
+  }, [user, router, searchParams]);
 
   const onEmailSubmit: SubmitHandler<LoginFormValues> = async (data) => {
     setIsSubmittingEmail(true);
-    const result = await signInWithEmailPassword(data.email, data.password);
+    await signInWithEmailPassword(data.email, data.password);
     // AuthContext handles toast for error/success, useEffect handles redirect
     setIsSubmittingEmail(false);
   };
@@ -63,8 +65,8 @@ export default function LoginPage() {
   return (
     <Card className="w-full">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl md:text-3xl">Welcome Back!</CardTitle>
-        <CardDescription>Sign in to access your RIO account.</CardDescription>
+        <CardTitle className="text-2xl md:text-3xl">Welcome Back to RIO!</CardTitle>
+        <CardDescription>Sign in to access your account and templates.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isSubmittingEmail || isSubmittingGoogle || loading}>

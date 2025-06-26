@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/lib/firebase/AuthContext';
 
 interface ServiceSelection {
   serviceSlug: string;
@@ -38,6 +39,7 @@ const formatIDR = (amount: number) => {
 export default function CartPage() {
   const router = useRouter();
   const { addToCart } = useCart();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const [selection, setSelection] = useState<ServiceSelection | null>(null);
@@ -59,7 +61,7 @@ export default function CartPage() {
           parsedSelection.billingCycle = 12;
         } else if (parsedSelection.billingCycle === 'monthly') {
           parsedSelection.billingCycle = 1;
-        } else if (typeof parsedSelection.billingCycle !== 'number' || ![1, 12, 24, 36, 48].includes(parsedSelection.billingCycle)) { // 36 is for old data
+        } else if (typeof parsedSelection.billingCycle !== 'number' || ![1, 12, 24, 48].includes(parsedSelection.billingCycle)) {
             parsedSelection.billingCycle = 12; // Default for safety
         }
 
@@ -154,24 +156,18 @@ export default function CartPage() {
   const getDisplayPrice = () => {
     if (!isSubscription || !selectedPackage) return { monthly: 0, original: 0, saving: 0 };
     
-    // The full, non-discounted monthly price. This is our baseline for strikethrough and renewal info.
     const regularMonthlyPrice = selectedPackage.originalPriceMonthly || selectedPackage.priceMonthly;
 
     let baseMonthlyPrice;
 
-    // Determine the base price based on the term length
     if (selection.billingCycle === 1) {
-        // For a 1-month term, use the standard monthly price.
         baseMonthlyPrice = selectedPackage.priceMonthly;
     } else {
-        // For any term longer than 1 month, use the special discounted annual price.
-        // If 'discountedMonthlyPrice' isn't set, fallback to the standard monthly price.
         baseMonthlyPrice = (selectedPackage.discountedMonthlyPrice && selectedPackage.discountedMonthlyPrice > 0)
             ? selectedPackage.discountedMonthlyPrice
             : selectedPackage.priceMonthly;
     }
 
-    // Now, apply any multi-year discounts ON TOP of the determined base price.
     let finalMonthlyPrice = baseMonthlyPrice;
     if (selection.billingCycle === 24) {
       finalMonthlyPrice *= (1 - 0.10); // 10% discount
@@ -183,7 +179,7 @@ export default function CartPage() {
 
     return { 
       monthly: finalMonthlyPrice, 
-      original: regularMonthlyPrice, // The "was" price is always the highest monthly price
+      original: regularMonthlyPrice,
       saving: totalSaving,
     };
   };
@@ -191,11 +187,16 @@ export default function CartPage() {
   const { monthly: monthlyPrice, original: originalPrice, saving } = getDisplayPrice();
   const subtotal = isFixedPrice ? service.pricing?.fixedPriceDetails?.price || 0 : monthlyPrice * selection.billingCycle;
   
-  const renewalText = selectedPackage?.renewalInfo 
-    ? selectedPackage.renewalInfo 
-    : `Renews at ${formatIDR(originalPrice)}/mo. Cancel anytime.`;
+  const renewalText = `Renews at ${formatIDR(originalPrice)}/mo. Cancel anytime.`;
 
   const handleProceedToCheckout = () => {
+    if (!user) {
+      // The selection is already stored in localStorage by the useEffect.
+      // We redirect the user to login, and tell the login page to come back here.
+      router.push('/auth/login?redirect=/cart');
+      return;
+    }
+
     if (!selection || !service) {
       toast({
         title: "Selection Error",

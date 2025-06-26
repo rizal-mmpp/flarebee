@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,6 +28,7 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, signUpWithEmailPassword, signInWithGoogle, loading } = useAuth();
   const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
   const [isSubmittingGoogle, setIsSubmittingGoogle] = useState(false);
@@ -40,9 +41,10 @@ export default function SignupPage() {
 
   useEffect(() => {
     if (user) {
-      router.replace('/dashboard');
+      const redirectUrl = searchParams.get('redirect');
+      router.replace(redirectUrl || '/dashboard');
     }
-  }, [user, router]);
+  }, [user, router, searchParams]);
 
   const onEmailSubmit: SubmitHandler<SignupFormValues> = async (data) => {
     setIsSubmittingEmail(true);
@@ -69,8 +71,8 @@ export default function SignupPage() {
   return (
     <Card className="w-full">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl md:text-3xl">Create your Account</CardTitle>
-        <CardDescription>Join RIO and start creating today!</CardDescription>
+        <CardTitle className="text-2xl md:text-3xl">Create your RIO Account</CardTitle>
+        <CardDescription>Join our community and start creating today!</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isSubmittingEmail || isSubmittingGoogle || loading}>
