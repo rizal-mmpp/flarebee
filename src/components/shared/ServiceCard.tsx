@@ -7,13 +7,14 @@ import type { Service } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '../ui/badge';
 import { ArrowRight } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 
 interface ServiceCardProps {
   service: Service;
 }
 
 const formatIDR = (amount?: number) => {
-  if (amount === undefined) return null;
+  if (amount === undefined || amount === null) return null;
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
@@ -23,13 +24,31 @@ const formatIDR = (amount?: number) => {
 };
 
 export function ServiceCard({ service }: ServiceCardProps) {
-  const displayPrice = service.pricingModel === 'Fixed Price' || service.pricingModel === 'Starting At' 
-    ? formatIDR(service.priceMin)
-    : service.pricingModel;
+  const pathname = usePathname();
+  const isDashboardContext = pathname.startsWith('/dashboard');
+  const serviceUrl = isDashboardContext ? `/dashboard/services/${service.slug}` : `/services/${service.slug}`;
+
+  // This logic seems outdated from a previous version, let's update it to be more robust.
+  const getDisplayPrice = () => {
+    if (service.pricing?.isSubscriptionActive && service.pricing.subscriptionDetails?.packages?.[0]) {
+      const firstPackage = service.pricing.subscriptionDetails.packages[0];
+      const annualEffectiveMonthlyPrice = firstPackage.annualPriceCalcMethod === 'fixed'
+        ? firstPackage.discountedMonthlyPrice || firstPackage.priceMonthly
+        : firstPackage.priceMonthly * (1 - (firstPackage.annualDiscountPercentage || 0) / 100);
+      return `${formatIDR(annualEffectiveMonthlyPrice)}/mo`;
+    }
+    if (service.pricing?.isFixedPriceActive && service.pricing.fixedPriceDetails?.price) {
+      return formatIDR(service.pricing.fixedPriceDetails.price);
+    }
+    return "Custom Quote";
+  };
+  
+  const displayPrice = getDisplayPrice();
+
 
   return (
     <Card className="flex flex-col overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-1 group">
-      <Link href={`/services/${service.slug}`} className="flex-grow flex flex-col">
+      <Link href={serviceUrl} className="flex-grow flex flex-col">
         <div className="aspect-[16/9] relative w-full overflow-hidden">
           <Image
             src={service.imageUrl}
