@@ -1,25 +1,48 @@
+'use client';
 
 import Link from 'next/link';
 import { Hexagon, MapPin, Phone, Mail } from 'lucide-react';
 import { getSiteSettings } from '@/lib/actions/settings.actions';
 import { DEFAULT_SETTINGS } from '@/lib/constants';
-import NextImage from 'next/image'; // For potential logo in footer
+import NextImage from 'next/image';
+import { useEffect, useState } from 'react';
+import type { SiteSettings } from '@/lib/types';
 
-export async function Footer() { // Changed to async
-  let settings;
-  try {
-    settings = await getSiteSettings();
-  } catch (error) {
-    console.error("Footer: Failed to fetch site settings, using defaults:", error);
-    settings = DEFAULT_SETTINGS;
+export function Footer() {
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchSettings() {
+      setIsLoading(true);
+      try {
+        const fetchedSettings = await getSiteSettings();
+        setSettings(fetchedSettings);
+      } catch (error) {
+        console.error("Footer: Failed to fetch site settings, using defaults:", error);
+        setSettings(DEFAULT_SETTINGS);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchSettings();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <footer className="border-t border-border/40 bg-background text-muted-foreground">
+        <div className="container mx-auto px-4 py-10 md:px-6">
+          <div className="h-8 w-1/2 animate-pulse rounded-md bg-muted" />
+        </div>
+      </footer>
+    );
   }
 
-  const siteName = settings.siteTitle || DEFAULT_SETTINGS.siteTitle;
-  const address = settings.contactAddress || DEFAULT_SETTINGS.contactAddress || "Address not set";
-  const phone = settings.contactPhone || DEFAULT_SETTINGS.contactPhone || "Phone not set";
-  const email = settings.contactEmail || DEFAULT_SETTINGS.contactEmail || "Email not set";
-  const logoUrl = settings.logoUrl;
-
+  const siteName = settings?.siteTitle || DEFAULT_SETTINGS.siteTitle;
+  const address = settings?.contactAddress || DEFAULT_SETTINGS.contactAddress || "Address not set";
+  const phone = settings?.contactPhone || DEFAULT_SETTINGS.contactPhone || "Phone not set";
+  const email = settings?.contactEmail || DEFAULT_SETTINGS.contactEmail || "Email not set";
+  const logoUrl = settings?.logoUrl;
 
   return (
     <footer className="border-t border-border/40 bg-background text-muted-foreground">
