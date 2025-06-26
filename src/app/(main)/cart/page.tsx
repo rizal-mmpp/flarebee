@@ -156,7 +156,7 @@ export default function CartPage() {
     
     switch (selection.billingCycle) {
       case 1:
-        finalMonthlyPrice = discountedPricePerMonth;
+        finalMonthlyPrice = regularMonthlyPrice;
         break;
       case 12:
         finalMonthlyPrice = discountedPricePerMonth;
