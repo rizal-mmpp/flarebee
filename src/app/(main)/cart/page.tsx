@@ -149,34 +149,37 @@ export default function CartPage() {
   const getDisplayPrice = () => {
     if (!isSubscription || !selectedPackage) return { monthly: 0, original: 0, saving: 0 };
     
-    const discountedPricePerMonth = selectedPackage.priceMonthly;
-    const regularMonthlyPrice = selectedPackage.originalPriceMonthly || discountedPricePerMonth;
+    // The full, non-discounted monthly price. This is our baseline for strikethrough and renewal info.
+    const regularMonthlyPrice = selectedPackage.originalPriceMonthly || selectedPackage.priceMonthly;
 
-    let finalMonthlyPrice;
-    
-    switch (selection.billingCycle) {
-      case 1:
-        finalMonthlyPrice = regularMonthlyPrice;
-        break;
-      case 12:
-        finalMonthlyPrice = discountedPricePerMonth;
-        break;
-      case 24:
-        finalMonthlyPrice = discountedPricePerMonth * (1 - 0.10); // 10% discount
-        break;
-      case 48:
-        finalMonthlyPrice = discountedPricePerMonth * (1 - 0.20); // 20% discount
-        break;
-      default:
-        finalMonthlyPrice = discountedPricePerMonth;
+    let baseMonthlyPrice;
+
+    // Determine the base price based on the term length
+    if (selection.billingCycle === 1) {
+        // For a 1-month term, use the standard monthly price.
+        baseMonthlyPrice = selectedPackage.priceMonthly;
+    } else {
+        // For any term longer than 1 month, use the special discounted annual price.
+        // If 'discountedMonthlyPrice' isn't set, fallback to the standard monthly price.
+        baseMonthlyPrice = (selectedPackage.discountedMonthlyPrice && selectedPackage.discountedMonthlyPrice > 0)
+            ? selectedPackage.discountedMonthlyPrice
+            : selectedPackage.priceMonthly;
+    }
+
+    // Now, apply any multi-year discounts ON TOP of the determined base price.
+    let finalMonthlyPrice = baseMonthlyPrice;
+    if (selection.billingCycle === 24) {
+      finalMonthlyPrice *= (1 - 0.10); // 10% discount
+    } else if (selection.billingCycle === 48) {
+      finalMonthlyPrice *= (1 - 0.20); // 20% discount
     }
 
     const totalSaving = (regularMonthlyPrice * selection.billingCycle) - (finalMonthlyPrice * selection.billingCycle);
 
     return { 
       monthly: finalMonthlyPrice, 
-      original: regularMonthlyPrice, // The "was" price
-      saving: totalSaving 
+      original: regularMonthlyPrice, // The "was" price is always the highest monthly price
+      saving: totalSaving,
     };
   };
   
@@ -215,6 +218,12 @@ export default function CartPage() {
                 </CardHeader>
                 <Separator />
                 <CardContent className="p-6 space-y-6">
+                    {saving > 0 && (
+                        <div className="flex items-center p-3 bg-green-100 dark:bg-green-900/40 rounded-lg">
+                            <CheckCircle className="h-5 w-5 mr-3 flex-shrink-0 text-green-600 dark:text-green-400" />
+                            <p className="text-sm font-medium text-foreground">Congratulations! You're saving {formatIDR(saving)} with this plan.</p>
+                        </div>
+                    )}
                     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                         <div>
                             <Label htmlFor="duration">Duration</Label>
@@ -244,15 +253,6 @@ export default function CartPage() {
                                 <p className="text-base text-muted-foreground line-through">{formatIDR(originalPrice)}/mo</p>
                             )}
                         </div>
-                    </div>
-
-                    <div className="space-y-2 pt-4">
-                        {saving > 0 && (
-                            <div className="flex items-center p-3 bg-green-100 dark:bg-green-900/40 rounded-lg">
-                                <CheckCircle className="h-5 w-5 mr-3 flex-shrink-0 text-green-600 dark:text-green-400" />
-                                <p className="text-sm font-medium text-foreground">Congratulations! You're saving {formatIDR(saving)} with this plan.</p>
-                            </div>
-                        )}
                     </div>
 
                 </CardContent>
