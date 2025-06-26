@@ -38,7 +38,7 @@ const accountNavItems = [
 ];
 
 const exploreNavItems = [
-  { href: '/services', label: 'Browse Store', icon: Compass },
+  { href: '/dashboard/browse-services', label: 'Browse Store', icon: Compass },
   { href: '/', label: 'Back to Homepage', icon: Home },
 ];
 
