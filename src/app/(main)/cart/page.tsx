@@ -156,14 +156,13 @@ export default function CartPage() {
   const getDisplayPrice = () => {
     if (!isSubscription || !selectedPackage) return { monthly: 0, original: 0, saving: 0 };
     
-    let baseMonthlyPrice;
+    const annualEffectiveMonthlyPrice = selectedPackage.annualPriceCalcMethod === 'fixed'
+        ? selectedPackage.discountedMonthlyPrice || selectedPackage.priceMonthly
+        : selectedPackage.priceMonthly * (1 - (selectedPackage.annualDiscountPercentage || 0) / 100);
 
-    // Use standard monthly price for 1 month term
-    if (selection.billingCycle === 1) {
-        baseMonthlyPrice = selectedPackage.originalPriceMonthly || selectedPackage.priceMonthly;
-    } else { // Use discounted monthly price for terms > 1 month
-        baseMonthlyPrice = selectedPackage.priceMonthly;
-    }
+    let baseMonthlyPrice = selection.billingCycle > 1 
+        ? annualEffectiveMonthlyPrice 
+        : selectedPackage.priceMonthly;
     
     let finalMonthlyPrice = baseMonthlyPrice;
     if (selection.billingCycle === 24) {

@@ -37,8 +37,12 @@ const SubscriptionPackageCard: React.FC<{
   onSelect: () => void;
 }> = ({ pkg, onSelect }) => {
   
-  const displayPrice = pkg.priceMonthly;
-  const originalDisplayPrice = pkg.originalPriceMonthly;
+  const annualEffectiveMonthlyPrice = pkg.annualPriceCalcMethod === 'fixed'
+    ? pkg.discountedMonthlyPrice || pkg.priceMonthly
+    : pkg.priceMonthly * (1 - (pkg.annualDiscountPercentage || 0) / 100);
+
+  const displayPrice = annualEffectiveMonthlyPrice;
+  const originalDisplayPrice = pkg.originalPriceMonthly || pkg.priceMonthly;
 
   const discountPercentage = (originalDisplayPrice && displayPrice > 0 && originalDisplayPrice > displayPrice)
     ? Math.round(((originalDisplayPrice - displayPrice) / originalDisplayPrice) * 100)
