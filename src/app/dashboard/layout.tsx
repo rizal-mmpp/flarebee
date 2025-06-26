@@ -90,7 +90,7 @@ export default function DashboardLayout({
                 <span className="text-md font-bold text-foreground">{siteTitle}</span>
             </div>
         </header>
-        <main className="flex-grow p-4 md:p-6 lg:p-8">
+        <main className="flex-grow bg-muted/40">
           {children}
         </main>
          <footer className="border-t bg-background text-center py-4 px-6">

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useAuth } from '@/lib/firebase/AuthContext';
@@ -107,14 +108,14 @@ export default function UserDashboardPage() {
 
   if (isLoading) {
     return (
-        <div className="flex items-center justify-center min-h-[40vh]">
+        <div className="flex items-center justify-center min-h-[40vh] p-4 md:p-6 lg:p-8">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
         </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="p-4 md:p-6 lg:p-8 space-y-8">
         <header>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">
                 Hello, {user?.displayName || 'User'}!

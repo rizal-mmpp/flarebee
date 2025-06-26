@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -97,7 +98,7 @@ export default function UserOrderDetailPage() {
 
   if (isLoading || authLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-15rem)]">
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-15rem)] p-4 md:p-6 lg:p-8">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="mt-4 text-muted-foreground">Loading order details...</p>
       </div>
@@ -106,7 +107,7 @@ export default function UserOrderDetailPage() {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-12 text-center">
+      <div className="container mx-auto px-4 py-12 text-center p-4 md:p-6 lg:p-8">
         <ServerCrash className="mx-auto h-16 w-16 text-destructive mb-4" />
         <h2 className="text-2xl font-semibold text-destructive mb-2">Error Loading Order</h2>
         <p className="text-muted-foreground mb-6">{error}</p>
@@ -123,7 +124,7 @@ export default function UserOrderDetailPage() {
   if (!order) {
     // This case might be hit if the error state isn't set but order is null
     return (
-      <div className="container mx-auto px-4 py-12 text-center">
+      <div className="container mx-auto px-4 py-12 text-center p-4 md:p-6 lg:p-8">
         <Package className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
         <h2 className="text-2xl font-semibold text-foreground mb-2">Order Not Found</h2>
         <Button variant="outline" asChild className="group">
@@ -137,7 +138,7 @@ export default function UserOrderDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6 lg:p-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">

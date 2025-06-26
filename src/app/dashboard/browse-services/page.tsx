@@ -1,3 +1,4 @@
+
 'use client'; 
 
 import { useState, useMemo, useEffect } from 'react';
@@ -76,7 +77,7 @@ export default function BrowseServicesPage() {
   }, [selectedCategory, searchTerm, allServices]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6 lg:p-8">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
           <Compass className="mr-3 h-8 w-8 text-primary" />

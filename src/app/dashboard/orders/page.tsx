@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -63,7 +64,7 @@ export default function UserOrdersPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-15rem)]">
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-15rem)] p-4 md:p-6 lg:p-8">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="mt-4 text-muted-foreground">Loading your orders...</p>
       </div>
@@ -71,7 +72,7 @@ export default function UserOrdersPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6 lg:p-8">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
           <ShoppingCart className="mr-3 h-8 w-8 text-primary" />
