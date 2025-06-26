@@ -4,7 +4,7 @@
 import { useAuth } from '@/lib/firebase/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Briefcase, Settings, Download, Loader2, AlertCircle, ExternalLink, ShoppingBag, CreditCard, Clock, User, LogOut } from 'lucide-react';
+import { ArrowRight, Briefcase, Settings, Download, Loader2, AlertCircle, ExternalLink, ShoppingBag, CreditCard, Clock, User, LogOut, ShoppingCart } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import type { Order } from '@/lib/types';
 import { getOrdersByUserIdFromFirestore } from '@/lib/firebase/firestoreOrders';
