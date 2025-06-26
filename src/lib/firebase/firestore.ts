@@ -1,7 +1,7 @@
 
 'use client';
 import type { User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, Timestamp, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import type { UserProfile } from '@/lib/types';
 
@@ -41,8 +41,6 @@ export async function createUserProfile(user: FirebaseUser, displayNameParam?: s
     createdAtDate = (existingProfileData.createdAt as Timestamp).toDate();
   } else {
     console.warn(`User profile ${existingProfileData.uid} has an invalid or missing 'createdAt' field. Defaulting to current date.`);
-    // Optionally, you might want to update the Firestore document with a serverTimestamp here if it's missing
-    // await setDoc(userRef, { createdAt: serverTimestamp() }, { merge: true });
   }
   
   const existingProfile: UserProfile = {
@@ -54,9 +52,6 @@ export async function createUserProfile(user: FirebaseUser, displayNameParam?: s
     createdAt: createdAtDate,
   };
   
-  // If displayNameParam is provided and different from existing, update it.
-  // This could happen if a user signs up, then logs in with Google, and Google's name is preferred later.
-  // Or if user info was partially created.
   if (displayNameParam && displayNameParam !== existingProfile.displayName) {
     try {
       await setDoc(userRef, { displayName: displayNameParam }, { merge: true });
@@ -95,3 +90,17 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   return null;
 }
 
+export async function updateUserProfileInFirestore(
+  uid: string,
+  data: { displayName?: string; photoURL?: string | null }
+): Promise<void> {
+  const userRef = doc(db, 'users', uid);
+  const dataToUpdate: { [key: string]: any } = { ...data };
+  
+  Object.keys(dataToUpdate).forEach(key => dataToUpdate[key] === undefined && delete dataToUpdate[key]);
+  
+  if (Object.keys(dataToUpdate).length > 0) {
+    dataToUpdate.updatedAt = serverTimestamp();
+    await updateDoc(userRef, dataToUpdate);
+  }
+}
