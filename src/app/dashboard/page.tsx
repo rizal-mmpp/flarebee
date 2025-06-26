@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useAuth } from '@/lib/firebase/AuthContext';
@@ -205,7 +204,7 @@ export default function UserDashboardPage() {
                                 </TableCell>
                                 <TableCell className="text-right">
                                      <Button variant="outline" size="sm" asChild>
-                                        <Link href={`/dashboard/orders?order=${order.orderId}`}>View</Link>
+                                        <Link href={`/dashboard/orders/${order.orderId}`}>View</Link>
                                     </Button>
                                 </TableCell>
                             </TableRow>
