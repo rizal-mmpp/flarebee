@@ -193,7 +193,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
 
   return (
     <div className="bg-background text-foreground">
-      <div className="container mx-auto px-4 md:px-6 pt-8">
+      <div className="container mx-auto px-4 md:px-6 pb-4">
         <Button variant="outline" asChild className="group">
           <Link href="/dashboard/browse-services">
             <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
