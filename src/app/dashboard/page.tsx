@@ -4,7 +4,7 @@
 import { useAuth } from '@/lib/firebase/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Briefcase, Settings, Download, Loader2, AlertCircle, ExternalLink, ShoppingBag, CreditCard, Clock, User, LogOut, ShoppingCart } from 'lucide-react';
+import { ArrowRight, Briefcase, Settings, Download, Loader2, AlertCircle, ExternalLink, ShoppingBag, CreditCard, Clock, User, LogOut, ShoppingCart, DollarSign, Receipt } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import type { Order } from '@/lib/types';
 import { getOrdersByUserIdFromFirestore } from '@/lib/firebase/firestoreOrders';
@@ -14,6 +14,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
 
 const formatIDR = (amount: number) => {
   return new Intl.NumberFormat('id-ID', {
@@ -80,21 +89,21 @@ export default function UserDashboardPage() {
     fetchOrders();
   }, [user]);
 
-  const { purchasedItemsCount, totalSpent, pendingOrdersCount } = useMemo(() => {
+  const { purchasedItemsCount, upcomingBillingTotal, pendingOrdersCount } = useMemo(() => {
     let purchasedItemsCount = 0;
-    let totalSpent = 0;
+    let upcomingBillingTotal = 0;
     let pendingOrdersCount = 0;
 
     orders.forEach(order => {
         if (order.status === 'completed') {
             purchasedItemsCount += order.items.length;
-            totalSpent += order.totalAmount;
         } else if (order.status === 'pending') {
             pendingOrdersCount += 1;
+            upcomingBillingTotal += order.totalAmount;
         }
     });
 
-    return { purchasedItemsCount, totalSpent, pendingOrdersCount };
+    return { purchasedItemsCount, upcomingBillingTotal, pendingOrdersCount };
   }, [orders]);
 
   if (isLoading) {
@@ -122,25 +131,32 @@ export default function UserDashboardPage() {
                     title="Purchased Items" 
                     value={purchasedItemsCount} 
                     icon={<ShoppingBag className="h-5 w-5 text-muted-foreground" />} 
-                    description="Items from completed orders."
+                    description="Total items from all completed orders."
                 />
                 <StatCard 
-                    title="Total Spent" 
-                    value={formatIDR(totalSpent)} 
-                    icon={<CreditCard className="h-5 w-5 text-muted-foreground" />} 
-                    description="From all completed orders."
+                    title="Upcoming Billing" 
+                    value={formatIDR(upcomingBillingTotal)} 
+                    icon={<DollarSign className="h-5 w-5 text-muted-foreground" />} 
+                    description="Total from all pending orders."
                 />
                 <StatCard 
                     title="Pending Orders" 
                     value={pendingOrdersCount} 
                     icon={<Clock className="h-5 w-5 text-muted-foreground" />} 
-                    description="Orders awaiting payment."
+                    description="Orders awaiting payment completion."
                 />
             </div>
         </section>
 
-         <section>
-            <h2 className="text-2xl font-semibold text-foreground mb-4">My Orders</h2>
+        <section>
+             <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-semibold text-foreground">Recent History</h2>
+                <Button variant="link" asChild className="text-primary hover:no-underline">
+                    <Link href="/dashboard/orders">
+                    View all <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                </Button>
+            </div>
             {error ? (
                 <Card className="border-destructive bg-destructive/10">
                     <CardHeader>
@@ -159,55 +175,44 @@ export default function UserDashboardPage() {
                     </CardContent>
                 </Card>
             ) : (
-                <div className="space-y-6">
-                    {orders.map((order) => (
-                    <Card key={order.id}>
-                        <CardHeader>
-                        <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-2">
-                            <div>
-                            <CardTitle className="text-lg">Order ID: {order.orderId.substring(0, 18)}...</CardTitle>
-                            <CardDescription>Placed on: {format(new Date(order.createdAt), "PP")}</CardDescription>
-                            </div>
-                            <Badge variant="outline" className={cn("capitalize text-xs py-1 px-2.5", getStatusBadgeVariant(order.status))}>
-                            Status: {order.status}
-                            </Badge>
-                        </div>
-                        </CardHeader>
-                        <CardContent>
-                        <ul className="space-y-4">
-                            {order.items.map((item) => (
-                            <li key={item.id} className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 p-3 rounded-md border bg-card/50">
-                                <div>
-                                <h4 className="font-semibold text-foreground">{item.title}</h4>
-                                <p className="text-sm text-muted-foreground">Price: {formatIDR(item.price)}</p>
-                                </div>
-                                <div className="flex gap-2 flex-shrink-0 flex-col sm:flex-row items-stretch sm:items-center">
-                                <Button variant="outline" size="sm" asChild className="group w-full sm:w-auto">
-                                    <Link href={`/templates/${item.id}`}>
-                                        View Details <ExternalLink className="ml-2 h-3 w-3" />
-                                    </Link>
-                                </Button>
-                                {(order.status === 'completed' || (order.status === 'pending' && item.id.startsWith(''))) && ( 
-                                    <Button size="sm" asChild className="group bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto">
-                                        <Link href={`/templates/${item.id}`}><Download className="mr-2 h-4 w-4" /> Access/Download</Link>
+                <Card>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Order ID</TableHead>
+                                <TableHead className="hidden sm:table-cell">Date</TableHead>
+                                <TableHead className="hidden md:table-cell text-right">Amount</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {orders.slice(0, 5).map((order) => (
+                            <TableRow key={order.id}>
+                                <TableCell className="font-medium text-foreground">
+                                    {order.orderId.substring(0, 15)}...
+                                </TableCell>
+                                <TableCell className="hidden sm:table-cell text-muted-foreground">
+                                    {format(new Date(order.createdAt), "PP")}
+                                </TableCell>
+                                <TableCell className="hidden md:table-cell text-right text-muted-foreground">
+                                    {formatIDR(order.totalAmount)}
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant="outline" className={cn("capitalize text-xs py-1 px-2.5", getStatusBadgeVariant(order.status))}>
+                                        {order.status}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                     <Button variant="outline" size="sm" asChild>
+                                        <Link href={`/dashboard/orders?order=${order.orderId}`}>View</Link>
                                     </Button>
-                                )}
-                                </div>
-                            </li>
+                                </TableCell>
+                            </TableRow>
                             ))}
-                        </ul>
-                        </CardContent>
-                        {order.status === 'pending' && order.xenditInvoiceUrl && (
-                            <CardFooter className="border-t pt-4 flex-col sm:flex-row items-center justify-between gap-2">
-                                <p className="text-sm text-muted-foreground text-center sm:text-left">This order is awaiting payment.</p>
-                                <Button asChild size="sm" className="w-full sm:w-auto group bg-accent hover:bg-accent/90 text-accent-foreground">
-                                    <Link href={order.xenditInvoiceUrl} target="_blank" rel="noopener noreferrer"><CreditCard className="mr-2 h-4 w-4"/> Complete Payment</Link>
-                                </Button>
-                            </CardFooter>
-                        )}
-                    </Card>
-                    ))}
-                </div>
+                        </TableBody>
+                    </Table>
+                </Card>
             )}
         </section>
     </div>
