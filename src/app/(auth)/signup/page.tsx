@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, type SubmitHandler } from 'react-hook-form';
@@ -41,24 +40,26 @@ export default function SignupPage() {
 
   const redirectUrl = searchParams.get('redirect');
 
-  useEffect(() => {
-    if (user) {
-      router.replace(redirectUrl || '/dashboard');
-    }
-  }, [user, router, redirectUrl]);
-
   const onEmailSubmit: SubmitHandler<SignupFormValues> = async (data) => {
     setIsSubmittingEmail(true);
-    await signUpWithEmailPassword(data.email, data.password, data.displayName);
-    // AuthContext handles toast for error/success, useEffect handles redirect
-    setIsSubmittingEmail(false);
+    const result = await signUpWithEmailPassword(data.email, data.password, data.displayName);
+    if (result.success) {
+      router.replace(redirectUrl || '/dashboard');
+    } else {
+      // AuthContext handles toast for error
+      setIsSubmittingEmail(false);
+    }
   };
   
   const handleGoogleSignIn = async () => {
     setIsSubmittingGoogle(true);
-    await signInWithGoogle();
-    // AuthContext handles toast for error/success, useEffect handles redirect
-    setIsSubmittingGoogle(false);
+    const result = await signInWithGoogle();
+    if (result) {
+      router.replace(redirectUrl || '/dashboard');
+    } else {
+      // AuthContext handles toast for error
+      setIsSubmittingGoogle(false);
+    }
   };
   
   if (loading && !user) { 
