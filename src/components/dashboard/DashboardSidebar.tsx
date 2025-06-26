@@ -9,9 +9,12 @@ import {
   ShoppingCart,
   Settings,
   LogOut,
-  Briefcase,
   Home,
   UserCircle,
+  Package,
+  CreditCard,
+  Puzzle,
+  Compass,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/firebase/AuthContext';
@@ -25,15 +28,18 @@ interface DashboardSidebarProps {
   siteTitle?: string | null;
 }
 
-const dashboardNavItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  // { href: '/dashboard/orders', label: 'My Orders', icon: ShoppingCart },
-  // { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+const accountNavItems = [
+  { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
+  { href: '/dashboard/orders', label: 'My Orders', icon: ShoppingCart },
+  { href: '/dashboard/services', label: 'My Services', icon: Package },
+  { href: '/dashboard/billing', label: 'Billing', icon: CreditCard },
+  { href: '/dashboard/integrations', label: 'Integrations', icon: Puzzle },
+  { href: '/dashboard/settings', label: 'Account Settings', icon: Settings },
 ];
 
-const publicNavItems = [
-  { href: '/', label: 'Homepage', icon: Home },
-  { href: '/services', label: 'Explore Services', icon: Briefcase },
+const exploreNavItems = [
+  { href: '/services', label: 'Browse Store', icon: Compass },
+  { href: '/', label: 'Back to Homepage', icon: Home },
 ];
 
 
@@ -67,13 +73,13 @@ export function DashboardSidebar({ onLinkClick, logoUrl, siteTitle }: DashboardS
       <div className="flex-1 overflow-y-auto">
         <nav className="grid items-start px-2 text-sm font-medium lg:px-4 gap-1">
           <div className="px-3 py-2">
-            <h2 className="mb-2 px-1 text-lg font-semibold tracking-tight">Dashboard</h2>
-            {dashboardNavItems.map((item) => (
+            <h2 className="mb-2 px-1 text-lg font-semibold tracking-tight">Account</h2>
+            {accountNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={onLinkClick}
-                className={cn(navLinkClasses, pathname === item.href && activeNavLinkClasses)}
+                className={cn(navLinkClasses, (pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))) && activeNavLinkClasses)}
               >
                 <item.icon className="h-5 w-5" />
                 {item.label}
@@ -85,7 +91,7 @@ export function DashboardSidebar({ onLinkClick, logoUrl, siteTitle }: DashboardS
 
           <div className="px-3 py-2">
              <h2 className="mb-2 px-1 text-lg font-semibold tracking-tight">Explore</h2>
-             {publicNavItems.map((item) => (
+             {exploreNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
