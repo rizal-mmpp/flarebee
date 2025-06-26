@@ -328,4 +328,3 @@ export default function TemplateDetailPage({ params: paramsPromise }: { params: 
     </div>
   );
 }
-

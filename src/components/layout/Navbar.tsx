@@ -1,3 +1,4 @@
+
 'use client';
 import Link from 'next/link';
 import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, Briefcase, ShoppingCart, ChevronDown, Compass, Settings, Info, Mail } from 'lucide-react'; // Changed LayoutGrid to Briefcase
