@@ -15,7 +15,7 @@ import {
 
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (template: Template) => void;
+  addToCart: (item: CartItem) => void;
   removeFromCart: (templateId: string) => void;
   clearCart: () => Promise<void>;
   getCartTotal: () => number;
@@ -113,14 +113,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [cartItems, user, cartLoading, authLoading]);
 
-  const addToCart = useCallback((template: Template) => {
+  const addToCart = useCallback((itemToAdd: CartItem) => {
     setCartItems((prevItems) => {
-      const existingItem = prevItems.find((item) => item.id === template.id);
+      const existingItem = prevItems.find((item) => item.id === itemToAdd.id);
       if (existingItem) {
         setTimeout(() => {
           toast({
             title: 'Already in Cart',
-            description: `"${template.title}" is already in your cart.`,
+            description: `"${itemToAdd.title}" is already in your cart.`,
           });
         }, 0);
         return prevItems;
@@ -128,10 +128,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setTimeout(() => {
         toast({
           title: 'Added to Cart',
-          description: `"${template.title}" has been added to your cart.`,
+          description: `"${itemToAdd.title}" has been added to your cart.`,
         });
       }, 0);
-      return [...prevItems, { id: template.id, title: template.title, price: template.price, imageUrl: template.imageUrl, quantity: 1 }];
+      return [...prevItems, itemToAdd];
     });
   }, [toast]);
 

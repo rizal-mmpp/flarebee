@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getServiceBySlugFromFirestore } from '@/lib/firebase/firestoreServices';
-import type { Service, ServicePackage } from '@/lib/types';
+import type { Service, ServicePackage, CartItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, ArrowLeft, Info, HelpCircle, ArrowRight, ShoppingCart, ServerCrash, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { useCart } from '@/context/CartContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface ServiceSelection {
   serviceSlug: string;
@@ -35,6 +37,9 @@ const formatIDR = (amount: number) => {
 
 export default function CartPage() {
   const router = useRouter();
+  const { addToCart } = useCart();
+  const { toast } = useToast();
+
   const [selection, setSelection] = useState<ServiceSelection | null>(null);
   const [service, setService] = useState<Service | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<ServicePackage | null>(null);
@@ -190,6 +195,46 @@ export default function CartPage() {
     ? selectedPackage.renewalInfo 
     : `Renews at ${formatIDR(originalPrice)}/mo. Cancel anytime.`;
 
+  const handleProceedToCheckout = () => {
+    if (!selection || !service) {
+      toast({
+        title: "Selection Error",
+        description: "Your service selection is missing. Please go back and choose a service plan.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    let cartItemId: string;
+    let cartItemTitle: string;
+    
+    if (isFixedPrice) {
+      cartItemId = `${service.slug}:fixed-price`;
+      cartItemTitle = `${service.title} (One-Time Project)`;
+    } else if (selectedPackage) {
+      cartItemId = `${service.slug}:${selectedPackage.id}:${selection.billingCycle}`;
+      cartItemTitle = `${service.title} (${selectedPackage.name} - ${selection.billingCycle} months)`;
+    } else {
+       toast({
+        title: "Selection Error",
+        description: "The selected package is invalid. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const cartItem: CartItem = {
+      id: cartItemId,
+      title: cartItemTitle,
+      price: subtotal,
+      imageUrl: service.imageUrl,
+      quantity: 1,
+    };
+    
+    addToCart(cartItem);
+    router.push('/checkout');
+  };
+
 
   return (
     <div className="relative isolate overflow-hidden bg-background">
@@ -334,7 +379,11 @@ export default function CartPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                 <Button className="w-full group bg-primary hover:bg-primary/90 text-primary-foreground" size="lg">
+                 <Button 
+                    className="w-full group bg-primary hover:bg-primary/90 text-primary-foreground" 
+                    size="lg"
+                    onClick={handleProceedToCheckout}
+                  >
                     Continue to Checkout <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
                 </Button>
               </CardFooter>

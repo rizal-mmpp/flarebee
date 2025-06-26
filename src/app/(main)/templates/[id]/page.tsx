@@ -2,7 +2,7 @@
 'use client'; 
 
 import { use, useEffect, useState, useTransition } from 'react'; // Import 'use'
-import type { Template, Order } from '@/lib/types';
+import type { Template, Order, CartItem } from '@/lib/types';
 import { getTemplateByIdFromFirestore } from '@/lib/firebase/firestoreTemplates';
 import { notFound, useRouter, useSearchParams } from 'next/navigation'; 
 import Image from 'next/image';
@@ -121,7 +121,14 @@ export default function TemplateDetailPage({ params: paramsPromise }: { params: 
       return;
     }
     if (template) {
-      addToCart(template);
+      const cartItem: CartItem = {
+        id: template.id,
+        title: template.title,
+        price: template.price,
+        imageUrl: template.imageUrl,
+        quantity: 1,
+      };
+      addToCart(cartItem);
     }
   };
 
@@ -132,8 +139,15 @@ export default function TemplateDetailPage({ params: paramsPromise }: { params: 
     }
     if (template) {
       startBuyNowTransition(() => {
-        if (!isItemInCart(template.id)) { 
-          addToCart(template); 
+        if (!isItemInCart(template.id)) {
+          const cartItem: CartItem = {
+            id: template.id,
+            title: template.title,
+            price: template.price,
+            imageUrl: template.imageUrl,
+            quantity: 1,
+          };
+          addToCart(cartItem);
         }
         router.push('/checkout');
       });
