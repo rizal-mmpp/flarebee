@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, User, KeyRound, AlertTriangle, ArrowLeft, Save, ShieldCheck } from 'lucide-react';
+import { Loader2, User, KeyRound, AlertTriangle, ArrowLeft, Save, ShieldCheck, Settings } from 'lucide-react';
 import { CustomDropzone } from '@/components/ui/custom-dropzone';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
