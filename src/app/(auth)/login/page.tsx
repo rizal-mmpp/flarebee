@@ -33,12 +33,13 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
+  const redirectUrl = searchParams.get('redirect');
+
   useEffect(() => {
     if (user) {
-      const redirectUrl = searchParams.get('redirect');
       router.replace(redirectUrl || '/dashboard');
     }
-  }, [user, router, searchParams]);
+  }, [user, router, redirectUrl]);
 
   const onEmailSubmit: SubmitHandler<LoginFormValues> = async (data) => {
     setIsSubmittingEmail(true);
@@ -130,7 +131,7 @@ export default function LoginPage() {
         </Link>
         <p className="text-muted-foreground">
           Don&apos;t have an account?{' '}
-          <Link href="/auth/signup" className="font-medium text-primary hover:underline">
+          <Link href={`/auth/signup${redirectUrl ? `?redirect=${redirectUrl}` : ''}`} className="font-medium text-primary hover:underline">
             Sign up
           </Link>
         </p>

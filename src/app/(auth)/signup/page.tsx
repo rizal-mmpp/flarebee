@@ -39,12 +39,13 @@ export default function SignupPage() {
     resolver: zodResolver(signupSchema),
   });
 
+  const redirectUrl = searchParams.get('redirect');
+
   useEffect(() => {
     if (user) {
-      const redirectUrl = searchParams.get('redirect');
       router.replace(redirectUrl || '/dashboard');
     }
-  }, [user, router, searchParams]);
+  }, [user, router, redirectUrl]);
 
   const onEmailSubmit: SubmitHandler<SignupFormValues> = async (data) => {
     setIsSubmittingEmail(true);
@@ -161,7 +162,7 @@ export default function SignupPage() {
       <CardFooter className="flex flex-col items-center space-y-2 text-sm">
         <p className="text-muted-foreground">
           Already have an account?{' '}
-          <Link href="/auth/login" className="font-medium text-primary hover:underline">
+          <Link href={`/auth/login${redirectUrl ? `?redirect=${redirectUrl}` : ''}`} className="font-medium text-primary hover:underline">
             Sign in
           </Link>
         </p>

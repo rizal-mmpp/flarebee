@@ -156,18 +156,15 @@ export default function CartPage() {
   const getDisplayPrice = () => {
     if (!isSubscription || !selectedPackage) return { monthly: 0, original: 0, saving: 0 };
     
-    const regularMonthlyPrice = selectedPackage.originalPriceMonthly || selectedPackage.priceMonthly;
-
     let baseMonthlyPrice;
 
+    // Use standard monthly price for 1 month term
     if (selection.billingCycle === 1) {
+        baseMonthlyPrice = selectedPackage.originalPriceMonthly || selectedPackage.priceMonthly;
+    } else { // Use discounted monthly price for terms > 1 month
         baseMonthlyPrice = selectedPackage.priceMonthly;
-    } else {
-        baseMonthlyPrice = (selectedPackage.discountedMonthlyPrice && selectedPackage.discountedMonthlyPrice > 0)
-            ? selectedPackage.discountedMonthlyPrice
-            : selectedPackage.priceMonthly;
     }
-
+    
     let finalMonthlyPrice = baseMonthlyPrice;
     if (selection.billingCycle === 24) {
       finalMonthlyPrice *= (1 - 0.10); // 10% discount
@@ -175,6 +172,7 @@ export default function CartPage() {
       finalMonthlyPrice *= (1 - 0.20); // 20% discount
     }
 
+    const regularMonthlyPrice = selectedPackage.originalPriceMonthly || selectedPackage.priceMonthly;
     const totalSaving = (regularMonthlyPrice * selection.billingCycle) - (finalMonthlyPrice * selection.billingCycle);
 
     return { 
@@ -190,14 +188,7 @@ export default function CartPage() {
   const renewalText = `Renews at ${formatIDR(originalPrice)}/mo. Cancel anytime.`;
 
   const handleProceedToCheckout = () => {
-    if (!user) {
-      // The selection is already stored in localStorage by the useEffect.
-      // We redirect the user to login, and tell the login page to come back here.
-      router.push('/auth/login?redirect=/cart');
-      return;
-    }
-
-    if (!selection || !service) {
+     if (!selection || !service) {
       toast({
         title: "Selection Error",
         description: "Your service selection is missing. Please go back and choose a service plan.",
@@ -233,6 +224,12 @@ export default function CartPage() {
     };
     
     addToCart(cartItem);
+
+    if (!user) {
+      router.push('/auth/login?redirect=/checkout');
+      return;
+    }
+    
     router.push('/checkout');
   };
 

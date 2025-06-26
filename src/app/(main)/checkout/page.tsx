@@ -41,15 +41,10 @@ export default function CheckoutPage() {
   };
 
   useEffect(() => {
-    if (!authLoading && !user && !cartLoading) {
-      toast({
-        title: "Login Required",
-        description: "Please log in to view your cart and proceed to checkout.",
-        variant: "destructive",
-      });
-      router.replace('/');
+    if (!authLoading && !user) {
+      router.replace('/auth/login?redirect=/checkout');
     }
-  }, [user, authLoading, cartLoading, router]);
+  }, [user, authLoading, router]);
 
   const handleProceedToPayment = async () => {
     if (!user) {
