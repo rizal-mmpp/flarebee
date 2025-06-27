@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useCart } from '@/context/CartContext';
 
 
 const formatIDR = (amount: number) => {
@@ -48,21 +49,23 @@ const getStatusBadgeVariant = (status?: string) => {
     }
 };
 
-const StatCard = ({ title, value, icon, description }: { title: string, value: string | number, icon: React.ReactNode, description: string }) => (
-    <Card className="transition-all duration-300 ease-in-out hover:shadow-lg hover:-translate-y-0.5">
+const StatCard = ({ title, value, icon, description, action }: { title: string, value: string | number, icon: React.ReactNode, description: string, action?: React.ReactNode }) => (
+    <Card className="transition-all duration-300 ease-in-out hover:shadow-lg hover:-translate-y-0.5 flex flex-col">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{title}</CardTitle>
             {icon}
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-grow">
             <div className="text-2xl font-bold">{value}</div>
             <p className="text-xs text-muted-foreground">{description}</p>
         </CardContent>
+        {action && <CardFooter className="pt-0">{action}</CardFooter>}
     </Card>
 );
 
 export default function UserDashboardPage() {
   const { user } = useAuth();
+  const { cartItems, getCartTotal, cartLoading } = useCart();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -89,24 +92,24 @@ export default function UserDashboardPage() {
     fetchOrders();
   }, [user]);
 
-  const { purchasedItemsCount, upcomingBillingTotal, pendingOrdersCount } = useMemo(() => {
-    let purchasedItemsCount = 0;
+  const { upcomingBillingTotal, pendingOrdersCount } = useMemo(() => {
     let upcomingBillingTotal = 0;
     let pendingOrdersCount = 0;
 
     orders.forEach(order => {
-        if (order.status === 'completed') {
-            purchasedItemsCount += order.items.length;
-        } else if (order.status === 'pending') {
+        if (order.status === 'pending') {
             pendingOrdersCount += 1;
             upcomingBillingTotal += order.totalAmount;
         }
     });
 
-    return { purchasedItemsCount, upcomingBillingTotal, pendingOrdersCount };
+    return { upcomingBillingTotal, pendingOrdersCount };
   }, [orders]);
+  
+  const cartTotal = useMemo(() => getCartTotal(), [getCartTotal]);
+  const cartItemCount = useMemo(() => cartItems.length, [cartItems]);
 
-  if (isLoading) {
+  if (isLoading || cartLoading) {
     return (
         <div className="flex items-center justify-center min-h-[40vh] p-4 md:p-6 lg:p-8">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -128,12 +131,6 @@ export default function UserDashboardPage() {
         <section>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <StatCard 
-                    title="Purchased Items" 
-                    value={purchasedItemsCount} 
-                    icon={<ShoppingBag className="h-5 w-5 text-muted-foreground" />} 
-                    description="Total items from all completed orders."
-                />
-                <StatCard 
                     title="Upcoming Billing" 
                     value={formatIDR(upcomingBillingTotal)} 
                     icon={<DollarSign className="h-5 w-5 text-muted-foreground" />} 
@@ -144,6 +141,13 @@ export default function UserDashboardPage() {
                     value={pendingOrdersCount} 
                     icon={<Clock className="h-5 w-5 text-muted-foreground" />} 
                     description="Orders awaiting payment completion."
+                />
+                 <StatCard 
+                    title="Items in Cart"
+                    value={cartItemCount}
+                    icon={<ShoppingCart className="h-5 w-5 text-muted-foreground" />}
+                    description={`${formatIDR(cartTotal)} total value.`}
+                    action={cartItemCount > 0 ? <Button asChild size="sm" className="w-full"><Link href="/checkout">View Cart</Link></Button> : undefined}
                 />
             </div>
         </section>
