@@ -85,6 +85,7 @@ export const serviceFormSchema = z.object({
   targetAudience: z.string().optional(),
   estimatedDuration: z.string().optional(),
   portfolioLink: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
+  serviceUrl: z.string().url('Must be a valid URL for the service management link').or(z.literal('')).optional().nullable(),
   
   pricing: pricingDetailsSchema,
   

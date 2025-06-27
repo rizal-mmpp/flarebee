@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/firebase/AuthContext';
 import { getOrdersByUserIdFromFirestore } from '@/lib/firebase/firestoreOrders';
+import { getServiceBySlugFromFirestore } from '@/lib/firebase/firestoreServices';
 import type { Order } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -19,6 +20,7 @@ interface PurchasedService {
   serviceTitle: string;
   packageName: string;
   status: 'Active' | 'Expired'; // Simplified status
+  serviceUrl?: string | null;
 }
 
 // Function to parse the service title, e.g., "Business Website (Pro Plan - 12 months)"
@@ -41,14 +43,39 @@ export default function MyServicesPage() {
     if (user) {
       setIsLoading(true);
       getOrdersByUserIdFromFirestore(user.uid)
-        .then((userOrders) => {
+        .then(async (userOrders) => {
           const completedOrders = userOrders.filter(order => order.status === 'completed');
           
+          // Get unique service slugs
+          const serviceSlugs = new Set<string>();
+          completedOrders.forEach(order => {
+            order.items.forEach(item => {
+              if (item.id.includes(':')) {
+                const slug = item.id.split(':')[0];
+                if (slug) serviceSlugs.add(slug);
+              }
+            });
+          });
+
+          // Fetch all unique services
+          const servicePromises = Array.from(serviceSlugs).map(slug => getServiceBySlugFromFirestore(slug));
+          const servicesData = await Promise.all(servicePromises);
+
+          // Create a map for easy lookup
+          const serviceMap = new Map<string, { serviceUrl?: string | null }>();
+          servicesData.forEach(service => {
+            if (service) {
+              serviceMap.set(service.slug, { serviceUrl: service.serviceUrl });
+            }
+          });
+
+          // Build the final list of purchased services
           const services: PurchasedService[] = [];
           completedOrders.forEach(order => {
             order.items.forEach(item => {
-              // Heuristic to identify a service: ID contains colons (slug:package:cycle or slug:fixed-price)
               if (item.id.includes(':')) {
+                const slug = item.id.split(':')[0];
+                const serviceDetails = serviceMap.get(slug);
                 const { serviceTitle, packageName } = parseServiceTitle(item.title);
                 services.push({
                   id: item.id,
@@ -57,6 +84,7 @@ export default function MyServicesPage() {
                   serviceTitle,
                   packageName,
                   status: 'Active', // Simplified for now. Real logic would check renewal dates.
+                  serviceUrl: serviceDetails?.serviceUrl || null,
                 });
               }
             });
@@ -139,8 +167,8 @@ export default function MyServicesPage() {
                 <p>Purchased on: {format(new Date(service.purchaseDate), "PPP")}</p>
               </CardContent>
               <CardFooter className="bg-muted/50 p-4">
-                 <Button className="w-full" asChild>
-                    <Link href={`#`}>
+                 <Button className="w-full" asChild disabled={!service.serviceUrl}>
+                    <Link href={service.serviceUrl || '#'} target="_blank" rel="noopener noreferrer">
                         <Settings className="mr-2 h-4 w-4" /> Manage Service
                     </Link>
                  </Button>

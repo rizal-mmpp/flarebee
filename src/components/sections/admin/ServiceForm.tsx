@@ -153,6 +153,11 @@ export function ServiceForm({
                 <div><Label htmlFor="estimatedDuration">Estimated Duration</Label><Input id="estimatedDuration" {...register('estimatedDuration')} className="mt-1" placeholder="e.g., 2-4 weeks"/>{errors.estimatedDuration && <p className="text-sm text-destructive mt-1">{errors.estimatedDuration.message}</p>}</div>
                 <div><Label htmlFor="portfolioLink">Portfolio Link</Label><Input id="portfolioLink" type="url" {...register('portfolioLink')} className="mt-1" placeholder="https://example.com/portfolio"/>{errors.portfolioLink && <p className="text-sm text-destructive mt-1">{errors.portfolioLink.message}</p>}</div>
             </div>
+            <div>
+              <Label htmlFor="serviceUrl">Service Management URL (Optional)</Label>
+              <Input id="serviceUrl" type="url" {...register('serviceUrl')} className="mt-1" placeholder="e.g., https://app.webflow.com/dashboard/..." />
+              {errors.serviceUrl && <p className="text-sm text-destructive mt-1">{errors.serviceUrl.message}</p>}
+            </div>
           </CardContent>
         </Card>
       </TabsContent>
