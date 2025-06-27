@@ -109,6 +109,11 @@ export function DashboardSidebar({ onLinkClick, logoUrl, siteTitle }: DashboardS
                       {pendingOrdersCount}
                     </Badge>
                   )}
+                 {item.href === '/dashboard/billing' && totalNotifications > 0 && (
+                    <Badge className="ml-auto h-5 w-5 shrink-0 items-center justify-center rounded-full p-0">
+                      {totalNotifications}
+                    </Badge>
+                  )}
               </Link>
             ))}
           </div>
