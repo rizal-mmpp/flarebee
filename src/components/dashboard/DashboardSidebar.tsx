@@ -25,6 +25,14 @@ import { useState, useEffect } from 'react';
 import { getOrdersByUserIdFromFirestore } from '@/lib/firebase/firestoreOrders';
 import { Badge } from '@/components/ui/badge';
 import { useCart } from '@/context/CartContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 
 interface DashboardSidebarProps {
@@ -33,13 +41,12 @@ interface DashboardSidebarProps {
   siteTitle?: string | null;
 }
 
-const accountNavItems = [
-  { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { href: '/dashboard/orders', label: 'My Orders', icon: ShoppingCart },
+const overviewNavItems = [
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/services', label: 'My Services', icon: Package },
+  { href: '/dashboard/orders', label: 'My Orders', icon: ShoppingCart },
   { href: '/dashboard/billing', label: 'Billing', icon: CreditCard },
   { href: '/dashboard/integrations', label: 'Integrations', icon: Puzzle },
-  { href: '/dashboard/settings', label: 'Account Settings', icon: Settings },
 ];
 
 const exploreNavItems = [
@@ -94,8 +101,8 @@ export function DashboardSidebar({ onLinkClick, logoUrl, siteTitle }: DashboardS
       <div className="flex-1 overflow-y-auto">
         <nav className="grid items-start px-2 text-sm font-medium lg:px-4 gap-1">
           <div className="px-3 py-2">
-            <h2 className="mb-2 px-1 text-lg font-semibold tracking-tight">Account</h2>
-            {accountNavItems.map((item) => (
+            <h2 className="mb-2 px-1 text-lg font-semibold tracking-tight">Overview</h2>
+            {overviewNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -137,20 +144,42 @@ export function DashboardSidebar({ onLinkClick, logoUrl, siteTitle }: DashboardS
         </nav>
       </div>
       <div className="mt-auto p-4 border-t">
-         <div className="flex items-center gap-3 mb-4">
-            <Avatar className="h-10 w-10">
-                <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || 'User'} />
-                <AvatarFallback>{getAvatarFallback(user?.displayName)}</AvatarFallback>
-            </Avatar>
-            <div>
-                <p className="text-sm font-semibold leading-tight text-foreground">{user?.displayName || 'User'}</p>
-                <p className="text-xs leading-tight text-muted-foreground">{user?.email}</p>
-            </div>
-        </div>
-        <Button variant="ghost" onClick={signOutUser} className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive">
-          <LogOut className="mr-2 h-4 w-4" />
-          Sign Out
-        </Button>
+         <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="w-full justify-start items-center h-auto p-0 gap-3">
+                     <Avatar className="h-10 w-10">
+                        <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || 'User'} />
+                        <AvatarFallback>{getAvatarFallback(user?.displayName)}</AvatarFallback>
+                    </Avatar>
+                    <div className="text-left overflow-hidden">
+                        <p className="text-sm font-semibold leading-tight text-foreground truncate">{user?.displayName || 'User'}</p>
+                        <p className="text-xs leading-tight text-muted-foreground truncate">{user?.email}</p>
+                    </div>
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56 mb-2" align="end" forceMount>
+                 <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user?.displayName || 'User'}</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user?.email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link href="/dashboard/settings">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Account Settings</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOutUser} className="cursor-pointer text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sign Out</span>
+                  </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
