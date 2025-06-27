@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
+import { useAuth } from '@/lib/firebase/AuthContext';
 
 
 const formatIDR = (amount: number | string | undefined | null) => {
@@ -100,6 +101,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
   const params = use(paramsPromise);
   const slug = params.id;
   const router = useRouter();
+  const { user } = useAuth(); // Use auth to check login state
 
   const [service, setService] = useState<Service | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -137,7 +139,12 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
       type: 'subscription'
     };
     localStorage.setItem('serviceSelection', JSON.stringify(selection));
-    router.push('/dashboard/cart');
+    // Check if user is logged in to decide where to redirect
+    if (user) {
+        router.push('/dashboard/cart');
+    } else {
+        router.push('/cart');
+    }
   };
 
   const handleSelectFixedPrice = () => {
@@ -149,7 +156,12 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
       type: 'fixed'
     };
     localStorage.setItem('serviceSelection', JSON.stringify(selection));
-    router.push('/dashboard/cart');
+    // Check if user is logged in to decide where to redirect
+    if (user) {
+        router.push('/dashboard/cart');
+    } else {
+        router.push('/cart');
+    }
   };
 
   const handleCustomQuoteSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
