@@ -105,7 +105,7 @@ function prepareDataFromFormData(formData: FormData, imageUrl: string | null, fi
         targetAudience: parseStringToArray(formData.get('targetAudience') as string | null),
         estimatedDuration: (formData.get('estimatedDuration') as string)?.trim() || null,
         portfolioLink: (formData.get('portfolioLink') as string)?.trim() || null,
-        serviceUrl: (formData.get('serviceUrl') as string)?.trim() || null,
+        serviceUrl: formData.get('serviceUrl') as string,
         
         pricing: pricingData,
 

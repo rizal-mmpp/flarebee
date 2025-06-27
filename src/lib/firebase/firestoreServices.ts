@@ -175,7 +175,7 @@ const fromFirestore = (docSnapshot: QueryDocumentSnapshot<DocumentData>): Servic
     targetAudience: data.targetAudience || [],
     estimatedDuration: data.estimatedDuration || '',
     portfolioLink: data.portfolioLink || '',
-    serviceUrl: data.serviceUrl || null,
+    serviceUrl: data.serviceUrl || '#',
     showFaqSection: data.showFaqSection || false,
     faq: data.faq || [],
     customerJourneyStages: customerJourneyStages,

@@ -114,7 +114,7 @@ export interface Service {
   targetAudience?: string[]; 
   estimatedDuration?: string; 
   portfolioLink?: string; 
-  serviceUrl?: string | null;
+  serviceUrl: string;
   showFaqSection?: boolean;
   faq?: FaqItem[];
   customerJourneyStages?: JourneyStage[]; 
