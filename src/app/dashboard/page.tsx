@@ -106,7 +106,7 @@ export default function UserDashboardPage() {
     return { upcomingBillingTotal, pendingOrdersCount };
   }, [orders]);
   
-  const cartTotal = useMemo(() => getCartTotal(), [getCartTotal]);
+  const cartTotal = useMemo(() => getCartTotal(), [getCartTotal, cartItems]);
   const cartItemCount = useMemo(() => cartItems.length, [cartItems]);
 
   if (isLoading || cartLoading) {
@@ -147,7 +147,7 @@ export default function UserDashboardPage() {
                     value={cartItemCount}
                     icon={<ShoppingCart className="h-5 w-5 text-muted-foreground" />}
                     description={`${formatIDR(cartTotal)} total value.`}
-                    action={cartItemCount > 0 ? <Button asChild size="sm" className="w-full"><Link href="/checkout">View Cart</Link></Button> : undefined}
+                    action={cartItemCount > 0 ? <Button asChild size="sm" className="w-full"><Link href="/dashboard/checkout">View Cart</Link></Button> : undefined}
                 />
             </div>
         </section>
@@ -175,7 +175,7 @@ export default function UserDashboardPage() {
                     <CardContent className="p-6 text-center">
                     <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                     <p className="text-xl text-muted-foreground mb-4">You haven't placed any orders yet.</p>
-                    <Button asChild><Link href="/">Explore Our Offerings</Link></Button>
+                    <Button asChild><Link href="/dashboard/browse-services">Explore Our Offerings</Link></Button>
                     </CardContent>
                 </Card>
             ) : (

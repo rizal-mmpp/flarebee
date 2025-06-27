@@ -33,7 +33,7 @@ export default function PurchaseCancelledPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <Button variant="outline" asChild size="lg" className="w-full group">
-              <Link href="/checkout"> 
+              <Link href="/dashboard/checkout"> 
                 <ShoppingBag className="mr-2 h-5 w-5" /> View Cart
               </Link>
             </Button>

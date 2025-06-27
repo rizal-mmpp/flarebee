@@ -137,7 +137,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
       type: 'subscription'
     };
     localStorage.setItem('serviceSelection', JSON.stringify(selection));
-    router.push('/cart');
+    router.push('/dashboard/cart');
   };
 
   const handleSelectFixedPrice = () => {
@@ -149,7 +149,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
       type: 'fixed'
     };
     localStorage.setItem('serviceSelection', JSON.stringify(selection));
-    router.push('/cart');
+    router.push('/dashboard/cart');
   };
 
   const handleCustomQuoteSubmit = async (e: React.FormEvent<HTMLFormElement>) => {

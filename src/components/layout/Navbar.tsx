@@ -135,7 +135,7 @@ export function Navbar() {
         <div className="flex items-center gap-3 pl-4">
           {user && (
             <Button variant="ghost" size="icon" asChild className="relative hidden md:inline-flex">
-              <Link href="/checkout">
+              <Link href="/dashboard/checkout">
                 <ShoppingCart className="h-5 w-5" />
                 {cartItemCount > 0 && (
                   <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
@@ -241,7 +241,7 @@ export function Navbar() {
 
                 {user && (
                   <Link
-                      href="/checkout"
+                      href="/dashboard/checkout"
                       onClick={() => setMobileMenuOpen(false)}
                       className={cn(mobileMenuMainItemClass, "relative")}
                   >
