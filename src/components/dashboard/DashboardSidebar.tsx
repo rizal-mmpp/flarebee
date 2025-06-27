@@ -21,6 +21,11 @@ import { useAuth } from '@/lib/firebase/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '../ui/separator';
+import { useState, useEffect } from 'react';
+import { getOrdersByUserIdFromFirestore } from '@/lib/firebase/firestoreOrders';
+import { Badge } from '@/components/ui/badge';
+import { useCart } from '@/context/CartContext';
+
 
 interface DashboardSidebarProps {
   onLinkClick?: () => void; 
@@ -46,6 +51,22 @@ const exploreNavItems = [
 export function DashboardSidebar({ onLinkClick, logoUrl, siteTitle }: DashboardSidebarProps) {
   const pathname = usePathname();
   const { user, signOutUser } = useAuth();
+  const { cartItems } = useCart();
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+
+  useEffect(() => {
+    if (user?.uid) {
+      getOrdersByUserIdFromFirestore(user.uid).then(orders => {
+        const pendingCount = orders.filter(o => o.status === 'pending').length;
+        setPendingOrdersCount(pendingCount);
+      }).catch(console.error);
+    } else {
+      setPendingOrdersCount(0);
+    }
+  }, [user]);
+
+  const cartItemCount = cartItems.length;
+  const totalNotifications = pendingOrdersCount + cartItemCount;
 
   const getAvatarFallback = (displayName: string | null | undefined) => {
     if (!displayName) return <UserCircle className="h-6 w-6" />;
@@ -57,7 +78,7 @@ export function DashboardSidebar({ onLinkClick, logoUrl, siteTitle }: DashboardS
     return initials || <UserCircle className="h-6 w-6" />;
   };
 
-  const navLinkClasses = 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-muted-foreground transition-all hover:text-primary';
+  const navLinkClasses = "flex items-center gap-3 rounded-lg px-3 py-2.5 text-muted-foreground transition-all hover:text-primary";
   const activeNavLinkClasses = 'bg-muted text-primary font-semibold';
 
   return (
@@ -82,7 +103,12 @@ export function DashboardSidebar({ onLinkClick, logoUrl, siteTitle }: DashboardS
                 className={cn(navLinkClasses, (pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))) && activeNavLinkClasses)}
               >
                 <item.icon className="h-5 w-5" />
-                {item.label}
+                <span>{item.label}</span>
+                 {item.href === '/dashboard/orders' && pendingOrdersCount > 0 && (
+                    <Badge className="ml-auto h-5 w-5 shrink-0 items-center justify-center rounded-full p-0">
+                      {pendingOrdersCount}
+                    </Badge>
+                  )}
               </Link>
             ))}
           </div>

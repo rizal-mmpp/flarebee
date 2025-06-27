@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, ServerCrash, ShoppingCart, Eye, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Loader2, ServerCrash, ShoppingCart, Eye, ExternalLink, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -115,8 +115,10 @@ export default function UserOrdersPage() {
                 <TableBody>
                   {orders.map((order) => (
                     <TableRow key={order.id}>
-                      <TableCell className="font-medium text-foreground">
-                        <span title={order.orderId}>{order.orderId.substring(0, 15)}...</span>
+                      <TableCell className="font-medium">
+                         <Link href={`/dashboard/orders/${order.orderId}`} className="text-foreground hover:text-primary hover:underline">
+                            <span title={order.orderId}>{order.orderId.substring(0, 15)}...</span>
+                        </Link>
                       </TableCell>
                       <TableCell>{format(new Date(order.createdAt), "PPP")}</TableCell>
                       <TableCell>{formatIDR(order.totalAmount)}</TableCell>
@@ -125,12 +127,20 @@ export default function UserOrdersPage() {
                           {order.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/dashboard/orders/${order.orderId}`}>
-                            <Eye className="mr-2 h-4 w-4" /> Details
-                          </Link>
-                        </Button>
+                      <TableCell className="text-right space-x-2">
+                        {order.status === 'pending' && order.xenditInvoiceUrl ? (
+                            <Button variant="default" size="sm" asChild className="bg-primary hover:bg-primary/90">
+                              <Link href={order.xenditInvoiceUrl} target="_blank" rel="noopener noreferrer">
+                                <CreditCard className="mr-2 h-4 w-4" /> Pay Now
+                              </Link>
+                            </Button>
+                          ) : (
+                             <Button variant="ghost" size="sm" asChild>
+                              <Link href={`/dashboard/orders/${order.orderId}`}>
+                                <Eye className="mr-2 h-4 w-4" /> Details
+                              </Link>
+                            </Button>
+                          )}
                       </TableCell>
                     </TableRow>
                   ))}
