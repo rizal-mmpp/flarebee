@@ -76,6 +76,7 @@ export default function EditServicePage() {
             setValue('targetAudience', fetchedService.targetAudience?.join(', ') || '');
             setValue('estimatedDuration', fetchedService.estimatedDuration || '');
             setValue('portfolioLink', fetchedService.portfolioLink || '');
+            setValue('serviceUrl', fetchedService.serviceUrl || '');
             
             setValue('pricing.isFixedPriceActive', fetchedService.pricing?.isFixedPriceActive || false);
             setValue('pricing.fixedPriceDetails.bgClassName', fetchedService.pricing?.fixedPriceDetails?.bgClassName || 'bg-background');
@@ -190,6 +191,7 @@ export default function EditServicePage() {
       formDataForAction.append('targetAudience', data.targetAudience || '');
       formDataForAction.append('estimatedDuration', data.estimatedDuration || '');
       formDataForAction.append('portfolioLink', data.portfolioLink || '');
+      formDataForAction.append('serviceUrl', data.serviceUrl);
       formDataForAction.append('showFaqSection', String(data.showFaqSection));
 
       // Stringify complex objects

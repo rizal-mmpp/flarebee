@@ -38,6 +38,7 @@ export default function CreateServicePage() {
       targetAudience: '',
       estimatedDuration: '',
       portfolioLink: '',
+      serviceUrl: '',
       pricing: {
         isFixedPriceActive: false,
         isSubscriptionActive: true,
@@ -119,6 +120,7 @@ export default function CreateServicePage() {
       formDataForAction.append('targetAudience', data.targetAudience || '');
       formDataForAction.append('estimatedDuration', data.estimatedDuration || '');
       formDataForAction.append('portfolioLink', data.portfolioLink || '');
+      formDataForAction.append('serviceUrl', data.serviceUrl);
       formDataForAction.append('showFaqSection', String(data.showFaqSection));
 
       // Stringify complex objects
