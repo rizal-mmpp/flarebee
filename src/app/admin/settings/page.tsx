@@ -28,6 +28,7 @@ const hslColorStringRegex = /^\d{1,3}\s+\d{1,3}%\s+\d{1,3}%$/;
 const settingsFormSchema = z.object({
   siteTitle: z.string().min(3, 'Site title must be at least 3 characters.'),
   logo: z.instanceof(File).optional().nullable(),
+  favicon: z.instanceof(File).optional().nullable(),
   themePrimaryColor: z.string().regex(hslColorStringRegex, 'Must be HSL (e.g., "210 40% 98%")'),
   themeAccentColor: z.string().regex(hslColorStringRegex, 'Must be HSL'),
   themeBackgroundColor: z.string().regex(hslColorStringRegex, 'Must be HSL'),
@@ -133,11 +134,16 @@ export default function AdminSettingsPage() {
   const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
+  const [currentFaviconUrl, setCurrentFaviconUrl] = useState<string | null>(null);
+  const [selectedFaviconFile, setSelectedFaviconFile] = useState<File | null>(null);
+  const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
+
   const { control, handleSubmit, setValue, reset, watch, formState: { errors } } = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsFormSchema),
     defaultValues: {
       siteTitle: DEFAULT_SETTINGS.siteTitle,
       logo: null,
+      favicon: null,
       themePrimaryColor: DEFAULT_SETTINGS.themePrimaryColor,
       themeAccentColor: DEFAULT_SETTINGS.themeAccentColor,
       themeBackgroundColor: DEFAULT_SETTINGS.themeBackgroundColor,
@@ -159,6 +165,7 @@ export default function AdminSettingsPage() {
         reset({
           siteTitle: settings.siteTitle,
           logo: null,
+          favicon: null,
           themePrimaryColor: settings.themePrimaryColor,
           themeAccentColor: settings.themeAccentColor,
           themeBackgroundColor: settings.themeBackgroundColor,
@@ -171,6 +178,8 @@ export default function AdminSettingsPage() {
         });
         setCurrentLogoUrl(settings.logoUrl);
         setLogoPreview(settings.logoUrl);
+        setCurrentFaviconUrl(settings.faviconUrl);
+        setFaviconPreview(settings.faviconUrl);
       } catch (error) {
         toast({
           title: 'Error Loading Settings',
@@ -197,10 +206,29 @@ export default function AdminSettingsPage() {
     };
   }, [selectedLogoFile, currentLogoUrl]);
 
+   useEffect(() => {
+    let objectUrl: string | undefined;
+    if (selectedFaviconFile) {
+      objectUrl = URL.createObjectURL(selectedFaviconFile);
+      setFaviconPreview(objectUrl);
+    } else {
+      setFaviconPreview(currentFaviconUrl);
+    }
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [selectedFaviconFile, currentFaviconUrl]);
+
   const handleLogoFileChange = (file: File | null) => {
     setSelectedLogoFile(file);
     setValue('logo', file, { shouldValidate: true });
   };
+  
+  const handleFaviconFileChange = (file: File | null) => {
+    setSelectedFaviconFile(file);
+    setValue('favicon', file, { shouldValidate: true });
+  };
+
 
   const onSubmit: SubmitHandler<SettingsFormValues> = (data) => {
     startSaveTransition(async () => {
@@ -219,6 +247,9 @@ export default function AdminSettingsPage() {
       if (selectedLogoFile) {
         formData.append('logo', selectedLogoFile);
       }
+      if (selectedFaviconFile) {
+        formData.append('favicon', selectedFaviconFile);
+      }
 
       const result = await updateSiteSettings(formData);
 
@@ -230,9 +261,13 @@ export default function AdminSettingsPage() {
         setCurrentLogoUrl(result.data.logoUrl);
         setLogoPreview(result.data.logoUrl);
         setSelectedLogoFile(null);
+        setCurrentFaviconUrl(result.data.faviconUrl);
+        setFaviconPreview(result.data.faviconUrl);
+        setSelectedFaviconFile(null);
         reset({ // Reset form with new data, ensuring file inputs are cleared
             siteTitle: result.data.siteTitle,
-            logo: null, // Clear file input from form state
+            logo: null,
+            favicon: null,
             themePrimaryColor: result.data.themePrimaryColor,
             themeAccentColor: result.data.themeAccentColor,
             themeBackgroundColor: result.data.themeBackgroundColor,
@@ -320,6 +355,28 @@ export default function AdminSettingsPage() {
                   <div className="mt-3 p-4 border border-dashed border-input rounded-lg bg-muted/30 text-center text-muted-foreground max-w-xs">
                       <ImageIcon className="mx-auto h-8 w-8 mb-1" />
                       <p className="text-xs">No logo uploaded. Upload a PNG, JPG, SVG, or WEBP (max 1MB).</p>
+                  </div>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="favicon">Site Favicon (.ico, .png, .svg)</Label>
+                <CustomDropzone
+                  onFileChange={handleFaviconFileChange}
+                  currentFileName={selectedFaviconFile?.name}
+                  accept={{ 'image/x-icon': ['.ico'], 'image/png': ['.png'], 'image/svg+xml': ['.svg'] }}
+                  maxSize={0.5 * 1024 * 1024} // 500KB limit for favicon
+                  className="mt-1"
+                />
+                {errors.favicon && <p className="text-sm text-destructive mt-1">{errors.favicon.message as string}</p>}
+                {faviconPreview ? (
+                  <div className="mt-4 p-3 border border-border rounded-lg bg-muted/50 inline-block">
+                    <p className="text-xs text-muted-foreground mb-1.5">Favicon Preview:</p>
+                    <Image src={faviconPreview} alt="Favicon preview" width={32} height={32} className="rounded-md object-contain" />
+                  </div>
+                ) : (
+                  <div className="mt-3 p-4 border border-dashed border-input rounded-lg bg-muted/30 text-center text-muted-foreground max-w-xs">
+                    <ImageIcon className="mx-auto h-8 w-8 mb-1" />
+                    <p className="text-xs">No favicon uploaded. Defaults to logo or browser icon.</p>
                   </div>
                 )}
               </div>

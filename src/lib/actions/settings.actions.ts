@@ -1,3 +1,4 @@
+
 'use server';
 
 import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
@@ -57,6 +58,7 @@ export async function updateSiteSettings(
   try {
     const currentSettings = await getSiteSettings();
     let newLogoUrl = currentSettings.logoUrl;
+    let newFaviconUrl = currentSettings.faviconUrl;
 
     const logoFile = formData.get('logo') as File | null;
     if (logoFile && logoFile.size > 0) {
@@ -67,6 +69,17 @@ export async function updateSiteSettings(
         return { success: false, error: uploadResult.error || 'Could not upload the new logo.' };
       }
       newLogoUrl = uploadResult.data.url;
+    }
+    
+    const faviconFile = formData.get('favicon') as File | null;
+    if (faviconFile && faviconFile.size > 0) {
+      const blobFormData = new FormData();
+      blobFormData.append('file', faviconFile);
+      const uploadResult = await uploadFileToVercelBlob(blobFormData);
+      if (!uploadResult.success || !uploadResult.data?.url) {
+        return { success: false, error: uploadResult.error || 'Could not upload the new favicon.' };
+      }
+      newFaviconUrl = uploadResult.data.url;
     }
     
     // Note: contactPageImageFile is now handled in sitePage.actions.ts
@@ -87,7 +100,7 @@ export async function updateSiteSettings(
     const settingsDataForFirestore: Omit<SiteSettings, 'id' | 'updatedAt' | 'contactPageImageUrl'> & { updatedAt: any, contactPageImageUrl?: string | null } = {
       siteTitle,
       logoUrl: newLogoUrl,
-      faviconUrl: currentSettings.faviconUrl,
+      faviconUrl: newFaviconUrl,
       themePrimaryColor,
       themeAccentColor,
       themeBackgroundColor,

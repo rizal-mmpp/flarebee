@@ -31,7 +31,7 @@ export async function generateMetadata(
   try {
     const settings = await getSiteSettings();
     const siteTitle = settings.siteTitle || DEFAULT_SETTINGS.siteTitle;
-    const faviconUrl = settings.logoUrl || settings.faviconUrl || '/favicon.ico'; // Use logoUrl as favicon if available
+    const faviconUrl = settings.faviconUrl || settings.logoUrl || '/favicon.ico';
 
     return {
       title: {
