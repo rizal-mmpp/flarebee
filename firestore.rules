@@ -1,0 +1,64 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if the requesting user has an 'admin' role.
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Users can only manage their own profile, but any authenticated user can read public profile info.
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth.uid == userId;
+      allow delete: if false; // Disallow deleting user profiles from the client.
+    }
+
+    // Templates and Services are public to read. Writing is for admins only.
+    match /templates/{templateId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /services/{serviceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Site settings and pages are public to read. Writing is for admins only.
+    match /siteSettings/main {
+       allow read: if true;
+       allow write: if isAdmin();
+    }
+    match /sitePages/{pageId} {
+       allow read: if true;
+       allow write: if isAdmin();
+    }
+
+    // Users can only manage their own cart.
+    match /userCarts/{userId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    // Orders can be created by the user for themselves.
+    // They can only be read by the user who owns it or by an admin.
+    // Updates/Deletes are disallowed from the client (should be handled server-side/webhooks).
+    match /orders/{orderId} {
+      allow create: if request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth.uid == resource.data.userId || isAdmin();
+      allow update, delete: if false;
+    }
+
+    // Anyone can submit a contact form. Only admins can view/manage submissions.
+    match /contactSubmissions/{submissionId} {
+        allow create: if true;
+        allow read, update, delete: if isAdmin();
+    }
+
+    // Default deny all other collections/paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

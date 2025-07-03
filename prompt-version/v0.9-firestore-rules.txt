@@ -1,0 +1,3 @@
+v0.9.1 setup firesture rules
+    v0.9.1 setup firesture rules
+    base on /src/lib/actions and /src/lib/firebase, make us secure and working firestore.fules
