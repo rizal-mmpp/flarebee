@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -12,6 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Loader2, ServerCrash, Settings, Briefcase, PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import { generateServiceAuthToken } from '@/lib/actions/serviceAuth.actions';
+import { useToast } from '@/hooks/use-toast';
 
 interface PurchasedService {
   id: string; // The original item ID from the order
@@ -38,6 +39,8 @@ export default function MyServicesPage() {
   const [purchasedServices, setPurchasedServices] = useState<PurchasedService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const [isRedirecting, setIsRedirecting] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -104,6 +107,42 @@ export default function MyServicesPage() {
     }
   }, [user]);
 
+  const handleManageService = async (serviceUrl: string | null | undefined, serviceId: string) => {
+    if (!serviceUrl || !user) {
+        toast({
+            title: 'Service URL Missing',
+            description: 'The management URL for this service has not been configured.',
+            variant: 'destructive',
+        });
+        return;
+    }
+    setIsRedirecting(serviceId);
+
+    const result = await generateServiceAuthToken(user.uid);
+
+    if (result.success && result.token) {
+      try {
+        const url = new URL(serviceUrl);
+        url.searchParams.set('token', result.token);
+        window.open(url.toString(), '_blank');
+      } catch (e) {
+        toast({
+          title: 'Invalid Service URL',
+          description: 'The configured service URL is not a valid address.',
+          variant: 'destructive',
+        });
+      }
+    } else {
+      toast({
+        title: 'Authentication Failed',
+        description: result.error || 'Could not securely connect to the service. Please try again.',
+        variant: 'destructive',
+      });
+    }
+
+    setIsRedirecting(null);
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-15rem)] p-4 md:p-6 lg:p-8">
@@ -146,7 +185,7 @@ export default function MyServicesPage() {
             </CardHeader>
             <CardFooter className="justify-center">
                 <Button asChild>
-                    <Link href="/services">
+                    <Link href="/dashboard/browse-services">
                         <PlusCircle className="mr-2 h-4 w-4" /> Explore Our Services
                     </Link>
                 </Button>
@@ -167,10 +206,17 @@ export default function MyServicesPage() {
                 <p>Purchased on: {format(new Date(service.purchaseDate), "PPP")}</p>
               </CardContent>
               <CardFooter className="bg-muted/50 p-4">
-                 <Button className="w-full" asChild disabled={!service.serviceUrl}>
-                    <Link href={service.serviceUrl || '#'} target="_blank" rel="noopener noreferrer">
-                        <Settings className="mr-2 h-4 w-4" /> Manage Service
-                    </Link>
+                 <Button 
+                    className="w-full" 
+                    onClick={() => handleManageService(service.serviceUrl, service.id)}
+                    disabled={!service.serviceUrl || isRedirecting === service.id}
+                  >
+                    {isRedirecting === service.id ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                        <Settings className="mr-2 h-4 w-4" />
+                    )}
+                    Manage Service
                  </Button>
               </CardFooter>
             </Card>

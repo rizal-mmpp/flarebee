@@ -1,0 +1,32 @@
+v0.10.2 - Target Service Authentication Receipt
+
+This describes the backend logic required for a target service (e.g., webstudio.flarebee.com) to authenticate a user redirected from the main application.
+
+**Authentication Flow:**
+
+1.  **Receive Token:** The user will arrive at the target service with a URL containing a `token` query parameter (e.g., `https://webstudio.flarebee.com?token=...`).
+
+2.  **Verification Endpoint:** The target service's frontend should immediately call a secure backend endpoint, passing this `token`.
+
+3.  **Backend Token Verification Logic:**
+    *   The backend must have access to the project's Firestore database.
+    *   It will look for a document in the `serviceAuthTokens` collection where the document ID matches the provided `token`.
+    *   **Validation Checks:**
+        *   If the document does not exist, the token is invalid. Reject the request.
+        *   Read the `expiresAt` timestamp from the document. If the current time is after `expiresAt`, the token has expired. Reject the request.
+    *   **Token Consumption:**
+        *   If the token is valid, retrieve the `userId` field from the document.
+        *   **IMMEDIATELY DELETE THE TOKEN DOCUMENT** from the `serviceAuthTokens` collection to prevent reuse. This is a critical security step.
+    *   **User Session Generation:**
+        *   Using the retrieved `userId`, fetch the corresponding user's profile from the `users` collection.
+        *   Create a session for the user within the target service's authentication system (e.g., generate a JWT containing the user's UID, email, display name, and role).
+        *   Return this session token (or session cookie details) to the frontend.
+
+4.  **Frontend Session Handling:** The frontend receives the session token from its backend and establishes a logged-in state for the user, redirecting them to their service dashboard.
+
+**Example Firestore Document in `serviceAuthTokens`:**
+-   Document ID: `a1b2c3d4-e5f6-7890-ghij-klmnopqrstuv` (the token string)
+-   Fields:
+    -   `userId`: "firebase-user-uid-string"
+    -   `createdAt`: Timestamp(...)
+    -   `expiresAt`: Timestamp(...) (5 minutes after creation)
