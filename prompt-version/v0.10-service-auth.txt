@@ -1,3 +1,6 @@
+v0.10.1 service auth by url
+in our services data, we have serviceUrl data and the format of the url is [service].[main domain].com e.g: "https://webstudio.flarebee.com". when we press the service button in users's /dashboard/services, we got redirected to the specific domain. now, i want to setup an auth in the target service. I want our user to be automaticaly authenticated in the target service website as their user they use in this project. perhaps send the auth code by url or anything secure and commonly used. Also create the prompt in /prompt-version/v0.10-service-auth.txt "v0.10.2" for our target service to receipt the data and confirm the auth
+
 v0.10.2 - Target Service Authentication Receipt
 
 This describes the backend logic required for a target service (e.g., webstudio.flarebee.com) to authenticate a user redirected from the main application.
@@ -30,3 +33,4 @@ This describes the backend logic required for a target service (e.g., webstudio.
     -   `userId`: "firebase-user-uid-string"
     -   `createdAt`: Timestamp(...)
     -   `expiresAt`: Timestamp(...) (5 minutes after creation)
+=
