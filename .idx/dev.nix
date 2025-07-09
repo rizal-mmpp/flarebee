@@ -10,6 +10,9 @@
     pkgs.zulu
   ];
 
+  # Enable the Docker daemon service
+  services.docker.enable = true;
+
   # Sets environment variables in the workspace.
   env = {};
 
