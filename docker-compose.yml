@@ -25,21 +25,20 @@ services:
 
   api:
     build:
-      # Placeholder for your backend API service.
-      # You would typically have a separate Dockerfile in a './backend' directory.
       context: ./backend 
       dockerfile: Dockerfile
     container_name: api_service
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
     env_file:
       - .env
     depends_on:
       - postgres
       - rabbitmq
-    # This command is a placeholder to keep the container running.
-    # Replace with your actual backend start command.
-    command: sh -c "sleep infinity"
+    command: npm run dev
   
   web:
     build:
