@@ -1,13 +1,53 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    ports:
+      # AMQP protocol
+      - "5672:5672"
+      # HTTP management UI
+      - "15672:15672"
+
+  api:
+    build:
+      # Placeholder for your backend API service.
+      # You would typically have a separate Dockerfile in a './backend' directory.
+      context: ./backend 
+      dockerfile: Dockerfile
+    container_name: api_service
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - rabbitmq
+    # This command is a placeholder to keep the container running.
+    # Replace with your actual backend start command.
+    command: sh -c "sleep infinity"
+  
   web:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: flarebee
     ports:
-      - "9002:9002"
+      - "9003:9003"
     volumes:
       # Mounts the current directory into /app in the container for hot-reloading
       - .:/app
@@ -16,10 +56,12 @@ services:
       # Mount the .next folder to persist build cache
       - ./.next:/app/.next
     command: npm run dev
-    # Pass environment variables from a .env file into the container
     env_file:
       - .env
+    depends_on:
+      - api
 
-# Define the named volume for node_modules
+# Define the named volumes
 volumes:
   node_modules:
+  postgres_data:
