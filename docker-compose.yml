@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: rio-frontend
+    container_name: flarebee
     ports:
       - "9002:9002"
     volumes:
