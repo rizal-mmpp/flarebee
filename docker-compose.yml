@@ -41,6 +41,31 @@ services:
       - rabbitmq
     command: npm run dev
 
+  # Placeholder for a future Headless CMS service
+  cms_service:
+    image: node:18-alpine # Example image, can be replaced with Strapi, Directus, etc.
+    container_name: cms_service
+    ports:
+      - "1337:1337" # Common port for headless CMS
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./cms:/srv/app # Mount a future 'cms' directory
+    command: sh -c "echo 'CMS service placeholder. To implement, create a project in ./cms and update this service.' && tail -f /dev/null"
+
+  # Placeholder for a future File Manager service
+  file_manager_service:
+    image: node:18-alpine # Example image
+    container_name: file_manager_service
+    ports:
+      - "8081:8081"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./file-manager:/srv/app # Mount a future 'file-manager' directory
+    command: sh -c "echo 'File Manager placeholder. To implement, create a project in ./file-manager and update this service.' && tail -f /dev/null"
+
+
 # Define the named volumes
 volumes:
   postgres_data:

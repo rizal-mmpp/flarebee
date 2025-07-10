@@ -2,9 +2,20 @@
 
 This is a Next.js project for selling templates and digital services, with a containerized backend.
 
-## Running the Development Environment
+## Architecture Overview
 
-This project uses a hybrid approach for development: the backend services (API, database, etc.) run in Docker containers, while the Next.js frontend runs directly on your local machine for the best hot-reloading experience.
+This project uses a microservices-oriented architecture for development:
+- **Frontend (Next.js)**: Runs directly on your local machine for the best developer experience with hot-reloading.
+- **Backend Services (Docker)**: All backend services are containerized using Docker and managed with Docker Compose. This ensures a consistent and isolated environment for the API and other services.
+
+The backend services include:
+- **API (Express.js + TypeScript)**: The main backend API for business logic.
+- **PostgreSQL**: The primary relational database.
+- **RabbitMQ**: A message broker for asynchronous tasks.
+- **CMS Service (Placeholder)**: A dedicated service for content management.
+- **File Manager (Placeholder)**: A dedicated service for file uploads and management.
+
+## Running the Development Environment
 
 **Prerequisites**:
 - Docker installed and running on your system.
@@ -32,11 +43,13 @@ npm run dev
 
 Once both the Docker containers and the local frontend server are running, the services will be available at the following URLs:
 
-| Service               | URL                                   | Description                                  |
-| --------------------- | ------------------------------------- | -------------------------------------------- |
-| **Web (Next.js)**     | `http://localhost:9002`               | The main frontend application.               |
-| **API (Express.js)**  | `http://localhost:8000`               | The backend API service.                     |
-| **PostgreSQL**        | `localhost:5432`                      | Database connection port.                    |
-| **RabbitMQ**          | `http://localhost:15672`              | Message broker management UI.                |
+| Service                       | URL                                   | Description                                       |
+| ----------------------------- | ------------------------------------- | ------------------------------------------------- |
+| **Web (Next.js)**             | `http://localhost:9002`               | The main frontend application.                    |
+| **API (Express.js)**          | `http://localhost:8000`               | The backend API service.                          |
+| **PostgreSQL**                | `localhost:5432`                      | Database connection port.                         |
+| **RabbitMQ**                  | `http://localhost:15672`              | Message broker management UI.                     |
+| **CMS Service (Placeholder)** | `http://localhost:1337`               | Placeholder for a future headless CMS.            |
+| **File Manager (Placeholder)**| `http://localhost:8081`               | Placeholder for a future file management service. |
 
 The Next.js and Express.js services are configured with hot-reloading, so any changes you make to the code will be automatically reflected without needing to restart the servers.
