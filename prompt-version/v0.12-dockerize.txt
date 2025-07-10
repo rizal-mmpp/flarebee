@@ -1,0 +1,15 @@
+v0.12.1 docker container setup
+    v0.12.1 docker container setup
+    Set up a containerized backend environment using Docker Compose. The frontend (Next.js) will run on the local machine for a better developer experience, while all backend services are managed within Docker.
+
+This includes:
+- A Dockerfile for the Express.js + TypeScript backend API.
+- A docker-compose.yml file to orchestrate the following services:
+  - `api_service`: The main backend API with hot-reloading.
+  - `postgres`: PostgreSQL database service.
+  - `rabbitmq`: RabbitMQ for message queuing.
+  - `cms_service`: Placeholder for a future headless CMS.
+  - `file_manager_service`: Placeholder for a future file management service.
+- An .idx/dev.nix file to ensure the Docker daemon is running in the workspace.
+- Updated the main README.md with clear instructions on how to run the separate backend (Docker) and frontend (npm) development environments.
+- Decoupled the frontend from the Docker setup to allow for independent development and deployment (e.g., to Vercel).
