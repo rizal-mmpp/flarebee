@@ -31,7 +31,10 @@ export async function generateMetadata(
   try {
     const settings = await getSiteSettings();
     const siteTitle = settings.siteTitle || DEFAULT_SETTINGS.siteTitle;
-    const faviconUrl = settings.faviconUrl || settings.logoUrl || '/favicon.ico';
+    // Use favicon if available, fallback to logo, then default favicon
+    const faviconUrl = settings.faviconUrl || settings.logoUrl || DEFAULT_SETTINGS.faviconUrl;
+    
+    // Configure multiple icon types for better device compatibility
 
     return {
       title: {
@@ -40,7 +43,13 @@ export async function generateMetadata(
       },
       description: 'High-quality services and templates for your next project. Turn tech into your superpower.',
       icons: {
-        icon: faviconUrl, 
+        icon: [
+          { url: faviconUrl || DEFAULT_SETTINGS.faviconUrl, sizes: '16x16' },
+          { url: faviconUrl || DEFAULT_SETTINGS.faviconUrl, sizes: '32x32' }
+        ],
+        apple: [
+          { url: faviconUrl || DEFAULT_SETTINGS.faviconUrl, sizes: '180x180', type: 'image/png' }
+        ]
       }
     };
   } catch (error) {
@@ -52,7 +61,13 @@ export async function generateMetadata(
       },
       description: 'High-quality services and templates for your next project. Turn tech into your superpower.',
       icons: {
-        icon: '/favicon.ico', // Fallback favicon
+        icon: [
+          { url: DEFAULT_SETTINGS.faviconUrl, sizes: '16x16' },
+          { url: DEFAULT_SETTINGS.faviconUrl, sizes: '32x32' }
+        ],
+        apple: [
+          { url: DEFAULT_SETTINGS.faviconUrl, sizes: '180x180', type: 'image/png' }
+        ]
       }
     };
   }

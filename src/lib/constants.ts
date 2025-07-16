@@ -31,8 +31,8 @@ export const SERVICE_STATUSES = [
 export const DEFAULT_SETTINGS: SiteSettings = {
   id: 'main',
   siteTitle: 'Ragam Inovasi Optima',
-  logoUrl: null,
-  faviconUrl: null,
+  logoUrl: '/img/logo.png',
+  faviconUrl: '/img/favicon.ico',
   themePrimaryColor: '50 90% 55%', 
   themeAccentColor: '30 84% 51%',  
   themeBackgroundColor: '228 100% 98%', 
