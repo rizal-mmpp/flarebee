@@ -67,43 +67,41 @@ export default function SignupPage() {
   }
 
   return (
-    <Card className="w-full">
+    <div className="relative min-h-screen overflow-hidden bg-background">
+      {/* Gradient Circles */}
+      <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 blur-3xl animate-pulse" />
+      <div className="absolute top-1/2 -right-40 h-96 w-96 rounded-full bg-gradient-to-br from-accent/30 to-primary/30 blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      <div className="absolute -bottom-40 left-1/2 h-96 w-96 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+
+      {/* Content */}
+      <div className="relative flex min-h-screen flex-col items-center justify-center p-4 md:p-8">
+        <Card className="w-full max-w-[90%] sm:max-w-[80%] md:max-w-[60%] lg:max-w-[40%] xl:max-w-[25%] backdrop-blur-xl bg-card/50 shadow-2xl border-border">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl md:text-3xl">Create your RIO Account</CardTitle>
         <CardDescription>Join our community and start creating today!</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isSubmittingEmail || isSubmittingGoogle || loading}>
-          {isSubmittingGoogle ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 
-            <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4">
-              <path d="M17.6401 9.20455C17.6401 8.61364 17.5831 8.06818 17.4774 7.54545H9V10.75H13.8437C13.6364 11.6864 13.0001 12.4773 12.0455 13.0682V15.25H14.4774C15.8751 13.9773 16.6819 12.3409 17.1001 10.4091C17.4401 9.95455 17.6401 9.59091 17.6401 9.20455Z" fill="#4285F4"/>
-              <path d="M9.00001 18C11.4318 18 13.4773 17.1932 14.7614 15.8182L12.3296 13.6364C11.5227 14.1591 10.4091 14.5227 9.00001 14.5227C6.45455 14.5227 4.27273 12.8409 3.47728 10.6136L1.04546 12.7955C2.36364 15.7045 5.40909 18 9.00001 18Z" fill="#34A853"/>
-              <path d="M3.46591 10.6136C3.32955 10.1818 3.25 9.72727 3.25 9.22727C3.25 8.72727 3.32955 8.27273 3.46591 7.84091V5.65909L1.03409 7.84091C0.375 9.09091 0 10.5455 0 12.1136C0 13.6818 0.375 15.1364 1.03409 16.3864L3.46591 14.2045V10.6136Z" fill="#FBBC05"/>
-              <path d="M9.00001 3.93182C10.2159 3.93182 11.25 4.36364 12.00001 5.09091L14.2046 2.88636C12.7955 1.48864 10.9091 0.454545 9.00001 0.454545C5.40909 0.454545 2.36364 2.75 1.04546 5.65909L3.47728 7.84091C4.27273 5.61364 6.45455 3.93182 9.00001 3.93182Z" fill="#EA4335"/>
-            </svg>
-          }
-          Sign up with Google
-        </Button>
 
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">
-              Or sign up with email
-            </span>
-          </div>
-        </div>
         <form onSubmit={handleSubmit(onEmailSubmit)} className="space-y-4">
           <div>
             <Label htmlFor="displayName">Display Name</Label>
-            <Input id="displayName" {...register('displayName')} placeholder="Your Name" className="mt-1" />
+            <Input 
+              id="displayName" 
+              {...register('displayName')} 
+              placeholder="Your Name" 
+              className="mt-1 bg-card/50 border-border text-card-foreground placeholder:text-muted-foreground focus:bg-card/75 transition-colors duration-200" 
+            />
             {errors.displayName && <p className="text-sm text-destructive mt-1">{errors.displayName.message}</p>}
           </div>
           <div>
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" {...register('email')} placeholder="you@example.com" className="mt-1" />
+            <Input 
+              id="email" 
+              type="email" 
+              {...register('email')} 
+              placeholder="you@example.com" 
+              className="mt-1 bg-card/50 border-border text-card-foreground placeholder:text-muted-foreground focus:bg-card/75 transition-colors duration-200" 
+            />
             {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
           </div>
           <div>
@@ -114,6 +112,7 @@ export default function SignupPage() {
                 type={showPassword ? "text" : "password"} 
                 {...register('password')} 
                 placeholder="•••••••• (min. 6 characters)"
+                className="bg-card/50 border-border text-card-foreground placeholder:text-muted-foreground focus:bg-card/75 transition-colors duration-200"
               />
               <Button 
                 type="button" 
@@ -136,6 +135,7 @@ export default function SignupPage() {
                 type={showConfirmPassword ? "text" : "password"} 
                 {...register('confirmPassword')} 
                 placeholder="••••••••"
+                className="bg-card/50 border-border text-card-foreground placeholder:text-muted-foreground focus:bg-card/75 transition-colors duration-200"
               />
               <Button 
                 type="button" 
@@ -164,6 +164,8 @@ export default function SignupPage() {
           </Link>
         </p>
       </CardFooter>
-    </Card>
+        </Card>
+      </div>
+    </div>
   );
 }

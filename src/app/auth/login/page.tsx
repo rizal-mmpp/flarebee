@@ -82,7 +82,15 @@ export default function LoginPage() {
                 {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
               </div>
               <div>
-                <Label htmlFor="password" className="text-sm font-medium text-card-foreground">Password</Label>
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="password" className="text-sm font-medium text-card-foreground">Password</Label>
+                  <Link 
+                    href="/auth/forgot-password" 
+                    className="text-sm font-medium text-primary hover:text-primary/90 transition-colors duration-200 hover:underline"
+                  >
+                    Forgot Password?
+                  </Link>
+                </div>
                 <div className="relative mt-1">
                   <Input 
                     id="password" 
@@ -116,13 +124,7 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        <div className="mt-8 flex flex-col items-center space-y-4 text-base text-muted-foreground">
-          <Link 
-            href="/auth/forgot-password" 
-            className="font-medium hover:text-foreground transition-colors duration-200 hover:underline"
-          >
-            Forgot your password?
-          </Link>
+        <div className="mt-8 flex justify-center text-base text-muted-foreground">
           <p className="text-muted-foreground">
             Don&apos;t have an account?{' '}
             <Link 

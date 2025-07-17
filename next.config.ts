@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '5mb', // Increased limit for file uploads
+    },
+  },
   images: {
     remotePatterns: [
       {
@@ -67,9 +72,7 @@ const nextConfig: NextConfig = {
       }
     ],
   },
-  serverActions: {
-    bodySizeLimit: '5mb', // Increased limit for file uploads
-  },
+
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Prevent 'fs' module from being bundled on the client
@@ -83,3 +86,15 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+// Enable Turbopack for development
+if (process.env.NODE_ENV === 'development') {
+  nextConfig.experimental = {
+    ...nextConfig.experimental,
+    turbo: {
+      rules: {
+        // Configure any specific rules for Turbopack here
+      },
+    },
+  };
+}
