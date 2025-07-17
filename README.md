@@ -22,7 +22,8 @@ Flarebee is a comprehensive SaaS platform that provides cutting-edge technology 
 - **Framework**: Next.js 15.2 with TypeScript
 - **UI Components**: Radix UI with custom styling
 - **Styling**: Tailwind CSS
-- **Authentication & Database**: Firebase
+- **Authentication**: Dual system supporting Firebase and ERPNext
+- **Database**: Firebase
 - **Payment Processing**: Multiple providers (Stripe, Xendit, iPaymu)
 - **State Management**: TanStack Query
 
@@ -34,7 +35,10 @@ Flarebee is a comprehensive SaaS platform that provides cutting-edge technology 
    npm install
    ```
 3. Set up environment variables (see `.env.example`)
-4. Run the development server:
+4. Configure authentication:
+   - For Firebase: Set up a Firebase project and add credentials
+   - For ERPNext: Configure your ERPNext instance URL
+5. Run the development server:
    ```bash
    npm run dev
    ```
@@ -67,9 +71,25 @@ src/
 - **Background**: #1A202C (Dark Blue)
 - **Accent**: #FF9100 (Golden Orange)
 
+## Authentication
+
+Flarebee supports two authentication methods:
+
+### Firebase Authentication
+- Email/Password sign-in
+- Password reset functionality
+- Secure token management
+
+### ERPNext Authentication
+- Direct integration with ERPNext instance
+- Session-based authentication
+- Unified password reset system
+
+Users can choose their preferred authentication method during login.
+
 ## Future Roadmap
 
-- ERP Integration with ERPNext
+- Enhanced ERPNext integration features
 - Enhanced AI capabilities
 - Additional automation tools
 - Expanded payment options

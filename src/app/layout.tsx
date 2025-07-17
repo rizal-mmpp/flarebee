@@ -3,7 +3,7 @@ import type {Metadata, ResolvingMetadata} from 'next';
 import {Geist, Geist_Mono} from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from '@/lib/firebase/AuthContext';
+import { CombinedAuthProvider } from '@/lib/context/CombinedAuthContext';
 import { CartProvider } from '@/context/CartContext'; 
 import { Happy_Monkey } from 'next/font/google';
 import { getSiteSettings } from '@/lib/actions/settings.actions';
@@ -43,13 +43,8 @@ export async function generateMetadata(
       },
       description: 'High-quality services and templates for your next project. Turn tech into your superpower.',
       icons: {
-        icon: [
-          { url: faviconUrl || DEFAULT_SETTINGS.faviconUrl, sizes: '16x16' },
-          { url: faviconUrl || DEFAULT_SETTINGS.faviconUrl, sizes: '32x32' }
-        ],
-        apple: [
-          { url: faviconUrl || DEFAULT_SETTINGS.faviconUrl, sizes: '180x180', type: 'image/png' }
-        ]
+        icon: faviconUrl || DEFAULT_SETTINGS.faviconUrl || "",
+        apple: faviconUrl || DEFAULT_SETTINGS.faviconUrl || ""
       }
     };
   } catch (error) {
@@ -61,13 +56,8 @@ export async function generateMetadata(
       },
       description: 'High-quality services and templates for your next project. Turn tech into your superpower.',
       icons: {
-        icon: [
-          { url: DEFAULT_SETTINGS.faviconUrl, sizes: '16x16' },
-          { url: DEFAULT_SETTINGS.faviconUrl, sizes: '32x32' }
-        ],
-        apple: [
-          { url: DEFAULT_SETTINGS.faviconUrl, sizes: '180x180', type: 'image/png' }
-        ]
+        icon: DEFAULT_SETTINGS.faviconUrl || "",
+        apple: DEFAULT_SETTINGS.faviconUrl || ""
       }
     };
   }
@@ -82,12 +72,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className={`${geistSans.variable} ${geistMono.variable} ${happyMonkey.variable} antialiased bg-background text-foreground`}>
-        <AuthProvider>
+        <CombinedAuthProvider>
           <CartProvider> 
             {children}
             <Toaster />
           </CartProvider>
-        </AuthProvider>
+        </CombinedAuthProvider>
       </body>
     </html>
   );

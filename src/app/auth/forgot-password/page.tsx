@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useAuth } from '@/lib/firebase/AuthContext';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,7 +20,7 @@ const forgotPasswordSchema = z.object({
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
 export default function ForgotPasswordPage() {
-  const { sendPasswordReset, loading } = useAuth();
+  const { resetPassword, loading, authMethod, setAuthMethod } = useCombinedAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
 
@@ -29,7 +30,7 @@ export default function ForgotPasswordPage() {
 
   const onSubmit: SubmitHandler<ForgotPasswordFormValues> = async (data) => {
     setIsSubmitting(true);
-    const result = await sendPasswordReset(data.email);
+    const result = await resetPassword(data.email);
     if (result.success) {
       setEmailSent(true);
     }
@@ -48,6 +49,18 @@ export default function ForgotPasswordPage() {
       <div className="relative flex min-h-screen flex-col items-center justify-center p-4 md:p-8">
         <Card className="w-full max-w-[90%] sm:max-w-[80%] md:max-w-[60%] lg:max-w-[40%] xl:max-w-[25%] backdrop-blur-xl bg-card/50 shadow-2xl border-border">
       <CardHeader className="text-center">
+        <div className="mb-4">
+          <Label htmlFor="auth-method">Authentication Method</Label>
+          <Select value={authMethod} onValueChange={(value: 'firebase' | 'erpnext') => setAuthMethod(value)}>
+            <SelectTrigger id="auth-method" className="bg-card/50 border-border text-card-foreground mt-1">
+              <SelectValue placeholder="Select authentication method" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="firebase">Firebase</SelectItem>
+              <SelectItem value="erpnext">ERPNext</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <CardTitle className="text-2xl md:text-3xl">Forgot Your Password?</CardTitle>
         <CardDescription>
           {emailSent 

@@ -7,12 +7,13 @@ import Link from 'next/link';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useAuth } from '@/lib/firebase/AuthContext';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
+import { useAuth as useFirebaseAuth } from '@/lib/firebase/AuthContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Loader2, UserPlus, Eye, EyeOff } from 'lucide-react';
 
 const signupSchema = z.object({
@@ -28,7 +29,8 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
   const router = useRouter();
-  const { user, signUpWithEmailPassword, signInWithGoogle, loading } = useAuth();
+  const { isAuthenticated, loading, authMethod, setAuthMethod } = useCombinedAuth();
+  const { signUpWithEmailPassword, signInWithGoogle } = useFirebaseAuth();
   const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
   const [isSubmittingGoogle, setIsSubmittingGoogle] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -39,10 +41,10 @@ export default function SignupPage() {
   });
 
   useEffect(() => {
-    if (user) {
+    if (isAuthenticated) {
       router.replace('/dashboard');
     }
-  }, [user, router]);
+  }, [isAuthenticated, router]);
 
   const onEmailSubmit: SubmitHandler<SignupFormValues> = async (data) => {
     setIsSubmittingEmail(true);
@@ -58,7 +60,7 @@ export default function SignupPage() {
     setIsSubmittingGoogle(false);
   };
   
-  if (loading && !user) { 
+  if (loading && !isAuthenticated) { 
     return (
         <div className="flex min-h-screen items-center justify-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -77,10 +79,49 @@ export default function SignupPage() {
       <div className="relative flex min-h-screen flex-col items-center justify-center p-4 md:p-8">
         <Card className="w-full max-w-[90%] sm:max-w-[80%] md:max-w-[60%] lg:max-w-[40%] xl:max-w-[25%] backdrop-blur-xl bg-card/50 shadow-2xl border-border">
       <CardHeader className="text-center">
+            <div className="mb-4">
+              <Label htmlFor="auth-method">Authentication Method</Label>
+              <Select value={authMethod} onValueChange={(value: 'firebase' | 'erpnext') => setAuthMethod(value)}>
+                <SelectTrigger id="auth-method" className="bg-card/50 border-border text-card-foreground mt-1">
+                  <SelectValue placeholder="Select authentication method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="firebase">Firebase</SelectItem>
+                  <SelectItem value="erpnext">ERPNext</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
         <CardTitle className="text-2xl md:text-3xl">Create your RIO Account</CardTitle>
         <CardDescription>Join our community and start creating today!</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+            {authMethod === 'firebase' && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full bg-card/50 border-border text-card-foreground hover:bg-card/75"
+                onClick={handleGoogleSignIn}
+                disabled={isSubmittingEmail || isSubmittingGoogle || loading}
+              >
+                {isSubmittingGoogle ? (
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                  <img src="/img/google.webp" alt="Google" className="mr-2 h-5 w-5" />
+                )}
+                Sign Up with Google
+              </Button>
+            )}
+
+            {authMethod === 'firebase' && (
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground bg-card/50">OR</span>
+                </div>
+              </div>
+            )}
 
         <form onSubmit={handleSubmit(onEmailSubmit)} className="space-y-4">
           <div>
@@ -155,6 +196,8 @@ export default function SignupPage() {
             Sign Up with Email
           </Button>
         </form>
+
+
       </CardContent>
       <CardFooter className="flex flex-col items-center space-y-2 text-sm">
         <p className="text-muted-foreground">

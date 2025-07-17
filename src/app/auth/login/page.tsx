@@ -7,7 +7,10 @@ import Link from 'next/link';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useAuth } from '@/lib/firebase/AuthContext';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
+import { useAuth as useFirebaseAuth } from '@/lib/firebase/AuthContext';
+import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,7 +25,9 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, signInWithEmailPassword, loading } = useAuth();
+  const { isAuthenticated, signIn, loading, authMethod, setAuthMethod } = useCombinedAuth();
+  const { signInWithGoogle } = useFirebaseAuth();
+  const [isSubmittingGoogle, setIsSubmittingGoogle] = useState(false);
   const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -31,18 +36,18 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    if (user) {
+    if (isAuthenticated) {
       router.replace('/dashboard');
     }
-  }, [user, router]);
+  }, [isAuthenticated, router]);
 
   const onEmailSubmit: SubmitHandler<LoginFormValues> = async (data) => {
     setIsSubmittingEmail(true);
-    await signInWithEmailPassword(data.email, data.password);
+    await signIn(data.email, data.password);
     setIsSubmittingEmail(false);
   };
   
-  if (loading && !user) {
+  if (loading && !isAuthenticated) {
     return (
         <div className="flex min-h-screen items-center justify-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -59,7 +64,7 @@ export default function LoginPage() {
       
       {/* Content */}
       <div className="relative flex min-h-screen flex-col items-center justify-center p-4 md:p-8">
-        <Card className="w-full max-w-[90%] sm:max-w-[80%] md:max-w-[60%] lg:max-w-[40%] xl:max-w-[25%] backdrop-blur-xl bg-card/50 shadow-2xl border-border">
+        <Card className="w-full max-w-[90%] sm:max-w-[80%] md:max-w-[60%] lg:max-w-[40%] xl:max-w-[30%] backdrop-blur-xl bg-card/50 shadow-2xl border-border">
           <CardHeader className="text-center space-y-2">
             <CardTitle className="text-2xl md:text-3xl font-bold text-card-foreground">
               Welcome back!
@@ -69,6 +74,50 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="auth-method">Authentication Method</Label>
+              <Select value={authMethod} onValueChange={(value: 'firebase' | 'erpnext') => setAuthMethod(value)}>
+                <SelectTrigger id="auth-method" className="bg-card/50 border-border text-card-foreground">
+                  <SelectValue placeholder="Select authentication method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="firebase">Firebase</SelectItem>
+                  <SelectItem value="erpnext">ERPNext</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {authMethod === 'firebase' && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full bg-card/50 border-border text-card-foreground hover:bg-card/75"
+                onClick={async () => {
+                  setIsSubmittingGoogle(true);
+                  await signInWithGoogle();
+                  setIsSubmittingGoogle(false);
+                }}
+                disabled={isSubmittingEmail || isSubmittingGoogle || loading}
+              >
+                {isSubmittingGoogle ? (
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                  <img src="/img/google.webp" alt="Google" className="mr-2 h-5 w-5" />
+                )}
+                Sign In with Google
+              </Button>
+            )}
+
+            {authMethod === 'firebase' && (
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground bg-card/50">OR</span>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit(onEmailSubmit)} className="space-y-4">
               <div>
                 <Label htmlFor="email" className="text-sm font-medium text-card-foreground">Email</Label>
@@ -115,7 +164,7 @@ export default function LoginPage() {
               <Button 
                 type="submit" 
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-colors duration-200" 
-                disabled={isSubmittingEmail || loading}
+                disabled={isSubmittingEmail || isSubmittingGoogle || loading}
               >
                 {isSubmittingEmail ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <LogIn className="mr-2 h-5 w-5" />}
                 Sign In

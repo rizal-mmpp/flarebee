@@ -2,7 +2,6 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -72,17 +71,25 @@ const nextConfig: NextConfig = {
       }
     ],
   },
-
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${process.env.NEXT_PUBLIC_ERPNEXT_API_URL}/:path*`,
+      },
+    ];
+  },
   webpack: (config, { isServer }) => {
     if (!isServer) {
-      // Prevent 'fs' module from being bundled on the client
       config.resolve.fallback = {
-        ...config.resolve.fallback, // Ensure we don't overwrite other fallbacks
+        ...config.resolve.fallback,
         fs: false,
       };
     }
+    config.experiments = { ...config.experiments, topLevelAwait: true };
     return config;
   },
+  turbo: process.env.NODE_ENV === 'development' ? { cacheDirectory: false } : undefined,
 };
 
 export default nextConfig;
