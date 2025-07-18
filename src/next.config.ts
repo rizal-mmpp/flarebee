@@ -9,6 +9,14 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${process.env.NEXT_PUBLIC_ERPNEXT_API_URL}/api/:path*`,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {

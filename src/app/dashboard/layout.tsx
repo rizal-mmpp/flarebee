@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/lib/firebase/AuthContext';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { Loader2, PanelLeft } from 'lucide-react';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { Button } from '@/components/ui/button';
@@ -20,16 +20,16 @@ export default function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
-  const { user, loading } = useAuth();
+  const { isAuthenticated, loading } = useCombinedAuth();
   const router = useRouter();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/'); 
+    if (!loading && !isAuthenticated) {
+      router.replace('/');
     }
-  }, [user, loading, router]);
+  }, [isAuthenticated, loading, router]);
   
   useEffect(() => {
     async function loadSettings() {
@@ -44,7 +44,7 @@ export default function DashboardLayout({
     loadSettings();
   }, []);
 
-  if (loading || !user) {
+  if (loading || !isAuthenticated) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

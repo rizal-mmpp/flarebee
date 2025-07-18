@@ -20,7 +20,19 @@ const formatIDR = (amount: number) => {
   }).format(amount);
 };
 
+import { useRouter } from 'next/navigation';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
+
 export default function AdminDashboardPage() {
+  const { isAuthenticated, loading } = useCombinedAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.replace('/');
+    }
+  }, [isAuthenticated, loading, router]);
+
   const [services, setServices] = useState<Service[]>([]); // Updated state name and type
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);

@@ -37,7 +37,15 @@ export const loginWithERPNext = async (username: string, password: string): Prom
       }
     );
 
-    // Assuming session ID is handled by the API proxy and cookies
+    // Extract session ID from response cookies or headers
+    const setCookieHeader = response.headers['set-cookie'] || response.headers['Set-Cookie'];
+    if (setCookieHeader) {
+      const match = Array.isArray(setCookieHeader) ? setCookieHeader[0].match(/sid=([^;]+)/) : setCookieHeader.match(/sid=([^;]+)/);
+      if (match && match[1]) {
+        localStorage.setItem('erpnext_sid', match[1]);
+      }
+    }
+
     toast({
       title: 'Login Successful',
       description: 'Welcome back!'

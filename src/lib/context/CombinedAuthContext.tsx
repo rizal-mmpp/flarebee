@@ -47,22 +47,48 @@ function CombinedAuthContent({
   const isAuthenticated = authMethod === 'firebase' ? !!firebase.user : !!erpnext.user;
   const loading = authMethod === 'firebase' ? firebase.loading : erpnext.loading;
 
-  const signIn = async (username: string, password: string) => {
-    return authMethod === 'firebase'
-      ? firebase.signInWithEmailPassword(username, password)
-      : erpnext.signIn(username, password);
+  useEffect(() => {
+    if (erpnext.user && authMethod !== 'erpnext') {
+      setAuthMethod('erpnext');
+    } else if (firebase.user && authMethod !== 'firebase') {
+      setAuthMethod('firebase');
+    } else if (!firebase.user && !erpnext.user) {
+      setAuthMethod('erpnext'); // default to erpnext if no user
+    }
+  }, [erpnext.user, firebase.user, authMethod, setAuthMethod]);
+
+  const signIn = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    let result;
+    if (authMethod === 'firebase') {
+      result = await firebase.signInWithEmailPassword(username, password);
+      if (result.success) {
+        setAuthMethod('firebase');
+      }
+    } else {
+      result = await erpnext.signIn(username, password);
+      if (result.success) {
+        setAuthMethod('erpnext');
+      }
+    }
+    return result;
   };
 
-  const signOut = async () => {
+  const signOut = async (): Promise<{ success: boolean; error?: string }> => {
     if (authMethod === 'firebase') {
       await firebase.signOutUser();
-      return { success: true };
+      const result = { success: true };
+      setAuthMethod('erpnext'); // Reset to default auth method after sign out
+      return result;
     } else {
-      return erpnext.signOut();
+      const result = await erpnext.signOut();
+      if (result.success) {
+        setAuthMethod('erpnext'); // Reset to default auth method after sign out
+      }
+      return result;
     }
   };
 
-  const resetPassword = async (email: string) => {
+  const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
     return authMethod === 'firebase'
       ? firebase.sendPasswordReset(email)
       : erpnext.resetPassword(email);
