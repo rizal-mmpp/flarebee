@@ -8,7 +8,6 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
-import { useAuth as useFirebaseAuth } from '@/lib/firebase/AuthContext';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -16,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, LogIn, Eye, EyeOff } from 'lucide-react';
+import { useAuth as useFirebaseAuth } from '@/lib/firebase/AuthContext'; // Keep for Google Sign-In
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -26,7 +26,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const router = useRouter();
   const { isAuthenticated, signIn, loading, authMethod, setAuthMethod } = useCombinedAuth();
-  const { signInWithGoogle } = useFirebaseAuth();
+  const { signInWithGoogle } = useFirebaseAuth(); // Keep for Google Sign-In
   const [isSubmittingGoogle, setIsSubmittingGoogle] = useState(false);
   const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
   const [showPassword, setShowPassword] = useState(false);

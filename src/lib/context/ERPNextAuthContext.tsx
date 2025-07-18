@@ -1,6 +1,7 @@
+
 'use client';
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode, useCallback } from 'react';
 import { loginWithERPNext, logoutFromERPNext, resetERPNextPassword } from '@/lib/services/erpnext-auth';
 
 interface ERPNextUser {
@@ -23,119 +24,57 @@ export function ERPNextAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<ERPNextUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout;
-    const checkSession = async () => {
-      console.log("[ERPNextAuthContext] checkSession started");
-      const sessionId = localStorage.getItem('erpnext_sid');
-      if (sessionId) {
-        console.log("[ERPNextAuthContext] Session ID found in localStorage", sessionId);
-        try {
-          const getHeaders = (sessionId: string) => ({
-            Cookie: `sid=${sessionId}`,
-          });
+  const checkSession = useCallback(async () => {
+    setLoading(true);
+    const sessionId = localStorage.getItem('erpnext_sid');
+    if (sessionId) {
+      try {
+        const getHeaders = (sid: string) => ({ Cookie: `sid=${sid}` });
 
-          const loggedUserResponse = await fetch(
-            `${process.env.NEXT_PUBLIC_ERPNEXT_API_URL}/api/method/frappe.auth.get_logged_user`,
-            { headers: getHeaders(sessionId) }
-          );
+        const loggedUserResponse = await fetch(`${process.env.NEXT_PUBLIC_ERPNEXT_API_URL}/api/method/frappe.auth.get_logged_user`, { headers: getHeaders(sessionId) });
 
-          if (!loggedUserResponse.ok) {
-            throw new Error('Failed to get logged user');
-          }
+        if (!loggedUserResponse.ok || loggedUserResponse.status === 401) { throw new Error('Not logged in'); }
+        
+        const loggedUserData = await loggedUserResponse.json();
+        const userId = loggedUserData.message;
+        if (!userId || userId === 'Guest') { throw new Error('Guest user'); }
 
-          const loggedUserData = await loggedUserResponse.json();
-          const userId = loggedUserData.message;
+        const fields = ['email', 'full_name'];
+        const filters = [[`name`, `=`, userId]];
+        const userUrl = `${process.env.NEXT_PUBLIC_ERPNEXT_API_URL}/api/resource/User?fields=${encodeURIComponent(JSON.stringify(fields))}&filters=${encodeURIComponent(JSON.stringify(filters))}`;
+        const userResponse = await fetch(userUrl, { headers: getHeaders(sessionId) });
+        if (!userResponse.ok) { throw new Error('Failed to get user data'); }
 
-          const fields = ['email', 'full_name'];
-          const filters = [[`name`, `=`, userId]];
-          const userUrl = `${process.env.NEXT_PUBLIC_ERPNEXT_API_URL}/api/resource/User?fields=${encodeURIComponent(JSON.stringify(fields))}&filters=${encodeURIComponent(JSON.stringify(filters))}`;
+        const userResponseData = await userResponse.json();
+        const userData = userResponseData.data[0];
 
-          const userResponse = await fetch(userUrl, { headers: getHeaders(sessionId) });
-
-          if (!userResponse.ok) {
-            throw new Error('Failed to get user data');
-          }
-
-          const userResponseData = await userResponse.json();
-          const userData = userResponseData.data[0];
-
-          const userDetails = {
-            username: userId || '',
-            email: userData.email || '',
-            fullName: userData.full_name || ''
-          };
-
-          setUser(userDetails);
-        } catch (error) {
-          setUser(null);
-          localStorage.removeItem('erpnext_sid');
-        } finally {
-          setLoading(false);
-        }
-      } else {
+        setUser({
+          username: userId,
+          email: userData.email || '',
+          fullName: userData.full_name || ''
+        });
+      } catch (error) {
         setUser(null);
+        localStorage.removeItem('erpnext_sid');
+      } finally {
         setLoading(false);
       }
-    };
-
-    checkSession();
-    intervalId = setInterval(checkSession, 30000); // Poll every 30 seconds
-    return () => clearInterval(intervalId);
+    } else {
+      setUser(null);
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
+
   const signIn = async (username: string, password: string) => {
-    console.log("[ERPNextAuthContext] signIn called with username", username);
     setLoading(true);
     try {
       const result = await loginWithERPNext(username, password);
-      console.log("[ERPNextAuthContext] signIn result", result);
       if (result.success) {
-        // Fetch user details after successful login
-        const sessionId = localStorage.getItem('erpnext_sid');
-        if (sessionId) {
-          try {
-            const getHeaders = (sessionId: string) => ({
-              Cookie: `sid=${sessionId}`,
-            });
-
-            const loggedUserResponse = await fetch(
-              `${process.env.NEXT_PUBLIC_ERPNEXT_API_URL}/api/method/frappe.auth.get_logged_user`,
-              { headers: getHeaders(sessionId) }
-            );
-
-            if (!loggedUserResponse.ok) {
-              throw new Error('Failed to get logged user');
-            }
-
-            const loggedUserData = await loggedUserResponse.json();
-            const userId = loggedUserData.message;
-
-            const fields = ['email', 'full_name'];
-            const filters = [[`name`, `=`, userId]];
-            const userUrl = `${process.env.NEXT_PUBLIC_ERPNEXT_API_URL}/api/resource/User?fields=${encodeURIComponent(JSON.stringify(fields))}&filters=${encodeURIComponent(JSON.stringify(filters))}`;
-
-            const userResponse = await fetch(userUrl, { headers: getHeaders(sessionId) });
-
-            if (!userResponse.ok) {
-              throw new Error('Failed to get user data');
-            }
-
-            const userResponseData = await userResponse.json();
-            const userData = userResponseData.data[0];
-
-            const userDetails = {
-              username: userId || '',
-              email: userData.email || '',
-              fullName: userData.full_name || ''
-            };
-
-            setUser(userDetails);
-          } catch (error) {
-            setUser(null);
-            localStorage.removeItem('erpnext_sid');
-          }
-        }
+        await checkSession(); // Re-check session to get user details
       }
       return result;
     } finally {
