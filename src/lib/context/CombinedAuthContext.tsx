@@ -33,7 +33,7 @@ interface CombinedAuthContextType {
 const CombinedAuthContext = createContext<CombinedAuthContextType | undefined>(undefined);
 
 export function CombinedAuthProvider({ children }: { children: ReactNode }) {
-  const [authMethod, setAuthMethod] = useState<AuthMethod>('erpnext');
+  const [authMethod, setAuthMethod] = useState<AuthMethod>('firebase');
 
   return (
     <FirebaseAuthProvider>
@@ -94,12 +94,14 @@ function CombinedAuthContent({
       if (result.success) {
         // After a successful login, immediately check the session to get user data and update the state.
         await checkErpSession();
+        toast({ title: "Login Successful", description: 'Welcome back!' });
       } else {
+        toast({ title: "Login Failed", description: result.error, variant: 'destructive'});
         setIsErpLoading(false);
       }
       return result;
     }
-  }, [authMethod, firebase, checkErpSession]);
+  }, [authMethod, firebase, checkErpSession, toast]);
 
   const signOut = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
     if (authMethod === 'firebase') {
@@ -107,15 +109,24 @@ function CombinedAuthContent({
     } else {
       await logoutFromERPNext();
       setErpUser(null);
+      toast({ title: 'Logout Successful', description: 'You have been successfully logged out.' });
     }
     return { success: true };
-  }, [authMethod, firebase]);
+  }, [authMethod, firebase, toast]);
 
   const resetPassword = useCallback(async (email: string): Promise<{ success: boolean; error?: string }> => {
-    return authMethod === 'firebase'
-      ? firebase.sendPasswordReset(email)
-      : resetERPNextPassword(email);
-  }, [authMethod, firebase]);
+    if (authMethod === 'firebase') {
+        return firebase.sendPasswordReset(email);
+    } else {
+        const result = await resetERPNextPassword(email);
+        if (result.success) {
+             toast({ title: 'Password Reset Email Sent', description: 'If an account exists for this email, a password reset link has been sent.' });
+        } else {
+             toast({ title: 'Password Reset Failed', description: result.error, variant: 'destructive' });
+        }
+        return result;
+    }
+  }, [authMethod, firebase, toast]);
 
   const value = {
     authMethod,
