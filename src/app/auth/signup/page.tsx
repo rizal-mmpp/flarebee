@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { Loader2, UserPlus, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 
 const signupSchema = z.object({
   displayName: z.string().min(2, 'Display name must be at least 2 characters'),
@@ -49,14 +49,12 @@ export default function SignupPage() {
   const onEmailSubmit: SubmitHandler<SignupFormValues> = async (data) => {
     setIsSubmittingEmail(true);
     await signUpWithEmailPassword(data.email, data.password, data.displayName);
-    // AuthContext handles toast for error/success, useEffect handles redirect
     setIsSubmittingEmail(false);
   };
   
   const handleGoogleSignIn = async () => {
     setIsSubmittingGoogle(true);
     await signInWithGoogle();
-    // AuthContext handles toast for error/success, useEffect handles redirect
     setIsSubmittingGoogle(false);
   };
   
@@ -78,7 +76,7 @@ export default function SignupPage() {
       {/* Content */}
       <div className="relative flex min-h-screen flex-col items-center justify-center p-4 md:p-8">
         <Card className="w-full max-w-[90%] sm:max-w-[80%] md:max-w-[60%] lg:max-w-[40%] xl:max-w-[25%] backdrop-blur-xl bg-card/50 shadow-2xl border-border">
-      <CardHeader className="text-center">
+          <CardHeader className="text-center">
             <div className="mb-4">
               <Label htmlFor="auth-method">Authentication Method</Label>
               <Select value={authMethod} onValueChange={(value: 'firebase' | 'erpnext') => setAuthMethod(value)}>
@@ -87,126 +85,129 @@ export default function SignupPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="firebase">Firebase</SelectItem>
-                  <SelectItem value="erpnext">ERPNext</SelectItem>
+                  <SelectItem value="erpnext" disabled>ERPNext (Sign up via ERPNext)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-        <CardTitle className="text-2xl md:text-3xl">Create your RIO Account</CardTitle>
-        <CardDescription>Join our community and start creating today!</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-            {authMethod === 'firebase' && (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full bg-card/50 border-border text-card-foreground hover:bg-card/75"
-                onClick={handleGoogleSignIn}
-                disabled={isSubmittingEmail || isSubmittingGoogle || loading}
-              >
-                {isSubmittingGoogle ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                ) : (
-                  <img src="/img/google.webp" alt="Google" className="mr-2 h-5 w-5" />
-                )}
-                Sign Up with Google
-              </Button>
-            )}
-
-            {authMethod === 'firebase' && (
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground bg-card/50">OR</span>
-                </div>
+            <CardTitle className="text-2xl md:text-3xl">Create your RIO Account</CardTitle>
+            <CardDescription>Join our community and start creating today!</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {authMethod === 'erpnext' ? (
+              <div className="p-4 text-center text-sm bg-yellow-100/50 dark:bg-yellow-900/20 border border-yellow-500/30 rounded-lg text-yellow-800 dark:text-yellow-300">
+                <AlertTriangle className="inline-block h-5 w-5 mr-2" />
+                User registration is handled directly through our ERPNext system. Please contact an administrator to create an account.
               </div>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full bg-card/50 border-border text-card-foreground hover:bg-card/75"
+                  onClick={handleGoogleSignIn}
+                  disabled={isSubmittingEmail || isSubmittingGoogle || loading}
+                >
+                  {isSubmittingGoogle ? (
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  ) : (
+                    <img src="/img/google.webp" alt="Google" className="mr-2 h-5 w-5" />
+                  )}
+                  Sign Up with Google
+                </Button>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground bg-card/50">OR</span>
+                  </div>
+                </div>
+
+                <form onSubmit={handleSubmit(onEmailSubmit)} className="space-y-4">
+                  <div>
+                    <Label htmlFor="displayName">Display Name</Label>
+                    <Input 
+                      id="displayName" 
+                      {...register('displayName')} 
+                      placeholder="Your Name" 
+                      className="mt-1 bg-card/50 border-border text-card-foreground placeholder:text-muted-foreground focus:bg-card/75 transition-colors duration-200" 
+                    />
+                    {errors.displayName && <p className="text-sm text-destructive mt-1">{errors.displayName.message}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      {...register('email')} 
+                      placeholder="you@example.com" 
+                      className="mt-1 bg-card/50 border-border text-card-foreground placeholder:text-muted-foreground focus:bg-card/75 transition-colors duration-200" 
+                    />
+                    {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="password">Password</Label>
+                    <div className="relative mt-1">
+                      <Input 
+                        id="password" 
+                        type={showPassword ? "text" : "password"} 
+                        {...register('password')} 
+                        placeholder="•••••••• (min. 6 characters)"
+                        className="bg-card/50 border-border text-card-foreground placeholder:text-muted-foreground focus:bg-card/75 transition-colors duration-200"
+                      />
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    {errors.password && <p className="text-sm text-destructive mt-1">{errors.password.message}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <div className="relative mt-1">
+                      <Input 
+                        id="confirmPassword" 
+                        type={showConfirmPassword ? "text" : "password"} 
+                        {...register('confirmPassword')} 
+                        placeholder="••••••••"
+                        className="bg-card/50 border-border text-card-foreground placeholder:text-muted-foreground focus:bg-card/75 transition-colors duration-200"
+                      />
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    {errors.confirmPassword && <p className="text-sm text-destructive mt-1">{errors.confirmPassword.message}</p>}
+                  </div>
+                  <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isSubmittingEmail || isSubmittingGoogle || loading}>
+                    {isSubmittingEmail ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
+                    Sign Up with Email
+                  </Button>
+                </form>
+              </>
             )}
-
-        <form onSubmit={handleSubmit(onEmailSubmit)} className="space-y-4">
-          <div>
-            <Label htmlFor="displayName">Display Name</Label>
-            <Input 
-              id="displayName" 
-              {...register('displayName')} 
-              placeholder="Your Name" 
-              className="mt-1 bg-card/50 border-border text-card-foreground placeholder:text-muted-foreground focus:bg-card/75 transition-colors duration-200" 
-            />
-            {errors.displayName && <p className="text-sm text-destructive mt-1">{errors.displayName.message}</p>}
-          </div>
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input 
-              id="email" 
-              type="email" 
-              {...register('email')} 
-              placeholder="you@example.com" 
-              className="mt-1 bg-card/50 border-border text-card-foreground placeholder:text-muted-foreground focus:bg-card/75 transition-colors duration-200" 
-            />
-            {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
-          </div>
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <div className="relative mt-1">
-              <Input 
-                id="password" 
-                type={showPassword ? "text" : "password"} 
-                {...register('password')} 
-                placeholder="•••••••• (min. 6 characters)"
-                className="bg-card/50 border-border text-card-foreground placeholder:text-muted-foreground focus:bg-card/75 transition-colors duration-200"
-              />
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="icon" 
-                className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-            </div>
-            {errors.password && <p className="text-sm text-destructive mt-1">{errors.password.message}</p>}
-          </div>
-          <div>
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <div className="relative mt-1">
-              <Input 
-                id="confirmPassword" 
-                type={showConfirmPassword ? "text" : "password"} 
-                {...register('confirmPassword')} 
-                placeholder="••••••••"
-                className="bg-card/50 border-border text-card-foreground placeholder:text-muted-foreground focus:bg-card/75 transition-colors duration-200"
-              />
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="icon" 
-                className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-              >
-                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-            </div>
-            {errors.confirmPassword && <p className="text-sm text-destructive mt-1">{errors.confirmPassword.message}</p>}
-          </div>
-          <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isSubmittingEmail || isSubmittingGoogle || loading}>
-            {isSubmittingEmail ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
-            Sign Up with Email
-          </Button>
-        </form>
-
-
-      </CardContent>
-      <CardFooter className="flex flex-col items-center space-y-2 text-sm">
-        <p className="text-muted-foreground">
-          Already have an account?{' '}
-          <Link href="/auth/login" className="font-medium text-primary hover:underline">
-            Sign in
-          </Link>
-        </p>
-      </CardFooter>
+          </CardContent>
+          <CardFooter className="flex flex-col items-center space-y-2 text-sm">
+            <p className="text-muted-foreground">
+              Already have an account?{' '}
+              <Link href="/auth/login" className="font-medium text-primary hover:underline">
+                Sign in
+              </Link>
+            </p>
+          </CardFooter>
         </Card>
       </div>
     </div>

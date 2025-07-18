@@ -2,14 +2,27 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, type ReactNode, useCallback } from 'react';
-import { AuthProvider as FirebaseAuthProvider, useAuth as useFirebaseAuth } from '@/lib/firebase/AuthContext';
-import { ERPNextAuthProvider, useERPNextAuth } from '@/lib/context/ERPNextAuthContext';
+import { AuthProvider as FirebaseAuthProvider, useAuth as useFirebaseAuth, type AuthUser } from '@/lib/firebase/AuthContext';
+import { loginWithERPNext, logoutFromERPNext, resetERPNextPassword, getUserDetailsFromERPNext } from '@/lib/services/erpnext-auth';
+import { useToast } from '@/hooks/use-toast';
 
 type AuthMethod = 'firebase' | 'erpnext';
+
+interface ERPNextUser {
+  username: string;
+  email: string;
+  fullName: string;
+  photoURL?: string | null;
+}
+
+// A unified user type that can represent either auth system
+type CombinedUser = AuthUser | (ERPNextUser & { uid: string });
 
 interface CombinedAuthContextType {
   authMethod: AuthMethod;
   setAuthMethod: (method: AuthMethod) => void;
+  user: CombinedUser | null;
+  role: 'admin' | 'user' | null;
   isAuthenticated: boolean;
   loading: boolean;
   signIn: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -24,11 +37,9 @@ export function CombinedAuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <FirebaseAuthProvider>
-      <ERPNextAuthProvider>
-        <CombinedAuthContent authMethod={authMethod} setAuthMethod={setAuthMethod}>
-          {children}
-        </CombinedAuthContent>
-      </ERPNextAuthProvider>
+      <CombinedAuthContent authMethod={authMethod} setAuthMethod={setAuthMethod}>
+        {children}
+      </CombinedAuthContent>
     </FirebaseAuthProvider>
   );
 }
@@ -43,60 +54,73 @@ function CombinedAuthContent({
   setAuthMethod: (method: AuthMethod) => void;
 }) {
   const firebase = useFirebaseAuth();
-  const erpnext = useERPNextAuth();
+  const { toast } = useToast();
+  
+  const [erpUser, setErpUser] = useState<ERPNextUser | null>(null);
+  const [isErpLoading, setIsErpLoading] = useState(true);
 
-  const [combinedLoading, setCombinedLoading] = useState(true);
-
-  // Unify authentication status
-  const isAuthenticated = authMethod === 'firebase' ? !!firebase.user : !!erpnext.user;
-
-  // Effect to determine initial auth state on load
-  useEffect(() => {
-    setCombinedLoading(true);
-    // The individual contexts handle their own loading. We just need to wait for them.
-    if (!firebase.loading && !erpnext.loading) {
-      if (erpnext.user) {
-        setAuthMethod('erpnext');
-      } else if (firebase.user) {
-        setAuthMethod('firebase');
+  const checkErpSession = useCallback(async () => {
+    setIsErpLoading(true);
+    try {
+      const result = await getUserDetailsFromERPNext();
+      if (result.success && result.user) {
+        setErpUser(result.user);
+      } else {
+        setErpUser(null);
       }
-      setCombinedLoading(false);
+    } catch (error) {
+      setErpUser(null);
+    } finally {
+      setIsErpLoading(false);
     }
-  }, [firebase.user, firebase.loading, erpnext.user, erpnext.loading, setAuthMethod]);
+  }, []);
+  
+  useEffect(() => {
+    checkErpSession();
+  }, [checkErpSession]);
 
+  const user = authMethod === 'firebase' ? firebase.user : erpUser ? { ...erpUser, uid: erpUser.username } : null;
+  const role = authMethod === 'firebase' ? firebase.role : (user ? 'user' : null); // ERPNext role logic can be added here
+  const isAuthenticated = !!user;
+  const loading = firebase.loading || isErpLoading;
 
   const signIn = useCallback(async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    let result;
     if (authMethod === 'firebase') {
-      result = await firebase.signInWithEmailPassword(username, password);
+      return firebase.signInWithEmailPassword(username, password);
     } else {
-      result = await erpnext.signIn(username, password);
+      setIsErpLoading(true);
+      const result = await loginWithERPNext(username, password);
+      if (result.success) {
+        await checkErpSession(); // This is the crucial step to refresh the state
+      }
+      setIsErpLoading(false);
+      return result;
     }
-    return result;
-  }, [authMethod, firebase, erpnext]);
+  }, [authMethod, firebase, checkErpSession]);
 
   const signOut = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
     if (authMethod === 'firebase') {
       await firebase.signOutUser();
     } else {
-      await erpnext.signOut();
+      await logoutFromERPNext();
+      setErpUser(null);
     }
-    // Always reset to a default auth method after sign out
-    setAuthMethod('erpnext');
     return { success: true };
-  }, [authMethod, firebase, erpnext, setAuthMethod]);
+  }, [authMethod, firebase]);
 
   const resetPassword = useCallback(async (email: string): Promise<{ success: boolean; error?: string }> => {
     return authMethod === 'firebase'
       ? firebase.sendPasswordReset(email)
-      : erpnext.resetPassword(email);
-  }, [authMethod, firebase, erpnext]);
+      : resetERPNextPassword(email);
+  }, [authMethod, firebase]);
 
   const value = {
     authMethod,
     setAuthMethod,
+    user,
+    role,
     isAuthenticated,
-    loading: combinedLoading, // Use the combined loading state
+    loading,
     signIn,
     signOut,
     resetPassword,

@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
     const sid = match[1];
 
-    cookies().set({
+    (await cookies()).set({
       name: 'sid',
       value: sid,
       httpOnly: true,
