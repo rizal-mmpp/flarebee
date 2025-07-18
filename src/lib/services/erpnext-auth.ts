@@ -6,6 +6,7 @@
 interface AuthResponse {
   success: boolean;
   error?: string;
+  sid?: string; // Include sid for local storage management
 }
 
 /**
@@ -27,9 +28,13 @@ export const loginWithERPNext = async (username: string, password: string): Prom
       return { success: false, error: data.error || 'Login failed. Please try again.' };
     }
 
+    if (!data.sid) {
+      return { success: false, error: 'Session ID not received from server.' };
+    }
+
     // The API route now handles setting the cookie. We just store the session ID locally for state management.
     localStorage.setItem('erpnext_sid', data.sid);
-    return { success: true };
+    return { success: true, sid: data.sid };
   } catch (error: any) {
     console.error('ERPNext Login Service Error:', error);
     return { success: false, error: 'An unexpected error occurred during login.' };

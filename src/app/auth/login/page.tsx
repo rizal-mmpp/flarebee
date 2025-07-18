@@ -49,6 +49,12 @@ function LoginForm() {
     setIsSubmittingEmail(false);
   };
   
+  const handleGoogleSignIn = async () => {
+    setIsSubmittingGoogle(true);
+    await signInWithGoogle();
+    setIsSubmittingGoogle(false);
+  };
+  
   if (loading && !isAuthenticated) {
     return (
         <div className="flex min-h-[300px] items-center justify-center">
@@ -76,11 +82,7 @@ function LoginForm() {
           type="button"
           variant="outline"
           className="w-full bg-card/50 border-border text-card-foreground hover:bg-card/75"
-          onClick={async () => {
-            setIsSubmittingGoogle(true);
-            await signInWithGoogle();
-            setIsSubmittingGoogle(false);
-          }}
+          onClick={handleGoogleSignIn}
           disabled={isSubmittingEmail || isSubmittingGoogle || loading}
         >
           {isSubmittingGoogle ? (
