@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode, useCallback } from 'react';
 import { AuthProvider as FirebaseAuthProvider, useAuth as useFirebaseAuth } from '@/lib/firebase/AuthContext';
-import { useERPNextAuth, ERPNextAuthProvider } from '@/lib/context/ERPNextAuthContext';
+import { ERPNextAuthProvider, useERPNextAuth } from '@/lib/context/ERPNextAuthContext';
 
 type AuthMethod = 'firebase' | 'erpnext';
 
@@ -71,10 +71,6 @@ function CombinedAuthContent({
       result = await firebase.signInWithEmailPassword(username, password);
     } else {
       result = await erpnext.signIn(username, password);
-      if (result.success) {
-        // Trigger a session check to update user details after successful ERPNext login
-        await erpnext.checkSession();
-      }
     }
     return result;
   }, [authMethod, firebase, erpnext]);

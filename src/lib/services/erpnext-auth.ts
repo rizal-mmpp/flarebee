@@ -6,8 +6,22 @@
 interface AuthResponse {
   success: boolean;
   error?: string;
-  sid?: string; // Include sid for local storage management
+  sid?: string;
 }
+
+interface UserDetails {
+  username: string;
+  email: string;
+  fullName: string;
+  photoURL?: string | null;
+}
+
+interface UserDetailsResponse {
+  success: boolean;
+  user?: UserDetails;
+  error?: string;
+}
+
 
 /**
  * Authenticates user with ERPNext via our API route
@@ -16,9 +30,7 @@ export const loginWithERPNext = async (username: string, password: string): Prom
   try {
     const response = await fetch('/api/erpnext-auth/login', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ usr: username, pwd: password }),
     });
 
@@ -28,12 +40,6 @@ export const loginWithERPNext = async (username: string, password: string): Prom
       return { success: false, error: data.error || 'Login failed. Please try again.' };
     }
 
-    if (!data.sid) {
-      return { success: false, error: 'Session ID not received from server.' };
-    }
-
-    // The API route now handles setting the cookie. We just store the session ID locally for state management.
-    localStorage.setItem('erpnext_sid', data.sid);
     return { success: true, sid: data.sid };
   } catch (error: any) {
     console.error('ERPNext Login Service Error:', error);
@@ -53,7 +59,6 @@ export const logoutFromERPNext = async (): Promise<AuthResponse> => {
         return { success: false, error: data.error || 'Logout failed.' };
     }
     
-    localStorage.removeItem('erpnext_sid');
     return { success: true };
   } catch (error: any) {
     console.error('ERPNext Logout Service Error:', error);
@@ -68,9 +73,7 @@ export const resetERPNextPassword = async (email: string): Promise<AuthResponse>
    try {
     const response = await fetch('/api/erpnext-auth/reset-password', {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: email }),
     });
 
@@ -86,3 +89,21 @@ export const resetERPNextPassword = async (email: string): Promise<AuthResponse>
     return { success: false, error: 'An unexpected error occurred during password reset.' };
   }
 };
+
+
+/**
+ * Gets the current user's details from our API route
+ */
+export const getUserDetailsFromERPNext = async (): Promise<UserDetailsResponse> => {
+  try {
+    const response = await fetch('/api/erpnext-auth/get-user-details');
+    const data = await response.json();
+    if (!response.ok) {
+      return { success: false, error: data.error || 'Could not fetch user session.' };
+    }
+    return { success: true, user: data.user };
+  } catch (error) {
+    console.error('Get User Details Service Error:', error);
+    return { success: false, error: 'Failed to connect to server to check session.' };
+  }
+}

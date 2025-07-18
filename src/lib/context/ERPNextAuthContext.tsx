@@ -2,13 +2,14 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, type ReactNode, useCallback } from 'react';
-import { loginWithERPNext, logoutFromERPNext, resetERPNextPassword } from '@/lib/services/erpnext-auth';
+import { loginWithERPNext, logoutFromERPNext, resetERPNextPassword, getUserDetailsFromERPNext } from '@/lib/services/erpnext-auth';
 import { useToast } from '@/hooks/use-toast';
 
 interface ERPNextUser {
   username: string;
   email: string;
   fullName: string;
+  photoURL?: string | null;
 }
 
 interface ERPNextAuthContextType {
@@ -29,39 +30,16 @@ export function ERPNextAuthProvider({ children }: { children: ReactNode }) {
 
   const checkSession = useCallback(async () => {
     setLoading(true);
-    const sessionId = localStorage.getItem('erpnext_sid');
-    if (sessionId) {
-      try {
-        const getHeaders = (sid: string) => ({ Cookie: `sid=${sid}` });
-
-        const loggedUserResponse = await fetch(`/api/erpnext-auth/get-logged-user`);
-
-        if (!loggedUserResponse.ok || loggedUserResponse.status === 401) { throw new Error('Not logged in'); }
-        
-        const loggedUserData = await loggedUserResponse.json();
-        const userId = loggedUserData.message;
-        if (!userId || userId === 'Guest') { throw new Error('Guest user'); }
-
-        const userUrl = `/api/erpnext-auth/get-user-details?userId=${encodeURIComponent(userId)}`;
-        const userResponse = await fetch(userUrl);
-        if (!userResponse.ok) { throw new Error('Failed to get user data'); }
-
-        const userResponseData = await userResponse.json();
-        const userData = userResponseData.data[0];
-
-        setUser({
-          username: userId,
-          email: userData.email || '',
-          fullName: userData.full_name || ''
-        });
-      } catch (error) {
+    try {
+      const result = await getUserDetailsFromERPNext();
+      if (result.success && result.user) {
+        setUser(result.user);
+      } else {
         setUser(null);
-        localStorage.removeItem('erpnext_sid');
-      } finally {
-        setLoading(false);
       }
-    } else {
+    } catch (error) {
       setUser(null);
+    } finally {
       setLoading(false);
     }
   }, []);
