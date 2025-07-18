@@ -76,6 +76,7 @@ function CombinedAuthContent({
   }, []);
   
   useEffect(() => {
+    // This is the key fix: Check for an existing ERPNext session on initial load.
     checkErpSession();
   }, [checkErpSession]);
 
@@ -91,9 +92,11 @@ function CombinedAuthContent({
       setIsErpLoading(true);
       const result = await loginWithERPNext(username, password);
       if (result.success) {
-        await checkErpSession(); // This is the crucial step to refresh the state
+        // After a successful login, immediately check the session to get user data and update the state.
+        await checkErpSession();
+      } else {
+        setIsErpLoading(false);
       }
-      setIsErpLoading(false);
       return result;
     }
   }, [authMethod, firebase, checkErpSession]);
