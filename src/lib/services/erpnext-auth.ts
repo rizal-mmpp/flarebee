@@ -1,7 +1,7 @@
-import axios from 'axios';
-import { toast } from '@/hooks/use-toast';
 
-const API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
+'use client';
+
+// This file now acts as a client-side wrapper for our Next.js API routes
 
 interface AuthResponse {
   success: boolean;
@@ -9,98 +9,75 @@ interface AuthResponse {
 }
 
 /**
- * Handles ERPNext authentication service errors
- */
-const handleAuthError = (error: any, defaultMessage: string): AuthResponse => {
-  console.error('ERPNext Auth Error:', error);
-  const errorMessage = error.response?.data?.message || defaultMessage;
-  toast({
-    title: 'Authentication Error',
-    description: errorMessage,
-    variant: 'destructive'
-  });
-  return { success: false, error: errorMessage };
-};
-
-/**
- * Authenticates user with ERPNext
+ * Authenticates user with ERPNext via our API route
  */
 export const loginWithERPNext = async (username: string, password: string): Promise<AuthResponse> => {
   try {
-    const response = await axios.post(
-      `/api/method/login`,
-      new URLSearchParams({ usr: username, pwd: password }),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      }
-    );
-
-    // Extract session ID from response cookies or headers
-    const setCookieHeader = response.headers['set-cookie'] || response.headers['Set-Cookie'];
-    if (setCookieHeader) {
-      const match = Array.isArray(setCookieHeader) ? setCookieHeader[0].match(/sid=([^;]+)/) : setCookieHeader.match(/sid=([^;]+)/);
-      if (match && match[1]) {
-        localStorage.setItem('erpnext_sid', match[1]);
-      }
-    }
-
-    toast({
-      title: 'Login Successful',
-      description: 'Welcome back!'
+    const response = await fetch('/api/erpnext-auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ usr: username, pwd: password }),
     });
 
+    const data = await response.json();
+
+    if (!response.ok) {
+      return { success: false, error: data.error || 'Login failed. Please try again.' };
+    }
+
+    // The API route now handles setting the cookie. We just store the session ID locally for state management.
+    localStorage.setItem('erpnext_sid', data.sid);
     return { success: true };
   } catch (error: any) {
-    return handleAuthError(error, 'Login failed. Please try again.');
+    console.error('ERPNext Login Service Error:', error);
+    return { success: false, error: 'An unexpected error occurred during login.' };
   }
 };
 
 /**
- * Logs out user from ERPNext
+ * Logs out user from ERPNext via our API route
  */
 export const logoutFromERPNext = async (): Promise<AuthResponse> => {
   try {
-    await axios.get(`${API_URL}/api/method/logout`);
-    localStorage.removeItem('erpnext_sid');
+    const response = await fetch('/api/erpnext-auth/logout', { method: 'POST' });
     
-    toast({
-      title: 'Logout Successful',
-      description: 'You have been successfully logged out.'
-    });
-
+    if (!response.ok) {
+        const data = await response.json();
+        return { success: false, error: data.error || 'Logout failed.' };
+    }
+    
+    localStorage.removeItem('erpnext_sid');
     return { success: true };
   } catch (error: any) {
-    return handleAuthError(error, 'Logout failed. Please try again.');
+    console.error('ERPNext Logout Service Error:', error);
+    return { success: false, error: 'An unexpected error occurred during logout.' };
   }
 };
 
 /**
- * Sends password reset request to ERPNext
+ * Sends password reset request to ERPNext via our API route
  */
 export const resetERPNextPassword = async (email: string): Promise<AuthResponse> => {
-  try {
-    const response = await axios.post(
-      `${API_URL}/api/method/frappe.core.doctype.user.user.reset_password`,
-      new URLSearchParams({ user: email }),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      }
-    );
+   try {
+    const response = await fetch('/api/erpnext-auth/reset-password', {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email: email }),
+    });
 
-    if (response.status === 200) {
-      toast({
-        title: 'Password Reset Email Sent',
-        description: 'If an account exists for this email, a password reset link has been sent.'
-      });
-      return { success: true };
+     const data = await response.json();
+
+    if (!response.ok) {
+      return { success: false, error: data.error || 'Password reset request failed.'};
     }
 
-    throw new Error('Password reset request failed');
+    return { success: true };
   } catch (error: any) {
-    return handleAuthError(error, 'Failed to send password reset email.');
+     console.error('ERPNext Password Reset Service Error:', error);
+    return { success: false, error: 'An unexpected error occurred during password reset.' };
   }
 };

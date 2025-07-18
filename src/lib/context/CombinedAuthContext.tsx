@@ -71,6 +71,10 @@ function CombinedAuthContent({
       result = await firebase.signInWithEmailPassword(username, password);
     } else {
       result = await erpnext.signIn(username, password);
+      if (result.success) {
+        // Trigger a session check to update user details after successful ERPNext login
+        await erpnext.checkSession();
+      }
     }
     return result;
   }, [authMethod, firebase, erpnext]);

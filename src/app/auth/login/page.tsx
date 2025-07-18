@@ -1,14 +1,13 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
-import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,38 +22,145 @@ const loginSchema = z.object({
 });
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isAuthenticated, signIn, loading, authMethod, setAuthMethod } = useCombinedAuth();
-  const { signInWithGoogle } = useFirebaseAuth(); // Keep for Google Sign-In
+  const { signInWithGoogle } = useFirebaseAuth();
   const [isSubmittingGoogle, setIsSubmittingGoogle] = useState(false);
   const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const redirectUrl = searchParams.get('redirect') || '/dashboard';
+      router.replace(redirectUrl);
+    }
+  }, [isAuthenticated, router, searchParams]);
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
   });
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      router.replace('/dashboard');
-    }
-  }, [isAuthenticated, router]);
-
   const onEmailSubmit: SubmitHandler<LoginFormValues> = async (data) => {
     setIsSubmittingEmail(true);
     await signIn(data.email, data.password);
+    // Let the useEffect handle redirection
     setIsSubmittingEmail(false);
   };
   
   if (loading && !isAuthenticated) {
     return (
-        <div className="flex min-h-screen items-center justify-center">
+        <div className="flex min-h-[300px] items-center justify-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </div>
     );
   }
 
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <Label htmlFor="auth-method">Authentication Method</Label>
+        <Select value={authMethod} onValueChange={(value: 'firebase' | 'erpnext') => setAuthMethod(value)}>
+          <SelectTrigger id="auth-method" className="bg-card/50 border-border text-card-foreground">
+            <SelectValue placeholder="Select authentication method" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="firebase">Firebase</SelectItem>
+            <SelectItem value="erpnext">ERPNext</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      {authMethod === 'firebase' && (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full bg-card/50 border-border text-card-foreground hover:bg-card/75"
+          onClick={async () => {
+            setIsSubmittingGoogle(true);
+            await signInWithGoogle();
+            setIsSubmittingGoogle(false);
+          }}
+          disabled={isSubmittingEmail || isSubmittingGoogle || loading}
+        >
+          {isSubmittingGoogle ? (
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          ) : (
+            <img src="/img/google.webp" alt="Google" className="mr-2 h-5 w-5" />
+          )}
+          Sign In with Google
+        </Button>
+      )}
+
+      {authMethod === 'firebase' && (
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-border" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground bg-card/50">OR</span>
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit(onEmailSubmit)} className="space-y-4">
+        <div>
+          <Label htmlFor="email" className="text-sm font-medium text-card-foreground">Email</Label>
+          <Input 
+            id="email" 
+            type="email" 
+            {...register('email')} 
+            placeholder="you@example.com" 
+            className="mt-1 bg-card/50 border-border text-card-foreground placeholder:text-muted-foreground focus:bg-card/75 transition-colors duration-200" 
+          />
+          {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
+        </div>
+        <div>
+          <div className="flex justify-between items-center">
+            <Label htmlFor="password" className="text-sm font-medium text-card-foreground">Password</Label>
+            <Link 
+              href="/auth/forgot-password" 
+              className="text-sm font-medium text-primary hover:text-primary/90 transition-colors duration-200 hover:underline"
+            >
+              Forgot Password?
+            </Link>
+          </div>
+          <div className="relative mt-1">
+            <Input 
+              id="password" 
+              type={showPassword ? "text" : "password"} 
+              {...register('password')} 
+              placeholder="••••••••"
+              className="bg-card/50 border-border text-card-foreground placeholder:text-muted-foreground focus:bg-card/75 transition-colors duration-200"
+            />
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="icon" 
+              className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:text-card-foreground transition-colors duration-200"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+          </div>
+          {errors.password && <p className="text-sm text-destructive mt-1">{errors.password.message}</p>}
+        </div>
+        <Button 
+          type="submit" 
+          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-colors duration-200" 
+          disabled={isSubmittingEmail || isSubmittingGoogle || loading}
+        >
+          {isSubmittingEmail ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <LogIn className="mr-2 h-5 w-5" />}
+          Sign In
+        </Button>
+      </form>
+    </div>
+  );
+}
+
+
+export default function LoginPage() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
       {/* Gradient Circles */}
@@ -73,103 +179,10 @@ export default function LoginPage() {
               Sign in to access your account and services.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="auth-method">Authentication Method</Label>
-              <Select value={authMethod} onValueChange={(value: 'firebase' | 'erpnext') => setAuthMethod(value)}>
-                <SelectTrigger id="auth-method" className="bg-card/50 border-border text-card-foreground">
-                  <SelectValue placeholder="Select authentication method" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="firebase">Firebase</SelectItem>
-                  <SelectItem value="erpnext">ERPNext</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {authMethod === 'firebase' && (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full bg-card/50 border-border text-card-foreground hover:bg-card/75"
-                onClick={async () => {
-                  setIsSubmittingGoogle(true);
-                  await signInWithGoogle();
-                  setIsSubmittingGoogle(false);
-                }}
-                disabled={isSubmittingEmail || isSubmittingGoogle || loading}
-              >
-                {isSubmittingGoogle ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                ) : (
-                  <img src="/img/google.webp" alt="Google" className="mr-2 h-5 w-5" />
-                )}
-                Sign In with Google
-              </Button>
-            )}
-
-            {authMethod === 'firebase' && (
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground bg-card/50">OR</span>
-                </div>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit(onEmailSubmit)} className="space-y-4">
-              <div>
-                <Label htmlFor="email" className="text-sm font-medium text-card-foreground">Email</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  {...register('email')} 
-                  placeholder="you@example.com" 
-                  className="mt-1 bg-card/50 border-border text-card-foreground placeholder:text-muted-foreground focus:bg-card/75 transition-colors duration-200" 
-                />
-                {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
-              </div>
-              <div>
-                <div className="flex justify-between items-center">
-                  <Label htmlFor="password" className="text-sm font-medium text-card-foreground">Password</Label>
-                  <Link 
-                    href="/auth/forgot-password" 
-                    className="text-sm font-medium text-primary hover:text-primary/90 transition-colors duration-200 hover:underline"
-                  >
-                    Forgot Password?
-                  </Link>
-                </div>
-                <div className="relative mt-1">
-                  <Input 
-                    id="password" 
-                    type={showPassword ? "text" : "password"} 
-                    {...register('password')} 
-                    placeholder="••••••••"
-                    className="bg-card/50 border-border text-card-foreground placeholder:text-muted-foreground focus:bg-card/75 transition-colors duration-200"
-                  />
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="icon" 
-                    className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:text-card-foreground transition-colors duration-200"
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-                {errors.password && <p className="text-sm text-destructive mt-1">{errors.password.message}</p>}
-              </div>
-              <Button 
-                type="submit" 
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-colors duration-200" 
-                disabled={isSubmittingEmail || isSubmittingGoogle || loading}
-              >
-                {isSubmittingEmail ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <LogIn className="mr-2 h-5 w-5" />}
-                Sign In
-              </Button>
-            </form>
+          <CardContent>
+            <Suspense fallback={<div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin"/></div>}>
+              <LoginForm />
+            </Suspense>
           </CardContent>
         </Card>
 
