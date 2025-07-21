@@ -50,18 +50,6 @@ async function postToErpNext(doctype: string, data: any, sid: string) {
 }
 
 // Data transformation functions
-function transformUserData(user: UserProfile) {
-    // ERPNext 'User' doctype often uses email as the name (primary key)
-    return {
-        email: user.email,
-        first_name: user.displayName?.split(' ')[0] || user.displayName,
-        last_name: user.displayName?.split(' ').slice(1).join(' ') || '',
-        user_image: user.photoURL,
-        role_profile_name: user.role === 'admin' ? 'System Manager' : 'Customer', // Example mapping
-        // Any other fields that need to be mapped
-    };
-}
-
 function transformServiceData(service: Service) {
     return {
         // Assuming ERPNext doctype 'Service' has these fields
@@ -120,7 +108,8 @@ export async function runMigrationAction(
         return { success: false, message: 'ERPNext session not found. Please log in to ERPNext first.' };
     }
 
-    const collectionsToMigrate = ['users', 'services', 'sitePages', 'orders']; 
+    // 'users' collection removed from migration
+    const collectionsToMigrate = ['services', 'sitePages', 'orders']; 
 
     for (const collectionName of collectionsToMigrate) {
         try {
@@ -140,9 +129,6 @@ export async function runMigrationAction(
                 
                 // Choose the right transformation function
                 switch (collectionName) {
-                    case 'users':
-                        dataToPost = transformUserData(docData as unknown as UserProfile);
-                        break;
                     case 'services':
                         dataToPost = transformServiceData(docData as unknown as Service);
                         break;

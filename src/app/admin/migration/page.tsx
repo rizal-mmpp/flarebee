@@ -9,7 +9,7 @@ import { Loader2, DatabaseZap, CheckCircle, AlertTriangle, ListChecks, ServerCra
 import { runMigrationAction } from '@/lib/actions/migration.actions';
 import type { MigrationStatus } from '@/lib/actions/migration.actions';
 
-const collectionNames = ['users', 'services', 'sitePages', 'siteSettings', 'orders', 'userCarts'];
+const collectionNames = ['services', 'sitePages', 'orders', 'siteSettings', 'userCarts'];
 
 export default function MigrationPage() {
   const [isMigrating, startMigration] = useTransition();
