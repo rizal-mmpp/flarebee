@@ -17,7 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
-import { useAuth } from '@/lib/firebase/AuthContext';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 
 
 const formatIDR = (amount: number | string | undefined | null) => {
@@ -101,7 +101,7 @@ export default function ServiceDetailPage({ params: paramsPromise }: { params: P
   const params = use(paramsPromise);
   const slug = params.id;
   const router = useRouter();
-  const { user } = useAuth(); // Use auth to check login state
+  const { user } = useCombinedAuth(); // Use auth to check login state
 
   const [service, setService] = useState<Service | null>(null);
   const [isLoading, setIsLoading] = useState(true);

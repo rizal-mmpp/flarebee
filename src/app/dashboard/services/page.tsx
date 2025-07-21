@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/lib/firebase/AuthContext';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { getOrdersByUserIdFromFirestore } from '@/lib/firebase/firestoreOrders';
 import { getServiceBySlugFromFirestore } from '@/lib/firebase/firestoreServices';
 import type { Order } from '@/lib/types';
@@ -34,7 +34,7 @@ function parseServiceTitle(title: string): { serviceTitle: string; packageName: 
 }
 
 export default function MyServicesPage() {
-  const { user } = useAuth();
+  const { user } = useCombinedAuth();
   const [purchasedServices, setPurchasedServices] = useState<PurchasedService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

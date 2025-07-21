@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/lib/firebase/AuthContext';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { getOrderByOrderIdFromFirestore } from '@/lib/firebase/firestoreOrders';
 import type { Order } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -56,7 +56,7 @@ const InfoRow = ({ label, value, icon: Icon, children }: { label: string, value?
 export default function UserOrderDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useCombinedAuth();
   const orderId = params.orderId as string;
 
   const [order, setOrder] = useState<Order | null>(null);

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useAuth } from '@/lib/firebase/AuthContext';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Briefcase, Settings, Download, Loader2, AlertCircle, ExternalLink, ShoppingBag, CreditCard, Clock, User, LogOut, ShoppingCart, DollarSign, Receipt } from 'lucide-react';
@@ -64,7 +64,7 @@ const StatCard = ({ title, value, icon, description, action }: { title: string, 
 );
 
 export default function UserDashboardPage() {
-  const { user } = useAuth();
+  const { user } = useCombinedAuth();
   const { cartItems, getCartTotal, cartLoading } = useCart();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);

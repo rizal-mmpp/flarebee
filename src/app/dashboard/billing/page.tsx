@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/lib/firebase/AuthContext';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { getOrdersByUserIdFromFirestore } from '@/lib/firebase/firestoreOrders';
 import type { Order } from '@/lib/types';
 import { useCart } from '@/context/CartContext';
@@ -41,7 +41,7 @@ const getStatusBadgeVariant = (status?: string) => {
 };
 
 export default function BillingPage() {
-  const { user } = useAuth();
+  const { user } = useCombinedAuth();
   const { cartItems, getCartTotal, cartLoading, removeFromCart } = useCart();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);

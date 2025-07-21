@@ -4,7 +4,7 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/firebase/AuthContext';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { Loader2, PanelLeft } from 'lucide-react';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,7 @@ export default function AdminLayout({
 }: {
   children: ReactNode;
 }) {
-  const { user, role, loading: authLoading } = useAuth();
+  const { user, role, loading: authLoading } = useCombinedAuth();
   const router = useRouter();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);

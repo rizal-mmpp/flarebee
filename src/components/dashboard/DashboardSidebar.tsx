@@ -17,7 +17,7 @@ import {
   Compass,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/lib/firebase/AuthContext';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '../ui/separator';
@@ -57,7 +57,7 @@ const exploreNavItems = [
 
 export function DashboardSidebar({ onLinkClick, logoUrl, siteTitle }: DashboardSidebarProps) {
   const pathname = usePathname();
-  const { user, signOutUser } = useAuth();
+  const { user, signOut } = useCombinedAuth();
   const { cartItems } = useCart();
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
 
@@ -174,7 +174,7 @@ export function DashboardSidebar({ onLinkClick, logoUrl, siteTitle }: DashboardS
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={signOutUser} className="cursor-pointer text-destructive focus:text-destructive">
+                  <DropdownMenuItem onClick={signOut} className="cursor-pointer text-destructive focus:text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign Out</span>
                   </DropdownMenuItem>

@@ -5,7 +5,7 @@ import { Hexagon, LogIn, LogOut, UserCircle, ShieldCheck, LayoutDashboard, Brief
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/firebase/AuthContext';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { useCart } from '@/context/CartContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -28,7 +28,7 @@ import NextImage from 'next/image';
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, role, signOutUser, loading } = useAuth();
+  const { user, role, signOut, loading } = useCombinedAuth();
   const { cartItems } = useCart();
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
 
@@ -183,7 +183,7 @@ export function Navbar() {
                         </Link>
                       </DropdownMenuItem>
                    )}
-                  <DropdownMenuItem onClick={signOutUser} className={cn(desktopDropdownItemClass, "text-destructive focus:text-destructive")}>
+                  <DropdownMenuItem onClick={signOut} className={cn(desktopDropdownItemClass, "text-destructive focus:text-destructive")}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign Out</span>
                   </DropdownMenuItem>
@@ -254,7 +254,7 @@ export function Navbar() {
                   </Link>
                 )}
 
-                <Accordion type="multiple" collapsible className="w-full">
+                <Accordion type="multiple" className="w-full">
                   <AccordionItem value="explore-services" className="border-b-0 mb-1">
                     <AccordionTrigger className={mobileMenuAccordionTriggerClass}>
                       <div className="flex items-center">
@@ -345,7 +345,7 @@ export function Navbar() {
                   ) : user ? (
                     <Button 
                       variant="outline" 
-                      onClick={() => { signOutUser(); setMobileMenuOpen(false); }} 
+                      onClick={() => { signOut(); setMobileMenuOpen(false); }} 
                       className="w-full group text-destructive border-destructive/70 hover:bg-destructive/10 hover:text-destructive hover:border-destructive"
                     >
                       <LogOut className="mr-2 h-4 w-4" />

@@ -8,7 +8,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Trash2, CreditCard, ShoppingBag, ArrowLeft, Loader2, LogIn } from 'lucide-react';
 import { createXenditInvoice } from '@/lib/actions/xendit.actions';
-import { useAuth } from '@/lib/firebase/AuthContext';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from '@/hooks/use-toast';
@@ -24,7 +24,7 @@ interface XenditFormattedItem {
 
 export default function CheckoutPage() {
   const { cartItems, removeFromCart, getCartTotal, cartLoading } = useCart();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useCombinedAuth();
   const router = useRouter();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 

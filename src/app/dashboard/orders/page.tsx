@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/lib/firebase/AuthContext';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { getOrdersByUserIdFromFirestore } from '@/lib/firebase/firestoreOrders';
 import type { Order } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -40,7 +40,7 @@ const getStatusBadgeVariant = (status?: string) => {
 };
 
 export default function UserOrdersPage() {
-  const { user } = useAuth();
+  const { user } = useCombinedAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
