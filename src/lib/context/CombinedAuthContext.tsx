@@ -85,7 +85,7 @@ function CombinedAuthContent({
             displayName: result.user.fullName,
             email: result.user.email,
             photoURL: result.user.photoURL,
-            role: 'user', // Add logic for admin roles if needed
+            role: result.user.username === 'Administrator' ? 'admin' : 'user',
         });
       } else {
         setErpUser(null);
