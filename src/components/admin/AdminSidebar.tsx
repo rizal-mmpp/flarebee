@@ -12,9 +12,10 @@ import {
   Hexagon,
   CreditCard, 
   TestTube2, 
-  Archive, // Changed from UploadCloud
+  Archive,
   LibraryBig,
   Briefcase, 
+  DatabaseZap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NextImage from 'next/image';
@@ -31,10 +32,11 @@ const adminNavItems = [
   { href: '/admin/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/admin/customers', label: 'Customers', icon: Users },
   { href: '/admin/pages', label: 'Pages', icon: FileText },
-  { href: '/admin/assets', label: 'Assets', icon: Archive }, // Changed href here
+  { href: '/admin/assets', label: 'Assets', icon: Archive },
   { href: '/admin/docs', label: 'Documentation', icon: LibraryBig },
   { type: 'divider', key: 'div1' },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
+  { href: '/admin/migration', label: 'Data Migration', icon: DatabaseZap },
   { type: 'divider', key: 'div2' },
   { href: '/admin/xendit-test', label: 'Xendit Tests', icon: TestTube2 },
   { href: '/admin/ipaymu-test', label: 'iPaymu Tests', icon: CreditCard }, 
