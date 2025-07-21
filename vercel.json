@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://v17.wolve.pro/api/:path*"
+    }
+  ]
+}
