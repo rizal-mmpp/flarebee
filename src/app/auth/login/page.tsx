@@ -16,10 +16,12 @@ import { Label } from '@/components/ui/label';
 import { Loader2, LogIn, Eye, EyeOff } from 'lucide-react';
 import { useAuth as useFirebaseAuth } from '@/lib/firebase/AuthContext'; // Keep for Google Sign-In
 
+// Allow string for username or email, but enforce email format for firebase
 const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  loginId: z.string().min(1, 'Username or Email is required'),
   password: z.string().min(1, 'Password is required'),
 });
+
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 function LoginForm() {
@@ -44,7 +46,8 @@ function LoginForm() {
 
   const onEmailSubmit: SubmitHandler<LoginFormValues> = async (data) => {
     setIsSubmittingEmail(true);
-    await signIn(data.email, data.password);
+    // Use loginId for both username and email
+    await signIn(data.loginId, data.password);
     // Let the useEffect handle redirection
     setIsSubmittingEmail(false);
   };
@@ -107,15 +110,17 @@ function LoginForm() {
 
       <form onSubmit={handleSubmit(onEmailSubmit)} className="space-y-4">
         <div>
-          <Label htmlFor="email" className="text-sm font-medium text-card-foreground">Email</Label>
+          <Label htmlFor="loginId" className="text-sm font-medium text-card-foreground">
+            {authMethod === 'erpnext' ? 'Username or Email' : 'Email'}
+          </Label>
           <Input 
-            id="email" 
-            type="email" 
-            {...register('email')} 
-            placeholder="you@example.com" 
+            id="loginId" 
+            type={authMethod === 'firebase' ? 'email' : 'text'} 
+            {...register('loginId')} 
+            placeholder={authMethod === 'erpnext' ? "Your Username or Email" : "you@example.com"}
             className="mt-1 bg-card/50 border-border text-card-foreground placeholder:text-muted-foreground focus:bg-card/75 transition-colors duration-200" 
           />
-          {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
+          {errors.loginId && <p className="text-sm text-destructive mt-1">{errors.loginId.message}</p>}
         </div>
         <div>
           <div className="flex justify-between items-center">
