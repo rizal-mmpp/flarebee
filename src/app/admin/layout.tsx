@@ -21,15 +21,15 @@ export default function AdminLayout({
 }: {
   children: ReactNode;
 }) {
-  const { user, loading: authLoading } = useCombinedAuth();
+  const { user, authMethod, loading: authLoading } = useCombinedAuth();
   const router = useRouter();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(true);
 
   useEffect(() => {
-    console.log('[AdminLayout] User State:', user);
-  }, [user]);
+    console.log('[AdminLayout] Auth Method:', authMethod, '| User State:', user);
+  }, [user, authMethod]);
 
   useEffect(() => {
     if (!authLoading) {

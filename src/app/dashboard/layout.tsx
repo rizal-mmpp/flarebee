@@ -20,14 +20,14 @@ export default function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
-  const { isAuthenticated, user, loading } = useCombinedAuth();
+  const { isAuthenticated, user, authMethod, loading } = useCombinedAuth();
   const router = useRouter();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
 
   useEffect(() => {
-    console.log('[DashboardLayout] User State:', user);
-  }, [user]);
+    console.log('[DashboardLayout] Auth Method:', authMethod, '| User State:', user);
+  }, [user, authMethod]);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {

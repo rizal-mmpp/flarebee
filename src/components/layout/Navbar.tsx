@@ -28,13 +28,13 @@ import NextImage from 'next/image';
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, signOut, loading } = useCombinedAuth();
+  const { user, authMethod, signOut, loading } = useCombinedAuth();
   const { cartItems } = useCart();
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
 
   useEffect(() => {
-    console.log('[Navbar] User State:', user);
-  }, [user]);
+    console.log('[Navbar] Auth Method:', authMethod, '| User State:', user);
+  }, [user, authMethod]);
 
   useEffect(() => {
     async function fetchSettings() {
