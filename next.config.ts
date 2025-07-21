@@ -71,14 +71,6 @@ const nextConfig: NextConfig = {
       }
     ],
   },
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_ERPNEXT_API_URL}/api/:path*`,
-      },
-    ];
-  },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
@@ -89,7 +81,6 @@ const nextConfig: NextConfig = {
     config.experiments = { ...config.experiments, topLevelAwait: true };
     return config;
   },
-  turbo: process.env.NODE_ENV === 'development' ? { cacheDirectory: false } : undefined,
 };
 
 export default nextConfig;
