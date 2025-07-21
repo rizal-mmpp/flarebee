@@ -33,6 +33,10 @@ export function Navbar() {
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
 
   useEffect(() => {
+    console.log('[Navbar] User State:', user);
+  }, [user]);
+
+  useEffect(() => {
     async function fetchSettings() {
       try {
         const settings = await getSiteSettings();

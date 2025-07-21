@@ -28,6 +28,10 @@ export default function AdminLayout({
   const [settingsLoading, setSettingsLoading] = useState(true);
 
   useEffect(() => {
+    console.log('[AdminLayout] User State:', user);
+  }, [user]);
+
+  useEffect(() => {
     if (!authLoading) {
       if (!user) {
         router.replace('/'); 
