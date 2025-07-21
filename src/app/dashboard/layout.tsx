@@ -26,10 +26,6 @@ export default function DashboardLayout({
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
 
   useEffect(() => {
-    console.log('[DashboardLayout] Auth Method:', authMethod, '| User State:', user);
-  }, [user, authMethod]);
-
-  useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.replace('/');
     }

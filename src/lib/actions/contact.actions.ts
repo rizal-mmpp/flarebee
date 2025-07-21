@@ -8,12 +8,6 @@ import type { ContactFormValues } from '@/lib/types';
 export async function submitContactFormAction(
   data: ContactFormValues
 ): Promise<{ success: boolean; message: string }> {
-  console.log("Contact Form Submission Received (Server Action):");
-  console.log("Name:", data.name);
-  console.log("Business Name:", data.businessName || "N/A");
-  console.log("Email:", data.email);
-  console.log("Phone:", data.phone || "N/A");
-  console.log("Message:", data.message);
 
   // Simulate sending an email or saving to a database
   // For example, using a service like Resend or saving to Firestore:

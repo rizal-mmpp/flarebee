@@ -33,10 +33,6 @@ export function Navbar() {
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
 
   useEffect(() => {
-    console.log('[Navbar] Auth Method:', authMethod, '| User State:', user);
-  }, [user, authMethod]);
-
-  useEffect(() => {
     async function fetchSettings() {
       try {
         const settings = await getSiteSettings();

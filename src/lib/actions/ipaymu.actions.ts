@@ -114,12 +114,6 @@ export async function createIpaymuRedirectPayment(args: CreateIpaymuPaymentArgs)
   const endpoint = `${IPAYMU_BASE_URL}/payment`; // This is the redirect payment endpoint
 
   try {
-    console.log("Sending to iPaymu (Redirect):", endpoint);
-    console.log("Request Body:", JSON.stringify(requestBody, null, 2));
-    console.log("VA:", IPAYMU_VA);
-    console.log("Signature:", signature);
-    console.log("Timestamp:", timestamp);
-
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -133,7 +127,6 @@ export async function createIpaymuRedirectPayment(args: CreateIpaymuPaymentArgs)
     });
 
     const responseData = await response.json();
-    console.log("iPaymu Response:", responseData);
 
     if (!response.ok || responseData.Status !== 200) {
       const errorMessage = responseData.Message || `iPaymu API request failed with status ${response.status}`;
@@ -176,12 +169,6 @@ export async function checkIpaymuTransaction(transactionId: string): Promise<Ipa
     const endpoint = `${IPAYMU_BASE_URL}/transaction`;
 
     try {
-        console.log("Checking iPaymu Transaction:", endpoint);
-        console.log("Request Body:", JSON.stringify(requestBody, null, 2));
-        console.log("VA:", IPAYMU_VA);
-        console.log("Signature:", signature);
-        console.log("Timestamp:", timestamp);
-
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
@@ -195,7 +182,6 @@ export async function checkIpaymuTransaction(transactionId: string): Promise<Ipa
         });
 
         const responseData = await response.json();
-        console.log("iPaymu Transaction Status Response:", responseData);
 
         if (!response.ok || responseData.Status !== 200) {
             const errorMessage = responseData.Message || `iPaymu API request failed with status ${response.status}`;

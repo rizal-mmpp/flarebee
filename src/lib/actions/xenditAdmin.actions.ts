@@ -38,12 +38,10 @@ export async function getXenditBalance(): Promise<XenditBalanceResult> {
 
     if (!response.ok) {
       const errorMessage = responseData.message || `Xendit API request failed with status ${response.status}`;
-      console.error('Xendit API Error (Balance):', responseData);
       return { error: errorMessage, rawResponse: responseData };
     }
 
     if (typeof responseData.balance !== 'number') {
-        console.error('Xendit API Error (Balance): "balance" field is missing or not a number.', responseData);
         return { error: 'Invalid balance data received from Xendit.', rawResponse: responseData };
     }
 
@@ -142,7 +140,6 @@ export async function createXenditPaymentRequest(args: CreatePaymentRequestArgs)
 
     if (!response.ok) {
       const errorMessage = responseData.error_code ? `${responseData.error_code}: ${responseData.message}` : (responseData.message || `Xendit API request failed with status ${response.status}`);
-      console.error('Xendit API Error (Payment Request):', responseData);
       return { error: errorMessage, rawResponse: responseData };
     }
     
@@ -207,7 +204,6 @@ export async function createXenditTestInvoice(args: CreateTestInvoiceArgs): Prom
     const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
     
     if (!host) {
-        console.error("Error in createXenditTestInvoice: Host header is missing or null.");
         return { error: "Failed to determine application host. Cannot proceed with payment test." };
     }
     const appBaseUrl = `${protocol}://${host}`;
@@ -265,7 +261,6 @@ export async function createXenditTestInvoice(args: CreateTestInvoiceArgs): Prom
       const errorMessage = responseData.error_code 
         ? `${responseData.error_code}: ${responseData.message}` 
         : (responseData.message || `Xendit API request failed with status ${response.status}`);
-      console.error('Xendit API Error (Create Invoice):', responseData);
       return { error: errorMessage, rawResponse: responseData };
     }
     
@@ -307,7 +302,6 @@ export async function getXenditTestInvoice(invoiceId: string): Promise<XenditInv
       const errorMessage = responseData.error_code 
         ? `${responseData.error_code}: ${responseData.message}` 
         : (responseData.message || `Xendit API request failed with status ${response.status}`);
-      console.error(`Xendit API Error (Get Invoice ${invoiceId}):`, responseData);
       return { error: errorMessage, rawResponse: responseData };
     }
     
@@ -391,7 +385,6 @@ export async function simulateXenditInvoicePayment(args: SimulatePaymentArgs): P
       const errorMessage = responseData.error_code 
         ? `${responseData.error_code}: ${responseData.message}` 
         : (responseData.message || `Xendit API request failed with status ${response.status}`);
-      console.error(`Xendit API Error (Simulate Payment for ${trimmedInvoiceId}):`, responseData);
       return { error: errorMessage, rawResponse: responseData };
     }
     
@@ -457,7 +450,6 @@ export async function simulateXenditVAPayment(args: SimulateVAPaymentArgs): Prom
       const errorMessage = responseData.error_code
         ? `${responseData.error_code}: ${responseData.message}`
         : (responseData.message || `Xendit API request failed with status ${response.status}`);
-      console.error('Xendit API Error (Simulate VA Payment):', responseData);
       return { error: errorMessage, rawResponse: responseData };
     }
 

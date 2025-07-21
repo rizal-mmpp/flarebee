@@ -122,7 +122,6 @@ function prepareDataFromFormData(formData: FormData, imageUrl: string | null, fi
 
 
 export async function saveServiceAction(formData: FormData): Promise<{ success: boolean; message?: string; error?: string; serviceId?: string }> {
-  console.log('saveServiceAction: Action started.');
   try {
     let imageUrlFromBlob: string | null = null;
     let fixedPriceImageUrlFromBlob: string | null = null;
@@ -155,14 +154,12 @@ export async function saveServiceAction(formData: FormData): Promise<{ success: 
     dataToSave.updatedAt = serverTimestamp() as Timestamp;
     dataToSave.customerJourneyStages = [];
 
-    console.log('saveServiceAction: Data to save to Firestore:', dataToSave);
     const docRef = await addDoc(collection(db, SERVICES_COLLECTION), dataToSave);
     
     revalidatePath('/admin/services', 'layout');
     revalidatePath('/services', 'layout');
     revalidatePath('/', 'layout');
 
-    console.log(`saveServiceAction: Service "${dataToSave.title}" created with ID: ${docRef.id}`);
     return { success: true, message: `Service "${dataToSave.title}" created successfully.`, serviceId: docRef.id };
   } catch (error: any) {
     console.error("Detailed error in saveServiceAction: ", error);
@@ -171,7 +168,6 @@ export async function saveServiceAction(formData: FormData): Promise<{ success: 
 }
 
 export async function updateServiceAction(id: string, formData: FormData): Promise<{ success: boolean; message?: string; error?: string; serviceId?: string }> {
-  console.log(`updateServiceAction: Action started for service ID: ${id}`);
   try {
     let finalImageUrl = formData.get('currentImageUrl') as string | null;
     let finalFixedPriceImageUrl = formData.get('currentFixedPriceImageUrl') as string | null;
@@ -220,7 +216,6 @@ export async function updateServiceAction(id: string, formData: FormData): Promi
     
     dataToUpdate.updatedAt = serverTimestamp() as Timestamp;
     
-    console.log('updateServiceAction: Data to update in Firestore:', dataToUpdate);
     await updateDoc(docRef, dataToUpdate);
 
     revalidatePath('/admin/services', 'layout');
@@ -230,7 +225,6 @@ export async function updateServiceAction(id: string, formData: FormData): Promi
     revalidatePath('/services', 'layout');
     revalidatePath('/', 'layout');
 
-    console.log(`updateServiceAction: Service "${dataToUpdate.title}" (ID: ${id}) updated successfully.`);
     return { success: true, message: `Service "${dataToUpdate.title}" updated successfully.`, serviceId: id };
   } catch (error: any) {
     console.error(`Detailed error in updateServiceAction for ID ${id}: `, error);
@@ -239,10 +233,8 @@ export async function updateServiceAction(id: string, formData: FormData): Promi
 }
 
 export async function deleteServiceAction(id: string): Promise<{ success: boolean; message?: string; error?: string }> {
-  console.log(`deleteServiceAction: Action started for service ID: ${id}`);
   try {
     if (!id) {
-      console.error('deleteServiceAction: Service ID is required.');
       return { success: false, error: "Service ID is required for deletion." };
     }
     await deleteDoc(doc(db, SERVICES_COLLECTION, id));
@@ -251,7 +243,6 @@ export async function deleteServiceAction(id: string): Promise<{ success: boolea
     revalidatePath('/services', 'layout');
     revalidatePath('/', 'layout');
 
-    console.log(`deleteServiceAction: Service with ID ${id} deleted successfully.`);
     return { success: true, message: `Service with ID ${id} deleted successfully.` };
   } catch (error: any) {
     console.error(`Detailed error in deleteServiceAction for ID ${id}: `, error);
@@ -285,7 +276,6 @@ export async function updateServiceJourneyStagesAction(
     revalidatePath(`/admin/services/${serviceId}/simulate-journey`);
     revalidatePath(`/admin/services/edit/${serviceId}`);
 
-    console.log(`Journey stages updated for service ${serviceId}`);
     return { success: true };
   } catch (error: any) {
     console.error(`Error updating journey stages for service ${serviceId}:`, error);

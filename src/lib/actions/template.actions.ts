@@ -44,11 +44,9 @@ function parseStringToArray(str?: string | null): string[] {
 }
 
 export async function saveTemplateAction(formData: FormData): Promise<{ success: boolean; message?: string; error?: string; templateId?: string }> {
-  console.log('saveTemplateAction: Action started.');
   try {
     const imageUrlFromBlob = formData.get('previewImageUrl') as string;
     if (!imageUrlFromBlob) {
-      console.error('saveTemplateAction: Preview image URL from Vercel Blob is missing.');
       return { success: false, error: "Preview image URL from Vercel Blob is required." };
     }
 
@@ -60,13 +58,11 @@ export async function saveTemplateAction(formData: FormData): Promise<{ success:
     const downloadZipUrlInput = (formData.get('downloadZipUrl') as string)?.trim() || '#';
 
     if (!title || !description || !categoryId || isNaN(price) || !tagsInput) {
-      console.error('saveTemplateAction: Missing required fields.');
       return { success: false, error: "Missing required fields (Title, Description, Category, Price, Tags)." };
     }
     
     const category = CATEGORIES.find(c => c.id === categoryId);
     if (!category) {
-        console.error('saveTemplateAction: Invalid category selected.');
         return { success: false, error: "Invalid category." };
     }
 
@@ -99,7 +95,6 @@ export async function saveTemplateAction(formData: FormData): Promise<{ success:
     const githubUrlValue = (formData.get('githubUrl') as string)?.trim();
     if (githubUrlValue) dataToSave.githubUrl = githubUrlValue;
 
-    console.log('saveTemplateAction: Data to save to Firestore:', dataToSave);
     const docRef = await addDoc(collection(db, TEMPLATES_COLLECTION), dataToSave);
     
     revalidatePath('/admin/templates');
@@ -107,23 +102,17 @@ export async function saveTemplateAction(formData: FormData): Promise<{ success:
     revalidatePath('/templates');
     revalidatePath('/'); 
 
-    console.log(`saveTemplateAction: Template "${title}" created successfully with ID: ${docRef.id}`);
     return { success: true, message: `Template "${title}" created successfully.`, templateId: docRef.id };
   } catch (error: any) {
     console.error("Detailed error in saveTemplateAction: ", error);
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
     return { success: false, error: error.message || "Failed to create template." };
   }
 }
 
 export async function updateTemplateAction(id: string, formData: FormData): Promise<{ success: boolean; message?: string; error?: string; templateId?: string }> {
-  console.log(`updateTemplateAction: Action started for template ID: ${id}`);
   try {
     const imageUrlFromBlob = formData.get('previewImageUrl') as string; 
     if (!imageUrlFromBlob) {
-      console.error('updateTemplateAction: Preview image URL from Vercel Blob is missing.');
       return { success: false, error: "Preview image URL from Vercel Blob is required." };
     }
 
@@ -135,13 +124,11 @@ export async function updateTemplateAction(id: string, formData: FormData): Prom
     const downloadZipUrlInput = (formData.get('downloadZipUrl') as string)?.trim() || '#';
 
     if (!id || !title || !description || !categoryId || isNaN(price) || !tagsInput) {
-      console.error('updateTemplateAction: Missing required fields.');
       return { success: false, error: "Missing required fields (Title, Description, Category, Price, Tags)." };
     }
     
     const category = CATEGORIES.find(c => c.id === categoryId);
     if (!category) {
-        console.error('updateTemplateAction: Invalid category selected.');
         return { success: false, error: "Invalid category." };
     }
 
@@ -173,7 +160,6 @@ export async function updateTemplateAction(id: string, formData: FormData): Prom
     const githubUrlValue = (formData.get('githubUrl') as string)?.trim();
     dataToUpdate.githubUrl = githubUrlValue ? githubUrlValue : null;
     
-    console.log('updateTemplateAction: Data to update in Firestore:', dataToUpdate);
     const docRef = doc(db, TEMPLATES_COLLECTION, id);
     await updateDoc(docRef, dataToUpdate);
 
@@ -183,22 +169,16 @@ export async function updateTemplateAction(id: string, formData: FormData): Prom
     revalidatePath('/templates');
     revalidatePath('/');
 
-    console.log(`updateTemplateAction: Template "${title}" (ID: ${id}) updated successfully.`);
     return { success: true, message: `Template "${title}" updated successfully.`, templateId: id };
   } catch (error: any) {
     console.error(`Detailed error in updateTemplateAction for ID ${id}: `, error);
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
     return { success: false, error: error.message || "Failed to update template." };
   }
 }
 
 export async function deleteTemplateAction(id: string): Promise<{ success: boolean; message?: string; error?: string }> {
-  console.log(`deleteTemplateAction: Action started for template ID: ${id}`);
   try {
     if (!id) {
-      console.error('deleteTemplateAction: Template ID is required.');
       return { success: false, error: "Template ID is required for deletion." };
     }
     await deleteDoc(doc(db, TEMPLATES_COLLECTION, id));
@@ -208,13 +188,9 @@ export async function deleteTemplateAction(id: string): Promise<{ success: boole
     revalidatePath('/templates');
     revalidatePath('/');
 
-    console.log(`deleteTemplateAction: Template with ID ${id} deleted successfully.`);
     return { success: true, message: `Template with ID ${id} deleted successfully.` };
   } catch (error: any) {
     console.error(`Detailed error in deleteTemplateAction for ID ${id}: `, error);
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
     return { success: false, error: error.message || "Failed to delete template." };
   }
 }

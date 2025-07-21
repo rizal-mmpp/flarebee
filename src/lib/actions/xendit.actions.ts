@@ -82,9 +82,7 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
       // should_send_email: true by default
     };
 
-    console.log("Creating Xendit invoice with payload:", JSON.stringify(xenditInvoicePayload, null, 2));
     const xenditInvoice = await Invoice.createInvoice({ data: xenditInvoicePayload });
-    console.log("Xendit invoice created:", xenditInvoice);
 
     if (!xenditInvoice.invoiceUrl || !xenditInvoice.id) {
         console.error("Xendit invoice creation succeeded but invoice_url or id was missing.", xenditInvoice);
@@ -116,7 +114,6 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
 
       try {
         await createOrderInFirestore(orderData);
-        console.log(`Order ${externalId} (Xendit ID: ${xenditInvoice.id}) created with status 'pending' for user ID: ${args.userId}`);
       } catch (orderError: any) {
         console.error(`Error creating order in Firestore for user ID ${args.userId} after Xendit success:`, orderError.message);
         // Log this critical error. The user can still pay, but our record is missing/incomplete.
@@ -125,16 +122,12 @@ export async function createXenditInvoice(args: CreateXenditInvoiceArgs): Promis
         // Optionally, you could return an error here to prevent redirect if DB write is critical before payment.
         // return { error: "Failed to save your order details locally. Please contact support." };
       }
-    } else {
-      console.log("No userId provided or cart empty, skipping order creation in Firestore.");
     }
 
     // Step 3: Clear User Cart (if logged in)
     if (args.userId) {
       try {
-        console.log(`Attempting to clear cart for user ID: ${args.userId} server-side.`);
         await deleteUserCartFromFirestore(args.userId);
-        console.log(`Cart cleared successfully for user ID: ${args.userId} server-side.`);
       } catch (cartClearError: any) {
         console.error(`Error clearing cart server-side for user ID ${args.userId}:`, cartClearError.message);
         // Non-critical for payment flow, log and continue.
