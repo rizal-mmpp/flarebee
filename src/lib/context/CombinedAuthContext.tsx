@@ -2,9 +2,10 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, type ReactNode, useCallback } from 'react';
-import { AuthProvider as FirebaseAuthProvider, useAuth as useFirebaseAuth, type AuthUser } from '@/lib/firebase/AuthContext';
+import { AuthProvider as FirebaseAuthProvider, useAuth as useFirebaseAuth } from '@/lib/firebase/AuthContext';
 import { loginWithERPNext, logoutFromERPNext, resetERPNextPassword, getUserDetailsFromERPNext } from '@/lib/services/erpnext-auth';
 import { useToast } from '@/hooks/use-toast';
+import type { AuthUser } from '@/lib/types';
 
 type AuthMethod = 'firebase' | 'erpnext';
 
@@ -15,14 +16,10 @@ interface ERPNextUser {
   photoURL?: string | null;
 }
 
-// A unified user type that can represent either auth system
-type CombinedUser = AuthUser | (ERPNextUser & { uid: string });
-
 interface CombinedAuthContextType {
   authMethod: AuthMethod;
   setAuthMethod: (method: AuthMethod) => void;
-  user: CombinedUser | null;
-  role: 'admin' | 'user' | null;
+  user: AuthUser | null;
   isAuthenticated: boolean;
   loading: boolean;
   signIn: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -32,8 +29,22 @@ interface CombinedAuthContextType {
 
 const CombinedAuthContext = createContext<CombinedAuthContextType | undefined>(undefined);
 
+const AUTH_METHOD_STORAGE_KEY = 'rio_auth_method';
+
+function getInitialAuthMethod(): AuthMethod {
+  if (typeof window !== 'undefined') {
+    return (localStorage.getItem(AUTH_METHOD_STORAGE_KEY) as AuthMethod) || 'firebase';
+  }
+  return 'firebase';
+}
+
 export function CombinedAuthProvider({ children }: { children: ReactNode }) {
-  const [authMethod, setAuthMethod] = useState<AuthMethod>('firebase');
+  const [authMethod, setAuthMethodState] = useState<AuthMethod>(getInitialAuthMethod());
+
+  const setAuthMethod = (method: AuthMethod) => {
+    localStorage.setItem(AUTH_METHOD_STORAGE_KEY, method);
+    setAuthMethodState(method);
+  };
 
   return (
     <FirebaseAuthProvider>
@@ -56,15 +67,26 @@ function CombinedAuthContent({
   const firebase = useFirebaseAuth();
   const { toast } = useToast();
   
-  const [erpUser, setErpUser] = useState<ERPNextUser | null>(null);
+  const [erpUser, setErpUser] = useState<AuthUser | null>(null);
   const [isErpLoading, setIsErpLoading] = useState(true);
 
   const checkErpSession = useCallback(async () => {
+    if (authMethod !== 'erpnext') {
+        setIsErpLoading(false);
+        setErpUser(null);
+        return;
+    }
     setIsErpLoading(true);
     try {
       const result = await getUserDetailsFromERPNext();
       if (result.success && result.user) {
-        setErpUser(result.user);
+        setErpUser({
+            uid: result.user.username,
+            displayName: result.user.fullName,
+            email: result.user.email,
+            photoURL: result.user.photoURL,
+            role: 'user', // Add logic for admin roles if needed
+        });
       } else {
         setErpUser(null);
       }
@@ -73,15 +95,13 @@ function CombinedAuthContent({
     } finally {
       setIsErpLoading(false);
     }
-  }, []);
+  }, [authMethod]);
   
   useEffect(() => {
-    // This is the key fix: Check for an existing ERPNext session on initial load.
     checkErpSession();
-  }, [checkErpSession]);
+  }, [checkErpSession, authMethod]);
 
-  const user = authMethod === 'firebase' ? firebase.user : erpUser ? { ...erpUser, uid: erpUser.username } : null;
-  const role = authMethod === 'firebase' ? firebase.role : (user ? 'user' : null); // ERPNext role logic can be added here
+  const user = authMethod === 'firebase' ? firebase.user : erpUser;
   const isAuthenticated = !!user;
   const loading = firebase.loading || isErpLoading;
 
@@ -92,7 +112,6 @@ function CombinedAuthContent({
       setIsErpLoading(true);
       const result = await loginWithERPNext(username, password);
       if (result.success) {
-        // After a successful login, immediately check the session to get user data and update the state.
         await checkErpSession();
         toast({ title: "Login Successful", description: 'Welcome back!' });
       } else {
@@ -132,7 +151,6 @@ function CombinedAuthContent({
     authMethod,
     setAuthMethod,
     user,
-    role,
     isAuthenticated,
     loading,
     signIn,

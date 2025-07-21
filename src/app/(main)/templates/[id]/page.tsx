@@ -2,7 +2,7 @@
 'use client'; 
 
 import { use, useEffect, useState, useTransition } from 'react'; // Import 'use'
-import type { Template, Order, CartItem } from '@/lib/types';
+import type { Template, Order, CartItem, AuthUser } from '@/lib/types';
 import { getTemplateByIdFromFirestore } from '@/lib/firebase/firestoreTemplates';
 import { notFound, useRouter, useSearchParams } from 'next/navigation'; 
 import Image from 'next/image';
@@ -20,9 +20,10 @@ import {
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { useCart } from '@/context/CartContext'; 
 import { toast } from '@/hooks/use-toast';
-import { useAuth } from '@/lib/firebase/AuthContext'; 
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { LoginModal } from '@/components/shared/LoginModal'; 
 import { getOrdersByUserIdFromFirestore } from '@/lib/firebase/firestoreOrders';
+import { useAuth as useFirebaseAuth } from '@/lib/firebase/AuthContext';
 
 // Helper to format IDR currency
 const formatIDR = (amount: number) => {
@@ -44,7 +45,8 @@ export default function TemplateDetailPage({ params: paramsPromise }: { params: 
   const [error, setError] = useState<string | null>(null);
   
   const { addToCart, isItemInCart } = useCart();
-  const { user, signInWithGoogle } = useAuth(); 
+  const { user } = useCombinedAuth(); 
+  const { signInWithGoogle } = useFirebaseAuth();
   const router = useRouter();
   const searchParams = useSearchParams(); 
   const [isBuyNowPending, startBuyNowTransition] = useTransition();

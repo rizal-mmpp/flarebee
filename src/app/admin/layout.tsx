@@ -21,7 +21,7 @@ export default function AdminLayout({
 }: {
   children: ReactNode;
 }) {
-  const { user, role, loading: authLoading } = useCombinedAuth();
+  const { user, loading: authLoading } = useCombinedAuth();
   const router = useRouter();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
@@ -31,11 +31,11 @@ export default function AdminLayout({
     if (!authLoading) {
       if (!user) {
         router.replace('/'); 
-      } else if (role !== 'admin') {
+      } else if (user.role !== 'admin') {
         router.replace('/'); 
       }
     }
-  }, [user, role, authLoading, router]);
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     async function loadSettings() {
@@ -50,16 +50,16 @@ export default function AdminLayout({
         setSettingsLoading(false);
       }
     }
-    if (user && role === 'admin') { 
+    if (user && user.role === 'admin') { 
         loadSettings();
-    } else if (!authLoading && (!user || role !== 'admin')) {
+    } else if (!authLoading && (!user || user.role !== 'admin')) {
         setSiteSettings(DEFAULT_SETTINGS);
         setSettingsLoading(false);
     }
-  }, [user, role, authLoading]);
+  }, [user, authLoading]);
 
 
-  if (authLoading || settingsLoading || !user || role !== 'admin') {
+  if (authLoading || settingsLoading || !user || user.role !== 'admin') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

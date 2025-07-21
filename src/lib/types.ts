@@ -1,6 +1,16 @@
 
 import type { User as FirebaseUser } from 'firebase/auth';
 
+// A unified AuthUser interface for consistent user object structure across the app
+export interface AuthUser {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL?: string | null;
+  role?: 'admin' | 'user';
+  // You can add any other common properties here
+}
+
 export interface Category {
   id: string;
   name: string;
@@ -122,10 +132,6 @@ export interface Service {
   updatedAt?: string; 
 }
 
-
-export interface AuthUser extends FirebaseUser {
-  role?: 'admin' | 'user';
-}
 
 export interface UserProfile {
   uid: string;

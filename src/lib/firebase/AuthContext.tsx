@@ -16,7 +16,7 @@ import {
 } from 'firebase/auth';
 import { auth } from './firebase';
 import { createUserProfile, getUserProfile, updateUserProfileInFirestore } from './firestore';
-import type { AuthUser } from '@/lib/types';
+import type { AuthUser, UserProfile } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { uploadFileToVercelBlob } from '../actions/vercelBlob.actions';
@@ -29,7 +29,6 @@ interface ProfileUpdateData {
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  role: 'admin' | 'user' | null;
   signInWithGoogle: () => Promise<boolean>;
   signUpWithEmailPassword: (email: string, password: string, displayName: string) => Promise<{ success: boolean; error?: string }>;
   signInWithEmailPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -43,7 +42,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [role, setRole] = useState<'admin' | 'user' | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
@@ -55,16 +53,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         
         const authUser: AuthUser = {
-          ...firebaseUser,
+          uid: firebaseUser.uid,
           displayName: userProfile?.displayName || firebaseUser.displayName,
+          email: firebaseUser.email,
           photoURL: userProfile?.photoURL || firebaseUser.photoURL,
           role: userProfile?.role || 'user',
         };
         setUser(authUser);
-        setRole(authUser.role);
       } else {
         setUser(null);
-        setRole(null);
       }
       setLoading(false);
     });
@@ -84,11 +81,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           userProfile = await createUserProfile(result.user);
         }
         const authUser: AuthUser = {
-          ...result.user,
+          uid: result.user.uid,
+          displayName: userProfile?.displayName || result.user.displayName,
+          email: result.user.email,
+          photoURL: userProfile?.photoURL || result.user.photoURL,
           role: userProfile?.role || 'user',
         };
         setUser(authUser);
-        setRole(authUser.role);
         toast({ title: "Sign In Successful", description: "Welcome back!" });
         return true;
       }
@@ -97,7 +96,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Error during Google sign-in:', error);
       toast({ title: "Sign In Failed", description: error.message || "Could not sign in with Google.", variant: "destructive" });
       setUser(null);
-      setRole(null);
       return false;
     } finally {
       setLoading(false);
@@ -116,13 +114,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (userProfile) {
         const authUser: AuthUser = {
-          ...firebaseUser,
+          uid: userProfile.uid,
           displayName: userProfile.displayName,
+          email: userProfile.email,
           photoURL: userProfile.photoURL,
           role: userProfile.role || 'user',
         };
         setUser(authUser);
-        setRole(authUser.role);
         toast({ title: "Account Created", description: "Welcome to RIO!" });
         return { success: true };
       } else {
@@ -259,8 +257,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await signOut(auth);
       setUser(null);
-      setRole(null);
-      toast({ title: "Signed Out", description: "You have been successfully signed out." });
     } catch (error: any) {
       console.error('Error signing out:', error);
       toast({ title: "Sign Out Failed", description: error.message, variant: "destructive" });
@@ -278,7 +274,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, role, signInWithGoogle, signUpWithEmailPassword, signInWithEmailPassword, sendPasswordReset, signOutUser, updateUserProfile }}>
+    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signUpWithEmailPassword, signInWithEmailPassword, sendPasswordReset, signOutUser, updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );
@@ -291,5 +287,3 @@ export function useAuth() {
   }
   return context;
 }
-
-export type { AuthUser };

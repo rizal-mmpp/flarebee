@@ -28,7 +28,7 @@ import NextImage from 'next/image';
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, role, signOut, loading } = useCombinedAuth();
+  const { user, signOut, loading } = useCombinedAuth();
   const { cartItems } = useCart();
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
 
@@ -122,7 +122,7 @@ export function Navbar() {
             </Link>
           )}
 
-          {user && role === 'admin' && (
+          {user && user.role === 'admin' && (
              <Link
               href="/admin/dashboard"
               className={desktopMenuItemClass}
@@ -167,16 +167,16 @@ export function Navbar() {
                       <p className="text-xs leading-none text-muted-foreground">
                         {user.email}
                       </p>
-                      {role && (
+                      {user.role && (
                         <p className="text-xs leading-none text-muted-foreground flex items-center pt-1">
                           <ShieldCheck className="mr-1.5 h-3.5 w-3.5 text-primary" />
-                          Role: <span className="font-medium capitalize text-foreground/90 ml-1">{role}</span>
+                          Role: <span className="font-medium capitalize text-foreground/90 ml-1">{user.role}</span>
                         </p>
                       )}
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                   {role === 'admin' && (
+                   {user.role === 'admin' && (
                      <DropdownMenuItem asChild className={desktopDropdownItemClass}>
                         <Link href="/admin/settings">
                           <Settings className="mr-2 h-4 w-4" /> Site Settings
@@ -228,10 +228,10 @@ export function Navbar() {
                       <div>
                         <p className="text-sm font-semibold leading-tight text-card-foreground">{user.displayName || 'User'}</p>
                         <p className="text-xs leading-tight text-muted-foreground">{user.email}</p>
-                         {role && (
+                         {user.role && (
                           <p className="text-xs leading-tight text-muted-foreground flex items-center pt-0.5">
                             <ShieldCheck className="mr-1 h-3 w-3 text-primary" />
-                            <span className="font-medium capitalize text-card-foreground/80">{role}</span>
+                            <span className="font-medium capitalize text-card-foreground/80">{user.role}</span>
                           </p>
                         )}
                       </div>
@@ -320,7 +320,7 @@ export function Navbar() {
                   </Link>
                 )}
 
-                {user && role === 'admin' && (
+                {user && user.role === 'admin' && (
                   <>
                     <Link
                       href="/admin/dashboard"
