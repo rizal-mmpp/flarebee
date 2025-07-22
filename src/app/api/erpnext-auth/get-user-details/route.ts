@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   }
 
   const getHeaders = (sessionId: string) => ({
-    Cookie: `sid=${sessionId}`,
+    'Cookie': `sid=${sessionId}`,
   });
 
   try {
