@@ -7,15 +7,17 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ServiceForm } from '@/components/sections/admin/ServiceForm';
 import { type ServiceFormValues, serviceFormSchema } from '@/components/sections/admin/ServiceFormTypes';
-import { saveServiceAction } from '@/lib/actions/service.actions';
+import { createServiceInErpNext } from '@/lib/actions/erpnext.actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, PlusCircle, Loader2, Copy } from 'lucide-react';
 import Link from 'next/link';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 
 export default function CreateServicePage() { 
   const router = useRouter();
   const { toast } = useToast();
+  const { erpSid } = useCombinedAuth();
   const [isPending, startTransition] = useTransition();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
@@ -90,44 +92,18 @@ export default function CreateServicePage() {
 
 
   const onSubmit: SubmitHandler<ServiceFormValues> = (data) => {
+    if (!erpSid) {
+      toast({ title: "Authentication Error", description: "Not logged in to ERPNext.", variant: "destructive" });
+      return;
+    }
+
     startTransition(async () => {
-      const formDataForAction = new FormData();
-
-      if (selectedFile) {
-        formDataForAction.append('imageFile', selectedFile);
-      } else {
-         toast({
-          title: 'Image Required',
-          description: 'Please select a main image for the service.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      if (selectedFixedPriceImageFile) {
-        formDataForAction.append('fixedPriceImageFile', selectedFixedPriceImageFile);
-      }
-
-      // Append primitive values directly
-      formDataForAction.append('title', data.title);
-      formDataForAction.append('shortDescription', data.shortDescription);
-      formDataForAction.append('longDescription', data.longDescription);
-      formDataForAction.append('categoryId', data.categoryId);
-      formDataForAction.append('tags', data.tags);
-      formDataForAction.append('dataAiHint', data.dataAiHint || '');
-      formDataForAction.append('status', data.status);
-      formDataForAction.append('keyFeatures', data.keyFeatures || '');
-      formDataForAction.append('targetAudience', data.targetAudience || '');
-      formDataForAction.append('estimatedDuration', data.estimatedDuration || '');
-      formDataForAction.append('portfolioLink', data.portfolioLink || '');
-      formDataForAction.append('serviceUrl', data.serviceUrl);
-      formDataForAction.append('showFaqSection', String(data.showFaqSection));
-
-      // Stringify complex objects
-      formDataForAction.append('pricing', JSON.stringify(data.pricing));
-      formDataForAction.append('faq', JSON.stringify(data.faq));
-      
-      const result = await saveServiceAction(formDataForAction); 
+      const result = await createServiceInErpNext({ 
+        sid: erpSid, 
+        serviceData: data,
+        imageFile: selectedFile,
+        fixedPriceImageFile: selectedFixedPriceImageFile,
+      }); 
 
       if (result.error) {
         const errorMessage = result.error;

@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
-import { getServiceBySlugFromFirestore } from '@/lib/firebase/firestoreServices';
+import { getServiceFromErpNextByName } from '@/lib/actions/erpnext.actions';
 import type { Service } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 
 const formatIDR = (amount?: number | null) => {
   if (amount === undefined || amount === null) return 'N/A';
@@ -54,22 +55,23 @@ const InfoRow = ({ label, value, icon: Icon }: { label: string, value: React.Rea
 export default function ServiceDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const slug = params.id as string;
+  const serviceName = params.id as string;
+  const { erpSid } = useCombinedAuth();
 
   const [service, setService] = useState<Service | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (slug) {
+    if (serviceName && erpSid) {
       setIsLoading(true);
       setError(null);
-      getServiceBySlugFromFirestore(slug)
-        .then((fetchedService) => {
-          if (fetchedService) {
-            setService(fetchedService);
+      getServiceFromErpNextByName({ sid: erpSid, serviceName })
+        .then((result) => {
+          if (result.success && result.data) {
+            setService(result.data);
           } else {
-            setError('Service not found.');
+            setError(result.error || 'Service not found.');
           }
         })
         .catch((err) => {
@@ -79,8 +81,11 @@ export default function ServiceDetailPage() {
         .finally(() => {
           setIsLoading(false);
         });
+    } else if (!erpSid) {
+        setError('Not authenticated with ERPNext.');
+        setIsLoading(false);
     }
-  }, [slug]);
+  }, [serviceName, erpSid]);
 
   if (isLoading) {
     return (
@@ -135,8 +140,8 @@ export default function ServiceDetailPage() {
         <TooltipProvider delayDuration={0}>
           <div className="flex items-center justify-start sm:justify-end gap-2 w-full sm:w-auto flex-shrink-0">
             <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" onClick={() => router.push('/admin/services')}><ArrowLeft className="h-4 w-4" /><span className="sr-only">Back to Services</span></Button></TooltipTrigger><TooltipContent><p>Back to Services</p></TooltipContent></Tooltip>
-            <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" onClick={() => router.push(`/admin/services/edit/${service.slug}`)}><Edit className="h-4 w-4" /><span className="sr-only">Edit Service</span></Button></TooltipTrigger><TooltipContent><p>Edit Service</p></TooltipContent></Tooltip>
-            <Tooltip><TooltipTrigger asChild><Button variant="default" size="icon" onClick={() => router.push(`/admin/services/${service.slug}/simulate-journey`)} className="bg-primary hover:bg-primary/90"><Rocket className="h-4 w-4" /><span className="sr-only">Customer Journey</span></Button></TooltipTrigger><TooltipContent><p>Customer Journey</p></TooltipContent></Tooltip>
+            <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" onClick={() => router.push(`/admin/services/edit/${service.id}`)}><Edit className="h-4 w-4" /><span className="sr-only">Edit Service</span></Button></TooltipTrigger><TooltipContent><p>Edit Service</p></TooltipContent></Tooltip>
+            <Tooltip><TooltipTrigger asChild><Button variant="default" size="icon" onClick={() => router.push(`/admin/services/${service.id}/simulate-journey`)} className="bg-primary hover:bg-primary/90"><Rocket className="h-4 w-4" /><span className="sr-only">Customer Journey</span></Button></TooltipTrigger><TooltipContent><p>Customer Journey</p></TooltipContent></Tooltip>
           </div>
         </TooltipProvider>
       </div>

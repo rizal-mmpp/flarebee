@@ -8,20 +8,20 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ServiceForm } from '@/components/sections/admin/ServiceForm'; 
 import { type ServiceFormValues, serviceFormSchema } from '@/components/sections/admin/ServiceFormTypes'; 
-import { getServiceBySlugFromFirestore } from '@/lib/firebase/firestoreServices';
-import { updateServiceAction } from '@/lib/actions/service.actions'; 
+import { getServiceFromErpNextByName, updateServiceInErpNext } from '@/lib/actions/erpnext.actions'; 
 import type { Service, ServicePackage } from '@/lib/types'; 
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Loader2, ServerCrash, Edit3, ArrowLeft, Save, Rocket, Copy } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 
 export default function EditServicePage() {
   const router = useRouter();
   const params = useParams();
-  const slug = params.id as string;
+  const serviceName = params.id as string; // In ERPNext, the unique ID is 'name'
   const { toast } = useToast();
+  const { erpSid } = useCombinedAuth();
   const [isPending, startTransition] = useTransition();
 
   const [service, setService] = useState<Service | null>(null); 
@@ -55,12 +55,13 @@ export default function EditServicePage() {
   const watchedFixedPriceImageUrl = watch('pricing.fixedPriceDetails.imageUrl');
 
   useEffect(() => {
-    if (slug) {
+    if (serviceName && erpSid) {
       setIsLoading(true);
       setError(null);
-      getServiceBySlugFromFirestore(slug)
-        .then((fetchedService) => { 
-          if (fetchedService) {
+      getServiceFromErpNextByName({ sid: erpSid, serviceName })
+        .then((result) => { 
+          if (result.success && result.data) {
+            const fetchedService = result.data;
             setService(fetchedService);
             
             setValue('title', fetchedService.title);
@@ -91,7 +92,6 @@ export default function EditServicePage() {
             setValue('pricing.isSubscriptionActive', fetchedService.pricing?.isSubscriptionActive || false);
             setValue('pricing.subscriptionDetails.bgClassName', fetchedService.pricing?.subscriptionDetails?.bgClassName || 'bg-card');
             
-            // Set packages directly, no more string formatting for features
             setValue('pricing.subscriptionDetails.packages', fetchedService.pricing?.subscriptionDetails?.packages || []);
             
             setValue('pricing.isCustomQuoteActive', fetchedService.pricing?.isCustomQuoteActive || false);
@@ -101,7 +101,7 @@ export default function EditServicePage() {
             setValue('faq', fetchedService.faq || []);
 
           } else {
-            setError('Service not found.'); 
+            setError(result.error || 'Service not found.'); 
           }
         })
         .catch((err) => {
@@ -112,7 +112,7 @@ export default function EditServicePage() {
           setIsLoading(false);
         });
     }
-  }, [slug, setValue]);
+  }, [serviceName, setValue, erpSid]);
 
   useEffect(() => {
     let objectUrl: string | undefined;
@@ -164,41 +164,20 @@ export default function EditServicePage() {
   };
 
   const onSubmit: SubmitHandler<ServiceFormValues> = (data) => {
-    if (!service) return;
+    if (!service || !erpSid) {
+        toast({ title: "Error", description: "Cannot update service without required context.", variant: "destructive" });
+        return;
+    }
     startTransition(async () => {
-      const formDataForAction = new FormData();
-      
-      if (selectedFile) {
-        formDataForAction.append('imageFile', selectedFile);
-      }
-      formDataForAction.append('currentImageUrl', data.imageUrl || service.imageUrl || '');
-
-      if (selectedFixedPriceImageFile) {
-        formDataForAction.append('fixedPriceImageFile', selectedFixedPriceImageFile);
-      }
-      formDataForAction.append('currentFixedPriceImageUrl', data.pricing?.fixedPriceDetails?.imageUrl || service.pricing?.fixedPriceDetails?.imageUrl || '');
-
-
-      // Append primitive values directly
-      formDataForAction.append('title', data.title);
-      formDataForAction.append('shortDescription', data.shortDescription);
-      formDataForAction.append('longDescription', data.longDescription);
-      formDataForAction.append('categoryId', data.categoryId);
-      formDataForAction.append('tags', data.tags);
-      formDataForAction.append('dataAiHint', data.dataAiHint || '');
-      formDataForAction.append('status', data.status);
-      formDataForAction.append('keyFeatures', data.keyFeatures || '');
-      formDataForAction.append('targetAudience', data.targetAudience || '');
-      formDataForAction.append('estimatedDuration', data.estimatedDuration || '');
-      formDataForAction.append('portfolioLink', data.portfolioLink || '');
-      formDataForAction.append('serviceUrl', data.serviceUrl);
-      formDataForAction.append('showFaqSection', String(data.showFaqSection));
-
-      // Stringify complex objects
-      formDataForAction.append('pricing', JSON.stringify(data.pricing));
-      formDataForAction.append('faq', JSON.stringify(data.faq));
-      
-      const result = await updateServiceAction(service.id, formDataForAction);
+      const result = await updateServiceInErpNext({
+        sid: erpSid,
+        serviceName: service.id,
+        serviceData: data,
+        currentImageUrl: service.imageUrl,
+        imageFile: selectedFile,
+        currentFixedPriceImageUrl: service.pricing?.fixedPriceDetails?.imageUrl,
+        fixedPriceImageFile: selectedFixedPriceImageFile,
+      });
 
       if (result.error) {
         const errorMessage = result.error;
@@ -226,6 +205,7 @@ export default function EditServicePage() {
           title: 'Service Updated Successfully',
           description: result.message || 'The service details have been updated.',
         });
+        router.push('/admin/services');
       }
     });
   };
@@ -284,7 +264,7 @@ export default function EditServicePage() {
           <TooltipProvider delayDuration={0}>
             <div className="flex items-center justify-start sm:justify-end gap-2 w-full sm:w-auto flex-shrink-0">
                 <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" type="button" onClick={handleCancel} disabled={isPending}><ArrowLeft className="h-4 w-4" /><span className="sr-only">Cancel</span></Button></TooltipTrigger><TooltipContent><p>Cancel & Go Back</p></TooltipContent></Tooltip>
-                <Tooltip><TooltipTrigger asChild><Button asChild variant="outline" size="icon" type="button" disabled={isPending}><Link href={`/admin/services/${slug}/simulate-journey`}><Rocket className="h-4 w-4" /><span className="sr-only">Customer Journey</span></Link></Button></TooltipTrigger><TooltipContent><p>Customer Journey</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><Button asChild variant="outline" size="icon" type="button" disabled={isPending}><Link href={`/admin/services/${service.id}/simulate-journey`}><Rocket className="h-4 w-4" /><span className="sr-only">Customer Journey</span></Link></Button></TooltipTrigger><TooltipContent><p>Customer Journey</p></TooltipContent></Tooltip>
                 <Tooltip><TooltipTrigger asChild><Button type="submit" size="icon" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isPending}>{isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}<span className="sr-only">Update Service</span></Button></TooltipTrigger><TooltipContent><p>Update Service</p></TooltipContent></Tooltip>
             </div>
           </TooltipProvider>

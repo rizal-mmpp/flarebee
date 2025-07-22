@@ -2,11 +2,10 @@
 'use client';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { getAllServicesFromFirestore } from '@/lib/firebase/firestoreServices'; 
+import { getServicesFromErpNext, deleteServiceFromErpNext } from '@/lib/actions/erpnext.actions';
 import type { Service } from '@/lib/types'; 
 import { Briefcase, Loader2, PlusCircle, RefreshCw, Edit2, Trash2, MoreHorizontal, AlertCircle, Eye, Play } from 'lucide-react'; 
 import { useToast } from '@/hooks/use-toast';
-import { deleteServiceAction } from '@/lib/actions/service.actions'; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
@@ -32,7 +31,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 
 const formatIDR = (amount?: number) => {
   if (amount === undefined || amount === null) return 'N/A';
@@ -60,12 +59,12 @@ const getStatusBadgeVariant = (status: Service['status']) => {
 const searchByServiceOptions = [ 
   { value: 'title', label: 'Title' },
   { value: 'category.name', label: 'Category' },
-  { value: 'pricingModel', label: 'Pricing Model' },
   { value: 'status', label: 'Status' },
   { value: 'tags', label: 'Tags' },
 ];
 
 export default function AdminServicesPage() { 
+  const { erpSid } = useCombinedAuth();
   const [allFetchedServices, setAllFetchedServices] = useState<Service[]>([]); 
   const [displayedServices, setDisplayedServices] = useState<Service[]>([]); 
   const [isLoading, setIsLoading] = useState(true);
@@ -76,25 +75,26 @@ export default function AdminServicesPage() {
   
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([{ id: 'title', desc: false }]);
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
-  const [pageCount, setPageCount] = useState(0);
-  const [totalItems, setTotalItems] = useState(0);
-
+  
   const [dialogOpen, setDialogOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null); 
   
   const searchColumnId = 'title'; 
 
   const fetchServices = useCallback(async () => { 
+    if (!erpSid) {
+        setIsLoading(false);
+        toast({ title: "Authentication Error", description: "Could not retrieve ERPNext session.", variant: "destructive" });
+        return;
+    }
     setIsLoading(true);
     try {
-      const result = await getAllServicesFromFirestore({ 
-        pageIndex: pagination.pageIndex,
-        pageSize: pagination.pageSize,
-      });
-      setAllFetchedServices(result.data); 
-      setPageCount(result.pageCount);
-      setTotalItems(result.totalItems);
+      const result = await getServicesFromErpNext({ sid: erpSid });
+      if (result.success && result.data) {
+        setAllFetchedServices(result.data); 
+      } else {
+        throw new Error(result.error || "Failed to fetch services.");
+      }
     } catch (error: any) {
       console.error("Failed to fetch services:", error); 
       toast({
@@ -105,7 +105,7 @@ export default function AdminServicesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [pagination, toast]);
+  }, [erpSid, toast]);
 
   useEffect(() => {
     fetchServices();
@@ -123,8 +123,6 @@ export default function AdminServicesPage() {
             return service.title.toLowerCase().includes(lowerSearchTerm);
           case 'category.name':
             return service.category.name.toLowerCase().includes(lowerSearchTerm);
-          case 'pricingModel':
-            return service.pricingModel.toLowerCase().includes(lowerSearchTerm);
           case 'status':
             return service.status.toLowerCase().includes(lowerSearchTerm);
           case 'tags':
@@ -146,9 +144,9 @@ export default function AdminServicesPage() {
   };
 
   const confirmDelete = async () => {
-    if (serviceToDelete) {
+    if (serviceToDelete && erpSid) {
       setIsDeleting(serviceToDelete.id);
-      const result = await deleteServiceAction(serviceToDelete.id); 
+      const result = await deleteServiceFromErpNext({ sid: erpSid, serviceName: serviceToDelete.id }); 
       if (result.success) {
         toast({ title: "Service Deleted", description: result.message }); 
         fetchServices(); 
@@ -181,7 +179,7 @@ export default function AdminServicesPage() {
       accessorKey: "title",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Title" />,
       cell: ({ row }) => (
-        <Link href={`/admin/services/${row.original.slug}`} className="font-medium text-foreground hover:text-primary hover:underline">
+        <Link href={`/admin/services/${row.original.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
           {row.original.title}
         </Link>
       ),
@@ -192,15 +190,9 @@ export default function AdminServicesPage() {
       cell: ({ row }) => row.original.category.name,
     },
     {
-      accessorKey: "pricingModel",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Pricing" />,
-      cell: ({ row }) => {
-        const service = row.original;
-        if (service.pricingModel === "Fixed Price" || service.pricingModel === "Starting At" || service.pricingModel === "Hourly" || service.pricingModel === "Subscription") {
-          return `${service.pricingModel} - ${formatIDR(service.priceMin)}`;
-        }
-        return service.pricingModel;
-      },
+      accessorKey: "priceMin", // Note: The field name might need to be adjusted based on getServicesFromErpNext response
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Price" />,
+      cell: ({ row }) => formatIDR(row.original.pricing?.fixedPriceDetails?.price),
     },
     {
       accessorKey: "status",
@@ -224,17 +216,17 @@ export default function AdminServicesPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/admin/services/${row.original.slug}`}>
+                <Link href={`/admin/services/${row.original.id}`}>
                   <Eye className="mr-2 h-4 w-4" /> View Details
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={`/admin/services/edit/${row.original.slug}`}>
+                <Link href={`/admin/services/edit/${row.original.id}`}>
                   <Edit2 className="mr-2 h-4 w-4" /> Edit
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={`/admin/services/${row.original.slug}/simulate-journey`}>
+                <Link href={`/admin/services/${row.original.id}/simulate-journey`}>
                   <Play className="mr-2 h-4 w-4" /> Run Simulation
                 </Link>
               </DropdownMenuItem>
@@ -268,7 +260,7 @@ export default function AdminServicesPage() {
             Manage Services 
           </h1>
           <p className="text-muted-foreground mt-1">
-            Add, edit, or remove services. Total available: {totalItems}.
+            Add, edit, or remove services from ERPNext. Total available: {allFetchedServices.length}.
           </p>
         </div>
         <div className="flex gap-2 flex-col sm:flex-row">
@@ -288,32 +280,26 @@ export default function AdminServicesPage() {
       <Card>
         <CardHeader>
           <CardTitle>All Services</CardTitle>
-          <CardDescription>A list of all services offered on the platform.</CardDescription>
+          <CardDescription>A list of all services from ERPNext.</CardDescription>
         </CardHeader>
         <CardContent>
           <DataTable
             columns={columns}
             data={displayedServices} 
-            pageCount={pageCount} 
-            totalItems={totalItems} 
-            onPaginationChange={setPagination}
-            onSortingChange={setSorting} 
-            onColumnFiltersChange={setColumnFilters} 
-            initialState={{
-              pagination,
-              sorting, 
-              columnFilters,
-            }}
-            manualPagination={true} 
+            pageCount={-1} 
+            totalItems={allFetchedServices.length} 
+            manualPagination={false} 
             manualSorting={false}   
-            manualFiltering={true}  
+            manualFiltering={false}  
             isLoading={isLoading}
             searchColumnId={searchColumnId} 
             searchPlaceholder="Search services..."
             searchByOptions={searchByServiceOptions} 
             selectedSearchBy={selectedSearchField}
             onSelectedSearchByChange={setSelectedSearchField}
-            pageSizeOptions={[20, 50, 100]}
+            onColumnFiltersChange={setColumnFilters}
+            onSortingChange={setSorting}
+            initialState={{ sorting, columnFilters }}
           />
         </CardContent>
       </Card>
@@ -324,7 +310,7 @@ export default function AdminServicesPage() {
             <AlertDialogTitle className="flex items-center"><AlertCircle className="mr-2 h-5 w-5 text-destructive"/>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the service
-              "{serviceToDelete?.title}" from the database.
+              "{serviceToDelete?.title}" from the ERPNext database.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
