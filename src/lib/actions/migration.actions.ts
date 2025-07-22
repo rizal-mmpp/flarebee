@@ -157,11 +157,12 @@ async function postToErpNext(doctype: string, data: any, sid: string) {
 // Data transformation functions
 function transformServiceData(service: Service) {
   return {
+    // module: 'ERPNext Integrations', // This is for creating the DocType, not for posting data to it
     service_name: service.title,
     slug: service.slug,
     short_description: service.shortDescription,
     long_description: service.longDescription,
-    category: service.category.name,
+    category: service.category?.name || '', // Defensive check here
     status: service.status,
     tags: service.tags.join(','),
     image_url: service.imageUrl,
