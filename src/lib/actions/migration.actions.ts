@@ -60,6 +60,7 @@ async function postToErpNext(doctype: string, data: any, sid: string) {
 // Data transformation functions
 function transformServiceData(service: Service) {
     return {
+        module: "ERPNext Integrations",
         service_name: service.title,
         slug: service.slug,
         short_description: service.shortDescription,
@@ -81,6 +82,7 @@ function transformSitePageData(page: SitePage) {
     }
     
     return {
+        module: "ERPNext Integrations",
         page_id: page.id,
         title: 'title' in page ? page.title : page.id,
         content: content,
@@ -89,6 +91,7 @@ function transformSitePageData(page: SitePage) {
 
 function transformOrderData(order: Order) {
     return {
+        module: "ERPNext Integrations",
         order_id: order.orderId,
         customer_email: order.userEmail,
         total_amount: order.totalAmount,
