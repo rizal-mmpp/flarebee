@@ -98,60 +98,81 @@ function transformOrderData(order: Order) {
 
 
 export async function runMigrationAction(
-  sid: string,
-  onProgress: (status: MigrationStatus) => void
-): Promise<{ success: boolean; message: string }> {
+  sid: string
+): Promise<{ success: boolean; message: string; statuses?: MigrationStatus[] }> {
+  if (!sid) {
+    return {
+      success: false,
+      message: 'ERPNext session not found. Please log in to ERPNext first.',
+    };
+  }
+  const statuses: MigrationStatus[] = [];
 
-    if (!sid) {
-        return { success: false, message: 'ERPNext session not found. Please log in to ERPNext first.' };
-    }
+  const collectionsToMigrate = ['services', 'sitePages', 'orders'];
 
-    // 'users' collection removed from migration
-    const collectionsToMigrate = ['services', 'sitePages', 'orders']; 
+  for (const collectionName of collectionsToMigrate) {
+    try {
+      const querySnapshot = await getDocs(collection(db, collectionName));
+      const totalDocs = querySnapshot.size;
+      let migratedCount = 0;
 
-    for (const collectionName of collectionsToMigrate) {
-        try {
-            const querySnapshot = await getDocs(collection(db, collectionName));
-            const totalDocs = querySnapshot.size;
-            let migratedCount = 0;
-            
-            if (totalDocs === 0) {
-                 onProgress({ collection: collectionName, success: true, count: 0, error: 'No documents to migrate.' });
-                 continue;
-            }
+      if (totalDocs === 0) {
+        statuses.push({
+          collection: collectionName,
+          success: true,
+          count: 0,
+          error: 'No documents to migrate.',
+        });
+        continue;
+      }
 
-            for (const doc of querySnapshot.docs) {
-                let dataToPost;
-                const docData = { id: doc.id, ...doc.data() };
-                const erpDoctype = collectionMappings[collectionName];
-                
-                // Choose the right transformation function
-                switch (collectionName) {
-                    case 'services':
-                        dataToPost = transformServiceData(docData as unknown as Service);
-                        break;
-                    case 'sitePages':
-                        dataToPost = transformSitePageData(docData as unknown as SitePage);
-                        break;
-                    case 'orders':
-                        dataToPost = transformOrderData(docData as unknown as Order);
-                        break;
-                    // For other collections, you might need a generic transformation or specific ones
-                    default:
-                        dataToPost = docData;
-                        break;
-                }
+      for (const doc of querySnapshot.docs) {
+        let dataToPost;
+        const docData = { id: doc.id, ...doc.data() };
+        const erpDoctype = collectionMappings[collectionName];
 
-                await postToErpNext(erpDoctype, dataToPost, sid);
-                migratedCount++;
-            }
-            onProgress({ collection: collectionName, success: true, count: migratedCount });
-        } catch (error: any) {
-            console.error(`Migration failed for collection: ${collectionName}`, error);
-            onProgress({ collection: collectionName, success: false, count: 0, error: error.message });
-            return { success: false, message: `Migration failed on collection '${collectionName}'. Please check logs.` };
+        switch (collectionName) {
+          case 'services':
+            dataToPost = transformServiceData(docData as unknown as Service);
+            break;
+          case 'sitePages':
+            dataToPost = transformSitePageData(docData as unknown as SitePage);
+            break;
+          case 'orders':
+            dataToPost = transformOrderData(docData as unknown as Order);
+            break;
+          default:
+            dataToPost = docData;
+            break;
         }
-    }
 
-    return { success: true, message: 'All selected collections have been processed.' };
+        await postToErpNext(erpDoctype, dataToPost, sid);
+        migratedCount++;
+      }
+      statuses.push({
+        collection: collectionName,
+        success: true,
+        count: migratedCount,
+      });
+    } catch (error: any) {
+      console.error(`Migration failed for collection: ${collectionName}`, error);
+      statuses.push({
+        collection: collectionName,
+        success: false,
+        count: 0,
+        error: error.message,
+      });
+      return {
+        success: false,
+        message: `Migration failed on collection '${collectionName}'. Please check logs.`,
+        statuses: statuses,
+      };
+    }
+  }
+
+  return {
+    success: true,
+    message: 'All selected collections have been processed.',
+    statuses: statuses,
+  };
 }

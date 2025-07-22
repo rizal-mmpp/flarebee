@@ -33,10 +33,11 @@ export default function MigrationPage() {
     setMigrationStatus([]);
     setOverallResult(null);
     startMigration(async () => {
-      const result = await runMigrationAction(erpSid, (status) => {
-        setMigrationStatus(prev => [...prev, status]);
-      });
-      setOverallResult(result);
+      const result = await runMigrationAction(erpSid);
+      if (result.statuses) {
+        setMigrationStatus(result.statuses);
+      }
+      setOverallResult({ success: result.success, message: result.message });
     });
   };
 
