@@ -180,18 +180,23 @@ async function postToErpNext(doctype: string, data: any, sid: string, isSingle: 
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    console.error(`ERPNext API Error for ${doctype}:`, errorData);
-    const errorMessage = errorData?._server_messages || errorData?.exception || errorData?.message || `HTTP error! status: ${response.status}`;
-    if (Array.isArray(errorMessage)) {
-      try {
-        const parsedMessage = JSON.parse(errorMessage[0]);
-        throw new Error(parsedMessage.message || "Unknown ERPNext Error");
-      } catch (e) {
-        throw new Error(errorMessage.join(', ') || `HTTP error! status: ${response.status}`);
-      }
+    const errorText = await response.text();
+    console.error(`ERPNext API Error for ${doctype}:`, errorText);
+    try {
+        const errorData = JSON.parse(errorText);
+        const errorMessage = errorData?._server_messages || errorData?.exception || errorData?.message || `HTTP error! status: ${response.status}`;
+        if (Array.isArray(errorMessage)) {
+            const parsedMessage = JSON.parse(errorMessage[0]);
+            throw new Error(parsedMessage.message || "Unknown ERPNext Error");
+        }
+        throw new Error(errorMessage);
+    } catch(e) {
+        // If parsing fails, it's likely an HTML error page
+        if (errorText.toLowerCase().includes('<!doctype html')) {
+             throw new Error(`Unexpected token '<', "${errorText.substring(0, 20)}..." is not valid JSON`);
+        }
+        throw new Error(`Failed with status ${response.status} and non-JSON response.`);
     }
-    throw new Error(errorMessage);
   }
   return response.json();
 }
