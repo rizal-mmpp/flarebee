@@ -93,7 +93,7 @@ const doctypeSchemas: { [key: string]: any } = {
     name: collectionMappings.siteSettings,
     module: MODULE_NAME,
     custom: 1,
-    issingle: 1, // This is a Single DocType
+    issingle: 0, // Changed from 1 to 0 to make it a listable doctype
     fields: [
       { fieldname: 'site_title', fieldtype: 'Data', label: 'Site Title' },
       { fieldname: 'logo_url', fieldtype: 'Data', label: 'Logo URL' },
