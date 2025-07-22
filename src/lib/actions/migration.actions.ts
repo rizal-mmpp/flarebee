@@ -56,9 +56,9 @@ function transformServiceData(service: Service) {
         slug: service.slug,
         short_description: service.shortDescription,
         long_description: service.longDescription,
-        category: service.category.name,
+        category: service.category?.name || '', // Safely access category name
         status: service.status,
-        tags: service.tags.join(','),
+        tags: service.tags?.join(',') || '',
         image_url: service.imageUrl,
         // Pricing would be complex and likely needs to be a child table in ERPNext
         // This is a simplified example.
