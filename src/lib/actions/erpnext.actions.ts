@@ -63,6 +63,14 @@ async function fetchFromErpNext<T>({ sid, doctype, docname, fields = ['*'], filt
 
 function transformErpServiceToAppService(item: any): Service {
     const category = SERVICE_CATEGORIES.find(c => c.name === item.category) || SERVICE_CATEGORIES[4]; // Default to 'Other'
+    
+    // Check if the image URL is already absolute. If not, prepend the ERPNext URL.
+    const imageUrl = (item.image_url && (item.image_url.startsWith('http') || item.image_url.startsWith('https')))
+      ? item.image_url
+      : item.image_url
+        ? `${ERPNEXT_API_URL}${item.image_url}`
+        : 'https://placehold.co/600x400.png';
+
     return {
         id: item.name, // ERPNext uses 'name' as the unique ID
         slug: item.slug,
@@ -71,7 +79,7 @@ function transformErpServiceToAppService(item: any): Service {
         longDescription: item.long_description,
         category: category,
         tags: typeof item.tags === 'string' ? item.tags.split(',').map(t => t.trim()) : [],
-        imageUrl: item.image_url ? `${ERPNEXT_API_URL}${item.image_url}` : 'https://placehold.co/600x400.png',
+        imageUrl: imageUrl,
         status: item.status,
         serviceUrl: item.service_url || '#',
         createdAt: item.creation,
