@@ -9,9 +9,18 @@ export async function GET(request: NextRequest) {
   const sid = cookieStore.get('sid');
 
   if (!sid || !sid.value) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    return NextResponse.json({ error: 'Not authenticated: No sid cookie found.' }, { status: 401 });
   }
 
+  // For debugging: Return the received sid to confirm it's being passed correctly.
+  return NextResponse.json({
+    success: true,
+    message: "SID received successfully for debugging.",
+    sid: sid.value,
+  });
+
+  /*
+  // Original logic to be restored after debugging:
   const getHeaders = (sessionId: string) => ({
     'Cookie': `sid=${sessionId}`,
   });
@@ -70,4 +79,5 @@ export async function GET(request: NextRequest) {
     console.error('[GET_USER_DETAILS_API] Error:', error.message);
     return NextResponse.json({ error: 'Session invalid or failed to fetch user data.' }, { status: 401 });
   }
+  */
 }
