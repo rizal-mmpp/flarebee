@@ -191,11 +191,11 @@ async function postToErpNext(doctype: string, data: any, sid: string, isSingle: 
         }
         throw new Error(errorMessage);
     } catch(e) {
-        // If parsing fails, it's likely an HTML error page
+        const snippet = errorText.substring(0, 200).replace(/\n/g, '');
         if (errorText.toLowerCase().includes('<!doctype html')) {
-             throw new Error(`Unexpected token '<', "${errorText.substring(0, 20)}..." is not valid JSON`);
+             throw new Error(`Server returned HTML instead of JSON. Snippet: "${snippet}..."`);
         }
-        throw new Error(`Failed with status ${response.status} and non-JSON response.`);
+        throw new Error(`Failed with status ${response.status} and non-JSON response: ${snippet}`);
     }
   }
   return response.json();
