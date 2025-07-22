@@ -41,7 +41,16 @@ async function postToErpNext(doctype: string, data: any, sid: string) {
   if (!response.ok) {
     const errorData = await response.json();
     console.error(`ERPNext API Error for ${doctype}:`, errorData);
-    const errorMessage = errorData?.exception || errorData?.message || `HTTP error! status: ${response.status}`;
+    const errorMessage = errorData?._server_messages || errorData?.exception || errorData?.message || `HTTP error! status: ${response.status}`;
+    // Handle the case where _server_messages is an array of stringified JSON
+    if (Array.isArray(errorMessage)) {
+        try {
+            const parsedMessage = JSON.parse(errorMessage[0]);
+            throw new Error(parsedMessage.message || "Unknown ERPNext Error");
+        } catch (e) {
+             throw new Error(errorMessage.join(', ') || `HTTP error! status: ${response.status}`);
+        }
+    }
     throw new Error(errorMessage);
   }
 
@@ -51,7 +60,6 @@ async function postToErpNext(doctype: string, data: any, sid: string) {
 // Data transformation functions
 function transformServiceData(service: Service) {
     return {
-        module: "flarebee", // Specify the module
         service_name: service.title,
         slug: service.slug,
         short_description: service.shortDescription,
@@ -73,7 +81,6 @@ function transformSitePageData(page: SitePage) {
     }
     
     return {
-        module: "flarebee", // Specify the module
         page_id: page.id,
         title: 'title' in page ? page.title : page.id,
         content: content,
@@ -82,7 +89,6 @@ function transformSitePageData(page: SitePage) {
 
 function transformOrderData(order: Order) {
     return {
-        module: "flarebee", // Specify the module
         order_id: order.orderId,
         customer_email: order.userEmail,
         total_amount: order.totalAmount,
@@ -140,7 +146,7 @@ export async function runMigrationAction(
             dataToPost = transformOrderData(docData as unknown as Order);
             break;
           default:
-            dataToPost = { module: "flarebee", ...docData };
+            dataToPost = { ...docData };
             break;
         }
 
