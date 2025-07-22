@@ -51,32 +51,29 @@ async function postToErpNext(doctype: string, data: any, sid: string) {
 // Data transformation functions
 function transformServiceData(service: Service) {
     return {
-        // Assuming ERPNext doctype 'Service' has these fields
+        module: "flarebee", // Specify the module
         service_name: service.title,
         slug: service.slug,
         short_description: service.shortDescription,
         long_description: service.longDescription,
-        category: service.category?.name || '', // Safely access category name
+        category: service.category?.name || '',
         status: service.status,
         tags: service.tags?.join(',') || '',
         image_url: service.imageUrl,
-        // Pricing would be complex and likely needs to be a child table in ERPNext
-        // This is a simplified example.
         price: service.pricing?.fixedPriceDetails?.price ?? 0,
     };
 }
 
 function transformSitePageData(page: SitePage) {
     let content = '';
-    // Check if it's a standard page with a 'content' property
     if ('content' in page) {
         content = page.content;
     } else if (page.id === 'public-about') {
-        // For structured pages, we serialize the whole object to a field
         content = JSON.stringify(page, null, 2);
     }
     
     return {
+        module: "flarebee", // Specify the module
         page_id: page.id,
         title: 'title' in page ? page.title : page.id,
         content: content,
@@ -85,13 +82,13 @@ function transformSitePageData(page: SitePage) {
 
 function transformOrderData(order: Order) {
     return {
+        module: "flarebee", // Specify the module
         order_id: order.orderId,
         customer_email: order.userEmail,
         total_amount: order.totalAmount,
         currency: order.currency,
         status: order.status,
         payment_gateway: order.paymentGateway,
-        // Items would be a child table in ERPNext
         items_json: JSON.stringify(order.items), 
     };
 }
@@ -99,11 +96,12 @@ function transformOrderData(order: Order) {
 
 export async function runMigrationAction(
   sid: string
-): Promise<{ success: boolean; message: string; statuses?: MigrationStatus[] }> {
+): Promise<{ success: boolean; message: string; statuses: MigrationStatus[] }> {
   if (!sid) {
     return {
       success: false,
       message: 'ERPNext session not found. Please log in to ERPNext first.',
+      statuses: [],
     };
   }
   const statuses: MigrationStatus[] = [];
@@ -142,7 +140,7 @@ export async function runMigrationAction(
             dataToPost = transformOrderData(docData as unknown as Order);
             break;
           default:
-            dataToPost = docData;
+            dataToPost = { module: "flarebee", ...docData };
             break;
         }
 
