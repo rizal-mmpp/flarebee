@@ -3,7 +3,7 @@
 
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
-import type { SitePage, Service, Order } from '../types';
+import type { SitePage, Service, Order, SiteSettings } from '../types';
 
 export interface MigrationStatus {
   collection: string;
@@ -19,6 +19,8 @@ const collectionMappings: { [key: string]: string } = {
   services: `Service`,
   sitePages: `Site Page`,
   orders: `Orders`,
+  siteSettings: 'Site Settings',
+  userCarts: 'User Cart',
 };
 
 // --- Doctype Definitions ---
@@ -78,6 +80,35 @@ const doctypeSchemas: { [key: string]: any } = {
     istable: 0,
     title_field: 'order_id',
   },
+  [collectionMappings.siteSettings]: {
+    doctype: 'DocType',
+    name: collectionMappings.siteSettings,
+    module: MODULE_NAME,
+    custom: 1,
+    issingle: 1, // This is a Single DocType
+    fields: [
+      { fieldname: 'site_title', fieldtype: 'Data', label: 'Site Title' },
+      { fieldname: 'logo_url', fieldtype: 'Data', label: 'Logo URL' },
+      { fieldname: 'contact_address', fieldtype: 'Small Text', label: 'Contact Address' },
+      { fieldname: 'contact_phone', fieldtype: 'Data', label: 'Contact Phone' },
+      { fieldname: 'contact_email', fieldtype: 'Data', label: 'Contact Email' },
+    ],
+    permissions: [{ role: 'System Manager', read: 1, write: 1, create: 1, delete: 1 }],
+  },
+  [collectionMappings.userCarts]: {
+    doctype: 'DocType',
+    name: collectionMappings.userCarts,
+    module: MODULE_NAME,
+    custom: 1,
+    fields: [
+      { fieldname: 'user_id', fieldtype: 'Data', label: 'User ID', unique: 1 },
+      { fieldname: 'items_json', fieldtype: 'Code', label: 'Items JSON' },
+    ],
+    permissions: [{ role: 'System Manager', read: 1, write: 1, create: 1, delete: 1 }],
+    issingle: 0,
+    istable: 0,
+    title_field: 'user_id',
+  },
 };
 
 
@@ -128,11 +159,14 @@ async function checkAndCreateDoctype(doctypeName: string, sid: string) {
 }
 
 
-async function postToErpNext(doctype: string, data: any, sid: string) {
+async function postToErpNext(doctype: string, data: any, sid: string, isSingle: boolean = false) {
   if (!ERPNEXT_API_URL) throw new Error('ERPNext API URL is not configured.');
+  
+  const endpoint = isSingle ? `${ERPNEXT_API_URL}/api/resource/${doctype}` : `${ERPNEXT_API_URL}/api/resource/${doctype}`;
+  const method = isSingle ? 'PUT' : 'POST';
 
-  const response = await fetch(`${ERPNEXT_API_URL}/api/resource/${doctype}`, {
-    method: 'POST',
+  const response = await fetch(endpoint, {
+    method: method,
     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
     body: JSON.stringify(data),
   });
@@ -161,7 +195,7 @@ function transformServiceData(service: Service) {
     slug: service.slug,
     short_description: service.shortDescription,
     long_description: service.longDescription,
-    category: service.category?.name || '', // Defensive check here
+    category: service.category?.name || '',
     status: service.status,
     tags: service.tags.join(','),
     image_url: service.imageUrl,
@@ -195,6 +229,25 @@ function transformOrderData(order: Order) {
   };
 }
 
+function transformSiteSettingsData(settings: SiteSettings) {
+    return {
+        doctype: 'Site Settings', // Required for single doctypes
+        site_title: settings.siteTitle,
+        logo_url: settings.logoUrl,
+        contact_address: settings.contactAddress,
+        contact_phone: settings.contactPhone,
+        contact_email: settings.contactEmail,
+    };
+}
+
+function transformUserCartData(cart: any) {
+    return {
+        user_id: cart.id, // The document ID in Firestore is the user ID
+        items_json: JSON.stringify(cart.items),
+    };
+}
+
+
 export async function runMigrationAction(
   sid: string
 ): Promise<{ success: boolean; message: string; statuses: MigrationStatus[] }> {
@@ -206,7 +259,7 @@ export async function runMigrationAction(
     };
   }
   const statuses: MigrationStatus[] = [];
-  const collectionsToMigrate = ['services', 'sitePages', 'orders'];
+  const collectionsToMigrate = ['services', 'sitePages', 'orders', 'siteSettings', 'userCarts'];
 
   for (const collectionName of collectionsToMigrate) {
     try {
@@ -214,6 +267,8 @@ export async function runMigrationAction(
       if (!erpDoctype) {
         throw new Error(`No ERPNext doctype mapping found for collection '${collectionName}'.`);
       }
+
+      const isSingleDoctype = doctypeSchemas[erpDoctype]?.issingle === 1;
 
       // Step 1: Ensure Doctype exists in ERPNext
       await checkAndCreateDoctype(erpDoctype, sid);
@@ -242,12 +297,18 @@ export async function runMigrationAction(
           case 'orders':
             dataToPost = transformOrderData(docData as unknown as Order);
             break;
+          case 'siteSettings':
+            dataToPost = transformSiteSettingsData(docData as unknown as SiteSettings);
+            break;
+          case 'userCarts':
+            dataToPost = transformUserCartData(docData as any);
+            break;
           default:
             dataToPost = { ...docData };
             break;
         }
 
-        await postToErpNext(erpDoctype, dataToPost, sid);
+        await postToErpNext(erpDoctype, dataToPost, sid, isSingleDoctype);
         migratedCount++;
       }
       statuses.push({ collection: collectionName, success: true, count: migratedCount });
