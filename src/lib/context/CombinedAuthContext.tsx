@@ -9,13 +9,6 @@ import type { AuthUser } from '@/lib/types';
 
 type AuthMethod = 'firebase' | 'erpnext';
 
-interface ERPNextUser {
-  username: string;
-  email: string;
-  fullName: string;
-  photoURL?: string | null;
-}
-
 interface CombinedAuthContextType {
   authMethod: AuthMethod;
   setAuthMethod: (method: AuthMethod) => void;
@@ -30,6 +23,7 @@ interface CombinedAuthContextType {
 const CombinedAuthContext = createContext<CombinedAuthContextType | undefined>(undefined);
 
 const AUTH_METHOD_STORAGE_KEY = 'rio_auth_method';
+const ERPNEXT_SID_STORAGE_KEY = 'rio_erpnext_sid';
 
 function getInitialAuthMethod(): AuthMethod {
   if (typeof window !== 'undefined') {
@@ -68,37 +62,48 @@ function CombinedAuthContent({
   const { toast } = useToast();
   
   const [erpUser, setErpUser] = useState<AuthUser | null>(null);
+  const [erpSid, setErpSid] = useState<string | null>(null);
   const [isErpLoading, setIsErpLoading] = useState(true);
 
-  const checkErpSession = useCallback(async () => {
-    if (authMethod !== 'erpnext') {
+  const checkErpSession = useCallback(async (sid: string) => {
+    if (authMethod !== 'erpnext' || !sid) {
         setIsErpLoading(false);
         setErpUser(null);
         return;
     }
     setIsErpLoading(true);
     try {
-      const result = await getUserDetailsFromERPNext();
+      const result = await getUserDetailsFromERPNext(sid);
       if (result.success && result.user) {
         setErpUser({
             uid: result.user.username,
             displayName: result.user.fullName,
             email: result.user.email,
             photoURL: result.user.photoURL,
-            role: result.user.username === 'Administrator' ? 'admin' : 'user',
+            role: result.user.role || 'user',
         });
+        setErpSid(sid); // Keep the sid if valid
       } else {
         setErpUser(null);
+        setErpSid(null);
+        localStorage.removeItem(ERPNEXT_SID_STORAGE_KEY);
       }
     } catch (error) {
       setErpUser(null);
+      setErpSid(null);
+      localStorage.removeItem(ERPNEXT_SID_STORAGE_KEY);
     } finally {
       setIsErpLoading(false);
     }
   }, [authMethod]);
   
   useEffect(() => {
-    checkErpSession();
+    const storedSid = localStorage.getItem(ERPNEXT_SID_STORAGE_KEY);
+    if (authMethod === 'erpnext' && storedSid) {
+        checkErpSession(storedSid);
+    } else {
+        setIsErpLoading(false);
+    }
   }, [checkErpSession, authMethod]);
 
   const user = authMethod === 'firebase' ? firebase.user : erpUser;
@@ -111,8 +116,9 @@ function CombinedAuthContent({
     } else {
       setIsErpLoading(true);
       const result = await loginWithERPNext(username, password);
-      if (result.success) {
-        await checkErpSession();
+      if (result.success && result.sid) {
+        localStorage.setItem(ERPNEXT_SID_STORAGE_KEY, result.sid);
+        await checkErpSession(result.sid);
         toast({ title: "Login Successful", description: 'Welcome back!' });
       } else {
         toast({ title: "Login Failed", description: result.error, variant: 'destructive'});
@@ -127,7 +133,9 @@ function CombinedAuthContent({
       await firebase.signOutUser();
     } else {
       await logoutFromERPNext();
+      localStorage.removeItem(ERPNEXT_SID_STORAGE_KEY);
       setErpUser(null);
+      setErpSid(null);
       toast({ title: 'Logout Successful', description: 'You have been successfully logged out.' });
     }
     return { success: true };

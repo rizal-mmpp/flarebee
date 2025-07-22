@@ -14,6 +14,7 @@ interface UserDetails {
   email: string;
   fullName: string;
   photoURL?: string | null;
+  role?: 'admin' | 'user';
 }
 
 interface UserDetailsResponse {
@@ -94,9 +95,14 @@ export const resetERPNextPassword = async (email: string): Promise<AuthResponse>
 /**
  * Gets the current user's details from our API route
  */
-export const getUserDetailsFromERPNext = async (): Promise<UserDetailsResponse> => {
+export const getUserDetailsFromERPNext = async (sid: string): Promise<UserDetailsResponse> => {
   try {
-    const response = await fetch('/api/erpnext-auth/get-user-details');
+    const response = await fetch('/api/erpnext-auth/get-user-details', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sid }),
+    });
+
     const data = await response.json();
     if (!response.ok) {
       return { success: false, error: data.error || 'Could not fetch user session.' };
