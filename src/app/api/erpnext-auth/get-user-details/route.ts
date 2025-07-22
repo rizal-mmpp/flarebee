@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
     
     // 2. Get the user's full details from the User doctype
-    const fields = ['email', 'full_name', 'user_image', 'roles'];
+    const fields = ['email', 'full_name', 'user_image'];
     const filters = [['name', '=', userId]];
     const userDetailsUrl = `${ERPNEXT_API_URL}/api/resource/User?fields=${JSON.stringify(fields)}&filters=${JSON.stringify(filters)}`;
 
@@ -51,7 +51,6 @@ export async function POST(request: NextRequest) {
     }
 
     const user = userDetailsData.data[0];
-    const isAdmin = user.roles?.some((role: { role: string }) => role.role === 'System Manager' || role.role === 'Administrator');
 
     return NextResponse.json({
         success: true,
@@ -60,7 +59,6 @@ export async function POST(request: NextRequest) {
             email: user.email,
             fullName: user.full_name,
             photoURL: user.user_image ? `${ERPNEXT_API_URL}${user.user_image}` : null,
-            role: isAdmin ? 'admin' : 'user',
         }
     });
 

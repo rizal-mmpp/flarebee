@@ -75,14 +75,16 @@ function CombinedAuthContent({
     try {
       const result = await getUserDetailsFromERPNext(sid);
       if (result.success && result.user) {
+        const role = result.user.username === 'Administrator' ? 'admin' : 'user';
+
         setErpUser({
             uid: result.user.username,
             displayName: result.user.fullName,
             email: result.user.email,
             photoURL: result.user.photoURL,
-            role: result.user.role || 'user',
+            role: role,
         });
-        setErpSid(sid); // Keep the sid if valid
+        setErpSid(sid); 
       } else {
         setErpUser(null);
         setErpSid(null);
