@@ -1,11 +1,9 @@
 
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { getAllServicesFromFirestore } from '@/lib/firebase/firestoreServices'; // Updated import
-import { getAllOrdersFromFirestore } from '@/lib/firebase/firestoreOrders';
-import { getAllUserProfiles } from '@/lib/firebase/firestoreAdmin'; 
-import type { Service, Order, UserProfile } from '@/lib/types'; // Updated type
-import { LayoutDashboard, BarChart3, Briefcase, FileText, Users, DollarSign, ShoppingCart, Activity, Banknote, Loader2 } from 'lucide-react'; // Changed LayoutGrid to Briefcase, Added LayoutDashboard
+import { getServicesFromErpNext, getOrdersFromErpNext, getUsersFromErpNext } from '@/lib/actions/erpnext.actions';
+import type { Service, Order, UserProfile } from '@/lib/types'; 
+import { LayoutDashboard, BarChart3, Briefcase, FileText, Users, DollarSign, ShoppingCart, Activity, Banknote, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { getXenditBalance, type XenditBalanceResult } from '@/lib/actions/xenditAdmin.actions';
@@ -24,7 +22,7 @@ import { useRouter } from 'next/navigation';
 import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 
 export default function AdminDashboardPage() {
-  const { isAuthenticated, loading } = useCombinedAuth();
+  const { isAuthenticated, loading, erpSid } = useCombinedAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -33,12 +31,12 @@ export default function AdminDashboardPage() {
     }
   }, [isAuthenticated, loading, router]);
 
-  const [services, setServices] = useState<Service[]>([]); // Updated state name and type
+  const [services, setServices] = useState<Service[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [xenditBalance, setXenditBalance] = useState<XenditBalanceResult | null>(null);
   
-  const [isLoadingServices, setIsLoadingServices] = useState(true); // Updated state name
+  const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
@@ -46,20 +44,31 @@ export default function AdminDashboardPage() {
   const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
-    setIsLoadingServices(true); // Updated state name
+    if (!erpSid) {
+        toast({ title: "Authentication Error", description: "Not logged in with ERPNext.", variant: "destructive" });
+        return;
+    }
+    setIsLoadingServices(true);
     setIsLoadingOrders(true);
     setIsLoadingUsers(true);
     setIsLoadingBalance(true);
     try {
-      const [servicesResult, ordersResult, usersResult, balanceResult] = await Promise.all([ // Updated variable name
-        getAllServicesFromFirestore({}), // Fetch all services
-        getAllOrdersFromFirestore({}),    
-        getAllUserProfiles({}),          
+      const [servicesResult, ordersResult, usersResult, balanceResult] = await Promise.all([
+        getServicesFromErpNext({ sid: erpSid }),
+        getOrdersFromErpNext({ sid: erpSid }),    
+        getUsersFromErpNext({ sid: erpSid }),          
         getXenditBalance(),
       ]);
-      setServices(servicesResult.data); // Updated state setter
-      setOrders(ordersResult.data);
-      setUsers(usersResult.data);
+
+      if (servicesResult.success && servicesResult.data) setServices(servicesResult.data);
+      else toast({ title: "Error Fetching Services", description: servicesResult.error, variant: "destructive"});
+
+      if (ordersResult.success && ordersResult.data) setOrders(ordersResult.data);
+      else toast({ title: "Error Fetching Orders", description: ordersResult.error, variant: "destructive"});
+
+      if (usersResult.success && usersResult.data) setUsers(usersResult.data);
+      else toast({ title: "Error Fetching Users", description: usersResult.error, variant: "destructive"});
+
       setXenditBalance(balanceResult);
 
     } catch (error) {
@@ -70,31 +79,33 @@ export default function AdminDashboardPage() {
         variant: "destructive",
       });
     } finally {
-      setIsLoadingServices(false); // Updated state name
+      setIsLoadingServices(false);
       setIsLoadingOrders(false);
       setIsLoadingUsers(false);
       setIsLoadingBalance(false);
     }
-  }, [toast]);
+  }, [toast, erpSid]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (isAuthenticated) {
+      fetchData();
+    }
+  }, [fetchData, isAuthenticated]);
 
   const totalSales = orders
     .filter(order => order.status === 'completed' || order.xenditPaymentStatus === 'PAID')
     .reduce((sum, order) => sum + order.totalAmount, 0);
   const totalOrdersCount = orders.length;
-  const totalServicesCount = services.length; // Updated variable name
+  const totalServicesCount = services.length;
   const totalUsersCount = users.length;
 
-  const isLoadingOverall = isLoadingServices || isLoadingOrders || isLoadingUsers || isLoadingBalance; // Updated state name
+  const isLoadingOverall = isLoadingServices || isLoadingOrders || isLoadingUsers || isLoadingBalance;
 
   return (
     <div className="space-y-8">
       <header className="mb-2">
         <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
-          <LayoutDashboard className="mr-3 h-8 w-8 text-primary" /> {/* Kept LayoutDashboard for overall admin */}
+          <LayoutDashboard className="mr-3 h-8 w-8 text-primary" />
           Admin Overview
         </h1>
         <p className="text-muted-foreground">
@@ -150,13 +161,13 @@ export default function AdminDashboardPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Services</CardTitle> {/* Updated title */}
-              <Briefcase className="h-5 w-5 text-muted-foreground" /> {/* Changed icon */}
+              <CardTitle className="text-sm font-medium">Total Services</CardTitle> 
+              <Briefcase className="h-5 w-5 text-muted-foreground" /> 
             </CardHeader>
             <CardContent>
-              {isLoadingServices ? <Loader2 className="h-7 w-7 animate-spin" /> : <div className="text-2xl font-bold">{totalServicesCount}</div>} {/* Updated variable */}
+              {isLoadingServices ? <Loader2 className="h-7 w-7 animate-spin" /> : <div className="text-2xl font-bold">{totalServicesCount}</div>} 
               <p className="text-xs text-muted-foreground">
-                Live services offered. {/* Updated description */}
+                Live services offered. 
               </p>
             </CardContent>
           </Card>

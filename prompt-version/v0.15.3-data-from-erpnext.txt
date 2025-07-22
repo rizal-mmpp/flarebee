@@ -1,0 +1,3 @@
+Migration progress (use erpnext instead of firebase):
+[ ] Overview Page
+[ ] Services Page
