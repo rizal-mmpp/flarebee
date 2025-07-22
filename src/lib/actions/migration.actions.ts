@@ -3,7 +3,6 @@
 
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
-import { cookies } from 'next/headers';
 import type { SitePage, SiteSettings, UserProfile, Service, Order } from '../types';
 
 export interface MigrationStatus {
@@ -99,10 +98,9 @@ function transformOrderData(order: Order) {
 
 
 export async function runMigrationAction(
+  sid: string,
   onProgress: (status: MigrationStatus) => void
 ): Promise<{ success: boolean; message: string }> {
-    const cookieStore = cookies();
-    const sid = cookieStore.get('sid')?.value;
 
     if (!sid) {
         return { success: false, message: 'ERPNext session not found. Please log in to ERPNext first.' };

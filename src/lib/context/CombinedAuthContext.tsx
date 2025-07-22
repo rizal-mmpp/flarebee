@@ -18,6 +18,7 @@ interface CombinedAuthContextType {
   signIn: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<{ success: boolean; error?: string }>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  erpSid: string | null; // Expose the SID
 }
 
 const CombinedAuthContext = createContext<CombinedAuthContextType | undefined>(undefined);
@@ -166,6 +167,7 @@ function CombinedAuthContent({
     signIn,
     signOut,
     resetPassword,
+    erpSid,
   };
 
   return (

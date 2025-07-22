@@ -8,19 +8,32 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, DatabaseZap, CheckCircle, AlertTriangle, ListChecks, ServerCrash } from 'lucide-react';
 import { runMigrationAction } from '@/lib/actions/migration.actions';
 import type { MigrationStatus } from '@/lib/actions/migration.actions';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 const collectionNames = ['services', 'sitePages', 'orders', 'siteSettings', 'userCarts'];
 
 export default function MigrationPage() {
+  const { authMethod, erpSid } = useCombinedAuth();
+  const { toast } = useToast();
   const [isMigrating, startMigration] = useTransition();
   const [migrationStatus, setMigrationStatus] = useState<MigrationStatus[]>([]);
   const [overallResult, setOverallResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const handleRunMigration = () => {
+    if (authMethod !== 'erpnext' || !erpSid) {
+      toast({
+        title: 'Authentication Error',
+        description: 'You must be logged in with ERPNext to perform data migration.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setMigrationStatus([]);
     setOverallResult(null);
     startMigration(async () => {
-      const result = await runMigrationAction((status) => {
+      const result = await runMigrationAction(erpSid, (status) => {
         setMigrationStatus(prev => [...prev, status]);
       });
       setOverallResult(result);
