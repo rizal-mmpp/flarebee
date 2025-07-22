@@ -16,9 +16,9 @@ const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 const MODULE_NAME = 'ERPNext Integrations';
 
 const collectionMappings: { [key: string]: string } = {
-  services: `${MODULE_NAME}-Service`,
-  sitePages: `${MODULE_NAME}-Site Page`,
-  orders: `${MODULE_NAME}-Orders`,
+  services: `Service`,
+  sitePages: `Site Page`,
+  orders: `Orders`,
 };
 
 // --- Doctype Definitions ---
@@ -157,7 +157,6 @@ async function postToErpNext(doctype: string, data: any, sid: string) {
 // Data transformation functions
 function transformServiceData(service: Service) {
   return {
-    // module: 'ERPNext Integrations', // This is for creating the DocType, not for posting data to it
     service_name: service.title,
     slug: service.slug,
     short_description: service.shortDescription,
