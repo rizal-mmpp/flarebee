@@ -5,7 +5,7 @@ import { useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, DatabaseZap, CheckCircle, AlertTriangle, ListChecks, ServerCrash } from 'lucide-react';
+import { Loader2, DatabaseZap, CheckCircle, AlertTriangle, ListChecks, ServerCrash, SkipForward } from 'lucide-react';
 import { runMigrationAction } from '@/lib/actions/migration.actions';
 import type { MigrationStatus } from '@/lib/actions/migration.actions';
 import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
@@ -64,9 +64,9 @@ export default function MigrationPage() {
         <CardContent>
           <Alert variant="destructive" className="mb-6">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Warning: Irreversible Action</AlertTitle>
+            <AlertTitle>Warning: Idempotent Action</AlertTitle>
             <AlertDescription>
-              This process will attempt to create new records in ERPNext based on data in Firebase. It is designed to be run once. Running it multiple times may create duplicate entries. Please ensure you have backups and that your ERPNext Doctypes are prepared before proceeding.
+              This process will attempt to create new records in ERPNext if they do not already exist based on a unique key (e.g., slug, ID). Running it multiple times is safe and will not create duplicate entries.
             </AlertDescription>
           </Alert>
 
@@ -97,9 +97,14 @@ export default function MigrationPage() {
                       {getStatusIcon(status ? (status.success ? 'success' : 'failure') : 'pending')}
                       <span className="ml-3 capitalize">{name}</span>
                     </div>
-                    <div className="text-muted-foreground">
+                    <div className="text-muted-foreground text-right">
                       {status ? (
-                        status.success ? `Migrated ${status.count} records.` : `Failed: ${status.error}`
+                        status.success ? (
+                            <div className="flex items-center gap-4">
+                               <span className="flex items-center text-green-600"><CheckCircle className="mr-1.5 h-4 w-4"/>Migrated: {status.count}</span>
+                               <span className="flex items-center text-blue-600"><SkipForward className="mr-1.5 h-4 w-4"/>Skipped: {status.skipped}</span>
+                            </div>
+                        ) : `Failed: ${status.error}`
                       ) : (
                         `Pending...`
                       )}

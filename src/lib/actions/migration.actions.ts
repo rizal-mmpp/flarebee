@@ -9,6 +9,7 @@ export interface MigrationStatus {
   collection: string;
   success: boolean;
   count: number;
+  skipped: number;
   error?: string;
 }
 
@@ -21,6 +22,13 @@ const collectionMappings: { [key: string]: string } = {
   orders: `Orders`,
   siteSettings: 'Site Settings',
   userCarts: 'User Cart',
+};
+
+const uniqueFieldMappings: { [key: string]: string } = {
+    services: 'slug',
+    sitePages: 'page_id',
+    orders: 'order_id',
+    userCarts: 'user_id',
 };
 
 // --- Doctype Definitions ---
@@ -247,6 +255,27 @@ function transformUserCartData(cart: any) {
     };
 }
 
+// Function to check if a document exists in ERPNext
+async function doesErpNextDocExist(doctype: string, fieldName: string, fieldValue: any, sid: string): Promise<boolean> {
+    const filters = JSON.stringify([[fieldName, '=', fieldValue]]);
+    const fields = JSON.stringify(['name']);
+    const checkUrl = `${ERPNEXT_API_URL}/api/resource/${doctype}?filters=${filters}&fields=${fields}&limit=1`;
+
+    const response = await fetch(checkUrl, {
+        headers: { 'Accept': 'application/json', 'Cookie': `sid=${sid}` }
+    });
+
+    if (!response.ok) {
+        // If it's a 404, the doctype might not exist, but our checkAndCreateDoctype should handle that.
+        // For other errors, we log but assume it doesn't exist to allow the creation attempt.
+        console.error(`Error checking for existing doc in ${doctype}: ${response.statusText}`);
+        return false;
+    }
+
+    const data = await response.json();
+    return data.data && data.data.length > 0;
+}
+
 
 export async function runMigrationAction(
   sid: string
@@ -262,6 +291,8 @@ export async function runMigrationAction(
   const collectionsToMigrate = ['services', 'sitePages', 'orders', 'siteSettings', 'userCarts'];
 
   for (const collectionName of collectionsToMigrate) {
+    let migratedCount = 0;
+    let skippedCount = 0;
     try {
       const erpDoctype = collectionMappings[collectionName];
       if (!erpDoctype) {
@@ -276,45 +307,57 @@ export async function runMigrationAction(
       // Step 2: Migrate data from Firestore
       const querySnapshot = await getDocs(collection(db, collectionName));
       const totalDocs = querySnapshot.size;
-      let migratedCount = 0;
 
       if (totalDocs === 0) {
-        statuses.push({ collection: collectionName, success: true, count: 0, error: 'No documents to migrate.' });
+        statuses.push({ collection: collectionName, success: true, count: 0, skipped: 0, error: 'No documents to migrate.' });
         continue;
       }
 
       for (const doc of querySnapshot.docs) {
-        let dataToPost;
         const docData = { id: doc.id, ...doc.data() };
+        let dataToPost;
         
+        // Data Transformation
         switch (collectionName) {
-          case 'services':
-            dataToPost = transformServiceData(docData as unknown as Service);
-            break;
-          case 'sitePages':
-            dataToPost = transformSitePageData(docData as unknown as SitePage);
-            break;
-          case 'orders':
-            dataToPost = transformOrderData(docData as unknown as Order);
-            break;
-          case 'siteSettings':
-            dataToPost = transformSiteSettingsData(docData as unknown as SiteSettings);
-            break;
-          case 'userCarts':
-            dataToPost = transformUserCartData(docData as any);
-            break;
-          default:
-            dataToPost = { ...docData };
-            break;
+          case 'services': dataToPost = transformServiceData(docData as unknown as Service); break;
+          case 'sitePages': dataToPost = transformSitePageData(docData as unknown as SitePage); break;
+          case 'orders': dataToPost = transformOrderData(docData as unknown as Order); break;
+          case 'siteSettings': dataToPost = transformSiteSettingsData(docData as unknown as SiteSettings); break;
+          case 'userCarts': dataToPost = transformUserCartData(docData); break;
+          default: dataToPost = { ...docData }; break;
         }
 
-        await postToErpNext(erpDoctype, dataToPost, sid, isSingleDoctype);
-        migratedCount++;
+        if (isSingleDoctype) {
+            // For single doctypes, we always overwrite, so no need to check for existence.
+            await postToErpNext(erpDoctype, dataToPost, sid, true);
+            migratedCount++;
+        } else {
+            // For regular doctypes, check for existence before creating.
+            const uniqueField = uniqueFieldMappings[collectionName];
+            // @ts-ignore
+            const uniqueValue = dataToPost[uniqueField];
+
+            if (!uniqueField || uniqueValue === undefined) {
+                 console.warn(`Skipping existence check for ${collectionName} doc ${doc.id} due to missing unique identifier.`);
+                 await postToErpNext(erpDoctype, dataToPost, sid, false);
+                 migratedCount++;
+                 continue;
+            }
+
+            const docExists = await doesErpNextDocExist(erpDoctype, uniqueField, uniqueValue, sid);
+            if (docExists) {
+                console.log(`Document with ${uniqueField}=${uniqueValue} already exists in ${erpDoctype}. Skipping.`);
+                skippedCount++;
+            } else {
+                await postToErpNext(erpDoctype, dataToPost, sid, false);
+                migratedCount++;
+            }
+        }
       }
-      statuses.push({ collection: collectionName, success: true, count: migratedCount });
+      statuses.push({ collection: collectionName, success: true, count: migratedCount, skipped: skippedCount });
     } catch (error: any) {
       console.error(`Migration failed for collection: ${collectionName}`, error);
-      statuses.push({ collection: collectionName, success: false, count: 0, error: error.message });
+      statuses.push({ collection: collectionName, success: false, count: migratedCount, skipped: skippedCount, error: error.message });
       return {
         success: false,
         message: `Migration failed on collection '${collectionName}'. Please check logs.`,
