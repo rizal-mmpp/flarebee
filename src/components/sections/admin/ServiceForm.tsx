@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Control, FieldErrors, UseFormRegister, UseFormWatch, UseFormSetValue, UseFormGetValues } from 'react-hook-form';
@@ -15,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CategorySelector } from '@/components/admin/services/CategorySelector';
 import { Controller } from 'react-hook-form';
 import { FileUploadModal } from '@/components/admin/FileUploadModal';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface ServiceFormProps {
   control: Control<ServiceFormValues>;
