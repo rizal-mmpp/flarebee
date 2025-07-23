@@ -4,8 +4,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { getOrdersFromErpNext } from '@/lib/actions/erpnext.actions';
-import { getUserProfile } from '@/lib/firebase/firestore';
-import type { Order, UserProfile } from '@/lib/types';
+import type { Order } from '@/lib/types';
 import { ShoppingCart, Eye, Loader2, MoreHorizontal, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -45,9 +44,11 @@ const getStatusBadgeVariant = (status?: string) => {
       return 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30';
     case 'PENDING':
     case 'UNPAID': 
+    case 'DRAFT':
       return 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30';
     case 'FAILED':
     case 'EXPIRED':
+    case 'CANCELLED':
       return 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30';
     case 'ACTIVE': 
       return 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30';
@@ -59,14 +60,14 @@ const getStatusBadgeVariant = (status?: string) => {
 };
 
 const searchByOrderOptions = [
-  { value: 'orderId', label: 'Order ID' },
+  { value: 'orderId', label: 'Invoice ID' },
   { value: 'customer', label: 'Customer' },
   { value: 'amount', label: 'Amount' },
   { value: 'date', label: 'Date' },
   { value: 'status', label: 'Status' },
 ];
 
-const orderStatusFilterOptions = ["Unpaid", "Paid", "Settled", "Expired", "Active", "Stopped"];
+const orderStatusFilterOptions = ["Draft", "Unpaid", "Paid", "Settled", "Expired", "Cancelled"];
 
 
 const SEARCH_FILTER_ID = "orderId"; 
@@ -164,10 +165,10 @@ export default function AdminOrdersPage() {
   const columns = useMemo<ColumnDef<DisplayOrder, any>[]>(() => [
     {
       accessorKey: "orderId",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Order ID" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Sales Invoice ID" />,
       cell: ({ row }) => (
         <Link href={`/admin/orders/${row.original.id}`} className="text-foreground hover:text-primary hover:underline font-medium">
-          {row.original.orderId.substring(0, 15)}...
+          {row.original.orderId}
         </Link>
       ),
     },
@@ -192,7 +193,7 @@ export default function AdminOrdersPage() {
     },
     {
       accessorKey: "createdAt",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Date" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Posting Date" />,
       cell: ({ row }) => {
         const date = new Date(row.original.createdAt);
         return isValid(date) ? format(date, "PP") : 'Invalid Date';
@@ -203,10 +204,10 @@ export default function AdminOrdersPage() {
       accessorFn: row => row.xenditPaymentStatus,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
       cell: ({ row }) => {
-        const xenditStatus = row.original.xenditPaymentStatus;
-        return xenditStatus ? (
-          <Badge variant="outline" className={cn("capitalize text-xs", getStatusBadgeVariant(xenditStatus))}>
-            {xenditStatus}
+        const status = row.original.status;
+        return status ? (
+          <Badge variant="outline" className={cn("capitalize text-xs", getStatusBadgeVariant(status))}>
+            {status}
           </Badge>
         ) : (
           <span className="text-xs text-muted-foreground">N/A</span>
@@ -250,10 +251,10 @@ export default function AdminOrdersPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
             <ShoppingCart className="mr-3 h-8 w-8 text-primary" />
-            Order Management
+            Sales Invoices (Orders)
           </h1>
           <p className="text-muted-foreground mt-1">
-            View and manage all customer orders from ERPNext. Total: {totalItems}
+            View and manage all customer sales invoices from ERPNext. Total: {totalItems}
           </p>
         </div>
         <Button onClick={fetchOrders} variant="outline" disabled={isLoading}>
@@ -264,8 +265,8 @@ export default function AdminOrdersPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Orders</CardTitle>
-          <CardDescription>A list of all orders placed on the platform.</CardDescription>
+          <CardTitle>All Invoices</CardTitle>
+          <CardDescription>A list of all sales invoices from the platform.</CardDescription>
         </CardHeader>
         <CardContent>
           <DataTable

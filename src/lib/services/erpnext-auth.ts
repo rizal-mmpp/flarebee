@@ -101,7 +101,7 @@ export const getUserDetailsFromERPNext = async (sid: string): Promise<UserDetail
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sid }),
-    });
+    }); 
 
     const data = await response.json();
     if (!response.ok) {

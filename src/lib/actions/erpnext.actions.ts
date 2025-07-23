@@ -1,7 +1,7 @@
 
 'use server';
 
-import type { Service, Order, UserProfile, ServiceCategory } from '../types';
+import type { Service, Order, UserProfile, ServiceCategory, PurchasedTemplateItem } from '../types';
 import { SERVICE_CATEGORIES } from '../constants';
 import type { ServiceFormValues } from '@/components/sections/admin/ServiceFormTypes';
 import { uploadFileToVercelBlob } from './vercelBlob.actions';
@@ -90,28 +90,34 @@ function transformErpServiceToAppService(item: any): Service {
     };
 }
 
-function transformErpOrderToAppOrder(item: any): Order {
-    let items = [];
+function transformErpSalesInvoiceToAppOrder(item: any): Order {
+    let items: PurchasedTemplateItem[] = [];
     try {
-        if (typeof item.items_json === 'string') {
-            items = JSON.parse(item.items_json);
+        // Assuming the items are stored in the 'items' table of the Sales Invoice
+        if (Array.isArray(item.items)) {
+            items = item.items.map((it: any) => ({
+                id: it.item_code,
+                title: it.item_name || 'N/A',
+                price: it.rate || 0,
+            }));
         }
     } catch (e) {
-        console.error(`Failed to parse items_json for order ${item.name}:`, e);
+        console.error(`Failed to parse items for Sales Invoice ${item.name}:`, e);
     }
+    
     return {
         id: item.name,
-        userId: 'N/A', // ERPNext doesn't have a direct mapping to Firebase UID
-        userEmail: item.customer_email,
-        orderId: item.order_id,
+        userId: item.customer, // The customer link in ERPNext
+        userEmail: item.customer_email || 'N/A', // Assuming a custom field or fetched separately
+        orderId: item.name, // The Sales Invoice name is the Order ID
         items: items,
-        totalAmount: item.total_amount,
+        totalAmount: item.grand_total,
         currency: item.currency || 'IDR',
         status: item.status?.toLowerCase() || 'pending',
-        paymentGateway: item.payment_gateway,
+        paymentGateway: item.payment_gateway || 'ERPNext', // Default or custom field
         createdAt: item.creation,
         updatedAt: item.modified,
-        xenditPaymentStatus: item.status, 
+        xenditPaymentStatus: item.status, // Assuming ERPNext status maps directly
     };
 }
 
@@ -236,22 +242,28 @@ export async function deleteServiceFromErpNext({ sid, serviceName }: { sid: stri
 
 
 export async function getOrdersFromErpNext({ sid }: { sid: string }): Promise<{ success: boolean; data?: Order[]; error?: string; }> {
-     const result = await fetchFromErpNext<any[]>({ sid, doctype: 'Orders' });
+     const result = await fetchFromErpNext<any[]>({ sid, doctype: 'Sales Invoice', fields: ['name', 'customer', 'customer_name', 'posting_date', 'grand_total', 'currency', 'status'] });
 
     if (!result.success || !result.data) {
-        return { success: false, error: result.error || 'Failed to get orders.' };
+        return { success: false, error: result.error || 'Failed to get Sales Invoices.' };
     }
 
-    const orders: Order[] = (result.data as any[]).map(transformErpOrderToAppOrder);
+    // Since customer email is not a default field in the list view, we need a way to map it.
+    // For now, we will use customer_name. A more robust solution might need another query.
+    const orders: Order[] = (result.data as any[]).map(item => ({
+        ...transformErpSalesInvoiceToAppOrder(item),
+        userEmail: item.customer_name || item.customer, // Use customer name as a fallback for display
+    }));
+
     return { success: true, data: orders };
 }
 
 export async function getOrderByOrderIdFromErpNext({ sid, orderId }: { sid: string; orderId: string; }): Promise<{ success: boolean; data?: Order; error?: string; }> {
-    const result = await fetchFromErpNext<any>({ sid, doctype: 'Orders', docname: orderId });
+    const result = await fetchFromErpNext<any>({ sid, doctype: 'Sales Invoice', docname: orderId });
     if (!result.success || !result.data) {
-        return { success: false, error: result.error || 'Failed to get order.' };
+        return { success: false, error: result.error || 'Failed to get Sales Invoice.' };
     }
-    const order: Order = transformErpOrderToAppOrder(result.data);
+    const order: Order = transformErpSalesInvoiceToAppOrder(result.data);
     return { success: true, data: order };
 }
 
