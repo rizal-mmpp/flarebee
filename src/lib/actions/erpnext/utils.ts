@@ -1,7 +1,5 @@
 
 
-'use server';
-
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
 interface FetchFromErpNextArgs {
