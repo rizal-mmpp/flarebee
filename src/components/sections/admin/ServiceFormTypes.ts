@@ -11,7 +11,7 @@ export const serviceFormSchema = z.object({
   categoryId: z.string().min(1, 'Category is required'),
   tags: z.string().min(1, 'Tags are required (comma-separated)'),
   imageUrl: z.string().optional(),
-  dataAiHint: z.string().optional(),
+  dataAiHint: z.string().optional(), // This field is no longer displayed but kept in schema for data integrity
   status: z.enum(SERVICE_STATUSES, {
     errorMap: () => ({ message: "Please select a valid status." }),
   }),

@@ -87,7 +87,7 @@ function transformFormToErpItem(data: ServiceFormValues, imageUrl: string | null
         disabled: data.status === 'inactive' ? 1 : 0,
         image: imageUrl, 
         is_stock_item: 0, 
-        standard_rate: data.pricing?.fixedPriceDetails?.price ?? 0,
+        // standard_rate is removed from here as it's not being set from the form anymore
         service_url: data.serviceUrl || '',
         tags: data.tags,
     };
