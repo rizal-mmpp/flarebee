@@ -95,7 +95,7 @@ export default function CreateServicePage() {
        });
       } else {
         toast({
-          title: 'Service (Item) Saved Successfully',
+          title: 'Service Saved Successfully',
           description: result.message || 'The service details have been processed.',
         });
         router.push('/admin/services'); 
@@ -112,7 +112,7 @@ export default function CreateServicePage() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
             <PlusCircle className="mr-3 h-8 w-8 text-primary" />
-            Create New Service (as ERPNext Item)
+            Create New Service
           </h1>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
             <Button variant="outline" asChild className="w-full sm:w-auto group">
