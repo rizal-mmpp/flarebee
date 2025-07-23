@@ -24,6 +24,12 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       {
+        protocol: 'http',
+        hostname: '212.85.27.156',
+        port: '8080',
+        pathname: '/**',
+      },
+      {
         protocol: 'https',
         hostname: 'erpnext.com',
         port: '',
