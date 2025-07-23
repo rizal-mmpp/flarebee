@@ -31,12 +31,8 @@ export default function CreateServicePage() {
       categoryId: '',
       tags: '',
       imageUrl: '', 
-      dataAiHint: '',
       status: 'active',
       serviceUrl: '',
-      pricing: { // Keep the structure but it won't be used for complex logic now
-        fixedPriceDetails: { price: 0 }
-      }
     }
   });
 

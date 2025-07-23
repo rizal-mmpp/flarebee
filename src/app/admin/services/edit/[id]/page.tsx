@@ -57,10 +57,8 @@ export default function EditServicePage() {
             setValue('tags', fetchedService.tags.join(', '));
             setValue('imageUrl', fetchedService.imageUrl);
             setImagePreviewUrl(fetchedService.imageUrl);
-            setValue('dataAiHint', fetchedService.dataAiHint || '');
             setValue('status', fetchedService.status || 'draft');
             setValue('serviceUrl', fetchedService.serviceUrl || '');
-            setValue('pricing.fixedPriceDetails.price', fetchedService.pricing?.fixedPriceDetails?.price || 0);
 
           } else {
             setError(result.error || 'Service not found.'); 
@@ -195,7 +193,7 @@ export default function EditServicePage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground flex items-center">
             <Edit3 className="mr-3 h-7 w-7 md:h-8 md:w-8 text-primary flex-shrink-0" />
-            <span className="truncate" title={service.title}>Edit Item: {service.title}</span>
+            <span className="truncate" title={service.title}>Edit Service: {service.title}</span>
           </h1>
           <TooltipProvider delayDuration={0}>
             <div className="flex items-center justify-start sm:justify-end gap-2 w-full sm:w-auto flex-shrink-0">
