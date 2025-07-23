@@ -16,6 +16,7 @@ import {
   LibraryBig,
   Briefcase, 
   DatabaseZap,
+  Repeat,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NextImage from 'next/image';
@@ -29,6 +30,7 @@ interface AdminSidebarProps {
 const adminNavItems = [
   { href: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/admin/services', label: 'Services', icon: Briefcase }, 
+  { href: '/admin/subscription-plans', label: 'Subscription Plans', icon: Repeat },
   { href: '/admin/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/admin/customers', label: 'Customers', icon: Users },
   { href: '/admin/pages', label: 'Pages', icon: FileText },
@@ -43,8 +45,9 @@ const adminNavItems = [
 ];
 
 export function AdminSidebar({ onLinkClick, logoUrl, siteTitle }: AdminSidebarProps) {
-  const pathname = usePathname();
   const displaySiteTitleForLogo = siteTitle || "RIO"; 
+
+  const pathname = usePathname();
 
   return (
     <div className="flex h-full max-h-screen flex-col gap-2 bg-sidebar text-sidebar-foreground">
