@@ -1,7 +1,8 @@
 
+
 'use server';
 
-export const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
+const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
 interface FetchFromErpNextArgs {
     sid: string;
@@ -50,3 +51,5 @@ export async function fetchFromErpNext<T>({ sid, doctype, docname, fields = ['*'
         return { success: false, error: `An unexpected error occurred: ${error.message}` };
     }
 }
+
+export { ERPNEXT_API_URL };
