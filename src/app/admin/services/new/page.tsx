@@ -21,9 +21,6 @@ export default function CreateServicePage() {
   const [isPending, startTransition] = useTransition();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
-  const [selectedFixedPriceImageFile, setSelectedFixedPriceImageFile] = useState<File | null>(null);
-  const [fixedPriceImagePreviewUrl, setFixedPriceImagePreviewUrl] = useState<string | null>(null);
-
 
   const { register, handleSubmit, control, formState: { errors }, reset, watch, setValue, getValues } = useForm<ServiceFormValues>({
     resolver: zodResolver(serviceFormSchema),
@@ -35,22 +32,11 @@ export default function CreateServicePage() {
       tags: '',
       imageUrl: '', 
       dataAiHint: '',
-      status: 'draft',
-      keyFeatures: '',
-      targetAudience: '',
-      estimatedDuration: '',
-      portfolioLink: '',
+      status: 'active',
       serviceUrl: '',
-      pricing: {
-        isFixedPriceActive: false,
-        isSubscriptionActive: true,
-        isCustomQuoteActive: true,
-        fixedPriceDetails: { bgClassName: 'bg-background', price: 0, title: 'One-Time Project', description: 'A single payment for a defined scope of work.', imageAiHint: '' },
-        subscriptionDetails: { bgClassName: 'bg-card', packages: [] },
-        customQuoteDetails: { bgClassName: 'bg-background', title: 'Still not sure?', text: "Tell us about your project, and we'll craft a custom package tailored just for you.", infoBoxText: '', formTitle: 'Describe Your Project', formDescription: 'The more details you provide, the better we can assist you.' },
-      },
-      showFaqSection: false,
-      faq: [],
+      pricing: { // Keep the structure but it won't be used for complex logic now
+        fixedPriceDetails: { price: 0 }
+      }
     }
   });
 
@@ -69,28 +55,10 @@ export default function CreateServicePage() {
     };
   }, [selectedFile]);
 
-  useEffect(() => {
-    let objectUrl: string | undefined;
-    if (selectedFixedPriceImageFile) {
-      objectUrl = URL.createObjectURL(selectedFixedPriceImageFile);
-      setFixedPriceImagePreviewUrl(objectUrl);
-    } else {
-      setFixedPriceImagePreviewUrl(null);
-    }
-    return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [selectedFixedPriceImageFile]);
-
   const handleFileChange = (file: File | null) => {
     setSelectedFile(file);
   };
   
-  const handleFixedPriceImageFileChange = (file: File | null) => {
-    setSelectedFixedPriceImageFile(file);
-  };
-
-
   const onSubmit: SubmitHandler<ServiceFormValues> = (data) => {
     if (!erpSid) {
       toast({ title: "Authentication Error", description: "Not logged in to ERPNext.", variant: "destructive" });
@@ -102,7 +70,6 @@ export default function CreateServicePage() {
         sid: erpSid, 
         serviceData: data,
         imageFile: selectedFile,
-        fixedPriceImageFile: selectedFixedPriceImageFile,
       }); 
 
       if (result.error) {
@@ -128,7 +95,7 @@ export default function CreateServicePage() {
        });
       } else {
         toast({
-          title: 'Service Saved Successfully',
+          title: 'Service (Item) Saved Successfully',
           description: result.message || 'The service details have been processed.',
         });
         router.push('/admin/services'); 
@@ -145,7 +112,7 @@ export default function CreateServicePage() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
             <PlusCircle className="mr-3 h-8 w-8 text-primary" />
-            Create New Service 
+            Create New Service (as ERPNext Item)
           </h1>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
             <Button variant="outline" asChild className="w-full sm:w-auto group">
@@ -170,9 +137,6 @@ export default function CreateServicePage() {
           currentImageUrl={imagePreviewUrl}
           onFileChange={handleFileChange}
           selectedFileName={selectedFile?.name}
-          currentFixedPriceImageUrl={fixedPriceImagePreviewUrl}
-          onFixedPriceFileChange={handleFixedPriceImageFileChange}
-          selectedFixedPriceFileName={selectedFixedPriceImageFile?.name}
           isEditMode={false}
         />
       </div>

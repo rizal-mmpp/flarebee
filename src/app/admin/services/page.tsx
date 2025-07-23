@@ -190,8 +190,9 @@ export default function AdminServicesPage() {
       cell: ({ row }) => row.original.category.name,
     },
     {
-      accessorKey: "priceMin", // Note: The field name might need to be adjusted based on getServicesFromErpNext response
+      id: "price",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Price" />,
+      accessorFn: row => row.pricing?.fixedPriceDetails?.price,
       cell: ({ row }) => formatIDR(row.original.pricing?.fixedPriceDetails?.price),
     },
     {
@@ -248,7 +249,7 @@ export default function AdminServicesPage() {
         </div>
       ),
     },
-  ], [isDeleting, fetchServices]);
+  ], [isDeleting]);
 
 
   return (
@@ -257,7 +258,7 @@ export default function AdminServicesPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
             <Briefcase className="mr-3 h-8 w-8 text-primary" /> 
-            Manage Services 
+            Manage Services (ERPNext Items)
           </h1>
           <p className="text-muted-foreground mt-1">
             Add, edit, or remove services from ERPNext. Total available: {allFetchedServices.length}.
@@ -280,7 +281,7 @@ export default function AdminServicesPage() {
       <Card>
         <CardHeader>
           <CardTitle>All Services</CardTitle>
-          <CardDescription>A list of all services from ERPNext.</CardDescription>
+          <CardDescription>A list of all services (Items) from ERPNext.</CardDescription>
         </CardHeader>
         <CardContent>
           <DataTable

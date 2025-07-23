@@ -61,31 +61,33 @@ async function fetchFromErpNext<T>({ sid, doctype, docname, fields = ['*'], filt
 }
 
 
-function transformErpServiceToAppService(item: any): Service {
-    const category = SERVICE_CATEGORIES.find(c => c.name === item.category) || SERVICE_CATEGORIES[4]; // Default to 'Other'
+function transformErpItemToAppService(item: any): Service {
+    const category = SERVICE_CATEGORIES.find(c => c.name === item.item_group) || SERVICE_CATEGORIES[4]; // Default to 'Other'
     
-    const imageUrl = (item.image_url && (item.image_url.startsWith('http') || item.image_url.startsWith('https')))
-      ? item.image_url
-      : item.image_url
-        ? `${ERPNEXT_API_URL}${item.image_url}`
+    // Check if image URL is absolute. If not, prepend ERPNext URL.
+    const imageUrl = (item.image && (item.image.startsWith('http') || item.image.startsWith('https')))
+      ? item.image
+      : item.image
+        ? `${ERPNEXT_API_URL}${item.image}`
         : 'https://placehold.co/600x400.png';
 
     return {
         id: item.name, 
-        slug: item.slug,
-        title: item.service_name,
-        shortDescription: item.short_description,
-        longDescription: item.long_description,
+        slug: item.item_code, // Assuming item_code is the slug
+        title: item.item_name,
+        shortDescription: item.description,
+        longDescription: item.website_description || '',
         category: category,
         tags: typeof item.tags === 'string' ? item.tags.split(',').map(t => t.trim()) : [],
         imageUrl: imageUrl,
-        status: item.status,
+        status: item.disabled ? 'inactive' : 'active',
         serviceUrl: item.service_url || '#',
         createdAt: item.creation,
         updatedAt: item.modified,
         pricing: {
             isFixedPriceActive: true,
-            fixedPriceDetails: { price: item.price || 0 }
+            // The price is now decoupled and fetched from a Price List or standard_rate
+            fixedPriceDetails: { price: item.standard_rate || 0 }
         }
     };
 }
@@ -93,7 +95,6 @@ function transformErpServiceToAppService(item: any): Service {
 function transformErpSalesInvoiceToAppOrder(item: any): Order {
     let items: PurchasedTemplateItem[] = [];
     try {
-        // Assuming the items are stored in the 'items' table of the Sales Invoice
         if (Array.isArray(item.items)) {
             items = item.items.map((it: any) => ({
                 id: it.item_code,
@@ -107,37 +108,37 @@ function transformErpSalesInvoiceToAppOrder(item: any): Order {
     
     return {
         id: item.name,
-        userId: item.customer, // The customer link in ERPNext
-        userEmail: item.customer_email || 'N/A', // Assuming a custom field or fetched separately
-        orderId: item.name, // The Sales Invoice name is the Order ID
+        userId: item.customer, 
+        userEmail: item.customer_email || 'N/A', 
+        orderId: item.name,
         items: items,
         totalAmount: item.grand_total,
         currency: item.currency || 'IDR',
         status: item.status?.toLowerCase() || 'pending',
-        paymentGateway: item.payment_gateway || 'ERPNext', // Default or custom field
+        paymentGateway: item.payment_gateway || 'ERPNext',
         createdAt: item.creation,
         updatedAt: item.modified,
-        xenditPaymentStatus: item.status, // Assuming ERPNext status maps directly
+        xenditPaymentStatus: item.status, 
     };
 }
 
 
 export async function getServicesFromErpNext({ sid }: { sid: string }): Promise<{ success: boolean; data?: Service[]; error?: string; }> {
-    const result = await fetchFromErpNext<any[]>({ sid, doctype: 'Service' });
+    const result = await fetchFromErpNext<any[]>({ sid, doctype: 'Item', fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'website_description', 'image', 'disabled', 'standard_rate'] });
 
     if (!result.success || !result.data) {
-        return { success: false, error: result.error || 'Failed to get services.' };
+        return { success: false, error: result.error || 'Failed to get items.' };
     }
-    const services: Service[] = (result.data as any[]).map(transformErpServiceToAppService);
+    const services: Service[] = (result.data as any[]).map(transformErpItemToAppService);
     return { success: true, data: services };
 }
 
 export async function getServiceFromErpNextByName({ sid, serviceName }: { sid: string; serviceName: string; }): Promise<{ success: boolean; data?: Service; error?: string; }> {
-    const result = await fetchFromErpNext<any>({ sid, doctype: 'Service', docname: serviceName });
+    const result = await fetchFromErpNext<any>({ sid, doctype: 'Item', docname: serviceName });
     if (!result.success || !result.data) {
-        return { success: false, error: result.error || 'Failed to get service.' };
+        return { success: false, error: result.error || 'Failed to get item.' };
     }
-    const service: Service = transformErpServiceToAppService(result.data);
+    const service: Service = transformErpItemToAppService(result.data);
     return { success: true, data: service };
 }
 
@@ -159,31 +160,28 @@ function slugify(text: string): string {
     .replace(/\-\-+/g, '-');
 }
 
-function transformFormToErpService(data: ServiceFormValues, imageUrl: string | null): any {
+function transformFormToErpItem(data: ServiceFormValues, imageUrl: string | null): any {
     const category = SERVICE_CATEGORIES.find(cat => cat.id === data.categoryId);
     return {
-        service_name: data.title,
-        slug: slugify(data.title),
-        short_description: data.shortDescription,
-        long_description: data.longDescription,
-        category: category?.name || 'Other Services',
-        status: data.status,
-        tags: data.tags,
-        price: data.pricing?.fixedPriceDetails?.price ?? 0,
-        image_url: imageUrl,
-        service_url: data.serviceUrl,
+        item_code: slugify(data.title),
+        item_name: data.title,
+        item_group: category?.name || 'Services', // Default Item Group
+        description: data.shortDescription,
+        website_description: data.longDescription,
+        disabled: data.status === 'inactive' ? 1 : 0,
+        image: imageUrl, // ERPNext expects 'image' field for Item
+        is_stock_item: 0, // Explicitly set as non-stock item
+        // Note: standard_rate should be set via Item Price Doctype, but we can set a default here if needed.
+        standard_rate: data.pricing?.fixedPriceDetails?.price ?? 0,
     };
 }
 
-export async function createServiceInErpNext({ sid, serviceData, imageFile, fixedPriceImageFile }: { sid: string, serviceData: ServiceFormValues, imageFile: File | null, fixedPriceImageFile: File | null }) {
+export async function createServiceInErpNext({ sid, serviceData, imageFile }: { sid: string, serviceData: ServiceFormValues, imageFile: File | null }) {
     try {
-        if (!imageFile) throw new Error("Main image is required to create a service.");
         const imageUrl = await uploadAndGetUrl(imageFile);
-        if (!imageUrl) throw new Error("Main image URL could not be generated after upload.");
-        
-        const erpData = transformFormToErpService(serviceData, imageUrl);
+        const erpData = transformFormToErpItem(serviceData, imageUrl);
 
-        const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Service`, {
+        const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Item`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
             body: JSON.stringify(erpData),
@@ -191,21 +189,21 @@ export async function createServiceInErpNext({ sid, serviceData, imageFile, fixe
 
         const responseData = await response.json();
         if (!response.ok) {
-            throw new Error(responseData.exception || responseData._server_messages || 'Failed to create service in ERPNext.');
+            throw new Error(responseData.exception || responseData._server_messages || 'Failed to create item in ERPNext.');
         }
 
-        return { success: true, message: `Service "${serviceData.title}" created successfully.` };
+        return { success: true, message: `Item "${serviceData.title}" created successfully.` };
     } catch (error: any) {
         return { success: false, error: error.message };
     }
 }
 
-export async function updateServiceInErpNext({ sid, serviceName, serviceData, imageFile, fixedPriceImageFile, currentImageUrl, currentFixedPriceImageUrl }: { sid: string, serviceName: string, serviceData: ServiceFormValues, imageFile: File | null, fixedPriceImageFile: File | null, currentImageUrl?: string | null, currentFixedPriceImageUrl?: string | null }) {
+export async function updateServiceInErpNext({ sid, serviceName, serviceData, imageFile, currentImageUrl }: { sid: string, serviceName: string, serviceData: ServiceFormValues, imageFile: File | null, currentImageUrl?: string | null }) {
     try {
         let finalImageUrl = imageFile ? await uploadAndGetUrl(imageFile) : currentImageUrl;
-        const erpData = transformFormToErpService(serviceData, finalImageUrl || null);
+        const erpData = transformFormToErpItem(serviceData, finalImageUrl || null);
         
-        const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Service/${serviceName}`, {
+        const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Item/${serviceName}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
             body: JSON.stringify(erpData),
@@ -213,28 +211,29 @@ export async function updateServiceInErpNext({ sid, serviceName, serviceData, im
         
         const responseData = await response.json();
         if (!response.ok) {
-            throw new Error(responseData.exception || responseData._server_messages || 'Failed to update service in ERPNext.');
+            throw new Error(responseData.exception || responseData._server_messages || 'Failed to update item in ERPNext.');
         }
 
-        return { success: true, message: `Service "${serviceData.title}" updated successfully.` };
+        return { success: true, message: `Item "${serviceData.title}" updated successfully.` };
     } catch (error: any) {
         return { success: false, error: error.message };
     }
 }
 
+
 export async function deleteServiceFromErpNext({ sid, serviceName }: { sid: string, serviceName: string }) {
   try {
-    const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Service/${serviceName}`, {
+    const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Item/${serviceName}`, {
       method: 'DELETE',
       headers: { 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
     });
     
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.exception || errorData._server_messages || 'Failed to delete service from ERPNext.');
+      throw new Error(errorData.exception || errorData._server_messages || 'Failed to delete item from ERPNext.');
     }
     
-    return { success: true, message: `Service "${serviceName}" deleted successfully.` };
+    return { success: true, message: `Item "${serviceName}" deleted successfully.` };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -248,11 +247,9 @@ export async function getOrdersFromErpNext({ sid }: { sid: string }): Promise<{ 
         return { success: false, error: result.error || 'Failed to get Sales Invoices.' };
     }
 
-    // Since customer email is not a default field in the list view, we need a way to map it.
-    // For now, we will use customer_name. A more robust solution might need another query.
     const orders: Order[] = (result.data as any[]).map(item => ({
         ...transformErpSalesInvoiceToAppOrder(item),
-        userEmail: item.customer_name || item.customer, // Use customer name as a fallback for display
+        userEmail: item.customer_name || item.customer, 
     }));
 
     return { success: true, data: orders };

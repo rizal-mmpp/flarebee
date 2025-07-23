@@ -9,7 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ServiceForm } from '@/components/sections/admin/ServiceForm'; 
 import { type ServiceFormValues, serviceFormSchema } from '@/components/sections/admin/ServiceFormTypes'; 
 import { getServiceFromErpNextByName, updateServiceInErpNext } from '@/lib/actions/erpnext.actions'; 
-import type { Service, ServicePackage } from '@/lib/types'; 
+import type { Service } from '@/lib/types'; 
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Loader2, ServerCrash, Edit3, ArrowLeft, Save, Rocket, Copy } from 'lucide-react';
@@ -19,7 +19,7 @@ import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 export default function EditServicePage() {
   const router = useRouter();
   const params = useParams();
-  const serviceName = params.id as string; // In ERPNext, the unique ID is 'name'
+  const serviceName = params.id as string;
   const { toast } = useToast();
   const { erpSid } = useCombinedAuth();
   const [isPending, startTransition] = useTransition();
@@ -31,28 +31,14 @@ export default function EditServicePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
-  const [selectedFixedPriceImageFile, setSelectedFixedPriceImageFile] = useState<File | null>(null);
-  const [fixedPriceImagePreviewUrl, setFixedPriceImagePreviewUrl] = useState<string | null>(null);
-
-
   const { register, handleSubmit, control, formState: { errors }, setValue, watch, getValues } = useForm<ServiceFormValues>({ 
     resolver: zodResolver(serviceFormSchema),
     defaultValues: {
-      pricing: {
-        isFixedPriceActive: false,
-        isSubscriptionActive: false,
-        isCustomQuoteActive: false,
-        fixedPriceDetails: { bgClassName: 'bg-background', price: 0, title: '', description: '', imageAiHint: '' },
-        subscriptionDetails: { bgClassName: 'bg-card', packages: [] },
-        customQuoteDetails: { bgClassName: 'bg-background', title: '', text: '', infoBoxText: '', formTitle: '', formDescription: '' }
-      },
-      showFaqSection: false,
-      faq: []
+      status: 'active',
     }
   });
   
   const watchedImageUrl = watch('imageUrl'); 
-  const watchedFixedPriceImageUrl = watch('pricing.fixedPriceDetails.imageUrl');
 
   useEffect(() => {
     if (serviceName && erpSid) {
@@ -73,32 +59,8 @@ export default function EditServicePage() {
             setImagePreviewUrl(fetchedService.imageUrl);
             setValue('dataAiHint', fetchedService.dataAiHint || '');
             setValue('status', fetchedService.status || 'draft');
-            setValue('keyFeatures', fetchedService.keyFeatures?.join(', ') || '');
-            setValue('targetAudience', fetchedService.targetAudience?.join(', ') || '');
-            setValue('estimatedDuration', fetchedService.estimatedDuration || '');
-            setValue('portfolioLink', fetchedService.portfolioLink || '');
             setValue('serviceUrl', fetchedService.serviceUrl || '');
-            
-            setValue('pricing.isFixedPriceActive', fetchedService.pricing?.isFixedPriceActive || false);
-            setValue('pricing.fixedPriceDetails.bgClassName', fetchedService.pricing?.fixedPriceDetails?.bgClassName || 'bg-background');
-            setValue('pricing.fixedPriceDetails.title', fetchedService.pricing?.fixedPriceDetails?.title || 'One-Time Project');
-            setValue('pricing.fixedPriceDetails.description', fetchedService.pricing?.fixedPriceDetails?.description || 'A single payment for a defined scope of work.');
             setValue('pricing.fixedPriceDetails.price', fetchedService.pricing?.fixedPriceDetails?.price || 0);
-            setValue('pricing.fixedPriceDetails.imageUrl', fetchedService.pricing?.fixedPriceDetails?.imageUrl || null);
-            setValue('pricing.fixedPriceDetails.imageAiHint', fetchedService.pricing?.fixedPriceDetails?.imageAiHint || '');
-            setFixedPriceImagePreviewUrl(fetchedService.pricing?.fixedPriceDetails?.imageUrl || null);
-
-
-            setValue('pricing.isSubscriptionActive', fetchedService.pricing?.isSubscriptionActive || false);
-            setValue('pricing.subscriptionDetails.bgClassName', fetchedService.pricing?.subscriptionDetails?.bgClassName || 'bg-card');
-            
-            setValue('pricing.subscriptionDetails.packages', fetchedService.pricing?.subscriptionDetails?.packages || []);
-            
-            setValue('pricing.isCustomQuoteActive', fetchedService.pricing?.isCustomQuoteActive || false);
-            setValue('pricing.customQuoteDetails', fetchedService.pricing?.customQuoteDetails || { title: '', text: '', infoBoxText: '', formTitle: '', formDescription: '' });
-
-            setValue('showFaqSection', fetchedService.showFaqSection || false);
-            setValue('faq', fetchedService.faq || []);
 
           } else {
             setError(result.error || 'Service not found.'); 
@@ -131,35 +93,11 @@ export default function EditServicePage() {
     };
   }, [selectedFile, watchedImageUrl]);
 
-  useEffect(() => {
-    let objectUrl: string | undefined;
-    if (selectedFixedPriceImageFile) {
-      objectUrl = URL.createObjectURL(selectedFixedPriceImageFile);
-      setFixedPriceImagePreviewUrl(objectUrl);
-    } else if (watchedFixedPriceImageUrl) {
-      setFixedPriceImagePreviewUrl(watchedFixedPriceImageUrl);
-    } else {
-      setFixedPriceImagePreviewUrl(null);
-    }
-    return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [selectedFixedPriceImageFile, watchedFixedPriceImageUrl]);
-
-
   const handleFileChange = (file: File | null) => {
     setSelectedFile(file);
     if (!file && service) {
         setImagePreviewUrl(service.imageUrl);
         setValue('imageUrl', service.imageUrl); 
-    }
-  };
-
-   const handleFixedPriceImageFileChange = (file: File | null) => {
-    setSelectedFixedPriceImageFile(file);
-    if (!file && service?.pricing?.fixedPriceDetails?.imageUrl) {
-        setFixedPriceImagePreviewUrl(service.pricing.fixedPriceDetails.imageUrl);
-        setValue('pricing.fixedPriceDetails.imageUrl', service.pricing.fixedPriceDetails.imageUrl);
     }
   };
 
@@ -175,8 +113,6 @@ export default function EditServicePage() {
         serviceData: data,
         currentImageUrl: service.imageUrl,
         imageFile: selectedFile,
-        currentFixedPriceImageUrl: service.pricing?.fixedPriceDetails?.imageUrl,
-        fixedPriceImageFile: selectedFixedPriceImageFile,
       });
 
       if (result.error) {
@@ -198,7 +134,7 @@ export default function EditServicePage() {
             </div>
           ),
           variant: "destructive",
-          duration: Infinity, // Keep it visible
+          duration: Infinity, 
         });
       } else {
         toast({
@@ -259,7 +195,7 @@ export default function EditServicePage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground flex items-center">
             <Edit3 className="mr-3 h-7 w-7 md:h-8 md:w-8 text-primary flex-shrink-0" />
-            <span className="truncate" title={service.title}>Edit: {service.title}</span>
+            <span className="truncate" title={service.title}>Edit Item: {service.title}</span>
           </h1>
           <TooltipProvider delayDuration={0}>
             <div className="flex items-center justify-start sm:justify-end gap-2 w-full sm:w-auto flex-shrink-0">
@@ -279,9 +215,6 @@ export default function EditServicePage() {
             currentImageUrl={imagePreviewUrl}
             onFileChange={handleFileChange}
             selectedFileName={selectedFile?.name}
-            currentFixedPriceImageUrl={fixedPriceImagePreviewUrl}
-            onFixedPriceFileChange={handleFixedPriceImageFileChange}
-            selectedFixedPriceFileName={selectedFixedPriceImageFile?.name}
             isEditMode={true}
         />
       </div>
