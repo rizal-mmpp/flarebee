@@ -39,7 +39,7 @@ export async function getServicesFromErpNext({ sid }: { sid: string }): Promise<
     const result = await fetchFromErpNext<any[]>({ 
         sid, 
         doctype: 'Item', 
-        fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'image', 'disabled', 'standard_rate', 'website_description', 'tags'] 
+        fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'image', 'disabled', 'standard_rate', 'tags'] 
     });
 
     if (!result.success || !result.data) {
