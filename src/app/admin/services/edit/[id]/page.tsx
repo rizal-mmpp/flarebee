@@ -8,7 +8,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ServiceForm } from '@/components/sections/admin/ServiceForm'; 
 import { type ServiceFormValues, serviceFormSchema } from '@/components/sections/admin/ServiceFormTypes'; 
-import { getServiceFromErpNextByName, updateServiceInErpNext } from '@/lib/actions/erpnext.actions'; 
+import { getServiceFromErpNextByName, updateServiceInErpNext } from '@/lib/actions/erpnext/item.actions'; 
 import type { Service } from '@/lib/types'; 
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';

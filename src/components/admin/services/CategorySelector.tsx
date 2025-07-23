@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, PlusCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getItemGroupsFromErpNext, createItemGroupInErpNext } from '@/lib/actions/erpnext.actions';
+import { getItemGroupsFromErpNext, createItemGroupInErpNext } from '@/lib/actions/erpnext/item-group.actions';
 import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { cn } from '@/lib/utils';
 

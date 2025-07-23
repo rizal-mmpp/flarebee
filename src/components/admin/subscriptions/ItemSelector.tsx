@@ -5,7 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getServicesFromErpNext } from '@/lib/actions/erpnext.actions';
+import { getServicesFromErpNext } from '@/lib/actions/erpnext/item.actions';
 import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { cn } from '@/lib/utils';
 import type { Service } from '@/lib/types';

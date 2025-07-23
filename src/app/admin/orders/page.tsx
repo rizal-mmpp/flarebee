@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { getOrdersFromErpNext } from '@/lib/actions/erpnext.actions';
+import { getOrdersFromErpNext } from '@/lib/actions/erpnext/sales-invoice.actions';
 import type { Order } from '@/lib/types';
 import { ShoppingCart, Eye, Loader2, MoreHorizontal, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';

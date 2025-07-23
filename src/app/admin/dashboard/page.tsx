@@ -1,7 +1,9 @@
 
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { getServicesFromErpNext, getOrdersFromErpNext, getUsersFromErpNext } from '@/lib/actions/erpnext.actions';
+import { getServicesFromErpNext } from '@/lib/actions/erpnext/item.actions';
+import { getOrdersFromErpNext } from '@/lib/actions/erpnext/sales-invoice.actions';
+import { getUsersFromErpNext } from '@/lib/actions/erpnext/user.actions';
 import type { Service, Order, UserProfile } from '@/lib/types'; 
 import { LayoutDashboard, BarChart3, Briefcase, FileText, Users, DollarSign, ShoppingCart, Activity, Banknote, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';

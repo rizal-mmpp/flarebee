@@ -2,7 +2,7 @@
 'use client';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { getServicesFromErpNext, deleteServiceFromErpNext } from '@/lib/actions/erpnext.actions';
+import { getServicesFromErpNext, deleteServiceFromErpNext } from '@/lib/actions/erpnext/item.actions';
 import type { Service } from '@/lib/types'; 
 import { Briefcase, Loader2, PlusCircle, RefreshCw, Edit2, Trash2, MoreHorizontal, AlertCircle, Eye, Play } from 'lucide-react'; 
 import { useToast } from '@/hooks/use-toast';

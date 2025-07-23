@@ -7,7 +7,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SubscriptionPlanForm } from '@/components/admin/subscriptions/SubscriptionPlanForm';
 import { type SubscriptionPlanFormValues, subscriptionPlanFormSchema } from '@/components/admin/subscriptions/SubscriptionPlanFormTypes';
-import { createSubscriptionPlanInErpNext } from '@/lib/actions/erpnext.actions';
+import { createSubscriptionPlanInErpNext } from '@/lib/actions/erpnext/subscription-plan.actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, PlusCircle, Loader2 } from 'lucide-react';

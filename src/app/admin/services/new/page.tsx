@@ -7,7 +7,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ServiceForm } from '@/components/sections/admin/ServiceForm';
 import { type ServiceFormValues, serviceFormSchema } from '@/components/sections/admin/ServiceFormTypes';
-import { createServiceInErpNext } from '@/lib/actions/erpnext.actions';
+import { createServiceInErpNext } from '@/lib/actions/erpnext/item.actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, PlusCircle, Loader2, Copy } from 'lucide-react';

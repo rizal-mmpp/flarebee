@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
-import { getServiceFromErpNextByName } from '@/lib/actions/erpnext.actions';
+import { getServiceFromErpNextByName } from '@/lib/actions/erpnext/item.actions';
 import type { Service } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';

@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { getSubscriptionPlansFromErpNext, deleteSubscriptionPlanInErpNext } from '@/lib/actions/erpnext.actions';
+import { getSubscriptionPlansFromErpNext, deleteSubscriptionPlanInErpNext } from '@/lib/actions/erpnext/subscription-plan.actions';
 import type { SubscriptionPlan } from '@/lib/types';
 import { Repeat, Loader2, PlusCircle, RefreshCw, Edit2, Trash2, MoreHorizontal, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
