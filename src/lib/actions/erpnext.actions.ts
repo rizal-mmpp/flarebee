@@ -64,7 +64,6 @@ async function fetchFromErpNext<T>({ sid, doctype, docname, fields = ['*'], filt
 function transformErpServiceToAppService(item: any): Service {
     const category = SERVICE_CATEGORIES.find(c => c.name === item.category) || SERVICE_CATEGORIES[4]; // Default to 'Other'
     
-    // Check if the image URL is already absolute. If not, prepend the ERPNext URL.
     const imageUrl = (item.image_url && (item.image_url.startsWith('http') || item.image_url.startsWith('https')))
       ? item.image_url
       : item.image_url
@@ -72,7 +71,7 @@ function transformErpServiceToAppService(item: any): Service {
         : 'https://placehold.co/600x400.png';
 
     return {
-        id: item.name, // ERPNext uses 'name' as the unique ID
+        id: item.name, 
         slug: item.slug,
         title: item.service_name,
         shortDescription: item.short_description,
@@ -88,6 +87,31 @@ function transformErpServiceToAppService(item: any): Service {
             isFixedPriceActive: true,
             fixedPriceDetails: { price: item.price || 0 }
         }
+    };
+}
+
+function transformErpOrderToAppOrder(item: any): Order {
+    let items = [];
+    try {
+        if (typeof item.items_json === 'string') {
+            items = JSON.parse(item.items_json);
+        }
+    } catch (e) {
+        console.error(`Failed to parse items_json for order ${item.name}:`, e);
+    }
+    return {
+        id: item.name,
+        userId: 'N/A', // ERPNext doesn't have a direct mapping to Firebase UID
+        userEmail: item.customer_email,
+        orderId: item.order_id,
+        items: items,
+        totalAmount: item.total_amount,
+        currency: item.currency || 'IDR',
+        status: item.status?.toLowerCase() || 'pending',
+        paymentGateway: item.payment_gateway,
+        createdAt: item.creation,
+        updatedAt: item.modified,
+        xenditPaymentStatus: item.status, 
     };
 }
 
@@ -218,23 +242,19 @@ export async function getOrdersFromErpNext({ sid }: { sid: string }): Promise<{ 
         return { success: false, error: result.error || 'Failed to get orders.' };
     }
 
-    const orders: Order[] = (result.data as any[]).map(item => ({
-        id: item.name,
-        userId: 'N/A', // ERPNext doesn't have a direct mapping to Firebase UID
-        userEmail: item.customer_email,
-        orderId: item.order_id,
-        items: JSON.parse(item.items_json || '[]'),
-        totalAmount: item.total_amount,
-        currency: item.currency,
-        status: item.status?.toLowerCase() || 'pending',
-        paymentGateway: item.payment_gateway,
-        createdAt: item.creation,
-        updatedAt: item.modified,
-        xenditPaymentStatus: item.status, // Assuming ERPNext status mirrors Xendit's
-    }));
-
+    const orders: Order[] = (result.data as any[]).map(transformErpOrderToAppOrder);
     return { success: true, data: orders };
 }
+
+export async function getOrderByOrderIdFromErpNext({ sid, orderId }: { sid: string; orderId: string; }): Promise<{ success: boolean; data?: Order; error?: string; }> {
+    const result = await fetchFromErpNext<any>({ sid, doctype: 'Orders', docname: orderId });
+    if (!result.success || !result.data) {
+        return { success: false, error: result.error || 'Failed to get order.' };
+    }
+    const order: Order = transformErpOrderToAppOrder(result.data);
+    return { success: true, data: order };
+}
+
 
 export async function getUsersFromErpNext({ sid }: { sid: string }): Promise<{ success: boolean; data?: UserProfile[]; error?: string; }> {
      const result = await fetchFromErpNext<any[]>({ sid, doctype: 'User', fields: ['name', 'email', 'full_name', 'user_image', 'creation', 'role'] });

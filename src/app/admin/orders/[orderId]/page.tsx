@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getOrderByOrderIdFromFirestore } from '@/lib/firebase/firestoreOrders';
+import { getOrderByOrderIdFromErpNext } from '@/lib/actions/erpnext.actions';
 import type { Order, PurchasedTemplateItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Loader2, ServerCrash, Package, CalendarDays, User, Tag, Hash, CreditCard, LinkIcon, Clock, Info, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 
 // Helper to format IDR currency
 const formatIDR = (amount: number) => {
@@ -44,21 +45,22 @@ export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
   const orderId = params.orderId as string;
+  const { erpSid } = useCombinedAuth();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (orderId) {
+    if (orderId && erpSid) {
       setIsLoading(true);
       setError(null);
-      getOrderByOrderIdFromFirestore(orderId)
-        .then((fetchedOrder) => {
-          if (fetchedOrder) {
-            setOrder(fetchedOrder);
+      getOrderByOrderIdFromErpNext({ sid: erpSid, orderId })
+        .then((result) => {
+          if (result.success && result.data) {
+            setOrder(result.data);
           } else {
-            setError('Order not found.');
+            setError(result.error || 'Order not found.');
           }
         })
         .catch((err) => {
@@ -68,8 +70,11 @@ export default function OrderDetailPage() {
         .finally(() => {
           setIsLoading(false);
         });
+    } else if (!erpSid) {
+        setError('Not authenticated with ERPNext.');
+        setIsLoading(false);
     }
-  }, [orderId]);
+  }, [orderId, erpSid]);
 
   if (isLoading) {
     return (
@@ -87,9 +92,9 @@ export default function OrderDetailPage() {
         <h2 className="text-2xl font-semibold text-destructive mb-2">Error Loading Order</h2>
         <p className="text-muted-foreground mb-6">{error}</p>
         <Button variant="outline" asChild className="group">
-          <Link href="/admin/dashboard">
+          <Link href="/admin/orders">
             <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
-            Back to Dashboard
+            Back to Orders
           </Link>
         </Button>
       </div>
@@ -103,9 +108,9 @@ export default function OrderDetailPage() {
         <h2 className="text-2xl font-semibold text-foreground mb-2">Order Not Found</h2>
         <p className="text-muted-foreground mb-6">The requested order could not be found.</p>
         <Button variant="outline" asChild className="group">
-          <Link href="/admin/dashboard">
+          <Link href="/admin/orders">
             <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
-            Back to Dashboard
+            Back to Orders
           </Link>
         </Button>
       </div>
@@ -120,13 +125,13 @@ export default function OrderDetailPage() {
           <Package className="mr-3 h-8 w-8 text-primary" />
           Order Details
         </h1>
-        <Button variant="outline" onClick={() => router.push('/admin/dashboard')} className="w-full sm:w-auto group">
+        <Button variant="outline" onClick={() => router.push('/admin/orders')} className="w-full sm:w-auto group">
           <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
-          Back to Dashboard
+          Back to Orders
         </Button>
       </div>
 
-      <Card> {/* Removed shadow-lg */}
+      <Card> 
         <CardHeader>
           <CardTitle className="text-2xl">Order ID: {order.orderId}</CardTitle>
           <CardDescription>
@@ -148,7 +153,7 @@ export default function OrderDetailPage() {
               <p className="text-foreground font-semibold text-lg">{formatIDR(order.totalAmount)} ({order.currency})</p>
             </div>
              <div className="space-y-1">
-              <h4 className="font-semibold text-muted-foreground flex items-center"><Hash className="mr-2 h-4 w-4 text-primary" />Flarebee Status</h4>
+              <h4 className="font-semibold text-muted-foreground flex items-center"><Hash className="mr-2 h-4 w-4 text-primary" />Order Status</h4>
               <Badge variant="outline" className={cn("capitalize", getStatusBadgeVariant(order.status))}>
                 {order.status}
               </Badge>
@@ -216,9 +221,9 @@ export default function OrderDetailPage() {
           </div>
         </CardContent>
         <CardFooter className="flex justify-end">
-           <Button variant="outline" onClick={() => router.push('/admin/dashboard')} className="group">
+           <Button variant="outline" onClick={() => router.push('/admin/orders')} className="group">
              <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
-             Back to Dashboard
+             Back to Orders
            </Button>
         </CardFooter>
       </Card>

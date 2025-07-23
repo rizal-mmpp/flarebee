@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { getAllOrdersFromFirestore } from '@/lib/firebase/firestoreOrders';
+import { getOrdersFromErpNext } from '@/lib/actions/erpnext.actions';
 import { getUserProfile } from '@/lib/firebase/firestore';
 import type { Order, UserProfile } from '@/lib/types';
 import { ShoppingCart, Eye, Loader2, MoreHorizontal, RefreshCw } from 'lucide-react';
@@ -22,6 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 
 interface DisplayOrder extends Order {
   userDisplayName?: string;
@@ -71,6 +72,7 @@ const orderStatusFilterOptions = ["Unpaid", "Paid", "Settled", "Expired", "Activ
 const SEARCH_FILTER_ID = "orderId"; 
 
 export default function AdminOrdersPage() {
+  const { erpSid } = useCombinedAuth();
   const [allFetchedOrders, setAllFetchedOrders] = useState<DisplayOrder[]>([]);
   const [displayedOrders, setDisplayedOrders] = useState<DisplayOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -86,48 +88,33 @@ export default function AdminOrdersPage() {
   const [totalItems, setTotalItems] = useState(0);
 
   const fetchOrders = useCallback(async () => {
+    if (!erpSid) {
+        toast({ title: "Not Authenticated", description: "You must be logged in with ERPNext to view orders.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
     setIsLoading(true);
     try {
-      const result = await getAllOrdersFromFirestore({
-        pageIndex: pagination.pageIndex,
-        pageSize: pagination.pageSize,
-      });
+      const result = await getOrdersFromErpNext({ sid: erpSid });
 
-      const userIds = Array.from(new Set(result.data.map(order => order.userId).filter(uid => !!uid)));
-      const userProfilesMap = new Map<string, UserProfile>();
-
-      if (userIds.length > 0) {
-        const profilePromises = userIds.map(uid => getUserProfile(uid));
-        const profiles = await Promise.all(profilePromises);
-        profiles.forEach(profile => {
-          if (profile) {
-            userProfilesMap.set(profile.uid, profile);
-          }
-        });
+      if (result.success && result.data) {
+        setAllFetchedOrders(result.data);
+        setTotalItems(result.data.length);
+        setPageCount(Math.ceil(result.data.length / pagination.pageSize));
+      } else {
+        throw new Error(result.error || "Failed to fetch orders.");
       }
-      
-      const enrichedOrders: DisplayOrder[] = result.data.map(order => {
-        const profile = userProfilesMap.get(order.userId);
-        return {
-          ...order,
-          userDisplayName: profile?.displayName || order.userEmail || 'Unknown User',
-        };
-      });
-
-      setAllFetchedOrders(enrichedOrders);
-      setPageCount(result.pageCount);
-      setTotalItems(result.totalItems);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch orders:", error);
       toast({
         title: "Error Fetching Orders",
-        description: "Could not load orders.",
+        description: error.message || "Could not load orders.",
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
-  }, [pagination, toast]);
+  }, [erpSid, toast, pagination.pageSize]);
 
   useEffect(() => {
     fetchOrders();
@@ -179,23 +166,16 @@ export default function AdminOrdersPage() {
       accessorKey: "orderId",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Order ID" />,
       cell: ({ row }) => (
-        <Link href={`/admin/orders/${row.original.orderId}`} className="text-foreground hover:text-primary hover:underline font-medium">
+        <Link href={`/admin/orders/${row.original.id}`} className="text-foreground hover:text-primary hover:underline font-medium">
           {row.original.orderId.substring(0, 15)}...
         </Link>
       ),
     },
     {
       id: "customer", 
-      accessorFn: row => row.userDisplayName,
+      accessorFn: row => row.userEmail,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Customer" />,
-      cell: ({ row }) => {
-        const order = row.original;
-        return (
-          <Link href={`/admin/customers/${order.userId}`} className="text-foreground hover:text-primary hover:underline font-medium">
-            {order.userDisplayName}
-          </Link>
-        );
-      },
+      cell: ({ row }) => row.original.userEmail || 'N/A',
       enableHiding: true,
     },
     {
@@ -246,7 +226,7 @@ export default function AdminOrdersPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/admin/orders/${row.original.orderId}`}>
+                <Link href={`/admin/orders/${row.original.id}`}>
                   <Eye className="mr-2 h-4 w-4" /> View Details
                 </Link>
               </DropdownMenuItem>
@@ -273,7 +253,7 @@ export default function AdminOrdersPage() {
             Order Management
           </h1>
           <p className="text-muted-foreground mt-1">
-            View and manage all customer orders. Total: {totalItems}
+            View and manage all customer orders from ERPNext. Total: {totalItems}
           </p>
         </div>
         <Button onClick={fetchOrders} variant="outline" disabled={isLoading}>
@@ -303,7 +283,7 @@ export default function AdminOrdersPage() {
                 columnFilters,
                 columnVisibility, 
             }}
-            manualPagination={true} 
+            manualPagination={false} 
             manualSorting={false} 
             manualFiltering={false} 
             isLoading={isLoading}

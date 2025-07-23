@@ -117,6 +117,9 @@ interface FetchOrdersResult {
   totalItems: number;
 }
 
+// NOTE: This function is no longer the primary source for the admin panel.
+// It remains for any other part of the app that might still use it.
+// The admin panel now uses getOrdersFromErpNext.
 export async function getAllOrdersFromFirestore({
   pageIndex = 0,
   pageSize = 0, // Default to 0 to fetch all if not specified for pagination
@@ -131,9 +134,6 @@ export async function getAllOrdersFromFirestore({
     let countQuery = query(ordersCollection);
     if (searchTerm) {
         // This is a simplification. Firestore doesn't support direct text search across multiple fields.
-        // For a real app, you might do multiple queries or use a search service.
-        // This count will be for all orders, which might be fine for overall total.
-        // Or, you could attempt a 'where' clause for a primary search field.
     }
     const countSnapshot = await getCountFromServer(countQuery);
     let totalItems = countSnapshot.data().count;
@@ -162,7 +162,6 @@ export async function getAllOrdersFromFirestore({
         }
       }
     }
-    // If pageSize is 0, no limit is applied, fetching all matching documents.
 
     const dataQuery = query(ordersCollection, ...constraints);
     const querySnapshot = await getDocs(dataQuery);
@@ -175,12 +174,9 @@ export async function getAllOrdersFromFirestore({
         (order.userEmail && order.userEmail.toLowerCase().includes(lowerSearchTerm)) ||
         order.status.toLowerCase().includes(lowerSearchTerm)
       );
-      if (pageSize > 0) { // If paginating, totalItems and pageCount could be affected by search
-        // For true server-side search pagination, totalItems should be the count of *searched* items.
-        // This is complex with Firestore without a dedicated search index.
-        // Here, we might return the filtered data length as totalItems for the current page view.
-        // Or, for simplicity, keep totalItems as the grand total and accept that pageCount might be approximate for searches.
-      } else { // If not paginating (pageSize=0), update totalItems to reflect the search results.
+      if (pageSize > 0) { 
+        // totalItems and pageCount might be less accurate for searches.
+      } else { 
         totalItems = data.length;
       }
     }
