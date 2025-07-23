@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
@@ -19,8 +18,6 @@ export default function CreateServicePage() {
   const { toast } = useToast();
   const { erpSid } = useCombinedAuth();
   const [isPending, startTransition] = useTransition();
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
   const { register, handleSubmit, control, formState: { errors }, reset, watch, setValue, getValues } = useForm<ServiceFormValues>({
     resolver: zodResolver(serviceFormSchema),
@@ -36,25 +33,6 @@ export default function CreateServicePage() {
     }
   });
 
-  useEffect(() => {
-    let objectUrl: string | undefined;
-    if (selectedFile) {
-      objectUrl = URL.createObjectURL(selectedFile);
-      setImagePreviewUrl(objectUrl);
-    } else {
-      setImagePreviewUrl(null);
-    }
-    return () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [selectedFile]);
-
-  const handleFileChange = (file: File | null) => {
-    setSelectedFile(file);
-  };
-  
   const onSubmit: SubmitHandler<ServiceFormValues> = (data) => {
     if (!erpSid) {
       toast({ title: "Authentication Error", description: "Not logged in to ERPNext.", variant: "destructive" });
@@ -65,7 +43,6 @@ export default function CreateServicePage() {
       const result = await createServiceInErpNext({ 
         sid: erpSid, 
         serviceData: data,
-        imageFile: selectedFile,
       }); 
 
       if (result.error) {
@@ -96,8 +73,6 @@ export default function CreateServicePage() {
         });
         router.push('/admin/services'); 
         reset();
-        setSelectedFile(null);
-        setImagePreviewUrl(null);
       }
     });
   };
@@ -130,9 +105,7 @@ export default function CreateServicePage() {
           watch={watch}
           setValue={setValue}
           getValues={getValues}
-          currentImageUrl={imagePreviewUrl}
-          onFileChange={handleFileChange}
-          selectedFileName={selectedFile?.name}
+          onFileChange={() => {}} // No-op for new, as URL is set directly
           isEditMode={false}
         />
       </div>

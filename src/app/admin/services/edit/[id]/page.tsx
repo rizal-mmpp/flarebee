@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
@@ -27,9 +26,6 @@ export default function EditServicePage() {
   const [service, setService] = useState<Service | null>(null); 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
   const { register, handleSubmit, control, formState: { errors }, setValue, watch, getValues } = useForm<ServiceFormValues>({ 
     resolver: zodResolver(serviceFormSchema),
@@ -37,8 +33,6 @@ export default function EditServicePage() {
       status: 'active',
     }
   });
-  
-  const watchedImageUrl = watch('imageUrl'); 
 
   useEffect(() => {
     if (serviceName && erpSid) {
@@ -56,7 +50,6 @@ export default function EditServicePage() {
             setValue('categoryId', fetchedService.category.id);
             setValue('tags', fetchedService.tags.join(', '));
             setValue('imageUrl', fetchedService.imageUrl);
-            setImagePreviewUrl(fetchedService.imageUrl);
             setValue('status', fetchedService.status || 'draft');
             setValue('serviceUrl', fetchedService.serviceUrl || '');
 
@@ -74,30 +67,6 @@ export default function EditServicePage() {
     }
   }, [serviceName, setValue, erpSid]);
 
-  useEffect(() => {
-    let objectUrl: string | undefined;
-    if (selectedFile) {
-      objectUrl = URL.createObjectURL(selectedFile);
-      setImagePreviewUrl(objectUrl);
-    } else if (watchedImageUrl) { 
-      setImagePreviewUrl(watchedImageUrl);
-    } else {
-        setImagePreviewUrl(null);
-    }
-    return () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [selectedFile, watchedImageUrl]);
-
-  const handleFileChange = (file: File | null) => {
-    setSelectedFile(file);
-    if (!file && service) {
-        setImagePreviewUrl(service.imageUrl);
-        setValue('imageUrl', service.imageUrl); 
-    }
-  };
 
   const onSubmit: SubmitHandler<ServiceFormValues> = (data) => {
     if (!service || !erpSid) {
@@ -109,8 +78,6 @@ export default function EditServicePage() {
         sid: erpSid,
         serviceName: service.id,
         serviceData: data,
-        currentImageUrl: service.imageUrl,
-        imageFile: selectedFile,
       });
 
       if (result.error) {
@@ -210,9 +177,7 @@ export default function EditServicePage() {
             watch={watch} 
             setValue={setValue}
             getValues={getValues}
-            currentImageUrl={imagePreviewUrl}
-            onFileChange={handleFileChange}
-            selectedFileName={selectedFile?.name}
+            onFileChange={() => {}} // No-op for edit, as URL is set directly
             isEditMode={true}
         />
       </div>

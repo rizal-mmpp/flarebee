@@ -1,3 +1,6 @@
+// This component is no longer used directly by the service form.
+// It might be used by the FileUploadModal or other parts of the app.
+// Keeping it for now.
 
 'use client';
 
@@ -19,7 +22,7 @@ interface CustomDropzoneProps {
 export function CustomDropzone({
   onFileChange,
   accept = { 'image/*': ['.png', '.jpeg', '.jpg', '.gif', '.webp', '.avif'] },
-  maxSize = 0.95 * 1024 * 1024, // Default to ~0.95MB
+  maxSize, // No default size limit
   currentFileName,
   disabled = false,
   className,
@@ -39,7 +42,7 @@ export function CustomDropzone({
         setIsRejectedLocal(true);
         const firstRejection = fileRejections[0];
         if (firstRejection.errors && firstRejection.errors.length > 0) {
-            if (firstRejection.errors[0].code === 'file-too-large') {
+            if (firstRejection.errors[0].code === 'file-too-large' && maxSize) {
                  setRejectionMessage(`File is too large. Max size: ${(maxSize / (1024 * 1024)).toFixed(2)}MB.`);
             } else if (firstRejection.errors[0].code === 'file-invalid-type') {
                  setRejectionMessage('Invalid file type.');
@@ -80,7 +83,7 @@ export function CustomDropzone({
   };
 
   const effectiveFileName = internalFileName || currentFileName;
-  const displayMaxSizeMB = (maxSize / (1024 * 1024)).toFixed(2);
+  const displayMaxSizeMB = maxSize ? (maxSize / (1024 * 1024)).toFixed(2) : null;
 
   const dropzoneBaseStyle = "border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2";
   const dropzoneActiveStyle = "border-primary bg-primary/10";
@@ -118,7 +121,7 @@ export function CustomDropzone({
             <p className="font-semibold text-sm">Drop the file here...</p>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Drag & drop an image here, or
+              Drag & drop a file here, or
               <Button
                 type="button"
                 variant="link"
@@ -134,7 +137,7 @@ export function CustomDropzone({
             </p>
           )}
           <p className="text-xs text-muted-foreground/80">
-            Accepted: PNG, JPG, GIF, WEBP, AVIF (Max {displayMaxSizeMB}MB)
+            {displayMaxSizeMB ? `Max size: ${displayMaxSizeMB}MB` : 'No file size limit.'}
           </p>
           {(isDragReject || isRejectedLocal) && !disabled && rejectionMessage && (
              <p className="text-xs text-destructive mt-1 font-medium">{rejectionMessage}</p>

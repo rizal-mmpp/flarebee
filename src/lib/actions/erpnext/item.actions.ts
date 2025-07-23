@@ -1,9 +1,7 @@
-
 'use server';
 
 import type { Service } from '../../types';
 import type { ServiceFormValues } from '@/components/sections/admin/ServiceFormTypes';
-import { uploadFileToVercelBlob } from '../vercelBlob.actions';
 import { fetchFromErpNext, ERPNEXT_API_URL } from './utils';
 
 function transformErpItemToAppService(item: any): Service {
@@ -59,17 +57,6 @@ export async function getServiceFromErpNextByName({ sid, serviceName }: { sid: s
     return { success: true, data: service };
 }
 
-async function uploadAndGetUrl(file: File | null): Promise<string | null> {
-    if (!file) return null;
-    const blobFormData = new FormData();
-    blobFormData.append('file', file);
-    const uploadResult = await uploadFileToVercelBlob(blobFormData);
-    if (!uploadResult.success || !uploadResult.data?.url) {
-        throw new Error(uploadResult.error || 'Could not upload file.');
-    }
-    return uploadResult.data.url;
-}
-
 function slugify(text: string): string {
   return text.toString().toLowerCase().trim()
     .replace(/\s+/g, '-')
@@ -77,26 +64,24 @@ function slugify(text: string): string {
     .replace(/\-\-+/g, '-');
 }
 
-function transformFormToErpItem(data: ServiceFormValues, imageUrl: string | null): any {
+function transformFormToErpItem(data: ServiceFormValues): any {
     return {
         item_code: slugify(data.title),
         item_name: data.title,
-        item_group: data.categoryId, // Directly use categoryId which now holds the Item Group name
+        item_group: data.categoryId, 
         description: data.shortDescription,
         website_description: data.longDescription,
         disabled: data.status === 'inactive' ? 1 : 0,
-        image: imageUrl, 
+        image: data.imageUrl, 
         is_stock_item: 0, 
-        // standard_rate is removed from here as it's not being set from the form anymore
         service_url: data.serviceUrl || '',
         tags: data.tags,
     };
 }
 
-export async function createServiceInErpNext({ sid, serviceData, imageFile }: { sid: string, serviceData: ServiceFormValues, imageFile: File | null }) {
+export async function createServiceInErpNext({ sid, serviceData }: { sid: string, serviceData: ServiceFormValues }) {
     try {
-        const imageUrl = await uploadAndGetUrl(imageFile);
-        const erpData = transformFormToErpItem(serviceData, imageUrl);
+        const erpData = transformFormToErpItem(serviceData);
 
         const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Item`, {
             method: 'POST',
@@ -115,10 +100,9 @@ export async function createServiceInErpNext({ sid, serviceData, imageFile }: { 
     }
 }
 
-export async function updateServiceInErpNext({ sid, serviceName, serviceData, imageFile, currentImageUrl }: { sid: string, serviceName: string, serviceData: ServiceFormValues, imageFile: File | null, currentImageUrl?: string | null }) {
+export async function updateServiceInErpNext({ sid, serviceName, serviceData }: { sid: string, serviceName: string, serviceData: ServiceFormValues }) {
     try {
-        let finalImageUrl = imageFile ? await uploadAndGetUrl(imageFile) : currentImageUrl;
-        const erpData = transformFormToErpItem(serviceData, finalImageUrl || null);
+        const erpData = transformFormToErpItem(serviceData);
         
         const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Item/${serviceName}`, {
             method: 'PUT',
@@ -136,7 +120,6 @@ export async function updateServiceInErpNext({ sid, serviceName, serviceData, im
         return { success: false, error: error.message };
     }
 }
-
 
 export async function deleteServiceFromErpNext({ sid, serviceName }: { sid: string, serviceName: string }) {
   try {
