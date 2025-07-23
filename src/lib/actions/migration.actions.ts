@@ -14,45 +14,33 @@ export interface MigrationStatus {
 }
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
-const MODULE_NAME = 'ERPNext Integrations';
+const MODULE_NAME = 'Website'; // Using a standard module
 
 const collectionMappings: { [key: string]: string } = {
-  services: `Service`,
+  services: `Item`,
   sitePages: `Site Page`,
-  orders: `Orders`,
-  siteSettings: 'Site Settings',
-  userCarts: 'User Cart',
+  orders: `Sales Invoice`, // Corrected to Sales Invoice
+  siteSettings: 'Site Settings', // This will be a custom DocType
+  userCarts: 'User Cart', // This will be a custom DocType
 };
 
 const uniqueFieldMappings: { [key: string]: string } = {
-    services: 'slug',
+    services: 'item_code',
     sitePages: 'page_id',
-    orders: 'order_id',
+    orders: 'name', // 'name' is the unique ID for Sales Invoice
     userCarts: 'user_id',
 };
 
 // --- Doctype Definitions ---
 const doctypeSchemas: { [key: string]: any } = {
   [collectionMappings.services]: {
-    doctype: 'DocType',
-    name: collectionMappings.services,
-    module: MODULE_NAME,
-    custom: 1,
+    doctype: 'Item',
     fields: [
-      { fieldname: 'service_name', fieldtype: 'Data', label: 'Service Name' },
-      { fieldname: 'slug', fieldtype: 'Data', label: 'Slug', unique: 1 },
-      { fieldname: 'short_description', fieldtype: 'Small Text', label: 'Short Description' },
-      { fieldname: 'long_description', fieldtype: 'Text Editor', label: 'Long Description' },
-      { fieldname: 'category', fieldtype: 'Data', label: 'Category' },
-      { fieldname: 'status', fieldtype: 'Select', label: 'Status', options: 'active\ninactive\ndraft' },
-      { fieldname: 'tags', fieldtype: 'Data', label: 'Tags' },
-      { fieldname: 'image_url', fieldtype: 'Data', label: 'Image URL' },
-      { fieldname: 'price', fieldtype: 'Currency', label: 'Price' },
+      // Adding custom fields to the standard Item doctype
+      { fieldname: 'service_url', fieldtype: 'Data', label: 'Service Management URL', insert_after: 'description' },
+      { fieldname: 'website_description', fieldtype: 'Text Editor', label: 'Website Description', insert_after: 'service_url' },
+      { fieldname: 'tags', fieldtype: 'Data', label: 'Tags', insert_after: 'website_description' },
     ],
-    permissions: [{ role: 'System Manager', read: 1, write: 1, create: 1, delete: 1 }],
-    issingle: 0,
-    istable: 0,
-    title_field: 'service_name',
   },
   [collectionMappings.sitePages]: {
     doctype: 'DocType',
@@ -69,31 +57,12 @@ const doctypeSchemas: { [key: string]: any } = {
     istable: 0,
     title_field: 'title',
   },
-  [collectionMappings.orders]: {
-    doctype: 'DocType',
-    name: collectionMappings.orders,
-    module: MODULE_NAME,
-    custom: 1,
-    fields: [
-      { fieldname: 'order_id', fieldtype: 'Data', label: 'Order ID', unique: 1 },
-      { fieldname: 'customer_email', fieldtype: 'Data', label: 'Customer Email' },
-      { fieldname: 'total_amount', fieldtype: 'Currency', label: 'Total Amount' },
-      { fieldname: 'currency', fieldtype: 'Data', label: 'Currency' },
-      { fieldname: 'status', fieldtype: 'Data', label: 'Status' },
-      { fieldname: 'payment_gateway', fieldtype: 'Data', label: 'Payment Gateway' },
-      { fieldname: 'items_json', fieldtype: 'Code', label: 'Items JSON' },
-    ],
-    permissions: [{ role: 'System Manager', read: 1, write: 1, create: 1, delete: 1 }],
-    issingle: 0,
-    istable: 0,
-    title_field: 'order_id',
-  },
   [collectionMappings.siteSettings]: {
     doctype: 'DocType',
     name: collectionMappings.siteSettings,
     module: MODULE_NAME,
     custom: 1,
-    issingle: 0, // Changed from 1 to 0 to make it a listable doctype
+    issingle: 1, // Correct for Site Settings
     fields: [
       { fieldname: 'site_title', fieldtype: 'Data', label: 'Site Title' },
       { fieldname: 'logo_url', fieldtype: 'Data', label: 'Logo URL' },
@@ -106,7 +75,7 @@ const doctypeSchemas: { [key: string]: any } = {
   [collectionMappings.userCarts]: {
     doctype: 'DocType',
     name: collectionMappings.userCarts,
-    module: MODULE_NAME,
+    module: 'Accounts',
     custom: 1,
     fields: [
       { fieldname: 'user_id', fieldtype: 'Data', label: 'User ID', unique: 1 },
@@ -137,33 +106,60 @@ async function postToDoctype(data: any, sid: string) {
   return response.json();
 }
 
-async function checkAndCreateDoctype(doctypeName: string, sid: string) {
+async function checkAndCreateOrUpdateDocType(doctypeName: string, sid: string) {
     if (!ERPNEXT_API_URL) throw new Error('ERPNext API URL is not configured.');
     
-    // 1. Check if DocType exists
     const checkResponse = await fetch(`${ERPNEXT_API_URL}/api/resource/DocType/${doctypeName}`, {
         headers: { 'Accept': 'application/json', 'Cookie': `sid=${sid}` }
     });
 
-    if (checkResponse.ok) {
-        console.log(`Doctype '${doctypeName}' already exists. Skipping creation.`);
-        return; // Doctype exists, do nothing
+    const schema = doctypeSchemas[doctypeName];
+    if (!schema) {
+      throw new Error(`No schema definition found for doctype '${doctypeName}'.`);
     }
 
-    if (checkResponse.status === 404) {
-        // 2. Doctype does not exist, so create it
-        console.log(`Doctype '${doctypeName}' not found. Attempting to create it...`);
-        const schema = doctypeSchemas[doctypeName];
-        if (!schema) {
-            throw new Error(`No schema defined for doctype '${doctypeName}'.`);
+    if (checkResponse.ok) {
+        // DocType exists, check if custom fields need to be added.
+        const existingDocType = await checkResponse.json();
+        const existingFields = new Set(existingDocType.data.fields.map((f: any) => f.fieldname));
+        const missingFields = schema.fields.filter((f: any) => !existingFields.has(f.fieldname));
+        
+        if (missingFields.length > 0) {
+            console.log(`Doctype '${doctypeName}' exists, but is missing fields. Attempting to add: ${missingFields.map(f => f.fieldname).join(', ')}`);
+            for (const field of missingFields) {
+                await addCustomFieldToDocType(doctypeName, field, sid);
+            }
+        } else {
+            console.log(`Doctype '${doctypeName}' already exists and is up-to-date.`);
         }
+    } else if (checkResponse.status === 404) {
+        // Doctype does not exist, create it from scratch.
+        console.log(`Doctype '${doctypeName}' not found. Attempting to create it...`);
         await postToDoctype(schema, sid);
         console.log(`Doctype '${doctypeName}' created successfully.`);
     } else {
-        // Handle other errors (like permission denied)
         const errorData = await checkResponse.json();
         throw new Error(`Failed to check for doctype '${doctypeName}': ${errorData.exception || checkResponse.statusText}`);
     }
+}
+
+async function addCustomFieldToDocType(doctype: string, fieldData: any, sid: string) {
+    const payload = {
+        doctype: doctype,
+        ...fieldData
+    };
+    
+    const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Custom Field`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
+        body: JSON.stringify(payload),
+    });
+    
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to add custom field '${fieldData.fieldname}' to '${doctype}': ${errorData._server_messages || errorData.exception}`);
+    }
+    console.log(`Successfully added custom field '${fieldData.fieldname}' to '${doctype}'.`);
 }
 
 
@@ -204,15 +200,16 @@ async function postToErpNext(doctype: string, data: any, sid: string, isSingle: 
 // Data transformation functions
 function transformServiceData(service: Service) {
   return {
-    service_name: service.title,
-    slug: service.slug,
-    short_description: service.shortDescription,
-    long_description: service.longDescription,
-    category: service.category?.name || '',
-    status: service.status,
+    item_code: service.slug,
+    item_name: service.title,
+    item_group: service.category?.name || 'All Item Groups',
+    description: service.shortDescription,
+    website_description: service.longDescription,
+    disabled: service.status === 'inactive' ? 1 : 0,
+    image: service.imageUrl,
+    service_url: service.serviceUrl,
     tags: service.tags.join(','),
-    image_url: service.imageUrl,
-    price: service.pricing?.fixedPriceDetails?.price ?? 0,
+    is_stock_item: 0,
   };
 }
 
@@ -231,20 +228,15 @@ function transformSitePageData(page: SitePage) {
 }
 
 function transformOrderData(order: Order) {
-  return {
-    order_id: order.orderId,
-    customer_email: order.userEmail,
-    total_amount: order.totalAmount,
-    currency: order.currency,
-    status: order.status,
-    payment_gateway: order.paymentGateway,
-    items_json: JSON.stringify(order.items),
-  };
+  // This transformation is complex and better handled by a dedicated function
+  // that creates a Sales Invoice from our order data.
+  // For migration, we're skipping orders as they are transactional.
+  return null;
 }
 
 function transformSiteSettingsData(settings: SiteSettings) {
     return {
-        doctype: 'Site Settings', // Required for single doctypes
+        doctype: 'Site Settings',
         site_title: settings.siteTitle,
         logo_url: settings.logoUrl,
         contact_address: settings.contactAddress,
@@ -262,6 +254,7 @@ function transformUserCartData(cart: any) {
 
 // Function to check if a document exists in ERPNext
 async function doesErpNextDocExist(doctype: string, fieldName: string, fieldValue: any, sid: string): Promise<boolean> {
+    if (!fieldName) return false;
     const filters = JSON.stringify([[fieldName, '=', fieldValue]]);
     const fields = JSON.stringify(['name']);
     const checkUrl = `${ERPNEXT_API_URL}/api/resource/${doctype}?filters=${filters}&fields=${fields}&limit=1`;
@@ -271,8 +264,6 @@ async function doesErpNextDocExist(doctype: string, fieldName: string, fieldValu
     });
 
     if (!response.ok) {
-        // If it's a 404, the doctype might not exist, but our checkAndCreateDoctype should handle that.
-        // For other errors, we log but assume it doesn't exist to allow the creation attempt.
         console.error(`Error checking for existing doc in ${doctype}: ${response.statusText}`);
         return false;
     }
@@ -293,7 +284,7 @@ export async function runMigrationAction(
     };
   }
   const statuses: MigrationStatus[] = [];
-  const collectionsToMigrate = ['services', 'sitePages', 'orders', 'siteSettings', 'userCarts'];
+  const collectionsToMigrate = ['services', 'sitePages', 'siteSettings', 'userCarts']; // Skipping orders
 
   for (const collectionName of collectionsToMigrate) {
     let migratedCount = 0;
@@ -304,10 +295,15 @@ export async function runMigrationAction(
         throw new Error(`No ERPNext doctype mapping found for collection '${collectionName}'.`);
       }
 
-      const isSingleDoctype = doctypeSchemas[erpDoctype]?.issingle === 1;
+      // Step 1: Ensure Doctype exists and has the correct fields
+      await checkAndCreateOrUpdateDocType(erpDoctype, sid);
 
-      // Step 1: Ensure Doctype exists in ERPNext
-      await checkAndCreateDoctype(erpDoctype, sid);
+      if(collectionName === 'orders') {
+          statuses.push({ collection: collectionName, success: true, count: 0, skipped: 0, error: 'Transactional data (Orders) are not migrated by this script.' });
+          continue;
+      }
+
+      const isSingleDoctype = doctypeSchemas[erpDoctype]?.issingle === 1;
 
       // Step 2: Migrate data from Firestore
       const querySnapshot = await getDocs(collection(db, collectionName));
@@ -322,22 +318,18 @@ export async function runMigrationAction(
         const docData = { id: doc.id, ...doc.data() };
         let dataToPost;
         
-        // Data Transformation
         switch (collectionName) {
           case 'services': dataToPost = transformServiceData(docData as unknown as Service); break;
           case 'sitePages': dataToPost = transformSitePageData(docData as unknown as SitePage); break;
-          case 'orders': dataToPost = transformOrderData(docData as unknown as Order); break;
           case 'siteSettings': dataToPost = transformSiteSettingsData(docData as unknown as SiteSettings); break;
           case 'userCarts': dataToPost = transformUserCartData(docData); break;
           default: dataToPost = { ...docData }; break;
         }
 
         if (isSingleDoctype) {
-            // For single doctypes, we always overwrite, so no need to check for existence.
             await postToErpNext(erpDoctype, dataToPost, sid, true);
             migratedCount++;
         } else {
-            // For regular doctypes, check for existence before creating.
             const uniqueField = uniqueFieldMappings[collectionName];
             // @ts-ignore
             const uniqueValue = dataToPost[uniqueField];

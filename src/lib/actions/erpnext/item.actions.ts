@@ -1,3 +1,4 @@
+
 'use server';
 
 import type { Service } from '../../types';
@@ -38,7 +39,7 @@ export async function getServicesFromErpNext({ sid }: { sid: string }): Promise<
     const result = await fetchFromErpNext<any[]>({ 
         sid, 
         doctype: 'Item', 
-        fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'image', 'disabled', 'standard_rate'] 
+        fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'image', 'disabled', 'standard_rate', 'service_url', 'website_description', 'tags'] 
     });
 
     if (!result.success || !result.data) {
