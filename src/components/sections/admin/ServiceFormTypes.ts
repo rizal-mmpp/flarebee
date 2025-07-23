@@ -7,9 +7,8 @@ export const serviceFormSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   shortDescription: z.string().min(10, 'Short description must be at least 10 characters'),
   longDescription: z.string().optional(),
-  categoryId: z.string().min(1, 'Category is required').refine(val => SERVICE_CATEGORIES.some(cat => cat.id === val), {
-    message: "Invalid category selected.",
-  }),
+  // categoryId now just needs to be a non-empty string, as it will be validated against fetched Item Groups.
+  categoryId: z.string().min(1, 'Category is required'),
   tags: z.string().min(1, 'Tags are required (comma-separated)'),
   imageUrl: z.string().optional(),
   dataAiHint: z.string().optional(),

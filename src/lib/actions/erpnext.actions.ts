@@ -62,7 +62,7 @@ async function fetchFromErpNext<T>({ sid, doctype, docname, fields = ['*'], filt
 
 
 function transformErpItemToAppService(item: any): Service {
-    const category = SERVICE_CATEGORIES.find(c => c.name === item.item_group) || SERVICE_CATEGORIES[4]; // Default to 'Other'
+    const category = { id: item.item_group, name: item.item_group, slug: item.item_group.toLowerCase().replace(/ /g, '-') };
     
     // Check if image URL is absolute. If not, prepend ERPNext URL.
     const imageUrl = (item.image && (item.image.startsWith('http://') || item.image.startsWith('https://')))
@@ -161,17 +161,15 @@ function slugify(text: string): string {
 }
 
 function transformFormToErpItem(data: ServiceFormValues, imageUrl: string | null): any {
-    const category = SERVICE_CATEGORIES.find(cat => cat.id === data.categoryId);
     return {
         item_code: slugify(data.title),
         item_name: data.title,
-        item_group: category?.name || 'Services', // Default Item Group
+        item_group: data.categoryId, // Directly use categoryId which now holds the Item Group name
         description: data.shortDescription,
         website_description: data.longDescription,
         disabled: data.status === 'inactive' ? 1 : 0,
-        image: imageUrl, // ERPNext expects 'image' field for Item
-        is_stock_item: 0, // Explicitly set as non-stock item
-        // Note: standard_rate should be set via Item Price Doctype, but we can set a default here if needed.
+        image: imageUrl, 
+        is_stock_item: 0, 
         standard_rate: data.pricing?.fixedPriceDetails?.price ?? 0,
     };
 }
@@ -278,10 +276,50 @@ export async function getUsersFromErpNext({ sid }: { sid: string }): Promise<{ s
             email: item.email,
             displayName: item.full_name,
             photoURL: item.user_image ? `${ERPNEXT_API_URL}${item.user_image}` : null,
-            role: 'user', // Default role to user, admin check can be done elsewhere if needed
+            role: 'user', // Default role to user
             createdAt: new Date(item.creation),
         };
     });
 
     return { success: true, data: users };
+}
+
+export async function getItemGroupsFromErpNext({ sid }: { sid: string }): Promise<{ success: boolean; data?: { name: string }[]; error?: string; }> {
+    const result = await fetchFromErpNext<any[]>({
+        sid,
+        doctype: 'Item Group',
+        fields: ['name'],
+        filters: [['is_group', '=', 1]], // Ensure we only get group nodes
+    });
+
+    if (!result.success || !result.data) {
+        return { success: false, error: result.error || 'Failed to get Item Groups.' };
+    }
+    return { success: true, data: result.data };
+}
+
+export async function createItemGroupInErpNext({ sid, name }: { sid: string; name: string; }): Promise<{ success: boolean; data?: any; error?: string; }> {
+    if (!name.trim()) return { success: false, error: 'Item Group name cannot be empty.' };
+    try {
+        const itemGroupData = {
+            item_group_name: name,
+            is_group: 1,
+            parent_item_group: "All Item Groups", // Standard parent
+        };
+
+        const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Item Group`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
+            body: JSON.stringify(itemGroupData),
+        });
+
+        const responseData = await response.json();
+        if (!response.ok) {
+            throw new Error(responseData.exception || responseData._server_messages || 'Failed to create Item Group in ERPNext.');
+        }
+
+        return { success: true, data: responseData.data };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
 }
