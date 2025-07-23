@@ -65,7 +65,7 @@ function transformErpItemToAppService(item: any): Service {
     const category = SERVICE_CATEGORIES.find(c => c.name === item.item_group) || SERVICE_CATEGORIES[4]; // Default to 'Other'
     
     // Check if image URL is absolute. If not, prepend ERPNext URL.
-    const imageUrl = (item.image && (item.image.startsWith('http') || item.image.startsWith('https')))
+    const imageUrl = (item.image && (item.image.startsWith('http://') || item.image.startsWith('https://')))
       ? item.image
       : item.image
         ? `${ERPNEXT_API_URL}${item.image}`
@@ -124,7 +124,7 @@ function transformErpSalesInvoiceToAppOrder(item: any): Order {
 
 
 export async function getServicesFromErpNext({ sid }: { sid: string }): Promise<{ success: boolean; data?: Service[]; error?: string; }> {
-    const result = await fetchFromErpNext<any[]>({ sid, doctype: 'Item', fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'website_description', 'image', 'disabled', 'standard_rate'] });
+    const result = await fetchFromErpNext<any[]>({ sid, doctype: 'Item', fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'image', 'disabled', 'standard_rate'] });
 
     if (!result.success || !result.data) {
         return { success: false, error: result.error || 'Failed to get items.' };

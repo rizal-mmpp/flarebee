@@ -258,10 +258,10 @@ export default function AdminServicesPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
             <Briefcase className="mr-3 h-8 w-8 text-primary" /> 
-            Manage Services (ERPNext Items)
+            Manage Services
           </h1>
           <p className="text-muted-foreground mt-1">
-            Add, edit, or remove services from ERPNext. Total available: {allFetchedServices.length}.
+            Add, edit, or remove services. Total available: {allFetchedServices.length}.
           </p>
         </div>
         <div className="flex gap-2 flex-col sm:flex-row">
@@ -281,7 +281,7 @@ export default function AdminServicesPage() {
       <Card>
         <CardHeader>
           <CardTitle>All Services</CardTitle>
-          <CardDescription>A list of all services (Items) from ERPNext.</CardDescription>
+          <CardDescription>A list of all services available on the platform.</CardDescription>
         </CardHeader>
         <CardContent>
           <DataTable
@@ -311,7 +311,7 @@ export default function AdminServicesPage() {
             <AlertDialogTitle className="flex items-center"><AlertCircle className="mr-2 h-5 w-5 text-destructive"/>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the service
-              "{serviceToDelete?.title}" from the ERPNext database.
+              "{serviceToDelete?.title}" from the database.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
