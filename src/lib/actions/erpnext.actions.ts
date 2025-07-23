@@ -266,20 +266,19 @@ export async function getOrderByOrderIdFromErpNext({ sid, orderId }: { sid: stri
 
 
 export async function getUsersFromErpNext({ sid }: { sid: string }): Promise<{ success: boolean; data?: UserProfile[]; error?: string; }> {
-     const result = await fetchFromErpNext<any[]>({ sid, doctype: 'User', fields: ['name', 'email', 'full_name', 'user_image', 'creation', 'user_roles'] });
+     const result = await fetchFromErpNext<any[]>({ sid, doctype: 'User', fields: ['name', 'email', 'full_name', 'user_image', 'creation'] });
 
     if (!result.success || !result.data) {
         return { success: false, error: result.error || 'Failed to get users.' };
     }
     
     const users: UserProfile[] = (result.data as any[]).map(item => {
-        const roles = Array.isArray(item.user_roles) ? item.user_roles.map(r => r.role) : [];
         return {
             uid: item.name,
             email: item.email,
             displayName: item.full_name,
             photoURL: item.user_image ? `${ERPNEXT_API_URL}${item.user_image}` : null,
-            role: roles.includes('System Manager') ? 'admin' : 'user',
+            role: 'user', // Default role to user, admin check can be done elsewhere if needed
             createdAt: new Date(item.creation),
         };
     });
