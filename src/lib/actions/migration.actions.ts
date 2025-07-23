@@ -31,25 +31,17 @@ const uniqueFieldMappings: { [key: string]: string } = {
     userCarts: 'user_id',
 };
 
-// --- Doctype Definitions ---
+// --- Doctype Definitions for CREATION ---
 const doctypeSchemas: { [key: string]: any } = {
-  [collectionMappings.services]: {
-    doctype: 'Item',
-    fields: [
-      { fieldname: 'service_url', fieldtype: 'Data', label: 'Service Management URL', insert_after: 'description' },
-      { fieldname: 'website_description', fieldtype: 'Text Editor', label: 'Website Description', insert_after: 'service_url' },
-      { fieldname: 'tags', fieldtype: 'Data', label: 'Tags', insert_after: 'website_description' },
-    ],
-  },
   [collectionMappings.sitePages]: {
     doctype: 'DocType',
     name: collectionMappings.sitePages,
     module: MODULE_NAME,
     custom: 1,
     fields: [
-      { fieldname: 'page_id', fieldtype: 'Data', label: 'Page ID', unique: 1, insert_after: 'title' },
-      { fieldname: 'title', fieldtype: 'Data', label: 'Title', insert_after: 'page_id' },
-      { fieldname: 'content', fieldtype: 'Text Editor', label: 'Content', insert_after: 'title' },
+      { fieldname: 'page_id', fieldtype: 'Data', label: 'Page ID', unique: 1 },
+      { fieldname: 'title', fieldtype: 'Data', label: 'Title'},
+      { fieldname: 'content', fieldtype: 'Text Editor', label: 'Content' },
     ],
     permissions: [{ role: 'System Manager', read: 1, write: 1, create: 1, delete: 1 }],
     issingle: 0,
@@ -61,13 +53,13 @@ const doctypeSchemas: { [key: string]: any } = {
     name: collectionMappings.siteSettings,
     module: MODULE_NAME,
     custom: 1,
-    issingle: 1, // Correct for Site Settings
+    issingle: 1,
     fields: [
       { fieldname: 'site_title', fieldtype: 'Data', label: 'Site Title' },
-      { fieldname: 'logo_url', fieldtype: 'Data', label: 'Logo URL', insert_after: 'site_title' },
-      { fieldname: 'contact_address', fieldtype: 'Small Text', label: 'Contact Address', insert_after: 'logo_url' },
-      { fieldname: 'contact_phone', fieldtype: 'Data', label: 'Contact Phone', insert_after: 'contact_address' },
-      { fieldname: 'contact_email', fieldtype: 'Data', label: 'Contact Email', insert_after: 'contact_phone' },
+      { fieldname: 'logo_url', fieldtype: 'Data', label: 'Logo URL' },
+      { fieldname: 'contact_address', fieldtype: 'Small Text', label: 'Contact Address' },
+      { fieldname: 'contact_phone', fieldtype: 'Data', label: 'Contact Phone' },
+      { fieldname: 'contact_email', fieldtype: 'Data', label: 'Contact Email' },
     ],
     permissions: [{ role: 'System Manager', read: 1, write: 1, create: 1, delete: 1 }],
   },
@@ -77,8 +69,8 @@ const doctypeSchemas: { [key: string]: any } = {
     module: 'Accounts',
     custom: 1,
     fields: [
-      { fieldname: 'user_id', fieldtype: 'Data', label: 'User ID', unique: 1, insert_after: 'items_json' },
-      { fieldname: 'items_json', fieldtype: 'Code', label: 'Items JSON', insert_after: 'user_id' },
+      { fieldname: 'user_id', fieldtype: 'Data', label: 'User ID', unique: 1 },
+      { fieldname: 'items_json', fieldtype: 'Code', label: 'Items JSON' },
     ],
     permissions: [{ role: 'System Manager', read: 1, write: 1, create: 1, delete: 1 }],
     issingle: 0,
@@ -87,79 +79,13 @@ const doctypeSchemas: { [key: string]: any } = {
   },
 };
 
-
-async function postToDoctype(data: any, sid: string) {
-  if (!ERPNEXT_API_URL) throw new Error('ERPNext API URL is not configured.');
-  
-  const response = await fetch(`${ERPNEXT_API_URL}/api/resource/DocType`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    console.error(`ERPNext DocType Creation Error:`, errorData);
-    throw new Error(errorData._server_messages || `Failed to create DocType: ${response.statusText}`);
-  }
-  return response.json();
-}
-
-async function checkAndCreateOrUpdateDocType(doctypeName: string, sid: string) {
-    if (!ERPNEXT_API_URL) throw new Error('ERPNext API URL is not configured.');
-    
-    const checkResponse = await fetch(`${ERPNEXT_API_URL}/api/resource/DocType/${doctypeName}`, {
-        headers: { 'Accept': 'application/json', 'Cookie': `sid=${sid}` }
-    });
-
-    const schema = doctypeSchemas[doctypeName];
-    if (!schema) {
-      throw new Error(`No schema definition found for doctype '${doctypeName}'.`);
-    }
-
-    if (checkResponse.ok) {
-        // DocType exists, check if custom fields need to be added.
-        const existingDocType = await checkResponse.json();
-        const existingFields = new Set(existingDocType.data.fields.map((f: any) => f.fieldname));
-        const missingFields = schema.fields.filter((f: any) => !existingFields.has(f.fieldname));
-        
-        if (missingFields.length > 0) {
-            console.log(`Doctype '${doctypeName}' exists, but is missing fields. Attempting to add: ${missingFields.map(f => f.fieldname).join(', ')}`);
-            for (const field of missingFields) {
-                await addCustomFieldToDocType(doctypeName, field, sid);
-            }
-        } else {
-            console.log(`Doctype '${doctypeName}' already exists and is up-to-date.`);
-        }
-    } else if (checkResponse.status === 404) {
-        // Doctype does not exist, create it from scratch.
-        console.log(`Doctype '${doctypeName}' not found. Attempting to create it...`);
-        await postToDoctype(schema, sid);
-        console.log(`Doctype '${doctypeName}' created successfully.`);
-    } else {
-        const errorData = await checkResponse.json();
-        throw new Error(`Failed to check for doctype '${doctypeName}': ${errorData.exception || checkResponse.statusText}`);
-    }
-}
-
-async function addCustomFieldToDocType(doctype: string, fieldData: any, sid: string) {
-    const payload = {
-        doctype: doctype,
-        ...fieldData
-    };
-    
-    const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Custom Field`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
-        body: JSON.stringify(payload),
-    });
-    
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Failed to add custom field '${fieldData.fieldname}' to '${doctype}': ${errorData._server_messages || errorData.exception}`);
-    }
-    console.log(`Successfully added custom field '${fieldData.fieldname}' to '${doctype}'.`);
-}
+const customFieldsForStandardDoctypes: { [key: string]: any[] } = {
+  'Item': [
+    { fieldname: 'service_url', fieldtype: 'Data', label: 'Service Management URL', insert_after: 'description' },
+    { fieldname: 'website_description', fieldtype: 'Text Editor', label: 'Website Description', insert_after: 'service_url' },
+    { fieldname: 'tags', fieldtype: 'Data', label: 'Tags', insert_after: 'website_description' },
+  ],
+};
 
 
 async function postToErpNext(doctype: string, data: any, sid: string, isSingle: boolean = false) {
@@ -194,6 +120,48 @@ async function postToErpNext(doctype: string, data: any, sid: string, isSingle: 
     }
   }
   return response.json();
+}
+
+async function ensureCustomFieldsExist(doctype: string, sid: string) {
+    const fields = customFieldsForStandardDoctypes[doctype];
+    if (!fields) return; // No custom fields defined for this doctype
+
+    for (const field of fields) {
+        const payload = {
+            doctype: doctype,
+            ...field
+        };
+        
+        try {
+            await postToErpNext('Custom Field', payload, sid);
+            console.log(`Successfully added or verified custom field '${field.fieldname}' to '${doctype}'.`);
+        } catch (error: any) {
+            if (error.message && error.message.includes('already exists')) {
+                console.log(`Custom field '${field.fieldname}' already exists in '${doctype}'. Skipping.`);
+            } else {
+                throw new Error(`Failed to add custom field '${field.fieldname}' to '${doctype}': ${error.message}`);
+            }
+        }
+    }
+}
+
+async function ensureDocTypeExists(doctypeName: string, sid: string) {
+    const schema = doctypeSchemas[doctypeName];
+    if (!schema) return; // Not a custom doctype we manage
+
+    const checkUrl = `${ERPNEXT_API_URL}/api/resource/DocType/${doctypeName}`;
+    const checkResponse = await fetch(checkUrl, { headers: { 'Accept': 'application/json', 'Cookie': `sid=${sid}` } });
+    
+    if (checkResponse.status === 404) {
+        console.log(`DocType '${doctypeName}' not found. Creating...`);
+        await postToErpNext('DocType', schema, sid);
+        console.log(`DocType '${doctypeName}' created successfully.`);
+    } else if (checkResponse.ok) {
+        console.log(`DocType '${doctypeName}' already exists.`);
+    } else {
+        const errorData = await checkResponse.json();
+        throw new Error(`Failed to check DocType '${doctypeName}': ${errorData.exception || 'Unknown error'}`);
+    }
 }
 
 // Data transformation functions
@@ -294,8 +262,13 @@ export async function runMigrationAction(
         throw new Error(`No ERPNext doctype mapping found for collection '${collectionName}'.`);
       }
 
-      // Step 1: Ensure Doctype exists and has the correct fields
-      await checkAndCreateOrUpdateDocType(erpDoctype, sid);
+      // Step 1: Ensure DocType and its fields exist
+      if (doctypeSchemas[erpDoctype]) {
+          await ensureDocTypeExists(erpDoctype, sid);
+      }
+      if (customFieldsForStandardDoctypes[erpDoctype]) {
+          await ensureCustomFieldsExist(erpDoctype, sid);
+      }
 
       if(collectionName === 'orders') {
           statuses.push({ collection: collectionName, success: true, count: 0, skipped: 0, error: 'Transactional data (Orders) are not migrated by this script.' });
