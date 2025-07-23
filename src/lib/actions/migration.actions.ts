@@ -124,12 +124,14 @@ async function postToErpNext(doctype: string, data: any, sid: string, isSingle: 
 
 async function ensureCustomFieldsExist(doctype: string, sid: string) {
     const fields = customFieldsForStandardDoctypes[doctype];
-    if (!fields) return; // No custom fields defined for this doctype
+    if (!fields) return;
 
     for (const field of fields) {
+        // Correct payload for creating a "Custom Field" document
         const payload = {
-            doctype: doctype,
-            ...field
+            doctype: "Custom Field", // The doctype we are creating is "Custom Field"
+            dt: doctype, // The DocType we are modifying
+            ...field // The actual field properties
         };
         
         try {
