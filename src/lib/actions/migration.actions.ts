@@ -36,7 +36,6 @@ const doctypeSchemas: { [key: string]: any } = {
   [collectionMappings.services]: {
     doctype: 'Item',
     fields: [
-      // Adding custom fields to the standard Item doctype
       { fieldname: 'service_url', fieldtype: 'Data', label: 'Service Management URL', insert_after: 'description' },
       { fieldname: 'website_description', fieldtype: 'Text Editor', label: 'Website Description', insert_after: 'service_url' },
       { fieldname: 'tags', fieldtype: 'Data', label: 'Tags', insert_after: 'website_description' },
@@ -48,9 +47,9 @@ const doctypeSchemas: { [key: string]: any } = {
     module: MODULE_NAME,
     custom: 1,
     fields: [
-      { fieldname: 'page_id', fieldtype: 'Data', label: 'Page ID', unique: 1 },
-      { fieldname: 'title', fieldtype: 'Data', label: 'Title' },
-      { fieldname: 'content', fieldtype: 'Text Editor', label: 'Content' },
+      { fieldname: 'page_id', fieldtype: 'Data', label: 'Page ID', unique: 1, insert_after: 'title' },
+      { fieldname: 'title', fieldtype: 'Data', label: 'Title', insert_after: 'page_id' },
+      { fieldname: 'content', fieldtype: 'Text Editor', label: 'Content', insert_after: 'title' },
     ],
     permissions: [{ role: 'System Manager', read: 1, write: 1, create: 1, delete: 1 }],
     issingle: 0,
@@ -65,10 +64,10 @@ const doctypeSchemas: { [key: string]: any } = {
     issingle: 1, // Correct for Site Settings
     fields: [
       { fieldname: 'site_title', fieldtype: 'Data', label: 'Site Title' },
-      { fieldname: 'logo_url', fieldtype: 'Data', label: 'Logo URL' },
-      { fieldname: 'contact_address', fieldtype: 'Small Text', label: 'Contact Address' },
-      { fieldname: 'contact_phone', fieldtype: 'Data', label: 'Contact Phone' },
-      { fieldname: 'contact_email', fieldtype: 'Data', label: 'Contact Email' },
+      { fieldname: 'logo_url', fieldtype: 'Data', label: 'Logo URL', insert_after: 'site_title' },
+      { fieldname: 'contact_address', fieldtype: 'Small Text', label: 'Contact Address', insert_after: 'logo_url' },
+      { fieldname: 'contact_phone', fieldtype: 'Data', label: 'Contact Phone', insert_after: 'contact_address' },
+      { fieldname: 'contact_email', fieldtype: 'Data', label: 'Contact Email', insert_after: 'contact_phone' },
     ],
     permissions: [{ role: 'System Manager', read: 1, write: 1, create: 1, delete: 1 }],
   },
@@ -78,8 +77,8 @@ const doctypeSchemas: { [key: string]: any } = {
     module: 'Accounts',
     custom: 1,
     fields: [
-      { fieldname: 'user_id', fieldtype: 'Data', label: 'User ID', unique: 1 },
-      { fieldname: 'items_json', fieldtype: 'Code', label: 'Items JSON' },
+      { fieldname: 'user_id', fieldtype: 'Data', label: 'User ID', unique: 1, insert_after: 'items_json' },
+      { fieldname: 'items_json', fieldtype: 'Code', label: 'Items JSON', insert_after: 'user_id' },
     ],
     permissions: [{ role: 'System Manager', read: 1, write: 1, create: 1, delete: 1 }],
     issingle: 0,
