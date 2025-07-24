@@ -1,9 +1,10 @@
 
+'use server';
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
 interface FetchFromErpNextArgs {
-    sid: string;
+    sid?: string; // SID is now optional for public fetches
     doctype: string;
     docname?: string;
     fields?: string[];
@@ -11,10 +12,15 @@ interface FetchFromErpNextArgs {
     limit?: number;
 }
 
-// Unified fetch function
 export async function fetchFromErpNext<T>({ sid, doctype, docname, fields = ['*'], filters = [], limit = 0 }: FetchFromErpNextArgs): Promise<{ success: boolean, data?: T | T[], error?: string }> {
     if (!ERPNEXT_API_URL) return { success: false, error: 'ERPNext API URL is not configured.' };
-    if (!sid) return { success: false, error: 'Session ID (sid) is required.' };
+    
+    // For public endpoints, we might not have a SID.
+    // ERPNext Guest access must be configured correctly for this to work.
+    const headers: HeadersInit = { 'Accept': 'application/json' };
+    if (sid) {
+        headers['Cookie'] = `sid=${sid}`;
+    }
 
     const endpoint = docname ? `${ERPNEXT_API_URL}/api/resource/${doctype}/${docname}` : `${ERPNEXT_API_URL}/api/resource/${doctype}`;
     const url = new URL(endpoint);
@@ -34,13 +40,14 @@ export async function fetchFromErpNext<T>({ sid, doctype, docname, fields = ['*'
 
     try {
         const response = await fetch(url.toString(), {
-            headers: { 'Cookie': `sid=${sid}`, 'Accept': 'application/json' },
+            headers: headers,
             cache: 'no-store',
         });
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: `HTTP error! status: ${response.status}` }));
-            return { success: false, error: errorData.message || errorData.exception || `Failed to fetch data from ${doctype}.` };
+            const errorMessage = errorData.message || errorData.exception || `Failed to fetch data from ${doctype}. Check permissions for Guests if you are not logged in.`;
+            return { success: false, error: errorMessage };
         }
 
         const result: { data: T | T[] } = await response.json();

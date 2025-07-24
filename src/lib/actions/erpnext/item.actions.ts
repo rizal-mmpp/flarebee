@@ -1,14 +1,18 @@
 
 'use server';
 
-import type { Service } from '../../types';
+import type { Service, ServiceCategory } from '../../types';
 import type { ServiceFormValues } from '@/components/sections/admin/ServiceFormTypes';
 import { fetchFromErpNext, ERPNEXT_API_URL } from './utils';
 
 function transformErpItemToAppService(item: any): Service {
-    const category = { id: item.item_group, name: item.item_group, slug: item.item_group.toLowerCase().replace(/ /g, '-') };
+    const categoryName = item.item_group || 'Other Services';
+    const category: ServiceCategory = {
+        id: categoryName.toLowerCase().replace(/ & /g, '-').replace(/ /g, '-'),
+        name: categoryName,
+        slug: categoryName.toLowerCase().replace(/ & /g, '-').replace(/ /g, '-')
+    };
     
-    // Check if image URL is absolute. If not, prepend ERPNext URL.
     const imageUrl = (item.image && (item.image.startsWith('http://') || item.image.startsWith('https://')))
       ? item.image
       : item.image
@@ -17,9 +21,9 @@ function transformErpItemToAppService(item: any): Service {
 
     return {
         id: item.name, 
-        slug: item.item_code, // Assuming item_code is the slug
+        slug: item.item_code,
         title: item.item_name,
-        shortDescription: item.description,
+        shortDescription: item.description || '',
         longDescription: item.website_description || '',
         category: category,
         tags: typeof item.tags === 'string' ? item.tags.split(',').map(t => t.trim()) : [],
@@ -29,17 +33,58 @@ function transformErpItemToAppService(item: any): Service {
         createdAt: item.creation,
         updatedAt: item.modified,
         pricing: {
-            isFixedPriceActive: true,
+            isFixedPriceActive: item.standard_rate > 0,
             fixedPriceDetails: { price: item.standard_rate || 0 }
+            // Subscription details would need to be fetched separately and merged here
         }
     };
+}
+
+// For client-side fetching where no SID is available
+export async function getPublicServices({ categorySlug }: { categorySlug?: string } = {}): Promise<{ success: boolean; data?: Service[]; error?: string; }> {
+    // This is a placeholder for a potential future API route that doesn't require SID
+    // For now, we use getServicesFromErpNext and assume a guest/public SID if necessary
+    return { success: false, error: "Direct public fetching not implemented. Use a server component." };
+}
+
+export async function getPublicServiceBySlug(slug: string): Promise<{ success: boolean; data?: Service; error?: string; }> {
+    const result = await fetchFromErpNext<any[]>({
+        doctype: 'Item',
+        fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'website_description', 'image', 'disabled', 'standard_rate', 'tags', 'service_url', 'creation', 'modified'],
+        filters: [['item_code', '=', slug]],
+        limit: 1,
+    });
+    if (!result.success || !result.data || result.data.length === 0) {
+        return { success: false, error: result.error || `Service with slug '${slug}' not found.` };
+    }
+    const service: Service = transformErpItemToAppService(result.data[0]);
+    return { success: true, data: service };
+}
+
+export async function getPublicServicesFromErpNext({ categorySlug }: { categorySlug?: string }): Promise<{ success: boolean; data?: Service[]; error?: string; }> {
+    const filters: any[] = [['disabled', '=', 0]]; // Only fetch active services
+    if (categorySlug) {
+        const categoryName = categorySlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        filters.push(['item_group', '=', categoryName]);
+    }
+    const result = await fetchFromErpNext<any[]>({ 
+        doctype: 'Item', 
+        fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'image', 'disabled', 'standard_rate', 'tags', 'service_url', 'creation', 'modified'],
+        filters,
+    });
+
+    if (!result.success || !result.data) {
+        return { success: false, error: result.error || 'Failed to get items.' };
+    }
+    const services: Service[] = (result.data as any[]).map(transformErpItemToAppService);
+    return { success: true, data: services };
 }
 
 export async function getServicesFromErpNext({ sid }: { sid: string }): Promise<{ success: boolean; data?: Service[]; error?: string; }> {
     const result = await fetchFromErpNext<any[]>({ 
         sid, 
         doctype: 'Item', 
-        fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'image', 'disabled', 'standard_rate', 'tags'] 
+        fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'website_description', 'image', 'disabled', 'standard_rate', 'tags', 'service_url', 'creation', 'modified'] 
     });
 
     if (!result.success || !result.data) {
@@ -50,7 +95,12 @@ export async function getServicesFromErpNext({ sid }: { sid: string }): Promise<
 }
 
 export async function getServiceFromErpNextByName({ sid, serviceName }: { sid: string; serviceName: string; }): Promise<{ success: boolean; data?: Service; error?: string; }> {
-    const result = await fetchFromErpNext<any>({ sid, doctype: 'Item', docname: serviceName });
+    const result = await fetchFromErpNext<any>({ 
+        sid, 
+        doctype: 'Item', 
+        docname: serviceName,
+        fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'website_description', 'image', 'disabled', 'standard_rate', 'tags', 'service_url', 'creation', 'modified'] 
+    });
     if (!result.success || !result.data) {
         return { success: false, error: result.error || 'Failed to get item.' };
     }

@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getServiceBySlugFromFirestore } from '@/lib/firebase/firestoreServices';
+import { getPublicServiceBySlug } from '@/lib/actions/erpnext/item.actions';
 import type { Service, ServicePackage, CartItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -69,11 +69,11 @@ export default function CartPage() {
 
         const fetchServiceData = async () => {
           setIsLoading(true);
-          const fetchedService = await getServiceBySlugFromFirestore(parsedSelection.serviceSlug);
-          if (fetchedService) {
-            setService(fetchedService);
+          const result = await getPublicServiceBySlug(parsedSelection.serviceSlug);
+          if (result.success && result.data) {
+            setService(result.data);
             if (parsedSelection.type === 'subscription') {
-              const pkg = fetchedService.pricing?.subscriptionDetails?.packages.find(p => p.id === parsedSelection.packageId);
+              const pkg = result.data.pricing?.subscriptionDetails?.packages.find(p => p.id === parsedSelection.packageId);
               if (pkg) {
                 setSelectedPackage(pkg);
               } else {
@@ -81,7 +81,7 @@ export default function CartPage() {
               }
             }
           } else {
-            setError("The selected service could not be found.");
+            setError(result.error || "The selected service could not be found.");
           }
           setIsLoading(false);
         };

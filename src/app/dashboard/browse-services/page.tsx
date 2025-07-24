@@ -1,91 +1,58 @@
 
 'use client'; 
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { SERVICE_CATEGORIES } from '@/lib/constants';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2, Search, X, ListFilter, Briefcase, Compass } from 'lucide-react';
 import type { Service } from '@/lib/types';
-import { getAllServicesFromFirestore } from '@/lib/firebase/firestoreServices';
+import { getPublicServicesFromErpNext } from '@/lib/actions/erpnext/item.actions';
 import { cn } from '@/lib/utils';
 import { ServiceCard } from '@/components/shared/ServiceCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CategoryFilter } from '@/components/sections/templates/CategoryFilter';
 
-export default function BrowseServicesPage() {
-  const [allServices, setAllServices] = useState<Service[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-
+function ServicesGrid() {
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const [services, setServices] = useState<Service[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const category = searchParams.get('category');
 
   useEffect(() => {
     async function fetchServices() {
       setIsLoading(true);
-      try {
-        const result = await getAllServicesFromFirestore({ pageSize: 0 }); // Fetch all
-        setAllServices(result.data);
-      } catch (error) {
-        console.error("Failed to fetch services for store page:", error);
-      } finally {
-        setIsLoading(false);
+      const result = await getPublicServicesFromErpNext({ categorySlug: category || undefined });
+      if (result.success && result.data) {
+        setServices(result.data);
+      } else {
+        console.error("Failed to fetch services:", result.error);
+        setServices([]);
       }
+      setIsLoading(false);
     }
     fetchServices();
-  }, []);
-
-  useEffect(() => {
-    const categoryFromQuery = searchParams.get('category');
-    if (categoryFromQuery && SERVICE_CATEGORIES.some(cat => cat.slug === categoryFromQuery)) {
-      setSelectedCategory(categoryFromQuery);
-    } else if (!categoryFromQuery) { 
-      setSelectedCategory(null);
-    }
-  }, [searchParams]);
-
-  const handleSelectCategory = (slug: string | null) => {
-    setSelectedCategory(slug);
-    const params = new URLSearchParams(window.location.search);
-    if (slug) {
-        params.set('category', slug);
-    } else {
-        params.delete('category');
-    }
-    router.push(`/dashboard/browse-services?${params.toString()}`, { scroll: false });
-  };
+  }, [category]);
   
   const filteredServices = useMemo(() => {
-    return allServices
-      .filter(service => service.status === 'active') // Only show active services
-      .filter((service) => {
-        const categoryMatch = selectedCategory ? service.category.slug === selectedCategory : true;
-        const lowerSearchTerm = searchTerm.toLowerCase();
-        let searchMatch = true;
-        if (lowerSearchTerm) {
-          const titleMatch = service.title.toLowerCase().includes(lowerSearchTerm);
-          const descriptionMatch = service.shortDescription.toLowerCase().includes(lowerSearchTerm);
-          const categoryNameMatch = service.category.name.toLowerCase().includes(lowerSearchTerm);
-          const tagsMatch = service.tags.some(tag => tag.toLowerCase().includes(lowerSearchTerm));
-          searchMatch = titleMatch || descriptionMatch || categoryNameMatch || tagsMatch;
-        }
-        
-        return categoryMatch && searchMatch;
-      });
-  }, [selectedCategory, searchTerm, allServices]);
+    return services.filter((service) => {
+      const lowerSearchTerm = searchTerm.toLowerCase();
+      if (!lowerSearchTerm) return true;
+      
+      const titleMatch = service.title.toLowerCase().includes(lowerSearchTerm);
+      const descriptionMatch = service.shortDescription.toLowerCase().includes(lowerSearchTerm);
+      const categoryNameMatch = service.category.name.toLowerCase().includes(lowerSearchTerm);
+      const tagsMatch = service.tags.some(tag => tag.toLowerCase().includes(lowerSearchTerm));
+      
+      return titleMatch || descriptionMatch || categoryNameMatch || tagsMatch;
+    });
+  }, [searchTerm, services]);
 
   return (
-    <div className="space-y-6 p-4 md:p-6 lg:p-8">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
-          <Compass className="mr-3 h-8 w-8 text-primary" />
-          Browse Services
-        </h1>
-      </div>
-      
-      <div className="mb-8 max-w-xl relative">
+    <div className="space-y-8">
+       <div className="max-w-xl relative">
         <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none z-10" />
         <Input 
           type="text"
@@ -107,33 +74,9 @@ export default function BrowseServicesPage() {
         )}
       </div>
 
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <ListFilter className="h-5 w-5 text-primary" />
-          <h3 className="text-xl font-semibold text-foreground">Filter by Category</h3>
-        </div>
-        <div className="flex flex-wrap gap-2">
-            <Button
-              variant={selectedCategory === null ? 'default' : 'outline'}
-              onClick={() => handleSelectCategory(null)}
-              className={cn("transition-all duration-200 ease-in-out", selectedCategory === null ? "bg-primary text-primary-foreground hover:bg-primary/90" : "hover:bg-accent hover:text-accent-foreground hover:border-accent")}
-            >
-              All
-            </Button>
-            {SERVICE_CATEGORIES.map((category) => (
-              <Button
-                key={category.id}
-                variant={selectedCategory === category.slug ? 'default' : 'outline'}
-                onClick={() => handleSelectCategory(category.slug)}
-                className={cn("transition-all duration-200 ease-in-out", selectedCategory === category.slug ? "bg-primary text-primary-foreground hover:bg-primary/90" : "hover:bg-accent hover:text-accent-foreground hover:border-accent")}
-              >
-                {category.name}
-              </Button>
-            ))}
-        </div>
-      </div>
-      
-      {isLoading ? (
+      <CategoryFilter categories={SERVICE_CATEGORIES} selectedCategory={category} />
+
+       {isLoading ? (
         <div className="flex justify-center items-center py-20">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </div>
@@ -155,13 +98,29 @@ export default function BrowseServicesPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground">
-                    No services matched your current filter criteria. Try selecting a different category or clearing your search.
+                    No services matched your current filter criteria.
                   </p>
                 </CardContent>
             </Card>
           </div>
         )
       )}
+    </div>
+  );
+}
+
+export default function BrowseServicesPage() {
+  return (
+    <div className="space-y-6 p-4 md:p-6 lg:p-8">
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
+          <Compass className="mr-3 h-8 w-8 text-primary" />
+          Browse Services
+        </h1>
+      </div>
+      <Suspense fallback={<Loader2 className="h-12 w-12 animate-spin text-primary" />}>
+        <ServicesGrid />
+      </Suspense>
     </div>
   );
 }
