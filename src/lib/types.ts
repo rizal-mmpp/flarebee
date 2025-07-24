@@ -138,6 +138,7 @@ export interface SubscriptionPlan {
   item: string;
   cost: number;
   currency: string;
+  price_based_on: 'Fixed Rate' | 'Based On Price List' | 'Monthly Rate' | '';
   billing_interval: 'Day' | 'Week' | 'Month' | 'Year';
   billing_interval_count: number;
 }
