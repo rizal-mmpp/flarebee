@@ -7,10 +7,6 @@ const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 const ERPNEXT_GUEST_API_KEY = process.env.NEXT_PUBLIC_ERPNEXT_GUEST_API_KEY;
 const ERPNEXT_GUEST_API_SECRET = process.env.NEXT_PUBLIC_ERPNEXT_GUEST_API_SECRET;
 
-// Admin/System Manager Keys - server-side only
-const ERPNEXT_ADMIN_API_KEY = process.env.ERPNEXT_ADMIN_API_KEY;
-const ERPNEXT_ADMIN_API_SECRET = process.env.ERPNEXT_ADMIN_API_SECRET;
-
 
 interface FetchFromErpNextArgs {
     sid?: string; // SID is now a signal for "admin-level" access
@@ -27,16 +23,12 @@ export async function fetchFromErpNext<T>({ sid, doctype, docname, fields = ['*'
     const headers: HeadersInit = { 'Accept': 'application/json' };
     
     if (sid) {
-        // Authenticated user request - use ADMIN keys for server-to-server reliability
-        if (ERPNEXT_ADMIN_API_KEY && ERPNEXT_ADMIN_API_SECRET) {
-            headers['Authorization'] = `token ${ERPNEXT_ADMIN_API_KEY}:${ERPNEXT_ADMIN_API_SECRET}`;
-        } else {
-            return { success: false, error: 'Admin API keys are not configured for authenticated requests.' };
-        }
+        // Authenticated user request - use the provided session ID
+        headers['Cookie'] = `sid=${sid}`;
     } else {
         // Public/Guest request - use GUEST keys
         if (ERPNEXT_GUEST_API_KEY && ERPNEXT_GUEST_API_SECRET) {
-            // IMPORTANT: The format is "token key:secret" NOT "token key secret"
+             // IMPORTANT: The format is "token key:secret" NOT "token key secret"
              headers['Authorization'] = `token ${ERPNEXT_GUEST_API_KEY}:${ERPNEXT_GUEST_API_SECRET}`;
         } else {
             return { success: false, error: 'Guest API keys are not configured for public requests.' };
