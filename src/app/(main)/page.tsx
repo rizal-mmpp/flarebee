@@ -5,19 +5,19 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Zap, Palette, Rocket, Briefcase } from 'lucide-react';
 import type { Service, HomePageContent } from '@/lib/types';
-import { getAllServicesFromFirestore } from '@/lib/firebase/firestoreServices';
 import { ServiceCard } from '@/components/shared/ServiceCard';
 import { getSitePageContent } from '@/lib/firebase/firestoreSitePages';
 import { HeroIllustration } from '@/components/shared/HeroIllustration';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getPublicServicesFromErpNext } from '@/lib/actions/erpnext/item.actions';
 
 export default async function HomePage() {
   const [servicesResult, heroContentResult] = await Promise.all([
-    getAllServicesFromFirestore({ pageSize: 3 }),
+    getPublicServicesFromErpNext({}),
     getSitePageContent('home-page'),
   ]);
 
-  const featuredServices = servicesResult.data.filter(s => s.status === 'active');
+  const featuredServices = servicesResult.data?.slice(0, 3) || [];
   const heroContent = heroContentResult as HomePageContent;
 
   return (

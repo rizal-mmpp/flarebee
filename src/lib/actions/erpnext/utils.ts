@@ -56,5 +56,3 @@ export async function fetchFromErpNext<T>({ sid, doctype, docname, fields = ['*'
         return { success: false, error: `An unexpected error occurred: ${error.message}` };
     }
 }
-
-export { ERPNEXT_API_URL };

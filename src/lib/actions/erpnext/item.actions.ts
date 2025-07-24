@@ -3,7 +3,9 @@
 
 import type { Service, ServiceCategory } from '../../types';
 import type { ServiceFormValues } from '@/components/sections/admin/ServiceFormTypes';
-import { fetchFromErpNext, ERPNEXT_API_URL } from './utils';
+import { fetchFromErpNext } from './utils';
+
+const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
 function transformErpItemToAppService(item: any): Service {
     const categoryName = item.item_group || 'Other Services';
