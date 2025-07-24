@@ -51,7 +51,7 @@ export const DEFAULT_SUBSCRIPTION_PLANS: Omit<SubscriptionPlan, 'name'>[] = [
   {
     plan_name: 'Basic',
     item: 'web-builder',
-    price_based_on: 'Fixed Rate',
+    price_determination: 'Fixed Rate',
     cost: 29000,
     currency: 'IDR',
     billing_interval: 'Month',
@@ -60,7 +60,7 @@ export const DEFAULT_SUBSCRIPTION_PLANS: Omit<SubscriptionPlan, 'name'>[] = [
   {
     plan_name: 'Pro',
     item: 'web-builder',
-    price_based_on: 'Fixed Rate',
+    price_determination: 'Fixed Rate',
     cost: 99000,
     currency: 'IDR',
     billing_interval: 'Month',
@@ -69,7 +69,7 @@ export const DEFAULT_SUBSCRIPTION_PLANS: Omit<SubscriptionPlan, 'name'>[] = [
   {
     plan_name: 'Business',
     item: 'web-builder',
-    price_based_on: 'Fixed Rate',
+    price_determination: 'Fixed Rate',
     cost: 149000,
     currency: 'IDR',
     billing_interval: 'Month',
