@@ -3,7 +3,8 @@
 
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
-import type { SitePage, Service, Order, SiteSettings } from '../types';
+import type { SitePage, Service, Order, SiteSettings, SubscriptionPlan } from '../types';
+import { DEFAULT_SUBSCRIPTION_PLANS } from '../constants';
 
 export interface MigrationStatus {
   collection: string;
@@ -19,19 +20,20 @@ const MODULE_NAME = 'Website'; // Using a standard module
 const collectionMappings: { [key: string]: string } = {
   services: `Item`,
   sitePages: `Site Page`,
-  orders: `Sales Invoice`, // Corrected to Sales Invoice
-  siteSettings: 'Site Settings', // This will be a custom DocType
-  userCarts: 'User Cart', // This will be a custom DocType
+  orders: `Sales Invoice`,
+  siteSettings: 'Site Settings',
+  userCarts: 'User Cart',
+  subscriptionPlans: 'Subscription Plan',
 };
 
 const uniqueFieldMappings: { [key: string]: string } = {
     services: 'item_code',
     sitePages: 'page_id',
-    orders: 'name', // 'name' is the unique ID for Sales Invoice
+    orders: 'name',
     userCarts: 'user_id',
+    subscriptionPlans: 'plan_name',
 };
 
-// --- Doctype Definitions for CREATION ---
 const doctypeSchemas: { [key: string]: any } = {
   [collectionMappings.sitePages]: {
     doctype: 'DocType',
@@ -127,11 +129,10 @@ async function ensureCustomFieldsExist(doctype: string, sid: string) {
     if (!fields) return;
 
     for (const field of fields) {
-        // Correct payload for creating a "Custom Field" document
         const payload = {
-            doctype: "Custom Field", // The doctype we are creating is "Custom Field"
-            dt: doctype, // The DocType we are modifying
-            ...field // The actual field properties
+            doctype: "Custom Field",
+            dt: doctype,
+            ...field
         };
         
         try {
@@ -149,7 +150,7 @@ async function ensureCustomFieldsExist(doctype: string, sid: string) {
 
 async function ensureDocTypeExists(doctypeName: string, sid: string) {
     const schema = doctypeSchemas[doctypeName];
-    if (!schema) return; // Not a custom doctype we manage
+    if (!schema) return;
 
     const checkUrl = `${ERPNEXT_API_URL}/api/resource/DocType/${doctypeName}`;
     const checkResponse = await fetch(checkUrl, { headers: { 'Accept': 'application/json', 'Cookie': `sid=${sid}` } });
@@ -166,7 +167,6 @@ async function ensureDocTypeExists(doctypeName: string, sid: string) {
     }
 }
 
-// Data transformation functions
 function transformServiceData(service: Service) {
   return {
     item_code: service.slug,
@@ -196,13 +196,6 @@ function transformSitePageData(page: SitePage) {
   };
 }
 
-function transformOrderData(order: Order) {
-  // This transformation is complex and better handled by a dedicated function
-  // that creates a Sales Invoice from our order data.
-  // For migration, we're skipping orders as they are transactional.
-  return null;
-}
-
 function transformSiteSettingsData(settings: SiteSettings) {
     return {
         doctype: 'Site Settings',
@@ -216,12 +209,11 @@ function transformSiteSettingsData(settings: SiteSettings) {
 
 function transformUserCartData(cart: any) {
     return {
-        user_id: cart.id, // The document ID in Firestore is the user ID
+        user_id: cart.id,
         items_json: JSON.stringify(cart.items),
     };
 }
 
-// Function to check if a document exists in ERPNext
 async function doesErpNextDocExist(doctype: string, fieldName: string, fieldValue: any, sid: string): Promise<boolean> {
     if (!fieldName) return false;
     const filters = JSON.stringify([[fieldName, '=', fieldValue]]);
@@ -242,104 +234,91 @@ async function doesErpNextDocExist(doctype: string, fieldName: string, fieldValu
 }
 
 
-export async function runMigrationAction(
+export async function runSingleMigrationAction(
+  collectionName: string,
   sid: string
-): Promise<{ success: boolean; message: string; statuses: MigrationStatus[] }> {
+): Promise<MigrationStatus> {
   if (!sid) {
-    return {
-      success: false,
-      message: 'ERPNext session not found. Please log in to ERPNext first.',
-      statuses: [],
-    };
+    return { collection: collectionName, success: false, count: 0, skipped: 0, error: 'ERPNext session not found.' };
   }
-  const statuses: MigrationStatus[] = [];
-  const collectionsToMigrate = ['services', 'sitePages', 'siteSettings', 'userCarts']; // Skipping orders
 
-  for (const collectionName of collectionsToMigrate) {
-    let migratedCount = 0;
-    let skippedCount = 0;
-    try {
-      const erpDoctype = collectionMappings[collectionName];
-      if (!erpDoctype) {
-        throw new Error(`No ERPNext doctype mapping found for collection '${collectionName}'.`);
-      }
-
-      // Step 1: Ensure DocType and its fields exist
-      if (doctypeSchemas[erpDoctype]) {
-          await ensureDocTypeExists(erpDoctype, sid);
-      }
-      if (customFieldsForStandardDoctypes[erpDoctype]) {
-          await ensureCustomFieldsExist(erpDoctype, sid);
-      }
-
-      if(collectionName === 'orders') {
-          statuses.push({ collection: collectionName, success: true, count: 0, skipped: 0, error: 'Transactional data (Orders) are not migrated by this script.' });
-          continue;
-      }
-
-      const isSingleDoctype = doctypeSchemas[erpDoctype]?.issingle === 1;
-
-      // Step 2: Migrate data from Firestore
-      const querySnapshot = await getDocs(collection(db, collectionName));
-      const totalDocs = querySnapshot.size;
-
-      if (totalDocs === 0) {
-        statuses.push({ collection: collectionName, success: true, count: 0, skipped: 0, error: 'No documents to migrate.' });
-        continue;
-      }
-
-      for (const doc of querySnapshot.docs) {
-        const docData = { id: doc.id, ...doc.data() };
-        let dataToPost;
-        
-        switch (collectionName) {
-          case 'services': dataToPost = transformServiceData(docData as unknown as Service); break;
-          case 'sitePages': dataToPost = transformSitePageData(docData as unknown as SitePage); break;
-          case 'siteSettings': dataToPost = transformSiteSettingsData(docData as unknown as SiteSettings); break;
-          case 'userCarts': dataToPost = transformUserCartData(docData); break;
-          default: dataToPost = { ...docData }; break;
-        }
-
-        if (isSingleDoctype) {
-            await postToErpNext(erpDoctype, dataToPost, sid, true);
-            migratedCount++;
-        } else {
-            const uniqueField = uniqueFieldMappings[collectionName];
-            // @ts-ignore
-            const uniqueValue = dataToPost[uniqueField];
-
-            if (!uniqueField || uniqueValue === undefined) {
-                 console.warn(`Skipping existence check for ${collectionName} doc ${doc.id} due to missing unique identifier.`);
-                 await postToErpNext(erpDoctype, dataToPost, sid, false);
-                 migratedCount++;
-                 continue;
-            }
-
-            const docExists = await doesErpNextDocExist(erpDoctype, uniqueField, uniqueValue, sid);
-            if (docExists) {
-                console.log(`Document with ${uniqueField}=${uniqueValue} already exists in ${erpDoctype}. Skipping.`);
-                skippedCount++;
-            } else {
-                await postToErpNext(erpDoctype, dataToPost, sid, false);
-                migratedCount++;
-            }
-        }
-      }
-      statuses.push({ collection: collectionName, success: true, count: migratedCount, skipped: skippedCount });
-    } catch (error: any) {
-      console.error(`Migration failed for collection: ${collectionName}`, error);
-      statuses.push({ collection: collectionName, success: false, count: migratedCount, skipped: skippedCount, error: error.message });
-      return {
-        success: false,
-        message: `Migration failed on collection '${collectionName}'. Please check logs.`,
-        statuses: statuses,
-      };
+  let migratedCount = 0;
+  let skippedCount = 0;
+  
+  try {
+    const erpDoctype = collectionMappings[collectionName];
+    if (!erpDoctype) {
+      throw new Error(`No ERPNext doctype mapping found for collection '${collectionName}'.`);
     }
-  }
 
-  return {
-    success: true,
-    message: 'All selected collections have been processed.',
-    statuses: statuses,
-  };
+    if (doctypeSchemas[erpDoctype]) {
+      await ensureDocTypeExists(erpDoctype, sid);
+    }
+    if (customFieldsForStandardDoctypes[erpDoctype]) {
+      await ensureCustomFieldsExist(erpDoctype, sid);
+    }
+
+    // Special handling for seeding default subscription plans
+    if (collectionName === 'subscriptionPlans') {
+      const uniqueField = uniqueFieldMappings[collectionName];
+      for (const planData of DEFAULT_SUBSCRIPTION_PLANS) {
+        const docExists = await doesErpNextDocExist(erpDoctype, uniqueField, planData.plan_name, sid);
+        if (docExists) {
+          skippedCount++;
+        } else {
+          await postToErpNext(erpDoctype, planData, sid, false);
+          migratedCount++;
+        }
+      }
+       return { collection: collectionName, success: true, count: migratedCount, skipped: skippedCount };
+    }
+
+
+    const isSingleDoctype = doctypeSchemas[erpDoctype]?.issingle === 1;
+    const querySnapshot = await getDocs(collection(db, collectionName));
+    
+    if (querySnapshot.empty) {
+      return { collection: collectionName, success: true, count: 0, skipped: 0, error: 'No documents to migrate.' };
+    }
+
+    for (const doc of querySnapshot.docs) {
+      const docData = { id: doc.id, ...doc.data() };
+      let dataToPost;
+
+      switch (collectionName) {
+        case 'services': dataToPost = transformServiceData(docData as unknown as Service); break;
+        case 'sitePages': dataToPost = transformSitePageData(docData as unknown as SitePage); break;
+        case 'siteSettings': dataToPost = transformSiteSettingsData(docData as unknown as SiteSettings); break;
+        case 'userCarts': dataToPost = transformUserCartData(docData); break;
+        default: continue; 
+      }
+
+      if (isSingleDoctype) {
+        await postToErpNext(erpDoctype, dataToPost, sid, true);
+        migratedCount++;
+      } else {
+        const uniqueField = uniqueFieldMappings[collectionName];
+        // @ts-ignore
+        const uniqueValue = dataToPost[uniqueField];
+
+        if (!uniqueField || uniqueValue === undefined) {
+          console.warn(`Skipping existence check for ${collectionName} doc ${doc.id} due to missing unique identifier.`);
+          await postToErpNext(erpDoctype, dataToPost, sid, false);
+          migratedCount++;
+        } else {
+          const docExists = await doesErpNextDocExist(erpDoctype, uniqueField, uniqueValue, sid);
+          if (docExists) {
+            skippedCount++;
+          } else {
+            await postToErpNext(erpDoctype, dataToPost, sid, false);
+            migratedCount++;
+          }
+        }
+      }
+    }
+    return { collection: collectionName, success: true, count: migratedCount, skipped: skippedCount };
+  } catch (error: any) {
+    console.error(`Migration failed for collection: ${collectionName}`, error);
+    return { collection: collectionName, success: false, count: migratedCount, skipped: skippedCount, error: error.message };
+  }
 }

@@ -6,21 +6,30 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, DatabaseZap, CheckCircle, AlertTriangle, ListChecks, ServerCrash, SkipForward } from 'lucide-react';
-import { runMigrationAction } from '@/lib/actions/migration.actions';
+import { runSingleMigrationAction } from '@/lib/actions/migration.actions';
 import type { MigrationStatus } from '@/lib/actions/migration.actions';
 import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-const collectionNames = ['services', 'sitePages', 'orders', 'siteSettings', 'userCarts'];
+const MIGRATABLE_COLLECTIONS = ['subscriptionPlans', 'services', 'sitePages', 'siteSettings', 'userCarts'];
+const COLLECTION_DESCRIPTIONS: { [key: string]: string } = {
+  subscriptionPlans: 'Seeds default subscription plans (Free, Personal, Pro) into ERPNext.',
+  services: 'Migrates services from Firebase to Items in ERPNext.',
+  sitePages: 'Migrates static pages (About Us, etc.) from Firebase to Site Pages in ERPNext.',
+  siteSettings: 'Migrates general site settings from Firebase to ERPNext.',
+  userCarts: 'Migrates saved user carts from Firebase to ERPNext.'
+};
+
 
 export default function MigrationPage() {
   const { authMethod, erpSid } = useCombinedAuth();
   const { toast } = useToast();
-  const [isMigrating, startMigration] = useTransition();
-  const [migrationStatus, setMigrationStatus] = useState<MigrationStatus[]>([]);
-  const [overallResult, setOverallResult] = useState<{ success: boolean; message: string } | null>(null);
+  
+  const [migrationStates, setMigrationStates] = useState<Record<string, { running: boolean; status: MigrationStatus | null }>>(
+    MIGRATABLE_COLLECTIONS.reduce((acc, name) => ({ ...acc, [name]: { running: false, status: null } }), {})
+  );
 
-  const handleRunMigration = () => {
+  const handleRunMigration = (collectionName: string) => {
     if (authMethod !== 'erpnext' || !erpSid) {
       toast({
         title: 'Authentication Error',
@@ -29,23 +38,25 @@ export default function MigrationPage() {
       });
       return;
     }
+
+    setMigrationStates(prev => ({ ...prev, [collectionName]: { running: true, status: null } }));
     
-    setMigrationStatus([]);
-    setOverallResult(null);
-    startMigration(async () => {
-      const result = await runMigrationAction(erpSid);
-      if (result.statuses) {
-        setMigrationStatus(result.statuses);
-      }
-      setOverallResult({ success: result.success, message: result.message });
+    runSingleMigrationAction(collectionName, erpSid).then(status => {
+       setMigrationStates(prev => ({ ...prev, [collectionName]: { running: false, status } }));
+       if (status.success) {
+         toast({ title: "Migration Complete", description: `Finished processing "${collectionName}".` });
+       } else {
+         toast({ title: "Migration Failed", description: `Error on "${collectionName}": ${status.error}`, variant: "destructive" });
+       }
     });
   };
 
-  const getStatusIcon = (status: 'success' | 'failure' | 'pending') => {
+  const getStatusIcon = (status: 'success' | 'failure' | 'pending' | 'idle') => {
     switch (status) {
       case 'success': return <CheckCircle className="h-5 w-5 text-green-500" />;
       case 'failure': return <AlertTriangle className="h-5 w-5 text-destructive" />;
       case 'pending': return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
+      default: return <DatabaseZap className="h-5 w-5 text-muted-foreground" />;
     }
   };
 
@@ -58,7 +69,7 @@ export default function MigrationPage() {
             Firebase to ERPNext Data Migration
           </CardTitle>
           <CardDescription>
-            Migrate data from Firebase collections to corresponding Doctypes in ERPNext.
+            Migrate data from Firebase collections to corresponding Doctypes in ERPNext, one at a time.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -69,63 +80,53 @@ export default function MigrationPage() {
               This process will attempt to create new records in ERPNext if they do not already exist based on a unique key (e.g., slug, ID). Running it multiple times is safe and will not create duplicate entries.
             </AlertDescription>
           </Alert>
-
-          <Button onClick={handleRunMigration} disabled={isMigrating} size="lg">
-            {isMigrating ? (
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            ) : (
-              <DatabaseZap className="mr-2 h-5 w-5" />
-            )}
-            Start Data Migration
-          </Button>
         </CardContent>
       </Card>
-
-      {(isMigrating || migrationStatus.length > 0) && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center"><ListChecks className="mr-3 h-6 w-6 text-primary"/>Migration Progress</CardTitle>
-            <CardDescription>Live status of the data migration process.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 font-mono text-sm">
-              {collectionNames.map(name => {
-                const status = migrationStatus.find(s => s.collection === name);
-                return (
-                  <div key={name} className="flex items-center justify-between p-3 rounded-md bg-muted/50">
-                    <div className="flex items-center">
-                      {getStatusIcon(status ? (status.success ? 'success' : 'failure') : 'pending')}
-                      <span className="ml-3 capitalize">{name}</span>
-                    </div>
-                    <div className="text-muted-foreground text-right">
-                      {status ? (
-                        status.success ? (
-                            <div className="flex items-center gap-4">
-                               <span className="flex items-center text-green-600"><CheckCircle className="mr-1.5 h-4 w-4"/>Migrated: {status.count}</span>
-                               <span className="flex items-center text-blue-600"><SkipForward className="mr-1.5 h-4 w-4"/>Skipped: {status.skipped}</span>
+      
+       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {MIGRATABLE_COLLECTIONS.map(name => {
+              const state = migrationStates[name];
+              return (
+                 <Card key={name}>
+                    <CardHeader>
+                        <CardTitle className="capitalize">{name.replace(/([A-Z])/g, ' $1')}</CardTitle>
+                        <CardDescription>{COLLECTION_DESCRIPTIONS[name]}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button onClick={() => handleRunMigration(name)} disabled={state.running} className="w-full">
+                            {state.running ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <DatabaseZap className="mr-2 h-4 w-4" />
+                            )}
+                            Migrate {name.replace(/([A-Z])/g, ' $1')}
+                        </Button>
+                    </CardContent>
+                    {state.status && (
+                        <CardFooter>
+                             <div className="w-full">
+                                {state.status.success ? (
+                                    <Alert className="border-green-500 bg-green-500/10">
+                                        <CheckCircle className="h-4 w-4 text-green-600" />
+                                        <AlertTitle className="text-green-700">Migration Successful</AlertTitle>
+                                        <AlertDescription className="text-green-600/90 text-xs">
+                                          Created: {state.status.count}, Skipped: {state.status.skipped}
+                                        </AlertDescription>
+                                    </Alert>
+                                ) : (
+                                     <Alert variant="destructive">
+                                        <AlertTriangle className="h-4 w-4" />
+                                        <AlertTitle>Migration Failed</AlertTitle>
+                                        <AlertDescription className="text-xs">{state.status.error}</AlertDescription>
+                                     </Alert>
+                                )}
                             </div>
-                        ) : `Failed: ${status.error}`
-                      ) : (
-                        `Pending...`
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {overallResult && (
-              <Alert className={`mt-6 ${overallResult.success ? 'border-green-500 bg-green-500/10' : 'border-destructive bg-destructive/10'}`}>
-                {overallResult.success ? <CheckCircle className={`h-4 w-4 ${overallResult.success ? 'text-green-600' : 'text-destructive'}`} /> : <ServerCrash className={`h-4 w-4 ${overallResult.success ? 'text-green-600' : 'text-destructive'}`} />}
-                <AlertTitle className={`${overallResult.success ? 'text-green-700' : 'text-destructive'}`}>{overallResult.success ? 'Migration Complete' : 'Migration Failed'}</AlertTitle>
-                <AlertDescription className={`${overallResult.success ? 'text-green-600/90' : 'text-destructive/90'}`}>
-                  {overallResult.message}
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
-      )}
+                        </CardFooter>
+                    )}
+                 </Card>
+              );
+          })}
+        </div>
     </div>
   );
 }

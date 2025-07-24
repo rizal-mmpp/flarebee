@@ -1,5 +1,5 @@
 
-import type { Category, ServiceCategory, SiteSettings } from './types';
+import type { Category, ServiceCategory, SiteSettings, SubscriptionPlan } from './types';
 
 // Retain for public pages until they are refactored
 export const CATEGORIES: Category[] = [
@@ -45,3 +45,31 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   contactEmail: "r124ltech@gmail.com",
   updatedAt: null,
 };
+
+// Default Subscription Plans to be seeded into ERPNext
+export const DEFAULT_SUBSCRIPTION_PLANS: Omit<SubscriptionPlan, 'name'>[] = [
+  {
+    plan_name: 'Free',
+    item: 'Website Development', // Assuming this is an Item name in ERPNext
+    cost: 0,
+    currency: 'IDR',
+    billing_interval: 'Month',
+    billing_interval_count: 1,
+  },
+  {
+    plan_name: 'Personal',
+    item: 'Website Development',
+    cost: 150000,
+    currency: 'IDR',
+    billing_interval: 'Month',
+    billing_interval_count: 1,
+  },
+  {
+    plan_name: 'Pro',
+    item: 'Website Development',
+    cost: 400000,
+    currency: 'IDR',
+    billing_interval: 'Month',
+    billing_interval_count: 1,
+  },
+];
