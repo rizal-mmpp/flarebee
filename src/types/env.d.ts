@@ -1,3 +1,4 @@
+
 declare namespace NodeJS {
   interface ProcessEnv {
     NEXT_PUBLIC_FIREBASE_API_KEY: string;
@@ -8,5 +9,12 @@ declare namespace NodeJS {
     NEXT_PUBLIC_FIREBASE_APP_ID: string;
     NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: string;
     NEXT_PUBLIC_ERPNEXT_API_URL: string;
+    ERPNEXT_GUEST_API_KEY: string;
+    ERPNEXT_GUEST_API_SECRET: string;
+    XENDIT_SECRET_KEY: string;
+    XENDIT_CALLBACK_VERIFICATION_TOKEN: string;
+    IPAYMU_VA: string;
+    IPAYMU_API_KEY: string;
+    NEXT_PUBLIC_IPAYMU_SANDBOX_MODE: string;
   }
 }

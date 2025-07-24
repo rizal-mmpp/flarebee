@@ -2,6 +2,9 @@
 'use server';
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
+const ERPNEXT_GUEST_API_KEY = process.env.ERPNEXT_GUEST_API_KEY;
+const ERPNEXT_GUEST_API_SECRET = process.env.ERPNEXT_GUEST_API_SECRET;
+
 
 interface FetchFromErpNextArgs {
     sid?: string; // SID is now optional for public fetches
@@ -15,11 +18,17 @@ interface FetchFromErpNextArgs {
 export async function fetchFromErpNext<T>({ sid, doctype, docname, fields = ['*'], filters = [], limit = 0 }: FetchFromErpNextArgs): Promise<{ success: boolean, data?: T | T[], error?: string }> {
     if (!ERPNEXT_API_URL) return { success: false, error: 'ERPNext API URL is not configured.' };
     
-    // For public endpoints, we might not have a SID.
-    // ERPNext Guest access must be configured correctly for this to work.
     const headers: HeadersInit = { 'Accept': 'application/json' };
+    
     if (sid) {
+        // Use cookie-based auth for logged-in users
         headers['Cookie'] = `sid=${sid}`;
+    } else if (ERPNEXT_GUEST_API_KEY && ERPNEXT_GUEST_API_SECRET) {
+        // Use token-based auth for public/guest users
+        headers['Authorization'] = `token ${ERPNEXT_GUEST_API_KEY}:${ERPNEXT_GUEST_API_SECRET}`;
+    } else {
+        // Fallback or error if no auth method is available for a given request context
+        return { success: false, error: 'No authentication method available (Session ID or API Key).' };
     }
 
     const endpoint = docname ? `${ERPNEXT_API_URL}/api/resource/${doctype}/${docname}` : `${ERPNEXT_API_URL}/api/resource/${doctype}`;
@@ -37,7 +46,6 @@ export async function fetchFromErpNext<T>({ sid, doctype, docname, fields = ['*'
         }
     }
 
-
     try {
         const response = await fetch(url.toString(), {
             headers: headers,
@@ -46,7 +54,7 @@ export async function fetchFromErpNext<T>({ sid, doctype, docname, fields = ['*'
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: `HTTP error! status: ${response.status}` }));
-            const errorMessage = errorData.message || errorData.exception || `Failed to fetch data from ${doctype}. Check permissions for Guests if you are not logged in.`;
+            const errorMessage = errorData.message || errorData.exception || `Failed to fetch data from ${doctype}. Check permissions for the provided credentials.`;
             return { success: false, error: errorMessage };
         }
 
