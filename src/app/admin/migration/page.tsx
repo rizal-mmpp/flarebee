@@ -1,25 +1,26 @@
 
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, DatabaseZap, CheckCircle, AlertTriangle, ListChecks, ServerCrash, SkipForward } from 'lucide-react';
+import { Loader2, DatabaseZap, CheckCircle, AlertTriangle, ListChecks, ServerCrash, SkipForward, Info } from 'lucide-react';
 import { runSingleMigrationAction } from '@/lib/actions/migration.actions';
 import type { MigrationStatus } from '@/lib/actions/migration.actions';
 import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { getServicesFromErpNext } from '@/lib/actions/erpnext/item.actions';
 
-const MIGRATABLE_COLLECTIONS = ['subscriptionPlans', 'services', 'sitePages', 'siteSettings', 'userCarts'];
+const MIGRATABLE_COLLECTIONS = ['services', 'subscriptionPlans', 'sitePages', 'siteSettings', 'userCarts'];
+
 const COLLECTION_DESCRIPTIONS: { [key: string]: string } = {
-  subscriptionPlans: 'Seeds default subscription plans (Free, Personal, Pro) into ERPNext.',
   services: 'Migrates services from Firebase to Items in ERPNext.',
+  subscriptionPlans: 'Seeds default subscription plans (Free, Personal, Pro) into ERPNext.',
   sitePages: 'Migrates static pages (About Us, etc.) from Firebase to Site Pages in ERPNext.',
   siteSettings: 'Migrates general site settings from Firebase to ERPNext.',
   userCarts: 'Migrates saved user carts from Firebase to ERPNext.'
 };
-
 
 export default function MigrationPage() {
   const { authMethod, erpSid } = useCombinedAuth();
@@ -28,6 +29,28 @@ export default function MigrationPage() {
   const [migrationStates, setMigrationStates] = useState<Record<string, { running: boolean; status: MigrationStatus | null }>>(
     MIGRATABLE_COLLECTIONS.reduce((acc, name) => ({ ...acc, [name]: { running: false, status: null } }), {})
   );
+
+  const [hasServices, setHasServices] = useState(false);
+  const [isCheckingServices, setIsCheckingServices] = useState(true);
+
+  useEffect(() => {
+    async function checkExistingServices() {
+        if (!erpSid) {
+            setIsCheckingServices(false);
+            return;
+        }
+        setIsCheckingServices(true);
+        const result = await getServicesFromErpNext({ sid: erpSid });
+        if (result.success && result.data && result.data.length > 0) {
+            setHasServices(true);
+        } else {
+            setHasServices(false);
+        }
+        setIsCheckingServices(false);
+    }
+    checkExistingServices();
+  }, [erpSid]);
+
 
   const handleRunMigration = (collectionName: string) => {
     if (authMethod !== 'erpnext' || !erpSid) {
@@ -45,19 +68,13 @@ export default function MigrationPage() {
        setMigrationStates(prev => ({ ...prev, [collectionName]: { running: false, status } }));
        if (status.success) {
          toast({ title: "Migration Complete", description: `Finished processing "${collectionName}".` });
+         if (collectionName === 'services' && status.count > 0) {
+             setHasServices(true); // If services were successfully migrated, enable plan migration
+         }
        } else {
          toast({ title: "Migration Failed", description: `Error on "${collectionName}": ${status.error}`, variant: "destructive" });
        }
     });
-  };
-
-  const getStatusIcon = (status: 'success' | 'failure' | 'pending' | 'idle') => {
-    switch (status) {
-      case 'success': return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case 'failure': return <AlertTriangle className="h-5 w-5 text-destructive" />;
-      case 'pending': return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
-      default: return <DatabaseZap className="h-5 w-5 text-muted-foreground" />;
-    }
   };
 
   return (
@@ -86,6 +103,9 @@ export default function MigrationPage() {
        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {MIGRATABLE_COLLECTIONS.map(name => {
               const state = migrationStates[name];
+              const isSubscriptionPlan = name === 'subscriptionPlans';
+              const isSubscriptionPlanDisabled = isSubscriptionPlan && (!hasServices || isCheckingServices);
+              
               return (
                  <Card key={name}>
                     <CardHeader>
@@ -93,13 +113,21 @@ export default function MigrationPage() {
                         <CardDescription>{COLLECTION_DESCRIPTIONS[name]}</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <Button onClick={() => handleRunMigration(name)} disabled={state.running} className="w-full">
-                            {state.running ? (
+                        {isSubscriptionPlanDisabled && (
+                             <Alert variant="default" className="border-blue-500/50 bg-blue-500/5 mb-4">
+                                <Info className="h-4 w-4 text-blue-600"/>
+                                <AlertDescription className="text-xs text-blue-700 dark:text-blue-400">
+                                    You must migrate "Services" before you can migrate "Subscription Plans".
+                                </AlertDescription>
+                            </Alert>
+                        )}
+                        <Button onClick={() => handleRunMigration(name)} disabled={state.running || isSubscriptionPlanDisabled} className="w-full">
+                            {state.running || (isCheckingServices && isSubscriptionPlan) ? (
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             ) : (
                                 <DatabaseZap className="mr-2 h-4 w-4" />
                             )}
-                            Migrate {name.replace(/([A-Z])/g, ' $1')}
+                            { (isCheckingServices && isSubscriptionPlan) ? 'Checking dependencies...' : `Migrate ${name.replace(/([A-Z])/g, ' $1')}` }
                         </Button>
                     </CardContent>
                     {state.status && (
