@@ -50,7 +50,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
 export const DEFAULT_SUBSCRIPTION_PLANS: Omit<SubscriptionPlan, 'name'>[] = [
   {
     plan_name: 'Free',
-    item: 'Website Development', // Assuming this is an Item name in ERPNext
+    item: 'web-builder', // Assuming this is an Item name in ERPNext
     cost: 0,
     currency: 'IDR',
     billing_interval: 'Month',
@@ -58,7 +58,7 @@ export const DEFAULT_SUBSCRIPTION_PLANS: Omit<SubscriptionPlan, 'name'>[] = [
   },
   {
     plan_name: 'Personal',
-    item: 'Website Development',
+    item: 'web-builder',
     cost: 150000,
     currency: 'IDR',
     billing_interval: 'Month',
@@ -66,7 +66,7 @@ export const DEFAULT_SUBSCRIPTION_PLANS: Omit<SubscriptionPlan, 'name'>[] = [
   },
   {
     plan_name: 'Pro',
-    item: 'Website Development',
+    item: 'web-builder',
     cost: 400000,
     currency: 'IDR',
     billing_interval: 'Month',
