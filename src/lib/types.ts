@@ -132,6 +132,16 @@ export interface Service {
   updatedAt?: string; 
 }
 
+export interface SubscriptionPlan {
+  name: string; // This is the unique ID from ERPNext
+  plan_name: string;
+  item: string;
+  cost: number;
+  currency: string;
+  billing_interval: 'Day' | 'Week' | 'Month' | 'Year';
+  billing_interval_count: number;
+}
+
 
 export interface UserProfile {
   uid: string;
