@@ -28,7 +28,7 @@ function transformErpItemToAppService(item: any): Service {
         shortDescription: item.description || '',
         longDescription: item.website_description || '',
         category: category,
-        tags: typeof item.tags === 'string' ? item.tags.split(',').map(t => t.trim()) : [],
+        tags: typeof item.tags === 'string' ? item.tags.split(',').map((t: string) => t.trim()) : [],
         imageUrl: imageUrl,
         status: item.disabled ? 'inactive' : 'active',
         serviceUrl: item.service_url || '#',
@@ -65,10 +65,10 @@ export async function getPublicServiceBySlug(slug: string): Promise<{ success: b
 
 export async function getPublicServicesFromErpNext({ categorySlug }: { categorySlug?: string }): Promise<{ success: boolean; data?: Service[]; error?: string; }> {
     const filters: any[] = [['disabled', '=', 0], ['is_stock_item', '=', 0]]; // Only fetch active, non-stock services
-    if (categorySlug) {
-        const categoryName = categorySlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        filters.push(['item_group', '=', categoryName]);
-    }
+    // if (categorySlug) {
+    //     const categoryName = categorySlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    //     filters.push(['item_group', '=', categoryName]);
+    // }
     const result = await fetchFromErpNext<any[]>({ 
         doctype: 'Item', 
         fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'image', 'disabled', 'standard_rate', 'tags', 'service_url', 'creation', 'modified'],
