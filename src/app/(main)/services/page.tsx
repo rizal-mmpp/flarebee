@@ -59,7 +59,7 @@ async function ServicesList({ category }: { category?: string }) {
   );
 }
 
-export default function ServicesPage({
+export default async function ServicesPage({
   searchParams,
 }: {
   searchParams?: { category?: string; };
