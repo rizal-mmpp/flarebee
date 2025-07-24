@@ -2,12 +2,18 @@
 'use server';
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
+
+// Public/Guest Keys - available on the client
 const ERPNEXT_GUEST_API_KEY = process.env.NEXT_PUBLIC_ERPNEXT_GUEST_API_KEY;
 const ERPNEXT_GUEST_API_SECRET = process.env.NEXT_PUBLIC_ERPNEXT_GUEST_API_SECRET;
 
+// Admin/System Manager Keys - server-side only
+const ERPNEXT_ADMIN_API_KEY = process.env.ERPNEXT_ADMIN_API_KEY;
+const ERPNEXT_ADMIN_API_SECRET = process.env.ERPNEXT_ADMIN_API_SECRET;
+
 
 interface FetchFromErpNextArgs {
-    sid?: string; // SID is now optional for public fetches
+    sid?: string; // SID is now a signal for "admin-level" access
     doctype: string;
     docname?: string;
     fields?: string[];
@@ -21,14 +27,20 @@ export async function fetchFromErpNext<T>({ sid, doctype, docname, fields = ['*'
     const headers: HeadersInit = { 'Accept': 'application/json' };
     
     if (sid) {
-        // Use cookie-based auth for logged-in users
-        headers['Cookie'] = `sid=${sid}`;
-    } else if (ERPNEXT_GUEST_API_KEY && ERPNEXT_GUEST_API_SECRET) {
-        // Use token-based auth for public/guest users
-        headers['Authorization'] = `token ${ERPNEXT_GUEST_API_KEY}:${ERPNEXT_GUEST_API_SECRET}`;
+        // Authenticated user request - use ADMIN keys for server-to-server reliability
+        if (ERPNEXT_ADMIN_API_KEY && ERPNEXT_ADMIN_API_SECRET) {
+            headers['Authorization'] = `token ${ERPNEXT_ADMIN_API_KEY}:${ERPNEXT_ADMIN_API_SECRET}`;
+        } else {
+            return { success: false, error: 'Admin API keys are not configured for authenticated requests.' };
+        }
     } else {
-        // Fallback or error if no auth method is available for a given request context
-        return { success: false, error: 'No authentication method available (Session ID or API Key).' };
+        // Public/Guest request - use GUEST keys
+        if (ERPNEXT_GUEST_API_KEY && ERPNEXT_GUEST_API_SECRET) {
+            // IMPORTANT: The format is "token key:secret" NOT "token key secret"
+             headers['Authorization'] = `token ${ERPNEXT_GUEST_API_KEY}:${ERPNEXT_GUEST_API_SECRET}`;
+        } else {
+            return { success: false, error: 'Guest API keys are not configured for public requests.' };
+        }
     }
 
     const endpoint = docname ? `${ERPNEXT_API_URL}/api/resource/${doctype}/${docname}` : `${ERPNEXT_API_URL}/api/resource/${doctype}`;
@@ -51,15 +63,15 @@ export async function fetchFromErpNext<T>({ sid, doctype, docname, fields = ['*'
             headers: headers,
             cache: 'no-store',
         });
+        
+        const responseData = await response.json().catch(() => ({ message: `HTTP error! status: ${response.status}. Non-JSON response.` }));
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: `HTTP error! status: ${response.status}` }));
-            const errorMessage = errorData.message || errorData.exception || `Failed to fetch data from ${doctype}. Check permissions for the provided credentials.`;
+            const errorMessage = responseData.message || responseData.exception || `Failed to fetch data from ${doctype}. Check permissions for the provided credentials.`;
             return { success: false, error: errorMessage };
         }
 
-        const result: { data: T | T[] } = await response.json();
-        return { success: true, data: result.data };
+        return { success: true, data: responseData.data };
     } catch (error: any) {
         return { success: false, error: `An unexpected error occurred: ${error.message}` };
     }
