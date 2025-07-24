@@ -3,7 +3,7 @@
 
 import type { Service, ServicePackage } from '@/lib/types';
 import { getPublicServiceBySlug } from '@/lib/actions/erpnext/item.actions';
-import { notFound, useRouter } from 'next/navigation'; 
+import { notFound } from 'next/navigation'; 
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
