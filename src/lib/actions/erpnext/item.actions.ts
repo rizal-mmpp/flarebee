@@ -64,7 +64,7 @@ export async function getPublicServiceBySlug(slug: string): Promise<{ success: b
 }
 
 export async function getPublicServicesFromErpNext({ categorySlug }: { categorySlug?: string }): Promise<{ success: boolean; data?: Service[]; error?: string; }> {
-    const filters: any[] = [['disabled', '=', 0]]; // Only fetch active services
+    const filters: any[] = [['disabled', '=', 0], ['is_stock_item', '=', 0]]; // Only fetch active, non-stock services
     if (categorySlug) {
         const categoryName = categorySlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         filters.push(['item_group', '=', categoryName]);
