@@ -1,8 +1,8 @@
 
 'use client'; 
 
-import { useState, useMemo, useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useState, useMemo, useEffect, Suspense, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { SERVICE_CATEGORIES } from '@/lib/constants';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,28 +13,38 @@ import { cn } from '@/lib/utils';
 import { ServiceCard } from '@/components/shared/ServiceCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CategoryFilter } from '@/components/sections/templates/CategoryFilter';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 
 function ServicesGrid() {
   const searchParams = useSearchParams();
+  const { erpSid } = useCombinedAuth();
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const category = searchParams.get('category');
 
-  useEffect(() => {
-    async function fetchServices() {
-      setIsLoading(true);
-      const result = await getPublicServicesFromErpNext({ categorySlug: category || undefined });
-      if (result.success && result.data) {
-        setServices(result.data);
-      } else {
-        console.error("Failed to fetch services:", result.error);
-        setServices([]);
-      }
-      setIsLoading(false);
+  const fetchServices = useCallback(async () => {
+    setIsLoading(true);
+    // Pass the erpSid to use session-based auth instead of guest keys
+    const result = await getPublicServicesFromErpNext({ categorySlug: category || undefined, sid: erpSid || undefined });
+    if (result.success && result.data) {
+      setServices(result.data);
+    } else {
+      console.error("Failed to fetch services:", result.error);
+      setServices([]);
     }
-    fetchServices();
-  }, [category]);
+    setIsLoading(false);
+  }, [category, erpSid]);
+  
+  useEffect(() => {
+    // Only fetch if we have the necessary SID or if guest auth is intended to be used
+    if (erpSid) {
+      fetchServices();
+    } else {
+        // Handle case where SID is not yet available but expected
+        setIsLoading(true);
+    }
+  }, [fetchServices, erpSid]);
   
   const filteredServices = useMemo(() => {
     return services.filter((service) => {
