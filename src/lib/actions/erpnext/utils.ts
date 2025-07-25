@@ -1,70 +1,54 @@
+'use client';
+import { type NextRequest, NextResponse } from 'next/server';
 
-'use server';
+const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
-export const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
+export async function POST(request: NextRequest) {
+  try {
+    const { usr, pwd } = await request.json();
 
-// Public/Guest Keys - available on the client
-const ERPNEXT_GUEST_API_KEY = process.env.NEXT_PUBLIC_ERPNEXT_GUEST_API_KEY;
-const ERPNEXT_GUEST_API_SECRET = process.env.NEXT_PUBLIC_ERPNEXT_GUEST_API_SECRET;
+    if (!usr || !pwd) {
+      return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
+    }
 
+    const response = await fetch(`${ERPNEXT_API_URL}/api/method/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ usr, pwd }),
+    });
 
-interface FetchFromErpNextArgs {
-    sid?: string; // SID is now a signal for "admin-level" access
-    doctype: string;
-    docname?: string;
-    fields?: string[];
-    filters?: any[];
-    limit?: number;
-}
+    const data = await response.json();
 
-export async function fetchFromErpNext<T>({ sid, doctype, docname, fields = ['*'], filters = [], limit = 0 }: FetchFromErpNextArgs): Promise<{ success: boolean, data?: T | T[], error?: string }> {
-    if (!ERPNEXT_API_URL) return { success: false, error: 'ERPNext API URL is not configured.' };
+    if (!response.ok) {
+      return NextResponse.json({ error: data.message || 'Login failed' }, { status: response.status });
+    }
+
+    const setCookieHeader = response.headers.get('set-cookie');
+    if (!setCookieHeader) {
+      return NextResponse.json({ error: 'Session ID not found in ERPNext response' }, { status: 500 });
+    }
     
-    const headers: HeadersInit = { 'Accept': 'application/json' };
-    
-    if (sid) {
-        // Authenticated user request - use the provided session ID
-        headers['Cookie'] = `sid=${sid}`;
-    } else {
-        // Public/Guest request - use GUEST keys
-        if (ERPNEXT_GUEST_API_KEY && ERPNEXT_GUEST_API_SECRET) {
-             // IMPORTANT: The format is "token key:secret" NOT "token key secret"
-             headers['Authorization'] = `token ${ERPNEXT_GUEST_API_KEY}:${ERPNEXT_GUEST_API_SECRET}`;
-        } else {
-            return { success: false, error: 'Guest API keys are not configured for public requests.' };
-        }
+    const match = setCookieHeader.match(/sid=([^;]+)/);
+    if (!match || !match[1]) {
+        return NextResponse.json({ error: 'Could not parse Session ID from ERPNext' }, { status: 500 });
     }
+    const sid = match[1];
 
-    const endpoint = docname ? `${ERPNEXT_API_URL}/api/resource/${doctype}/${docname}` : `${ERPNEXT_API_URL}/api/resource/${doctype}`;
-    const url = new URL(endpoint);
+    cookies().set({
+      name: 'sid',
+      value: sid,
+      httpOnly: true,
+      secure: process.env.NODE_ENV !== 'development',
+      path: '/',
+      sameSite: 'lax',
+    });
 
-    if (!docname) { // Params are for list view
-        url.searchParams.append('fields', JSON.stringify(fields));
-        if (filters.length > 0) {
-            url.searchParams.append('filters', JSON.stringify(filters));
-        }
-        if (limit > 0) {
-            url.searchParams.append('limit', String(limit));
-        } else {
-            url.searchParams.append('limit_page_length', '0'); // Fetch all
-        }
-    }
+    return NextResponse.json({ success: true, sid: sid });
 
-    try {
-        const response = await fetch(url.toString(), {
-            headers: headers,
-            cache: 'no-store',
-        });
-        
-        const responseData = await response.json().catch(() => ({ message: `HTTP error! status: ${response.status}. Non-JSON response.` }));
-
-        if (!response.ok) {
-            const errorMessage = responseData.message || responseData.exception || `Failed to fetch data from ${doctype}. Check permissions for the provided credentials.`;
-            return { success: false, error: errorMessage };
-        }
-
-        return { success: true, data: responseData.data };
-    } catch (error: any) {
-        return { success: false, error: `An unexpected error occurred: ${error.message}` };
-    }
+  } catch (error: any) {
+    console.error('[LOGIN_API] Error:', error);
+    return NextResponse.json({ error: 'An unexpected error occurred during login.' }, { status: 500 });
+  }
 }
