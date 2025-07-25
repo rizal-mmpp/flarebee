@@ -1,7 +1,7 @@
 
 'use server';
 
-const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
+export const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
 // Public/Guest Keys - available on the client
 const ERPNEXT_GUEST_API_KEY = process.env.NEXT_PUBLIC_ERPNEXT_GUEST_API_KEY;

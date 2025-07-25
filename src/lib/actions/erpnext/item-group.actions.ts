@@ -1,7 +1,9 @@
 
 'use server';
 
-import { fetchFromErpNext, ERPNEXT_API_URL } from './utils';
+import { fetchFromErpNext } from './utils';
+
+const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
 export async function getItemGroupsFromErpNext({ sid }: { sid: string }): Promise<{ success: boolean; data?: { name: string }[]; error?: string; }> {
     const result = await fetchFromErpNext<any[]>({

@@ -6,14 +6,6 @@ import { db } from '@/lib/firebase/firebase';
 import type { SitePage, Service, Order, SiteSettings, SubscriptionPlan } from '../types';
 import { DEFAULT_SUBSCRIPTION_PLANS } from '../constants';
 
-export interface MigrationStatus {
-  collection: string;
-  success: boolean;
-  count: number;
-  skipped: number;
-  error?: string;
-}
-
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 const MODULE_NAME = 'Website'; // Using a standard module
 

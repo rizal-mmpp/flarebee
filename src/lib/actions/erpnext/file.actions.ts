@@ -1,6 +1,7 @@
+
 'use server';
 
-import { ERPNEXT_API_URL } from './utils';
+const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
 interface UploadFileToErpNextArgs {
     sid: string;

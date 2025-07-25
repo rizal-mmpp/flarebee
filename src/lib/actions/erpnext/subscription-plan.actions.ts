@@ -3,7 +3,9 @@
 
 import type { SubscriptionPlanFormValues } from '@/components/admin/subscriptions/SubscriptionPlanFormTypes';
 import type { SubscriptionPlan } from '@/lib/types';
-import { fetchFromErpNext, ERPNEXT_API_URL } from './utils';
+import { fetchFromErpNext } from './utils';
+
+const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
 function transformErpSubscriptionPlan(erpPlan: any): SubscriptionPlan {
     return {
