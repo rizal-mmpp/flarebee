@@ -1,54 +1,64 @@
-'use client';
-import { type NextRequest, NextResponse } from 'next/server';
+
+
+'use server';
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
+const GUEST_API_KEY = process.env.NEXT_PUBLIC_ERPNEXT_GUEST_API_KEY;
+const GUEST_API_SECRET = process.env.NEXT_PUBLIC_ERPNEXT_GUEST_API_SECRET;
 
-export async function POST(request: NextRequest) {
+interface FetchFromErpNextArgs {
+  sid?: string | null;
+  doctype: string;
+  docname?: string;
+  fields?: string[];
+  filters?: (string | number | boolean)[][];
+  limit?: number;
+}
+
+export async function fetchFromErpNext<T>({
+  sid,
+  doctype,
+  docname,
+  fields = ['*'],
+  filters = [],
+  limit = 20,
+}: FetchFromErpNextArgs): Promise<{ success: boolean; data?: T; error?: string }> {
+  if (!ERPNEXT_API_URL) {
+    return { success: false, error: 'ERPNext API URL is not configured.' };
+  }
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+
+  if (sid) {
+    headers['Cookie'] = `sid=${sid}`;
+  } else if (GUEST_API_KEY && GUEST_API_SECRET) {
+    headers['Authorization'] = `token ${GUEST_API_KEY}:${GUEST_API_SECRET}`;
+  } else {
+    return { success: false, error: 'No authentication method available (Session ID or API Key).' };
+  }
+  
+  let url: string;
+  if (docname) {
+    url = `${ERPNEXT_API_URL}/api/resource/${doctype}/${docname}`;
+  } else {
+    const params = new URLSearchParams();
+    params.append('fields', JSON.stringify(fields));
+    if (filters.length > 0) params.append('filters', JSON.stringify(filters));
+    if (limit > 0) params.append('limit', String(limit));
+    url = `${ERPNEXT_API_URL}/api/resource/${doctype}?${params.toString()}`;
+  }
+  
   try {
-    const { usr, pwd } = await request.json();
-
-    if (!usr || !pwd) {
-      return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
-    }
-
-    const response = await fetch(`${ERPNEXT_API_URL}/api/method/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({ usr, pwd }),
-    });
-
-    const data = await response.json();
+    const response = await fetch(url, { headers, cache: 'no-store' });
+    const responseData = await response.json();
 
     if (!response.ok) {
-      return NextResponse.json({ error: data.message || 'Login failed' }, { status: response.status });
+        const errorMessage = responseData.exception || responseData._server_messages || 'Failed to fetch data from ERPNext.';
+        return { success: false, error: errorMessage };
     }
 
-    const setCookieHeader = response.headers.get('set-cookie');
-    if (!setCookieHeader) {
-      return NextResponse.json({ error: 'Session ID not found in ERPNext response' }, { status: 500 });
-    }
-    
-    const match = setCookieHeader.match(/sid=([^;]+)/);
-    if (!match || !match[1]) {
-        return NextResponse.json({ error: 'Could not parse Session ID from ERPNext' }, { status: 500 });
-    }
-    const sid = match[1];
-
-    cookies().set({
-      name: 'sid',
-      value: sid,
-      httpOnly: true,
-      secure: process.env.NODE_ENV !== 'development',
-      path: '/',
-      sameSite: 'lax',
-    });
-
-    return NextResponse.json({ success: true, sid: sid });
-
+    return { success: true, data: responseData.data };
   } catch (error: any) {
-    console.error('[LOGIN_API] Error:', error);
-    return NextResponse.json({ error: 'An unexpected error occurred during login.' }, { status: 500 });
+    return { success: false, error: `An unexpected error occurred: ${error.message}` };
   }
 }
