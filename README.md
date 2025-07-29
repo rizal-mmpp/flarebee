@@ -24,7 +24,7 @@ Flarebee is a comprehensive SaaS platform that provides cutting-edge technology 
 - **Styling**: Tailwind CSS
 - **Authentication**: Dual system supporting Firebase and ERPNext
 - **Database**: Firebase
-- **Payment Processing**: Multiple providers (Stripe, Xendit, iPaymu)
+- **Payment Processing**: Multiple providers (Stripe, Xendit)
 - **State Management**: TanStack Query
 
 ## Getting Started

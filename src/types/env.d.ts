@@ -13,8 +13,5 @@ declare namespace NodeJS {
     NEXT_PUBLIC_ERPNEXT_GUEST_API_SECRET: string;
     XENDIT_SECRET_KEY: string;
     XENDIT_CALLBACK_VERIFICATION_TOKEN: string;
-    IPAYMU_VA: string;
-    IPAYMU_API_KEY: string;
-    NEXT_PUBLIC_IPAYMU_SANDBOX_MODE: string;
   }
 }

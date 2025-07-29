@@ -41,7 +41,6 @@ const adminNavItems = [
   { href: '/admin/migration', label: 'Data Migration', icon: DatabaseZap },
   { type: 'divider', key: 'div2' },
   { href: '/admin/xendit-test', label: 'Xendit Tests', icon: TestTube2 },
-  { href: '/admin/ipaymu-test', label: 'iPaymu Tests', icon: CreditCard }, 
 ];
 
 export function AdminSidebar({ onLinkClick, logoUrl, siteTitle }: AdminSidebarProps) {
