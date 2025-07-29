@@ -61,14 +61,14 @@ export async function getPublicServiceBySlug({ slug, sid }: { slug: string, sid?
     return { success: true, data: service };
 }
 
-export async function getPublicServicesFromErpNext({ categorySlug, sid }: { categorySlug?: string, sid?: string | null }): Promise<{ success: boolean; data?: Service[]; error?: string; }> {
+export async function getPublicServicesFromErpNext({ categorySlug }: { categorySlug?: string }): Promise<{ success: boolean; data?: Service[]; error?: string; }> {
     const filters: any[] = [['disabled', '=', 0], ['is_stock_item', '=', 0]]; 
     if (categorySlug) {
         const categoryName = categorySlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         filters.push(['item_group', '=', categoryName]);
     }
     const result = await fetchFromErpNext<any[]>({ 
-        sid, // Pass sid for authenticated requests, otherwise it will use guest keys
+        sid: null, // Explicitly pass null to use guest keys
         doctype: 'Item', 
         fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'image', 'disabled', 'standard_rate', 'tags', 'service_url', 'creation', 'modified'],
         filters,

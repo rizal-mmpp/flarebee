@@ -17,7 +17,6 @@ import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 
 function ServicesGrid() {
   const searchParams = useSearchParams();
-  const { erpSid } = useCombinedAuth();
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -25,8 +24,7 @@ function ServicesGrid() {
 
   const fetchServices = useCallback(async () => {
     setIsLoading(true);
-    // Pass the erpSid to use session-based auth instead of guest keys
-    const result = await getPublicServicesFromErpNext({ categorySlug: category || undefined, sid: erpSid || undefined });
+    const result = await getPublicServicesFromErpNext({ categorySlug: category || undefined });
     if (result.success && result.data) {
       setServices(result.data);
     } else {
@@ -34,17 +32,11 @@ function ServicesGrid() {
       setServices([]);
     }
     setIsLoading(false);
-  }, [category, erpSid]);
+  }, [category]);
   
   useEffect(() => {
-    // Only fetch if we have the necessary SID or if guest auth is intended to be used
-    if (erpSid) {
-      fetchServices();
-    } else {
-        // Handle case where SID is not yet available but expected
-        setIsLoading(true);
-    }
-  }, [fetchServices, erpSid]);
+    fetchServices();
+  }, [fetchServices]);
   
   const filteredServices = useMemo(() => {
     return services.filter((service) => {
