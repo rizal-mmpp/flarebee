@@ -30,10 +30,13 @@ export async function fetchFromErpNext<T>({
   const headers: Record<string, string> = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
 
   if (sid) {
+    // Use session ID for authenticated users
     headers['Cookie'] = `sid=${sid}`;
   } else if (GUEST_API_KEY && GUEST_API_SECRET) {
+    // Use guest API keys for public requests
     headers['Authorization'] = `token ${GUEST_API_KEY}:${GUEST_API_SECRET}`;
   } else {
+    // No authentication method available
     return { success: false, error: 'No authentication method available (Session ID or API Key).' };
   }
   
