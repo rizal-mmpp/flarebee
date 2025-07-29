@@ -15,6 +15,12 @@ import { DataTable } from '@/components/data-table/data-table';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 
 const MIGRATABLE_COLLECTIONS = ['services', 'subscriptionPlans', 'sitePages', 'siteSettings', 'userCarts'];
