@@ -1,16 +1,21 @@
 
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import React, { useState, useTransition, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, DatabaseZap, CheckCircle, AlertTriangle, ListChecks, ServerCrash, SkipForward, Info } from 'lucide-react';
+import { Loader2, DatabaseZap, CheckCircle, AlertTriangle, ListChecks, ServerCrash, SkipForward, Info, MoreHorizontal } from 'lucide-react';
 import { runSingleMigrationAction } from '@/lib/actions/migration.actions';
 import type { MigrationStatus } from '@/lib/actions/migration.actions';
 import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getServicesFromErpNext } from '@/lib/actions/erpnext/item.actions';
+import { DataTable } from '@/components/data-table/data-table';
+import type { ColumnDef } from '@tanstack/react-table';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+
 
 const MIGRATABLE_COLLECTIONS = ['services', 'subscriptionPlans', 'sitePages', 'siteSettings', 'userCarts'];
 
@@ -21,6 +26,19 @@ const COLLECTION_DESCRIPTIONS: { [key: string]: string } = {
   siteSettings: 'Migrates general site settings from Firebase to ERPNext.',
   userCarts: 'Migrates saved user carts from Firebase to ERPNext.'
 };
+
+interface MigrationTask {
+    id: string; // collectionName
+    name: string;
+    description: string;
+}
+
+const migrationTasks: MigrationTask[] = MIGRATABLE_COLLECTIONS.map(name => ({
+    id: name,
+    name: name.replace(/([A-Z])/g, ' $1').replace(/\b\w/g, l => l.toUpperCase()),
+    description: COLLECTION_DESCRIPTIONS[name] || 'No description available.',
+}));
+
 
 export default function MigrationPage() {
   const { authMethod, erpSid } = useCombinedAuth();
@@ -76,6 +94,86 @@ export default function MigrationPage() {
        }
     });
   };
+  
+  const StatusBadge = ({ state }: { state: { running: boolean; status: MigrationStatus | null } }) => {
+    if (state.running) {
+        return <Badge variant="outline" className="text-blue-600 border-blue-500/50 bg-blue-500/10">Running...</Badge>;
+    }
+    if (!state.status) {
+        return <Badge variant="secondary">Not Run</Badge>;
+    }
+    if (state.status.success) {
+        const message = `Created: ${state.status.count}, Skipped: ${state.status.skipped}`;
+        return <Badge variant="outline" className="text-green-700 border-green-500/50 bg-green-500/10" title={message}>Success</Badge>;
+    }
+    return <Badge variant="destructive" title={state.status.error}>Failed</Badge>;
+  };
+  
+  const columns = useMemo<ColumnDef<MigrationTask>[]>(() => [
+    {
+      accessorKey: 'name',
+      header: 'Collection / Task',
+      cell: ({ row }) => (
+        <span className="font-medium text-foreground">{row.original.name}</span>
+      ),
+    },
+    {
+      accessorKey: 'description',
+      header: 'Description',
+      cell: ({ row }) => <p className="text-sm text-muted-foreground">{row.original.description}</p>,
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      cell: ({ row }) => {
+        const state = migrationStates[row.original.id];
+        return <StatusBadge state={state} />;
+      },
+    },
+    {
+      id: 'actions',
+      header: () => <div className="text-right">Action</div>,
+      cell: ({ row }) => {
+        const task = row.original;
+        const state = migrationStates[task.id];
+        const isSubscriptionPlan = task.id === 'subscriptionPlans';
+        const isSubscriptionPlanDisabled = isSubscriptionPlan && (!hasServices || isCheckingServices);
+        const isDisabled = state.running || isSubscriptionPlanDisabled;
+
+        return (
+          <div className="text-right">
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        {/* Wrapper div for TooltipTrigger to handle disabled button */}
+                        <div className={cn(isDisabled && "cursor-not-allowed")}>
+                           <Button
+                              onClick={() => handleRunMigration(task.id)}
+                              disabled={isDisabled}
+                              size="sm"
+                              className={cn(isDisabled && "pointer-events-none")} // Important for disabled state within tooltip
+                            >
+                              {state.running || (isCheckingServices && isSubscriptionPlan) ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <DatabaseZap className="mr-2 h-4 w-4" />
+                              )}
+                              Run
+                            </Button>
+                        </div>
+                    </TooltipTrigger>
+                    {isSubscriptionPlanDisabled && (
+                         <TooltipContent>
+                            <p>Migrate "Services" first to enable this action.</p>
+                        </TooltipContent>
+                    )}
+                </Tooltip>
+            </TooltipProvider>
+          </div>
+        );
+      },
+    }
+  ], [migrationStates, isCheckingServices, hasServices]);
 
   return (
     <div className="space-y-8">
@@ -97,64 +195,25 @@ export default function MigrationPage() {
               This process will attempt to create new records in ERPNext if they do not already exist based on a unique key (e.g., slug, ID). Running it multiple times is safe and will not create duplicate entries.
             </AlertDescription>
           </Alert>
+          
+           <DataTable
+            columns={columns}
+            data={migrationTasks}
+            pageCount={1}
+            totalItems={migrationTasks.length}
+            manualPagination={false}
+            manualSorting={false}
+            manualFiltering={true}
+            isLoading={isCheckingServices}
+            // Hide toolbar elements not needed for this table
+            searchColumnId=""
+            onPaginationChange={() => {}}
+            onSortingChange={() => {}}
+            onColumnFiltersChange={() => {}}
+          />
+
         </CardContent>
       </Card>
-      
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {MIGRATABLE_COLLECTIONS.map(name => {
-              const state = migrationStates[name];
-              const isSubscriptionPlan = name === 'subscriptionPlans';
-              const isSubscriptionPlanDisabled = isSubscriptionPlan && (!hasServices || isCheckingServices);
-              
-              return (
-                 <Card key={name}>
-                    <CardHeader>
-                        <CardTitle className="capitalize">{name.replace(/([A-Z])/g, ' $1')}</CardTitle>
-                        <CardDescription>{COLLECTION_DESCRIPTIONS[name]}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {isSubscriptionPlanDisabled && (
-                             <Alert variant="default" className="border-blue-500/50 bg-blue-500/5 mb-4">
-                                <Info className="h-4 w-4 text-blue-600"/>
-                                <AlertDescription className="text-xs text-blue-700 dark:text-blue-400">
-                                    You must migrate "Services" before you can migrate "Subscription Plans".
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                        <Button onClick={() => handleRunMigration(name)} disabled={state.running || isSubscriptionPlanDisabled} className="w-full">
-                            {state.running || (isCheckingServices && isSubscriptionPlan) ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <DatabaseZap className="mr-2 h-4 w-4" />
-                            )}
-                            { (isCheckingServices && isSubscriptionPlan) ? 'Checking dependencies...' : `Migrate ${name.replace(/([A-Z])/g, ' $1')}` }
-                        </Button>
-                    </CardContent>
-                    {state.status && (
-                        <CardFooter>
-                             <div className="w-full">
-                                {state.status.success ? (
-                                    <Alert className="border-green-500 bg-green-500/10">
-                                        <CheckCircle className="h-4 w-4 text-green-600" />
-                                        <AlertTitle className="text-green-700">Migration Successful</AlertTitle>
-                                        <AlertDescription className="text-green-600/90 text-xs">
-                                          Created: {state.status.count}, Skipped: {state.status.skipped}
-                                        </AlertDescription>
-                                    </Alert>
-                                ) : (
-                                     <Alert variant="destructive">
-                                        <AlertTriangle className="h-4 w-4" />
-                                        <AlertTitle>Migration Failed</AlertTitle>
-                                        <AlertDescription className="text-xs">{state.status.error}</AlertDescription>
-                                     </Alert>
-                                )}
-                            </div>
-                        </CardFooter>
-                    )}
-                 </Card>
-              );
-          })}
-        </div>
     </div>
   );
 }
