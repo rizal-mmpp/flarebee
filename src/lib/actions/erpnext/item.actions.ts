@@ -68,7 +68,7 @@ export async function getPublicServicesFromErpNext({ categorySlug, sid }: { cate
         filters.push(['item_group', '=', categoryName]);
     }
     const result = await fetchFromErpNext<any[]>({ 
-        sid: sid, 
+        sid, // Pass sid for authenticated requests, otherwise it will use guest keys
         doctype: 'Item', 
         fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'image', 'disabled', 'standard_rate', 'tags', 'service_url', 'creation', 'modified'],
         filters,
