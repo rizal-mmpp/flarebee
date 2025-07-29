@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/lib/firebase/AuthContext';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 
 interface ServiceSelection {
   serviceSlug: string;
@@ -39,7 +39,7 @@ const formatIDR = (amount: number) => {
 export default function PublicCartPage() {
   const router = useRouter();
   const { addToCart } = useCart();
-  const { user } = useAuth();
+  const { user, erpSid } = useCombinedAuth();
   const { toast } = useToast();
 
   const [selection, setSelection] = useState<ServiceSelection | null>(null);
@@ -68,7 +68,7 @@ export default function PublicCartPage() {
 
         const fetchServiceData = async () => {
           setIsLoading(true);
-          const result = await getPublicServiceBySlug(parsedSelection.serviceSlug);
+          const result = await getPublicServiceBySlug({ slug: parsedSelection.serviceSlug, sid: erpSid });
           if (result.success && result.data) {
             setService(result.data);
             if (parsedSelection.type === 'subscription') {
@@ -92,7 +92,7 @@ export default function PublicCartPage() {
     } else {
       setIsLoading(false);
     }
-  }, []);
+  }, [erpSid]);
   
   const handleApplyCoupon = () => {
     if (couponCode.trim() === '') {

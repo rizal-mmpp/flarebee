@@ -1,31 +1,60 @@
 
-'use server';
+'use client'; 
 
 import type { Service } from '@/lib/types';
 import { getPublicServiceBySlug } from '@/lib/actions/erpnext/item.actions';
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ServerCrash, MessageSquare, Check, HelpCircle } from 'lucide-react';
+import { ArrowLeft, ServerCrash, MessageSquare, Check, HelpCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import ReactMarkdown from 'react-markdown';
 import { ServicePurchaseClientWrapper } from '@/app/(main)/services/[id]/ServicePurchaseClientWrapper';
+import { useEffect, useState } from 'react';
+import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 
-export default async function DashboardServiceDetailPage({ params }: { params: { id: string } }) {
-  const slug = params.id;
-  const result = await getPublicServiceBySlug(slug);
+export default function DashboardServiceDetailPage() {
+  const params = useParams();
+  const slug = params.id as string;
+  const { erpSid } = useCombinedAuth();
+  
+  const [service, setService] = useState<Service | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!result.success || !result.data) {
-    if (result.error?.includes('not found')) {
-      notFound();
+  useEffect(() => {
+    async function fetchService() {
+      if (slug) {
+        setIsLoading(true);
+        const result = await getPublicServiceBySlug({ slug, sid: erpSid });
+        if (result.success && result.data) {
+          setService(result.data);
+        } else {
+          setError(result.error || 'Service not found.');
+        }
+        setIsLoading(false);
+      }
     }
+    fetchService();
+  }, [slug, erpSid]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] p-4">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Loading service...</p>
+      </div>
+    );
+  }
+
+  if (error) {
     return (
       <div className="container mx-auto px-4 md:px-6 py-12 md:py-16 text-center">
         <ServerCrash className="mx-auto h-16 w-16 text-destructive mb-4" />
         <h2 className="text-2xl font-semibold text-destructive mb-2">Error Loading Service</h2>
-        <p className="text-muted-foreground mb-6">{result.error}</p>
+        <p className="text-muted-foreground mb-6">{error}</p>
         <Button variant="outline" asChild className="group">
           <Link href="/dashboard/browse-services">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Services
@@ -35,7 +64,10 @@ export default async function DashboardServiceDetailPage({ params }: { params: {
     );
   }
 
-  const service = result.data;
+  if (!service) {
+    return notFound();
+  }
+
   const hasActivePricing = service.pricing?.isFixedPriceActive || service.pricing?.isSubscriptionActive || service.pricing?.isCustomQuoteActive;
 
   return (

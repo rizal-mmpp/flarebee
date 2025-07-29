@@ -6,6 +6,9 @@ import type { ServiceFormValues } from '@/components/sections/admin/ServiceFormT
 import { fetchFromErpNext } from './utils';
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
+if (!ERPNEXT_API_URL) {
+    throw new Error("NEXT_PUBLIC_ERPNEXT_API_URL is not set");
+}
 
 function transformErpItemToAppService(item: any): Service {
     const categoryName = item.item_group || 'Other Services';
@@ -42,15 +45,10 @@ function transformErpItemToAppService(item: any): Service {
     };
 }
 
-// For client-side fetching where no SID is available
-export async function getPublicServices({ categorySlug }: { categorySlug?: string } = {}): Promise<{ success: boolean; data?: Service[]; error?: string; }> {
-    // This is a placeholder for a potential future API route that doesn't require SID
-    // For now, we use getServicesFromErpNext and assume a guest/public SID if necessary
-    return { success: false, error: "Direct public fetching not implemented. Use a server component." };
-}
 
-export async function getPublicServiceBySlug(slug: string): Promise<{ success: boolean; data?: Service; error?: string; }> {
+export async function getPublicServiceBySlug({ slug, sid }: { slug: string, sid?: string | null }): Promise<{ success: boolean; data?: Service; error?: string; }> {
     const result = await fetchFromErpNext<any[]>({
+        sid: sid,
         doctype: 'Item',
         fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'website_description', 'image', 'disabled', 'standard_rate', 'tags', 'service_url', 'creation', 'modified'],
         filters: [['item_code', '=', slug]],
@@ -63,14 +61,14 @@ export async function getPublicServiceBySlug(slug: string): Promise<{ success: b
     return { success: true, data: service };
 }
 
-export async function getPublicServicesFromErpNext({ categorySlug, sid }: { categorySlug?: string, sid?: string }): Promise<{ success: boolean; data?: Service[]; error?: string; }> {
+export async function getPublicServicesFromErpNext({ categorySlug, sid }: { categorySlug?: string, sid?: string | null }): Promise<{ success: boolean; data?: Service[]; error?: string; }> {
     const filters: any[] = [['disabled', '=', 0], ['is_stock_item', '=', 0]]; 
     if (categorySlug) {
         const categoryName = categorySlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         filters.push(['item_group', '=', categoryName]);
     }
     const result = await fetchFromErpNext<any[]>({ 
-        sid, // Pass sid for authenticated requests, otherwise it will use guest keys
+        sid: sid, 
         doctype: 'Item', 
         fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'image', 'disabled', 'standard_rate', 'tags', 'service_url', 'creation', 'modified'],
         filters,

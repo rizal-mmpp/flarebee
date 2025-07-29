@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import ReactMarkdown from 'react-reactdown';
+import ReactMarkdown from 'react-markdown';
 import { ServicePurchaseClientWrapper } from './ServicePurchaseClientWrapper';
 
 const formatIDR = (amount: number | string | undefined | null) => {
@@ -95,7 +95,7 @@ const SubscriptionPackageCard: React.FC<{
 
 export default async function ServiceDetailPage({ params }: { params: { id: string } }) {
   const slug = params.id;
-  const result = await getPublicServiceBySlug(slug);
+  const result = await getPublicServiceBySlug({ slug });
 
   if (!result.success || !result.data) {
     if (result.error?.includes('not found')) {
