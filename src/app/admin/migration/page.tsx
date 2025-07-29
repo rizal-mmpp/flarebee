@@ -120,13 +120,11 @@ export default function MigrationPage() {
       accessorKey: 'name',
       header: 'Collection / Task',
       cell: ({ row }) => (
-        <span className="font-medium text-foreground">{row.original.name}</span>
+        <div className="space-y-1">
+            <p className="font-medium text-foreground">{row.original.name}</p>
+            <p className="text-xs text-muted-foreground">{row.original.description}</p>
+        </div>
       ),
-    },
-    {
-      accessorKey: 'description',
-      header: 'Description',
-      cell: ({ row }) => <p className="text-sm text-muted-foreground">{row.original.description}</p>,
     },
     {
       id: 'status',
