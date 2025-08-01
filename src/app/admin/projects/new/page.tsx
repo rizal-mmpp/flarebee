@@ -22,6 +22,7 @@ export const projectFormSchema = z.object({
   customer: z.string().min(1, 'Customer is required.'),
   service_item: z.string().min(1, 'Service Item is required.'),
   project_name: z.string().min(3, 'Project name must be at least 3 characters.'),
+  company: z.string().min(1, 'Company is required.'),
 });
 
 export type ProjectFormValues = z.infer<typeof projectFormSchema>;
@@ -30,7 +31,7 @@ export type ProjectFormValues = z.infer<typeof projectFormSchema>;
 export default function CreateProjectPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { erpSid } = useCombinedAuth();
+  const { erpSid, user } = useCombinedAuth();
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<ProjectFormValues>({
@@ -39,6 +40,7 @@ export default function CreateProjectPage() {
       customer: '',
       service_item: '',
       project_name: '',
+      company: 'Ragam Inovasi Optima', // Default company
     }
   });
 
@@ -54,7 +56,7 @@ export default function CreateProjectPage() {
       if (result.success) {
         toast({
           title: 'Project Created',
-          description: `Project "${data.project_name}" has been successfully created as a draft.`,
+          description: `Project "${data.project_name}" has been successfully created.`,
         });
         router.push('/admin/projects'); 
         form.reset();
@@ -68,7 +70,6 @@ export default function CreateProjectPage() {
     });
   };
   
-  // Callback to update the customer field when a new customer is created
   const handleCustomerCreated = (newCustomerName: string) => {
     form.setValue('customer', newCustomerName, { shouldValidate: true });
   };
@@ -103,7 +104,12 @@ export default function CreateProjectPage() {
             </CardHeader>
             <CardContent className="space-y-6">
                  <div>
-                    <Label htmlFor="customer">Customer</Label>
+                    <Label htmlFor="project_name">Project Name *</Label>
+                    <Input id="project_name" {...form.register('project_name')} className="mt-1" placeholder="e.g., Website Development for PT Abadi Jaya" />
+                    {form.formState.errors.project_name && <p className="text-sm text-destructive mt-1">{form.formState.errors.project_name.message}</p>}
+                </div>
+                 <div>
+                    <Label htmlFor="customer">Customer *</Label>
                      <Controller
                         name="customer"
                         control={form.control}
@@ -120,7 +126,7 @@ export default function CreateProjectPage() {
                     {form.formState.errors.customer && <p className="text-sm text-destructive mt-1">{form.formState.errors.customer.message}</p>}
                 </div>
                 <div>
-                    <Label htmlFor="service_item">Service Item</Label>
+                    <Label htmlFor="service_item">Service Item *</Label>
                     <Controller
                         name="service_item"
                         control={form.control}
@@ -136,9 +142,9 @@ export default function CreateProjectPage() {
                     {form.formState.errors.service_item && <p className="text-sm text-destructive mt-1">{form.formState.errors.service_item.message}</p>}
                 </div>
                  <div>
-                    <Label htmlFor="project_name">Project Name</Label>
-                    <Input id="project_name" {...form.register('project_name')} className="mt-1" placeholder="e.g., Web Development for PT Abadi Jaya" />
-                    {form.formState.errors.project_name && <p className="text-sm text-destructive mt-1">{form.formState.errors.project_name.message}</p>}
+                    <Label htmlFor="company">Company *</Label>
+                    <Input id="company" {...form.register('company')} className="mt-1" placeholder="e.g., Ragam Inovasi Optima" />
+                    {form.formState.errors.company && <p className="text-sm text-destructive mt-1">{form.formState.errors.company.message}</p>}
                 </div>
             </CardContent>
              <CardFooter className="justify-end">
@@ -152,3 +158,4 @@ export default function CreateProjectPage() {
     </form>
   );
 }
+
