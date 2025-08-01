@@ -12,7 +12,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { Check, X, Package, Bot, Loader2, Send } from 'lucide-react';
+import { Check, X, Package, Bot, Loader2, Send, MessageSquare, HelpCircle, ArrowLeft } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
+
 
 const formatIDR = (amount: number | string | undefined | null) => {
   if (amount === undefined || amount === null) return 'N/A';
@@ -59,15 +63,11 @@ const SubscriptionPackageCard: React.FC<{ pkg: ServicePackage; onSelect: () => v
   );
 };
 
-interface RenderProps {
-    subscriptionPackages: React.ReactNode;
-    fixedPriceSection: React.ReactNode;
-    customQuoteSection: React.ReactNode;
-}
 
-export function ServicePurchaseClientWrapper({ service, children }: { service: Service; children: (props: RenderProps) => React.ReactNode }) {
+export function ServicePurchaseClientWrapper({ service }: { service: Service; }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const hasActivePricing = service.pricing?.isFixedPriceActive || service.pricing?.isSubscriptionActive || service.pricing?.isCustomQuoteActive;
 
   const handleSelectSubscription = (pkg: ServicePackage) => {
     const selection = { serviceSlug: service.slug, packageId: pkg.id, billingCycle: 12, type: 'subscription' };
@@ -90,13 +90,13 @@ export function ServicePurchaseClientWrapper({ service, children }: { service: S
     setIsSubmitting(false);
   };
   
-  const renderProps: RenderProps = {
-    subscriptionPackages: (
+  const subscriptionPackages = (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch max-w-5xl mx-auto">
         {service.pricing?.subscriptionDetails?.packages.map(pkg => <SubscriptionPackageCard key={pkg.id} pkg={pkg} onSelect={() => handleSelectSubscription(pkg)} />)}
       </div>
-    ),
-    fixedPriceSection: (
+    );
+    
+  const fixedPriceSection = (
       <div className="container mx-auto px-4 md:px-6">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div className="order-2 md:order-1">
@@ -114,8 +114,9 @@ export function ServicePurchaseClientWrapper({ service, children }: { service: S
           </div>
         </div>
       </div>
-    ),
-    customQuoteSection: (
+    );
+    
+  const customQuoteSection = (
       <div className="container mx-auto px-4 md:px-6">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div className="space-y-4">
@@ -136,8 +137,100 @@ export function ServicePurchaseClientWrapper({ service, children }: { service: S
           </Card>
         </div>
       </div>
-    )
-  };
-  
-  return <>{children(renderProps)}</>;
+    );
+
+  return (
+    <div className="bg-background text-foreground">
+        {/* Hero Section */}
+        <section className="py-16 md:py-24 bg-card border-b relative overflow-hidden">
+            <div aria-hidden="true" className="absolute inset-0 -z-0 h-full w-full bg-background bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]"></div>
+            <div className="container mx-auto px-4 md:px-6 grid md:grid-cols-2 gap-8 items-center relative z-10">
+                <div className="space-y-4">
+                    <Badge variant="secondary">{service.category.name}</Badge>
+                    <h1 className="text-4xl md:text-5xl font-bold leading-tight">{service.title}</h1>
+                    <p className="text-lg text-muted-foreground">{service.shortDescription}</p>
+                    <div className="flex gap-4 pt-4">
+                        {hasActivePricing && (
+                            <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                                <a href="#pricing">View Pricing</a>
+                            </Button>
+                        )}
+                        <Button size="lg" variant="outline" asChild>
+                            <Link href="/contact-us">Contact Us</Link>
+                        </Button>
+                    </div>
+                </div>
+                <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-2xl">
+                    <Image src={service.imageUrl} alt={service.title} fill style={{objectFit:"fill"}} data-ai-hint={service.dataAiHint || "service visual"}/>
+                </div>
+            </div>
+        </section>
+
+        {/* Subscription Plans Section */}
+        {service.pricing?.isSubscriptionActive && service.pricing.subscriptionDetails && service.pricing.subscriptionDetails.packages.length > 0 && (
+        <section id="pricing" className={cn("py-16 md:py-24 border-t", service.pricing?.subscriptionDetails?.bgClassName)}>
+            <div className="container mx-auto px-4 md:px-6">
+            <div className="text-center max-w-3xl mx-auto mb-12">
+                <h2 className="text-3xl md:text-4xl font-bold">Flexible Plans</h2>
+                <p className="text-muted-foreground mt-2">Choose the subscription that best fits your needs. Configure your term in the cart.</p>
+            </div>
+            {subscriptionPackages}
+            </div>
+        </section>
+        )}
+
+        {/* One-Time Project Section */}
+        {service.pricing?.isFixedPriceActive && service.pricing.fixedPriceDetails && (
+        <section id="one-time-project" className={cn("py-16 md:py-24 border-t", service.pricing?.fixedPriceDetails?.bgClassName)}>
+            {fixedPriceSection}
+        </section>
+        )}
+
+        {/* Custom Quote Section */}
+        {service.pricing?.isCustomQuoteActive && service.pricing.customQuoteDetails && (
+        <section id="custom-quote-form" className={cn("py-16 md:py-24 border-t", service.pricing?.customQuoteDetails?.bgClassName)}>
+            {customQuoteSection}
+        </section>
+        )}
+
+        {/* FAQ Section */}
+        {service.showFaqSection && service.faq && service.faq.length > 0 && (
+        <section id="faq" className="py-16 md:py-24 bg-background border-t">
+            <div className="container mx-auto px-4 md:px-6 max-w-3xl">
+            <div className="text-center mb-12">
+                <h2 className="text-3xl md:text-4xl font-bold">Frequently Asked Questions</h2>
+            </div>
+            <Accordion type="single" collapsible className="w-full">
+                {service.faq.map((item, i) => (
+                    <AccordionItem key={item.id || `faq-${i}`} value={`item-${i}`}>
+                        <AccordionTrigger className="text-lg text-left hover:no-underline"><HelpCircle className="h-5 w-5 text-primary mr-3 flex-shrink-0"/>{item.q}</AccordionTrigger>
+                        <AccordionContent className="text-base text-foreground/90 pl-10">
+                            {item.a}
+                        </AccordionContent>
+                    </AccordionItem>
+                ))}
+            </Accordion>
+            </div>
+        </section>
+        )}
+        
+        {/* New Contact CTA Section */}
+        <section id="contact-cta" className="py-16 md:py-24 border-t">
+        <div className="container mx-auto px-4 md:px-6">
+            <div className="max-w-2xl mx-auto text-center">
+            <MessageSquare className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-3xl font-bold text-foreground mb-4">Still Have Questions?</h2>
+            <p className="text-muted-foreground mb-8 text-lg">
+                Our team is ready to provide you with a personalized consultation to ensure our service perfectly fits your vision.
+            </p>
+            <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-primary-foreground text-lg px-10 py-7">
+                <Link href="/contact-us">
+                Contact Our Experts
+                </Link>
+            </Button>
+            </div>
+        </div>
+        </section>
+    </div>
+  );
 }
