@@ -1,95 +1,72 @@
 # Plan for B2B Service Delivery System (v0.16) - ERPNext-First Approach
 
-This document outlines an ERPNext-first implementation plan for a system allowing admins to create projects for clients and deliver the final service via email. This approach avoids using Firebase as an intermediary, ensuring all data lives in ERPNext from the start.
+This document outlines an ERPNext-first implementation plan for a system allowing admins to create projects for clients, send invoices, and deliver the final service via email. This approach ensures all data lives in ERPNext from the start.
+
+### **Core Concept: Self-Healing ERPNext DocTypes**
+
+Instead of a manual migration, the application's server actions will be built to be "self-healing." When an action needs a custom DocType (like "Project"), it will first check if it exists. If not, it will programmatically create it and its required fields before retrying the original request.
 
 ---
 
-### **1. Core Concept: Self-Healing ERPNext DocTypes**
+### **Implementation Steps & Progress**
 
-Instead of a manual migration, the application's server actions will be built to be "self-healing."
-
-- **On-Demand Schema Creation**: When a server action (e.g., `createProject`) needs to interact with a custom ERPNext DocType (like "Project"), it will first check if the DocType exists.
-- **Automated Provisioning**: If the DocType or its required custom fields are missing, the action will trigger another function to programmatically create or update the DocType in ERPNext using its metadata APIs.
-- **Retry Logic**: After the schema is provisioned, the original action will be retried.
-
-This makes the system resilient and removes the need for a separate data migration phase.
-
----
-
-### **2. ERPNext Customization (Programmatic)**
-
-The following will be defined in code and created automatically if they don't exist.
-
-- **"Project" DocType**: A new custom DocType in ERPNext.
+**Phase 1: Admin Project & Invoice Management**
+- [✅] **Create "Project" DocType in ERPNext (Programmatic)**
+  - A new custom DocType in ERPNext for tracking service delivery.
   - **Fields**:
     - `customer`: Link to Customer
     - `service_item`: Link to Item (the service purchased)
     - `project_name`: Data (e.g., "Web Design for PT Jaya Abadi")
-    - `status`: Select (Pending, In Progress, Awaiting Delivery, Completed, Cancelled)
-    - `management_url`: Data (e.g., URL to the client's live website)
+    - `status`: Select (Draft, Awaiting Payment, In Progress, Awaiting Delivery, Completed, Cancelled)
+    - `sales_invoice`: Link to Sales Invoice
+    - `service_management_url`: Data (e.g., URL to the admin-side web builder)
+    - `final_service_url`: Data (e.g., URL to the client's live website)
     - `credential_setup_url`: Data (Secure, one-time setup URL)
     - `delivery_date`: Datetime
   - This will be provisioned by a `ensureProjectDocTypeExists()` helper function.
 
-- **Custom Fields on "Customer" DocType**:
-  - `firebase_uid`: Data (To link ERPNext Customer to Firebase Auth User)
-  - This will be added by a `ensureCustomerCustomFieldsExist()` helper.
+- [✅] **Admin UI: Project List Page (`/admin/projects`)**
+- [✅] **Admin UI: Project Creation Form (`/admin/projects/new`)**
 
----
+- [⌛] **Admin UI: Project Detail Page (`/admin/projects/[id]`)**
+  - Displays all data for a single "Project" document.
+  - Shows an "Invoice" section.
+  - **Action**: A "Create & Send Invoice" button. This action will:
+    - Create a new `Sales Invoice` in ERPNext linked to the project's customer and service.
+    - Set the `Sales Invoice` status to `Unpaid`.
+    - Update the "Project" document with the link to the new `Sales Invoice`.
+    - Change the "Project" status to `Awaiting Payment`.
+    - Trigger an email to the client with the invoice details and a payment link.
 
-### **3. Admin Panel UI Implementation**
+**Phase 2: Payment & Project Activation**
+- [ ] **Webhook for Payment Success**
+  - The Xendit webhook needs to be updated.
+  - When a `Sales Invoice` is paid, the webhook should:
+    - Update the `Sales Invoice` status to `Paid`.
+    - Find the corresponding "Project" document.
+    - Update the "Project" status to `In Progress`.
+    - Send a confirmation email to the client: "Thank you for your payment. We have started working on your project."
 
-- **Project List (`/admin/projects`)**:
-  - A new page displaying a data table of all "Project" documents fetched directly from ERPNext.
-  - Columns: Project Name, Customer, Status, Creation Date, Actions.
-  - Ability to filter by status and search by customer or project name.
+- [ ] **Admin UI: Project Detail Page Updates**
+  - When a project is `In Progress`, the admin can input the `service_management_url` (where they are building the website).
 
-- **Project Creation Form (`/admin/projects/new`)**:
-  - A form for admins to create a new project.
-  - Fields:
-    - **Select Customer**: Fetches from ERPNext "Customer" list.
-    - **Select Service**: Fetches from ERPNext "Item" list (where `is_sales_item = 1`).
-    - Set initial `status` (defaults to 'Pending').
-  - On submit, this form calls the `createProject` server action.
+**Phase 3: Service Delivery**
+- [ ] **Admin UI: Project Delivery Action**
+  - When a project is `In Progress` or `Awaiting Delivery`, a "Deliver Project" section becomes active on the project detail page.
+  - **Fields**: Admin enters the `final_service_url` (the live website).
+  - **Action**: A "Send Delivery Email" button. This action will:
+    - Generate a secure, one-time `credential_setup_url`.
+    - Update the "Project" document with the `final_service_url`, `credential_setup_url`, `delivery_date`, and set status to `Completed`.
+    - Trigger a delivery email to the client.
 
-- **Project Detail/Edit Page (`/admin/projects/[id]`)**:
-  - Fetches and displays data for a single "Project" document from ERPNext.
-  - Admins can update the `status`.
-  - **Key Feature**: A dedicated "Deliver Project" section appears when status is 'AwaitingDelivery'.
-    - Fields for `management_url` and `credential_setup_url`.
-    - A "Send Delivery Email" button that calls the `deliverProject` action.
+- [ ] **Client Delivery Email**
+  - The email will contain:
+    - A link to their `final_service_url`.
+    - A button/link to the `credential_setup_url` to access their Flarebee dashboard.
 
----
-
-### **4. Server Actions & Logic (`src/lib/actions/project.actions.ts`)**
-
-- **`ensureProjectInfrastructure()`**:
-  - Private helper function.
-  - Calls `ensureProjectDocTypeExists()` and `ensureCustomerCustomFieldsExist()` to prepare ERPNext.
-  - This function will be called with retry logic by other actions.
-
-- **`createProject(data)`**:
-  - Tries to create a new "Project" document in ERPNext.
-  - **If it fails due to a missing DocType/field**, it calls `ensureProjectInfrastructure()` and retries the creation step once.
-  - Returns the result of the ERPNext API call.
-
-- **`updateProjectStatus(projectId, status)`**:
-  - Updates the status field of a "Project" document in ERPNext.
-
-- **`deliverProject(projectId, deliveryData)`**:
-  - Updates the `management_url` and `credential_setup_url` fields in the ERPNext "Project" document.
-  - Changes status to 'Completed' and sets `delivery_date`.
-  - Triggers an email (e.g., using Resend) to the customer with the delivery details.
-
-- **`getProjects()` & `getProjectById()`**:
-  - Functions to fetch project lists and individual projects directly from ERPNext.
-
----
-
-### **5. Client Dashboard UI (`/dashboard/my-projects`)**
-
-- A new page for logged-in clients to view their projects.
-- On page load, it calls a server action `getProjectsForCurrentUser()`.
-  - This action gets the user's Firebase UID, finds the corresponding "Customer" in ERPNext via the `firebase_uid` custom field, and then fetches all "Project" documents linked to that customer.
-- Displays a list of their projects with links to the `management_url` and other relevant delivery details.
-- This ensures a seamless view for the client without them needing to know about ERPNext.
+**Phase 4: Client-Side Dashboard**
+- [ ] **Client UI: My Services / My Projects Page (`/dashboard/my-projects`)**
+  - A new page for logged-in clients.
+  - It fetches all "Project" documents linked to the current user.
+  - Displays a list of their projects (e.g., "Website for PT Jaya Abadi").
+  - For `Completed` projects, it shows a link to the `final_service_url` and a link to manage their service within the dashboard.

@@ -1,6 +1,7 @@
 'use server';
 
 import type { ProjectFormValues } from '@/app/admin/projects/new/page';
+import type { Project } from '@/lib/types';
 import { fetchFromErpNext } from './utils';
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
@@ -100,4 +101,35 @@ export async function createProject({ sid, projectData }: { sid: string, project
     console.error("Error in createProject:", error);
     return { success: false, error: error.message };
   }
+}
+
+function transformErpProject(erpProject: any): Project {
+  return {
+    name: erpProject.name,
+    customer: erpProject.customer,
+    service_item: erpProject.service_item,
+    project_name: erpProject.project_name,
+    status: erpProject.status,
+    sales_invoice: erpProject.sales_invoice,
+    service_management_url: erpProject.service_management_url,
+    final_service_url: erpProject.final_service_url,
+    credential_setup_url: erpProject.credential_setup_url,
+    delivery_date: erpProject.delivery_date,
+    creation: erpProject.creation,
+    modified: erpProject.modified,
+  };
+}
+
+export async function getProjects({ sid }: { sid: string }): Promise<{ success: boolean; data?: Project[]; error?: string; }> {
+    const result = await fetchFromErpNext<any[]>({
+        sid,
+        doctype: 'Project',
+        fields: ['name', 'project_name', 'customer', 'status', 'modified', 'creation'],
+    });
+
+    if (!result.success || !result.data) {
+        return { success: false, error: result.error || 'Failed to get Projects.' };
+    }
+    const projects = result.data.map(transformErpProject);
+    return { success: true, data: projects };
 }
