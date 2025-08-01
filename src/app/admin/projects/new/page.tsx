@@ -14,7 +14,7 @@ import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ItemSelector } from '@/components/admin/subscriptions/ItemSelector'; // Re-using for service selection
+import { ItemSelector } from '@/components/admin/subscriptions/ItemSelector';
 import { CustomerSelector } from '@/components/admin/projects/CustomerSelector';
 import { createProject } from '@/lib/actions/erpnext/project.actions';
 
@@ -67,6 +67,12 @@ export default function CreateProjectPage() {
       }
     });
   };
+  
+  // Callback to update the customer field when a new customer is created
+  const handleCustomerCreated = (newCustomerName: string) => {
+    form.setValue('customer', newCustomerName, { shouldValidate: true });
+  };
+
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -105,6 +111,7 @@ export default function CreateProjectPage() {
                         <CustomerSelector
                             value={field.value}
                             onChange={field.onChange}
+                            onCustomerCreated={handleCustomerCreated}
                             className="mt-1"
                             hasError={!!form.formState.errors.customer}
                         />

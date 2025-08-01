@@ -1,27 +1,32 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getUsersFromErpNext } from '@/lib/actions/erpnext/user.actions';
 import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { cn } from '@/lib/utils';
 import type { UserProfile } from '@/lib/types';
+import { NewCustomerDialog } from './NewCustomerDialog';
 
 interface CustomerSelectorProps {
   value: string;
   onChange: (value: string) => void;
+  onCustomerCreated: (newCustomerName: string) => void;
   className?: string;
   hasError?: boolean;
 }
 
-export function CustomerSelector({ value, onChange, className, hasError = false }: CustomerSelectorProps) {
+export function CustomerSelector({ value, onChange, onCustomerCreated, className, hasError = false }: CustomerSelectorProps) {
   const { erpSid } = useCombinedAuth();
   const { toast } = useToast();
 
   const [customers, setCustomers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const fetchCustomers = useCallback(async () => {
     if (!erpSid) return;
@@ -38,6 +43,12 @@ export function CustomerSelector({ value, onChange, className, hasError = false 
   useEffect(() => {
     fetchCustomers();
   }, [fetchCustomers]);
+  
+  const handleCreationSuccess = (newCustomerName: string) => {
+    fetchCustomers().then(() => {
+        onCustomerCreated(newCustomerName);
+    });
+  };
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
@@ -59,6 +70,22 @@ export function CustomerSelector({ value, onChange, className, hasError = false 
           )}
         </SelectContent>
       </Select>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="flex-shrink-0"
+        onClick={() => setIsCreateDialogOpen(true)}
+        aria-label="Create new customer"
+      >
+        <PlusCircle className="h-4 w-4" />
+      </Button>
+
+      <NewCustomerDialog
+        isOpen={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onSuccess={handleCreationSuccess}
+      />
     </div>
   );
 }

@@ -27,6 +27,8 @@ Instead of a manual migration, the application's server actions will be built to
 
 - [✅] **Admin UI: Project List Page (`/admin/projects`)**
 - [✅] **Admin UI: Project Creation Form (`/admin/projects/new`)**
+  - [✅] Ability to select existing customers.
+  - [✅] Ability to create a new customer if they don't exist.
 
 - [⌛] **Admin UI: Project Detail Page (`/admin/projects/[id]`)**
   - Displays all data for a single "Project" document.
@@ -46,6 +48,7 @@ Instead of a manual migration, the application's server actions will be built to
     - Find the corresponding "Project" document.
     - Update the "Project" status to `In Progress`.
     - Send a confirmation email to the client: "Thank you for your payment. We have started working on your project."
+    - Create a new `User` in ERPNext using the Customer's email.
 
 - [ ] **Admin UI: Project Detail Page Updates**
   - When a project is `In Progress`, the admin can input the `service_management_url` (where they are building the website).

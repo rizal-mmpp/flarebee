@@ -1,0 +1,61 @@
+
+'use server';
+
+import { fetchFromErpNext } from './utils';
+
+const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
+
+interface NewCustomerData {
+    customer_name: string;
+    customer_type: 'Company' | 'Individual';
+    email: string;
+}
+
+export async function createCustomerInErpNext({ sid, customerData }: { sid: string; customerData: NewCustomerData }): Promise<{ success: boolean; name?: string; error?: string }> {
+    if (!ERPNEXT_API_URL) return { success: false, error: 'ERPNext API URL is not configured.' };
+    if (!sid) return { success: false, error: 'Session ID (sid) is required.' };
+
+    try {
+        // Step 1: Check if a customer with the same email already exists
+        const emailExistsResult = await fetchFromErpNext({
+            sid,
+            doctype: 'Customer',
+            filters: [['email_id', '=', customerData.email]],
+            fields: ['name']
+        });
+        
+        // @ts-ignore
+        if (emailExistsResult.success && emailExistsResult.data?.length > 0) {
+            return { success: false, error: `A customer with email "${customerData.email}" already exists.` };
+        }
+
+        // Step 2: Prepare data for creating the new customer
+        const dataToPost = {
+            ...customerData,
+            customer_group: 'All Customer Groups', // Default group
+            territory: 'All Territories', // Default territory
+        };
+
+        const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Customer`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Cookie': `sid=${sid}`,
+            },
+            body: JSON.stringify(dataToPost),
+        });
+
+        const responseData = await response.json();
+
+        if (!response.ok) {
+            const errorMessage = responseData.exception || responseData._server_messages?.[0] || 'Failed to create customer in ERPNext.';
+            throw new Error(errorMessage);
+        }
+
+        return { success: true, name: responseData.data.name };
+
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
