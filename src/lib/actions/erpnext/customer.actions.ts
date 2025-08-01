@@ -10,6 +10,7 @@ interface NewCustomerData {
     customer_name: string;
     customer_type: 'Company' | 'Individual';
     email_id?: string;
+    mobile_no?: string;
 }
 
 export async function createCustomerInErpNext({ sid, customerData }: { sid: string; customerData: NewCustomerData }): Promise<{ success: boolean; name?: string; error?: string }> {
@@ -65,19 +66,19 @@ export async function getCustomersFromErpNext({ sid }: { sid: string }): Promise
     const result = await fetchFromErpNext<any[]>({ 
         sid, 
         doctype: 'Customer', 
-        fields: ['name', 'customer_name', 'customer_type', 'email_id'] 
+        fields: ['name', 'customer_name', 'customer_type', 'email_id', 'mobile_no'] 
     });
 
     if (!result.success || !result.data) {
         return { success: false, error: result.error || 'Failed to get customers.' };
     }
     
-    // Transform the raw data to match our Customer type
     const customers: Customer[] = (result.data as any[]).map(item => ({
         name: item.name,
         customer_name: item.customer_name,
         customer_type: item.customer_type,
-        email_id: item.email_id
+        email_id: item.email_id,
+        mobile_no: item.mobile_no,
     }));
 
     return { success: true, data: customers };

@@ -71,19 +71,16 @@ export async function ensureProjectCustomFieldsExist(sid: string): Promise<{ suc
 
 export async function createProject({ sid, projectData }: { sid: string, projectData: ProjectFormValues }): Promise<{ success: boolean; error?: string }> {
    try {
-    // 1. Ensure the standard "Project" DocType has our custom fields.
     const infrastructureResult = await ensureProjectCustomFieldsExist(sid);
     if (!infrastructureResult.success) {
       throw new Error(`Failed to prepare ERPNext infrastructure: ${infrastructureResult.error}`);
     }
 
-    // 2. Prepare the data for the new Project document.
     const dataToPost = {
       ...projectData,
-      status: 'Draft', // Always start as Draft
+      status: 'Draft', 
     };
 
-    // 3. Create the new "Project" document in ERPNext.
     await postRequest('/api/resource/Project', dataToPost, sid);
 
     return { success: true };
@@ -113,7 +110,7 @@ function transformErpProject(erpProject: any): Project {
 export async function getProjects({ sid }: { sid: string }): Promise<{ success: boolean; data?: Project[]; error?: string; }> {
     const result = await fetchFromErpNext<any[]>({
         sid,
-        doctype: 'Project', // Fetch from the standard Project doctype
+        doctype: 'Project',
         fields: ['name', 'project_name', 'customer', 'status', 'modified', 'creation', 'company'],
     });
 
@@ -122,4 +119,17 @@ export async function getProjects({ sid }: { sid: string }): Promise<{ success: 
     }
     const projects = result.data.map(transformErpProject);
     return { success: true, data: projects };
+}
+
+export async function getProjectByName({ sid, projectName }: { sid: string; projectName: string; }): Promise<{ success: boolean; data?: Project; error?: string; }> {
+    const result = await fetchFromErpNext<any>({ 
+        sid, 
+        doctype: 'Project', 
+        docname: projectName,
+    });
+    if (!result.success || !result.data) {
+        return { success: false, error: result.error || 'Failed to get Project.' };
+    }
+    const project: Project = transformErpProject(result.data);
+    return { success: true, data: project };
 }

@@ -159,6 +159,7 @@ export interface Customer {
     customer_name: string;
     customer_type: 'Company' | 'Individual';
     email_id?: string | null;
+    mobile_no?: string | null;
 }
 
 export interface CartItem {

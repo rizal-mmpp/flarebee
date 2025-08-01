@@ -27,6 +27,7 @@ const newCustomerSchema = z.object({
     errorMap: () => ({ message: 'Please select a customer type.' }),
   }),
   email_id: z.string().email('Invalid email address.').optional().or(z.literal('')),
+  mobile_no: z.string().optional(),
 });
 type NewCustomerFormValues = z.infer<typeof newCustomerSchema>;
 
@@ -37,7 +38,7 @@ export function NewCustomerDialog({ isOpen, onOpenChange, onSuccess }: NewCustom
 
   const { control, register, handleSubmit, reset, formState: { errors } } = useForm<NewCustomerFormValues>({
     resolver: zodResolver(newCustomerSchema),
-    defaultValues: { customer_type: 'Company', email_id: '' },
+    defaultValues: { customer_type: 'Company', email_id: '', mobile_no: '' },
   });
 
   const handleCreateCustomer: SubmitHandler<NewCustomerFormValues> = async (data) => {
@@ -100,6 +101,11 @@ export function NewCustomerDialog({ isOpen, onOpenChange, onSuccess }: NewCustom
               <Label htmlFor="email">Email Id</Label>
               <Input id="email" type="email" {...register('email_id')} className="mt-1" placeholder="e.g., contact@company.com" />
               {errors.email_id && <p className="text-sm text-destructive mt-1">{errors.email_id.message}</p>}
+            </div>
+             <div>
+              <Label htmlFor="mobile_no">WhatsApp Number</Label>
+              <Input id="mobile_no" {...register('mobile_no')} className="mt-1" placeholder="e.g., +628123456789" />
+              {errors.mobile_no && <p className="text-sm text-destructive mt-1">{errors.mobile_no.message}</p>}
             </div>
           </div>
           <DialogFooter>
