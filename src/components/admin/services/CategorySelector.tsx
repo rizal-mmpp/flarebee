@@ -37,7 +37,9 @@ export function CategorySelector({ value, onChange, className, hasError = false 
     setIsLoading(true);
     const result = await getItemGroupsFromErpNext({ sid: erpSid });
     if (result.success && result.data) {
-      setItemGroups(result.data);
+      // Filter out parent groups like "All Item Groups"
+      const filteredGroups = result.data.filter(g => g.name.toLowerCase() !== 'all item groups');
+      setItemGroups(filteredGroups);
     } else {
       toast({ title: "Error", description: result.error || "Could not fetch item groups.", variant: "destructive" });
     }

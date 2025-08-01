@@ -11,7 +11,7 @@ Instead of a manual migration, the application's server actions will be built to
 ### **Implementation Steps & Progress**
 
 **Phase 1: Admin Project & Invoice Management**
-- [ ] **Create "Project" DocType in ERPNext (Programmatic)**
+- [⌛] **Create "Project" DocType in ERPNext (Programmatic)**
   - A new custom DocType in ERPNext for tracking service delivery.
   - **Fields**:
     - `customer`: Link to Customer
@@ -25,15 +25,8 @@ Instead of a manual migration, the application's server actions will be built to
     - `delivery_date`: Datetime
   - This will be provisioned by a `ensureProjectDocTypeExists()` helper function.
 
-- [ ] **Admin UI: Project List Page (`/admin/projects`)**
-  - A new page displaying a data table of all "Project" documents fetched from ERPNext.
-  - Columns: Project Name, Customer, Status, Invoice Status, Creation Date, Actions.
-  - Ability to filter by status and search.
-
-- [ ] **Admin UI: Project Creation Form (`/admin/projects/new`)**
-  - A form for admins to create a new project.
-  - **Fields**: Select Customer, Select Service, Project Name.
-  - On submit, this calls a `createProject` server action which creates a "Project" in `Draft` status in ERPNext.
+- [✅] **Admin UI: Project List Page (`/admin/projects`)**
+- [✅] **Admin UI: Project Creation Form (`/admin/projects/new`)**
 
 - [ ] **Admin UI: Project Detail Page (`/admin/projects/[id]`)**
   - Displays all data for a single "Project" document.

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useTransition } from 'react';
@@ -15,14 +16,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ItemSelector } from '@/components/admin/subscriptions/ItemSelector'; // Re-using for service selection
 import { CustomerSelector } from '@/components/admin/projects/CustomerSelector';
+import { createProject } from '@/lib/actions/erpnext/project.actions';
 
-const projectFormSchema = z.object({
+export const projectFormSchema = z.object({
   customer: z.string().min(1, 'Customer is required.'),
   service_item: z.string().min(1, 'Service Item is required.'),
   project_name: z.string().min(3, 'Project name must be at least 3 characters.'),
 });
 
-type ProjectFormValues = z.infer<typeof projectFormSchema>;
+export type ProjectFormValues = z.infer<typeof projectFormSchema>;
 
 
 export default function CreateProjectPage() {
@@ -47,16 +49,22 @@ export default function CreateProjectPage() {
     }
 
     startTransition(async () => {
-      // Placeholder for server action
-      console.log("Form Data Submitted:", data);
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate async action
-      
-      toast({
-        title: 'Project Created (Simulation)',
-        description: `Project "${data.project_name}" has been created as a draft.`,
-      });
-      router.push('/admin/projects'); 
-      form.reset();
+      const result = await createProject({ sid: erpSid, projectData: data });
+
+      if (result.success) {
+        toast({
+          title: 'Project Created',
+          description: `Project "${data.project_name}" has been successfully created as a draft.`,
+        });
+        router.push('/admin/projects'); 
+        form.reset();
+      } else {
+        toast({
+          title: 'Error Creating Project',
+          description: result.error || 'An unknown error occurred.',
+          variant: 'destructive',
+        });
+      }
     });
   };
 

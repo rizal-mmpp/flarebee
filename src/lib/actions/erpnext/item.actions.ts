@@ -62,13 +62,13 @@ export async function getPublicServiceBySlug({ slug, sid }: { slug: string, sid?
 }
 
 export async function getPublicServicesFromErpNext({ categorySlug }: { categorySlug?: string }): Promise<{ success: boolean; data?: Service[]; error?: string; }> {
-    const filters: any[] = [['disabled', '=', 0], ['is_stock_item', '=', 0]]; 
+    const filters: any[] = [['disabled', '=', 0], ['is_sales_item', '=', 1]]; 
     if (categorySlug) {
         const categoryName = categorySlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         filters.push(['item_group', '=', categoryName]);
     }
     const result = await fetchFromErpNext<any[]>({ 
-        sid: null, // Explicitly pass null to use guest keys
+        sid: null,
         doctype: 'Item', 
         fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'image', 'disabled', 'standard_rate', 'tags', 'service_url', 'creation', 'modified'],
         filters,
@@ -85,7 +85,8 @@ export async function getServicesFromErpNext({ sid }: { sid: string }): Promise<
     const result = await fetchFromErpNext<any[]>({ 
         sid, 
         doctype: 'Item', 
-        fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'website_description', 'image', 'disabled', 'standard_rate', 'tags', 'service_url', 'creation', 'modified'] 
+        fields: ['name', 'item_code', 'item_name', 'item_group', 'description', 'website_description', 'image', 'disabled', 'standard_rate', 'tags', 'service_url', 'creation', 'modified'],
+        filters: [['is_sales_item', '=', 1]],
     });
 
     if (!result.success || !result.data) {
@@ -125,6 +126,7 @@ function transformFormToErpItem(data: ServiceFormValues): any {
         website_description: data.longDescription,
         disabled: data.status === 'inactive' ? 1 : 0,
         image: data.imageUrl, 
+        is_sales_item: 1, // Mark as a sales item
         is_stock_item: 0, 
         service_url: data.serviceUrl || '',
         tags: data.tags,
