@@ -36,13 +36,11 @@ const COLLECTION_DESCRIPTIONS: { [key: string]: string } = {
 interface MigrationTask {
     id: string; // collectionName
     name: string;
-    description: string;
 }
 
 const migrationTasks: MigrationTask[] = MIGRATABLE_COLLECTIONS.map(name => ({
     id: name,
     name: name.replace(/([A-Z])/g, ' $1').replace(/\b\w/g, l => l.toUpperCase()),
-    description: COLLECTION_DESCRIPTIONS[name] || 'No description available.',
 }));
 
 
@@ -122,7 +120,6 @@ export default function MigrationPage() {
       cell: ({ row }) => (
         <div className="space-y-1">
             <p className="font-medium text-foreground">{row.original.name}</p>
-            <p className="text-xs text-muted-foreground">{row.original.description}</p>
         </div>
       ),
     },

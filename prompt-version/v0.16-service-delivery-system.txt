@@ -1,81 +1,95 @@
-# Plan for B2B Service Delivery System (v0.16)
+# Plan for B2B Service Delivery System (v0.16) - ERPNext-First Approach
 
-This document outlines the implementation plan for a system allowing admins to create projects for clients and deliver the final service via email.
+This document outlines an ERPNext-first implementation plan for a system allowing admins to create projects for clients and deliver the final service via email. This approach avoids using Firebase as an intermediary, ensuring all data lives in ERPNext from the start.
 
 ---
 
-### **Phase 1: Foundation with Firebase & Dummy Data**
+### **1. Core Concept: Self-Healing ERPNext DocTypes**
 
-This phase focuses on building the complete user experience using the existing Firebase backend. This allows for rapid development and testing of the core functionality.
+Instead of a manual migration, the application's server actions will be built to be "self-healing."
 
-**1. Data Models (`src/lib/types.ts`)**
-- Define a new `Project` type to track service delivery.
-- **`Project` type:**
-  - `id`: string (auto-generated)
-  - `clientId`: string (references a `UserProfile` UID)
-  - `clientName`: string
-  - `clientEmail`: string
-  - `serviceId`: string (references a `Service`)
-  - `serviceName`: string
-  - `status`: 'Pending' | 'InProgress' | 'AwaitingDelivery' | 'Completed' | 'Cancelled'
-  - `managementUrl`: string (e.g., URL to the client's live website or management dashboard)
-  - `credentials`: object (e.g., `{ username: string, setupUrl: string }`) - *Note: For security, we will generate a secure, one-time setup URL rather than storing passwords.*
-  - `deliveryDate`: Date | null
-  - `createdAt`: Date
+- **On-Demand Schema Creation**: When a server action (e.g., `createProject`) needs to interact with a custom ERPNext DocType (like "Project"), it will first check if the DocType exists.
+- **Automated Provisioning**: If the DocType or its required custom fields are missing, the action will trigger another function to programmatically create or update the DocType in ERPNext using its metadata APIs.
+- **Retry Logic**: After the schema is provisioned, the original action will be retried.
 
-**2. Admin Panel UI**
+This makes the system resilient and removes the need for a separate data migration phase.
+
+---
+
+### **2. ERPNext Customization (Programmatic)**
+
+The following will be defined in code and created automatically if they don't exist.
+
+- **"Project" DocType**: A new custom DocType in ERPNext.
+  - **Fields**:
+    - `customer`: Link to Customer
+    - `service_item`: Link to Item (the service purchased)
+    - `project_name`: Data (e.g., "Web Design for PT Jaya Abadi")
+    - `status`: Select (Pending, In Progress, Awaiting Delivery, Completed, Cancelled)
+    - `management_url`: Data (e.g., URL to the client's live website)
+    - `credential_setup_url`: Data (Secure, one-time setup URL)
+    - `delivery_date`: Datetime
+  - This will be provisioned by a `ensureProjectDocTypeExists()` helper function.
+
+- **Custom Fields on "Customer" DocType**:
+  - `firebase_uid`: Data (To link ERPNext Customer to Firebase Auth User)
+  - This will be added by a `ensureCustomerCustomFieldsExist()` helper.
+
+---
+
+### **3. Admin Panel UI Implementation**
+
 - **Project List (`/admin/projects`)**:
-    - A new page displaying a data table of all created projects.
-    - Columns: Project Name (Service + Client), Client, Status, Created Date, Actions.
-    - Ability to filter by status and search by client or service.
+  - A new page displaying a data table of all "Project" documents fetched directly from ERPNext.
+  - Columns: Project Name, Customer, Status, Creation Date, Actions.
+  - Ability to filter by status and search by customer or project name.
+
 - **Project Creation Form (`/admin/projects/new`)**:
-    - A form for admins to create a new project.
-    - Fields:
-        - Select Client (from existing `UserProfile` list).
-        - Select Service (from existing `Service` list).
-        - Set initial `status` (defaults to 'Pending').
+  - A form for admins to create a new project.
+  - Fields:
+    - **Select Customer**: Fetches from ERPNext "Customer" list.
+    - **Select Service**: Fetches from ERPNext "Item" list (where `is_sales_item = 1`).
+    - Set initial `status` (defaults to 'Pending').
+  - On submit, this form calls the `createProject` server action.
+
 - **Project Detail/Edit Page (`/admin/projects/[id]`)**:
-    - A page to view and update an existing project's details.
-    - Admins can update the `status`.
-    - **Key Feature**: A dedicated "Deliver Project" section appears when status is 'AwaitingDelivery'.
-        - Fields for `managementUrl` and `credentialSetupUrl`.
-        - A "Send Delivery Email" button.
-
-**3. Server Actions & Logic (`src/lib/actions/project.actions.ts`)**
-- `createProject(data)`: Creates a new project document in a `projects` collection in Firestore.
-- `updateProjectStatus(projectId, status)`: Updates the status of a project.
-- `deliverProject(projectId, deliveryData)`:
-    - Updates the project with `managementUrl` and `credentials`.
-    - Changes status to 'Completed'.
-    - **Triggers a simulated email** (logs to console or uses a service like Resend) containing the delivery details.
-    - Sets the `deliveryDate`.
-
-**4. Client Dashboard UI (`/dashboard/my-projects`)**
-- A new page for logged-in clients to see their purchased/delivered projects.
-- Displays a list of their projects with links to the `managementUrl`.
+  - Fetches and displays data for a single "Project" document from ERPNext.
+  - Admins can update the `status`.
+  - **Key Feature**: A dedicated "Deliver Project" section appears when status is 'AwaitingDelivery'.
+    - Fields for `management_url` and `credential_setup_url`.
+    - A "Send Delivery Email" button that calls the `deliverProject` action.
 
 ---
 
-### **Phase 2: Migration to ERPNext**
+### **4. Server Actions & Logic (`src/lib/actions/project.actions.ts`)**
 
-This phase involves migrating the project data and logic to use ERPNext as the single source of truth, replacing the Firebase `projects` collection.
+- **`ensureProjectInfrastructure()`**:
+  - Private helper function.
+  - Calls `ensureProjectDocTypeExists()` and `ensureCustomerCustomFieldsExist()` to prepare ERPNext.
+  - This function will be called with retry logic by other actions.
 
-**1. ERPNext Customization**
-- Create a new "Project" DocType in ERPNext with fields matching the `Project` type defined in Phase 1.
-- This DocType will link to "Customer" (the client) and "Item" (the service).
+- **`createProject(data)`**:
+  - Tries to create a new "Project" document in ERPNext.
+  - **If it fails due to a missing DocType/field**, it calls `ensureProjectInfrastructure()` and retries the creation step once.
+  - Returns the result of the ERPNext API call.
 
-**2. Data Migration**
-- Create a migration script (`/admin/migration`) to move all existing projects from the Firebase `projects` collection to the new "Project" DocType in ERPNext.
-- This will be a one-time operation.
+- **`updateProjectStatus(projectId, status)`**:
+  - Updates the status field of a "Project" document in ERPNext.
 
-**3. Refactor Server Actions**
-- Rewrite all functions in `src/lib/actions/project.actions.ts` to interact with the ERPNext API instead of Firestore.
-  - `getProjectById` will fetch from ERPNext.
-  - `createProject` will create a new "Project" document in ERPNext.
-  - `updateProjectStatus` will update the "Project" document's status field.
-  - `deliverProject` will update the relevant fields in the ERPNext "Project" document and then trigger the email.
+- **`deliverProject(projectId, deliveryData)`**:
+  - Updates the `management_url` and `credential_setup_url` fields in the ERPNext "Project" document.
+  - Changes status to 'Completed' and sets `delivery_date`.
+  - Triggers an email (e.g., using Resend) to the customer with the delivery details.
 
-**4. Update UI Components**
-- The Admin and Client Dashboard UI components built in Phase 1 will be updated to use the new ERPNext-powered server actions. The user interface itself should require minimal changes.
+- **`getProjects()` & `getProjectById()`**:
+  - Functions to fetch project lists and individual projects directly from ERPNext.
 
-By following this two-phase plan, we can build and validate the entire feature quickly before integrating it fully with the more complex ERPNext backend.
+---
+
+### **5. Client Dashboard UI (`/dashboard/my-projects`)**
+
+- A new page for logged-in clients to view their projects.
+- On page load, it calls a server action `getProjectsForCurrentUser()`.
+  - This action gets the user's Firebase UID, finds the corresponding "Customer" in ERPNext via the `firebase_uid` custom field, and then fetches all "Project" documents linked to that customer.
+- Displays a list of their projects with links to the `management_url` and other relevant delivery details.
+- This ensures a seamless view for the client without them needing to know about ERPNext.
