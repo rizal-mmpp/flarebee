@@ -17,6 +17,7 @@ import {
   Briefcase, 
   DatabaseZap,
   Repeat,
+  Package,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NextImage from 'next/image';
@@ -29,6 +30,7 @@ interface AdminSidebarProps {
 
 const adminNavItems = [
   { href: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
+  { href: '/admin/projects', label: 'Projects', icon: Package },
   { href: '/admin/services', label: 'Services', icon: Briefcase }, 
   { href: '/admin/subscription-plans', label: 'Subscription Plans', icon: Repeat },
   { href: '/admin/orders', label: 'Orders', icon: ShoppingCart },
