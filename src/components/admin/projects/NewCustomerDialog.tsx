@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
-import { useForm, type SubmitHandler } from 'react-hook-form';
+import { useForm, type SubmitHandler, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ const newCustomerSchema = z.object({
   customer_type: z.enum(['Company', 'Individual'], {
     errorMap: () => ({ message: 'Please select a customer type.' }),
   }),
-  email: z.string().email('Invalid email address.'),
+  customer_primary_email: z.string().email('Invalid email address.').optional().or(z.literal('')),
 });
 type NewCustomerFormValues = z.infer<typeof newCustomerSchema>;
 
@@ -35,9 +35,9 @@ export function NewCustomerDialog({ isOpen, onOpenChange, onSuccess }: NewCustom
   const { toast } = useToast();
   const [isCreating, startCreateTransition] = useTransition();
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<NewCustomerFormValues>({
+  const { control, register, handleSubmit, reset, formState: { errors } } = useForm<NewCustomerFormValues>({
     resolver: zodResolver(newCustomerSchema),
-    defaultValues: { customer_type: 'Company' },
+    defaultValues: { customer_type: 'Company', customer_primary_email: '' },
   });
 
   const handleCreateCustomer: SubmitHandler<NewCustomerFormValues> = async (data) => {
@@ -77,23 +77,29 @@ export function NewCustomerDialog({ isOpen, onOpenChange, onSuccess }: NewCustom
               <Input id="customer_name" {...register('customer_name')} className="mt-1" />
               {errors.customer_name && <p className="text-sm text-destructive mt-1">{errors.customer_name.message}</p>}
             </div>
-            <div>
+             <div>
               <Label htmlFor="customer_type">Customer Type *</Label>
-              <Select onValueChange={(value) => reset({ ...register, customer_type: value as 'Company' | 'Individual' })} defaultValue="Company">
-                <SelectTrigger id="customer_type" className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Company">Company</SelectItem>
-                  <SelectItem value="Individual">Individual</SelectItem>
-                </SelectContent>
-              </Select>
+               <Controller
+                  name="customer_type"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger id="customer_type" className="mt-1">
+                        <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="Company">Company</SelectItem>
+                        <SelectItem value="Individual">Individual</SelectItem>
+                        </SelectContent>
+                    </Select>
+                  )}
+                />
               {errors.customer_type && <p className="text-sm text-destructive mt-1">{errors.customer_type.message}</p>}
             </div>
             <div>
               <Label htmlFor="email">Email Id</Label>
-              <Input id="email" type="email" {...register('email')} className="mt-1" placeholder="e.g., contact@company.com" />
-              {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
+              <Input id="email" type="email" {...register('customer_primary_email')} className="mt-1" placeholder="e.g., contact@company.com" />
+              {errors.customer_primary_email && <p className="text-sm text-destructive mt-1">{errors.customer_primary_email.message}</p>}
             </div>
           </div>
           <DialogFooter>

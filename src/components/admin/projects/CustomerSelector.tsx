@@ -6,10 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Loader2, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getUsersFromErpNext } from '@/lib/actions/erpnext/user.actions';
+import { getCustomersFromErpNext } from '@/lib/actions/erpnext/customer.actions';
 import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { cn } from '@/lib/utils';
-import type { UserProfile } from '@/lib/types';
+import type { Customer } from '@/lib/types';
 import { NewCustomerDialog } from './NewCustomerDialog';
 
 interface CustomerSelectorProps {
@@ -24,14 +24,14 @@ export function CustomerSelector({ value, onChange, onCustomerCreated, className
   const { erpSid } = useCombinedAuth();
   const { toast } = useToast();
 
-  const [customers, setCustomers] = useState<UserProfile[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const fetchCustomers = useCallback(async () => {
     if (!erpSid) return;
     setIsLoading(true);
-    const result = await getUsersFromErpNext({ sid: erpSid });
+    const result = await getCustomersFromErpNext({ sid: erpSid });
     if (result.success && result.data) {
       setCustomers(result.data);
     } else {
@@ -63,8 +63,8 @@ export function CustomerSelector({ value, onChange, onCustomerCreated, className
             </div>
           ) : (
             customers.map(customer => (
-              <SelectItem key={customer.uid} value={customer.uid}>
-                {customer.displayName} ({customer.email})
+              <SelectItem key={customer.name} value={customer.name}>
+                {customer.customer_name} ({customer.name})
               </SelectItem>
             ))
           )}

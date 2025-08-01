@@ -1,4 +1,5 @@
 
+
 import type { User as FirebaseUser } from 'firebase/auth';
 
 // A unified AuthUser interface for consistent user object structure across the app
@@ -151,6 +152,13 @@ export interface UserProfile {
   role: 'admin' | 'user';
   createdAt: Date;
   photoURL?: string | null;
+}
+
+export interface Customer {
+    name: string; // This is the unique ID from ERPNext, e.g., CUST-00001
+    customer_name: string;
+    customer_type: 'Company' | 'Individual';
+    customer_primary_email?: string | null;
 }
 
 export interface CartItem {

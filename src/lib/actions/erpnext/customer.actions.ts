@@ -1,6 +1,7 @@
 
 'use server';
 
+import type { Customer } from '@/lib/types';
 import { fetchFromErpNext } from './utils';
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
@@ -8,7 +9,7 @@ const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 interface NewCustomerData {
     customer_name: string;
     customer_type: 'Company' | 'Individual';
-    email: string;
+    customer_primary_email?: string;
 }
 
 export async function createCustomerInErpNext({ sid, customerData }: { sid: string; customerData: NewCustomerData }): Promise<{ success: boolean; name?: string; error?: string }> {
@@ -16,20 +17,19 @@ export async function createCustomerInErpNext({ sid, customerData }: { sid: stri
     if (!sid) return { success: false, error: 'Session ID (sid) is required.' };
 
     try {
-        // Step 1: Check if a customer with the same email already exists
-        const emailExistsResult = await fetchFromErpNext({
-            sid,
-            doctype: 'Customer',
-            filters: [['email_id', '=', customerData.email]],
-            fields: ['name']
-        });
-        
-        // @ts-ignore
-        if (emailExistsResult.success && emailExistsResult.data?.length > 0) {
-            return { success: false, error: `A customer with email "${customerData.email}" already exists.` };
+        if(customerData.customer_primary_email) {
+            const emailExistsResult = await fetchFromErpNext<{name: string}[]>({
+                sid,
+                doctype: 'Customer',
+                filters: [['customer_primary_email', '=', customerData.customer_primary_email]],
+                fields: ['name']
+            });
+            
+            if (emailExistsResult.success && emailExistsResult.data?.length) {
+                return { success: false, error: `A customer with email "${customerData.customer_primary_email}" already exists.` };
+            }
         }
 
-        // Step 2: Prepare data for creating the new customer
         const dataToPost = {
             ...customerData,
             customer_group: 'All Customer Groups', // Default group
@@ -58,4 +58,27 @@ export async function createCustomerInErpNext({ sid, customerData }: { sid: stri
     } catch (error: any) {
         return { success: false, error: error.message };
     }
+}
+
+
+export async function getCustomersFromErpNext({ sid }: { sid: string }): Promise<{ success: boolean; data?: Customer[]; error?: string; }> {
+    const result = await fetchFromErpNext<any[]>({ 
+        sid, 
+        doctype: 'Customer', 
+        fields: ['name', 'customer_name', 'customer_type', 'customer_primary_email'] 
+    });
+
+    if (!result.success || !result.data) {
+        return { success: false, error: result.error || 'Failed to get customers.' };
+    }
+    
+    // Transform the raw data to match our Customer type
+    const customers: Customer[] = (result.data as any[]).map(item => ({
+        name: item.name,
+        customer_name: item.customer_name,
+        customer_type: item.customer_type,
+        customer_primary_email: item.customer_primary_email
+    }));
+
+    return { success: true, data: customers };
 }
