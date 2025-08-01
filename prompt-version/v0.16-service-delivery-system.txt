@@ -4,31 +4,28 @@ This document outlines an ERPNext-first implementation plan for a system allowin
 
 ### **Core Concept: Self-Healing ERPNext DocTypes**
 
-Instead of a manual migration, the application's server actions will be built to be "self-healing." When an action needs a custom DocType (like "Project"), it will first check if it exists. If not, it will programmatically create it and its required fields before retrying the original request.
+Instead of a manual migration, the application's server actions will be built to be "self-healing." When an action needs a custom DocType (like adding fields to the standard "Project" DocType), it will first check if it exists. If not, it will programmatically create it and its required fields before retrying the original request.
 
 ---
 
 ### **Implementation Steps & Progress**
 
 **Phase 1: Admin Project & Invoice Management**
-- [✅] **Create "Project" DocType in ERPNext (Programmatic)**
-  - A new custom DocType in ERPNext for tracking service delivery.
+- [✅] **Programmatically Add Custom Fields to "Project" DocType**
+  - A new helper function `ensureProjectCustomFieldsExist()` will add our required fields to the standard ERPNext "Project" DocType.
   - **Fields**:
-    - `customer`: Link to Customer
     - `service_item`: Link to Item (the service purchased)
-    - `project_name`: Data (e.g., "Web Design for PT Jaya Abadi")
     - `status`: Select (Draft, Awaiting Payment, In Progress, Awaiting Delivery, Completed, Cancelled)
     - `sales_invoice`: Link to Sales Invoice
     - `service_management_url`: Data (e.g., URL to the admin-side web builder)
     - `final_service_url`: Data (e.g., URL to the client's live website)
     - `credential_setup_url`: Data (Secure, one-time setup URL)
     - `delivery_date`: Datetime
-  - This will be provisioned by a `ensureProjectDocTypeExists()` helper function.
 
 - [✅] **Admin UI: Project List Page (`/admin/projects`)**
 - [✅] **Admin UI: Project Creation Form (`/admin/projects/new`)**
   - [✅] Ability to select existing customers.
-  - [✅] Ability to create a new customer if they don't exist.
+  - [✅] Ability to create a new customer if they don't exist in ERPNext via a dialog.
 
 - [⌛] **Admin UI: Project Detail Page (`/admin/projects/[id]`)**
   - Displays all data for a single "Project" document.
@@ -48,7 +45,7 @@ Instead of a manual migration, the application's server actions will be built to
     - Find the corresponding "Project" document.
     - Update the "Project" status to `In Progress`.
     - Send a confirmation email to the client: "Thank you for your payment. We have started working on your project."
-    - Create a new `User` in ERPNext using the Customer's email.
+    - Create a new `User` in ERPNext using the Customer's email if one doesn't already exist.
 
 - [ ] **Admin UI: Project Detail Page Updates**
   - When a project is `In Progress`, the admin can input the `service_management_url` (where they are building the website).

@@ -9,7 +9,7 @@ const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 interface NewCustomerData {
     customer_name: string;
     customer_type: 'Company' | 'Individual';
-    customer_primary_email?: string;
+    email_id?: string;
 }
 
 export async function createCustomerInErpNext({ sid, customerData }: { sid: string; customerData: NewCustomerData }): Promise<{ success: boolean; name?: string; error?: string }> {
@@ -17,16 +17,16 @@ export async function createCustomerInErpNext({ sid, customerData }: { sid: stri
     if (!sid) return { success: false, error: 'Session ID (sid) is required.' };
 
     try {
-        if(customerData.customer_primary_email) {
+        if(customerData.email_id) {
             const emailExistsResult = await fetchFromErpNext<{name: string}[]>({
                 sid,
                 doctype: 'Customer',
-                filters: [['customer_primary_email', '=', customerData.customer_primary_email]],
+                filters: [['email_id', '=', customerData.email_id]],
                 fields: ['name']
             });
             
             if (emailExistsResult.success && emailExistsResult.data?.length) {
-                return { success: false, error: `A customer with email "${customerData.customer_primary_email}" already exists.` };
+                return { success: false, error: `A customer with email "${customerData.email_id}" already exists.` };
             }
         }
 
@@ -65,7 +65,7 @@ export async function getCustomersFromErpNext({ sid }: { sid: string }): Promise
     const result = await fetchFromErpNext<any[]>({ 
         sid, 
         doctype: 'Customer', 
-        fields: ['name', 'customer_name', 'customer_type', 'customer_primary_email'] 
+        fields: ['name', 'customer_name', 'customer_type', 'email_id'] 
     });
 
     if (!result.success || !result.data) {
@@ -77,7 +77,7 @@ export async function getCustomersFromErpNext({ sid }: { sid: string }): Promise
         name: item.name,
         customer_name: item.customer_name,
         customer_type: item.customer_type,
-        customer_primary_email: item.customer_primary_email
+        email_id: item.email_id
     }));
 
     return { success: true, data: customers };

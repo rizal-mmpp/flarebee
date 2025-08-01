@@ -26,7 +26,7 @@ const newCustomerSchema = z.object({
   customer_type: z.enum(['Company', 'Individual'], {
     errorMap: () => ({ message: 'Please select a customer type.' }),
   }),
-  customer_primary_email: z.string().email('Invalid email address.').optional().or(z.literal('')),
+  email_id: z.string().email('Invalid email address.').optional().or(z.literal('')),
 });
 type NewCustomerFormValues = z.infer<typeof newCustomerSchema>;
 
@@ -37,7 +37,7 @@ export function NewCustomerDialog({ isOpen, onOpenChange, onSuccess }: NewCustom
 
   const { control, register, handleSubmit, reset, formState: { errors } } = useForm<NewCustomerFormValues>({
     resolver: zodResolver(newCustomerSchema),
-    defaultValues: { customer_type: 'Company', customer_primary_email: '' },
+    defaultValues: { customer_type: 'Company', email_id: '' },
   });
 
   const handleCreateCustomer: SubmitHandler<NewCustomerFormValues> = async (data) => {
@@ -98,8 +98,8 @@ export function NewCustomerDialog({ isOpen, onOpenChange, onSuccess }: NewCustom
             </div>
             <div>
               <Label htmlFor="email">Email Id</Label>
-              <Input id="email" type="email" {...register('customer_primary_email')} className="mt-1" placeholder="e.g., contact@company.com" />
-              {errors.customer_primary_email && <p className="text-sm text-destructive mt-1">{errors.customer_primary_email.message}</p>}
+              <Input id="email" type="email" {...register('email_id')} className="mt-1" placeholder="e.g., contact@company.com" />
+              {errors.email_id && <p className="text-sm text-destructive mt-1">{errors.email_id.message}</p>}
             </div>
           </div>
           <DialogFooter>

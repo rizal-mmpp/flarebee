@@ -158,7 +158,7 @@ export interface Customer {
     name: string; // This is the unique ID from ERPNext, e.g., CUST-00001
     customer_name: string;
     customer_type: 'Company' | 'Individual';
-    customer_primary_email?: string | null;
+    email_id?: string | null;
 }
 
 export interface CartItem {
