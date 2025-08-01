@@ -1,0 +1,81 @@
+# Plan for B2B Service Delivery System (v0.16)
+
+This document outlines the implementation plan for a system allowing admins to create projects for clients and deliver the final service via email.
+
+---
+
+### **Phase 1: Foundation with Firebase & Dummy Data**
+
+This phase focuses on building the complete user experience using the existing Firebase backend. This allows for rapid development and testing of the core functionality.
+
+**1. Data Models (`src/lib/types.ts`)**
+- Define a new `Project` type to track service delivery.
+- **`Project` type:**
+  - `id`: string (auto-generated)
+  - `clientId`: string (references a `UserProfile` UID)
+  - `clientName`: string
+  - `clientEmail`: string
+  - `serviceId`: string (references a `Service`)
+  - `serviceName`: string
+  - `status`: 'Pending' | 'InProgress' | 'AwaitingDelivery' | 'Completed' | 'Cancelled'
+  - `managementUrl`: string (e.g., URL to the client's live website or management dashboard)
+  - `credentials`: object (e.g., `{ username: string, setupUrl: string }`) - *Note: For security, we will generate a secure, one-time setup URL rather than storing passwords.*
+  - `deliveryDate`: Date | null
+  - `createdAt`: Date
+
+**2. Admin Panel UI**
+- **Project List (`/admin/projects`)**:
+    - A new page displaying a data table of all created projects.
+    - Columns: Project Name (Service + Client), Client, Status, Created Date, Actions.
+    - Ability to filter by status and search by client or service.
+- **Project Creation Form (`/admin/projects/new`)**:
+    - A form for admins to create a new project.
+    - Fields:
+        - Select Client (from existing `UserProfile` list).
+        - Select Service (from existing `Service` list).
+        - Set initial `status` (defaults to 'Pending').
+- **Project Detail/Edit Page (`/admin/projects/[id]`)**:
+    - A page to view and update an existing project's details.
+    - Admins can update the `status`.
+    - **Key Feature**: A dedicated "Deliver Project" section appears when status is 'AwaitingDelivery'.
+        - Fields for `managementUrl` and `credentialSetupUrl`.
+        - A "Send Delivery Email" button.
+
+**3. Server Actions & Logic (`src/lib/actions/project.actions.ts`)**
+- `createProject(data)`: Creates a new project document in a `projects` collection in Firestore.
+- `updateProjectStatus(projectId, status)`: Updates the status of a project.
+- `deliverProject(projectId, deliveryData)`:
+    - Updates the project with `managementUrl` and `credentials`.
+    - Changes status to 'Completed'.
+    - **Triggers a simulated email** (logs to console or uses a service like Resend) containing the delivery details.
+    - Sets the `deliveryDate`.
+
+**4. Client Dashboard UI (`/dashboard/my-projects`)**
+- A new page for logged-in clients to see their purchased/delivered projects.
+- Displays a list of their projects with links to the `managementUrl`.
+
+---
+
+### **Phase 2: Migration to ERPNext**
+
+This phase involves migrating the project data and logic to use ERPNext as the single source of truth, replacing the Firebase `projects` collection.
+
+**1. ERPNext Customization**
+- Create a new "Project" DocType in ERPNext with fields matching the `Project` type defined in Phase 1.
+- This DocType will link to "Customer" (the client) and "Item" (the service).
+
+**2. Data Migration**
+- Create a migration script (`/admin/migration`) to move all existing projects from the Firebase `projects` collection to the new "Project" DocType in ERPNext.
+- This will be a one-time operation.
+
+**3. Refactor Server Actions**
+- Rewrite all functions in `src/lib/actions/project.actions.ts` to interact with the ERPNext API instead of Firestore.
+  - `getProjectById` will fetch from ERPNext.
+  - `createProject` will create a new "Project" document in ERPNext.
+  - `updateProjectStatus` will update the "Project" document's status field.
+  - `deliverProject` will update the relevant fields in the ERPNext "Project" document and then trigger the email.
+
+**4. Update UI Components**
+- The Admin and Client Dashboard UI components built in Phase 1 will be updated to use the new ERPNext-powered server actions. The user interface itself should require minimal changes.
+
+By following this two-phase plan, we can build and validate the entire feature quickly before integrating it fully with the more complex ERPNext backend.
