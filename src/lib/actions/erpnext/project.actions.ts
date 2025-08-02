@@ -11,7 +11,6 @@ const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 const customFieldsForProject = [
     { fieldname: 'customer', fieldtype: 'Link', options: 'Customer', label: 'Customer', reqd: 1, insert_after: 'company' },
     { fieldname: 'service_item', fieldtype: 'Link', options: 'Item', label: 'Service Item', reqd: 1, insert_after: 'customer' },
-    // Status is a standard field, so we no longer define it here. We set it on creation.
     { fieldname: 'sales_invoice', fieldtype: 'Link', options: 'Sales Invoice', label: 'Sales Invoice', insert_after: 'status' },
     { fieldname: 'service_management_url', fieldtype: 'Data', label: 'Service Management URL', insert_after: 'sales_invoice' },
     { fieldname: 'final_service_url', fieldtype: 'Data', label: 'Final Service URL', insert_after: 'service_management_url' },
@@ -134,6 +133,40 @@ export async function getProjectByName({ sid, projectName }: { sid: string; proj
     const project: Project = transformErpProject(result.data);
     return { success: true, data: project };
 }
+
+export async function updateProject({ sid, projectName, projectData }: { sid: string; projectName: string; projectData: { project_name: string } }): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Project/${projectName}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
+      body: JSON.stringify(projectData),
+    });
+    const responseData = await response.json();
+    if (!response.ok) {
+      throw new Error(responseData.exception || responseData._server_messages || 'Failed to update project in ERPNext.');
+    }
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deleteProject({ sid, projectName }: { sid: string; projectName: string }): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Project/${projectName}`, {
+      method: 'DELETE',
+      headers: { 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.exception || errorData._server_messages || 'Failed to delete project from ERPNext.');
+    }
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
 
 // Action to create and send invoice
 export async function createAndSendInvoice({ sid, projectName }: { sid: string; projectName: string }): Promise<{ success: boolean; invoiceName?: string; error?: string }> {
