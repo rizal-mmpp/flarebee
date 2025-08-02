@@ -150,7 +150,7 @@ export default function ProjectDetailPage() {
     );
   }
 
-  const canCreateInvoice = project.status === 'Draft' && !project.sales_invoice;
+  const canCreateInvoice = !project.sales_invoice;
 
   return (
     <div className="space-y-6">
@@ -212,9 +212,7 @@ export default function ProjectDetailPage() {
           </Button>
            {!canCreateInvoice && (
             <p className="text-xs text-muted-foreground">
-              {project.sales_invoice 
-                ? "An invoice already exists for this project." 
-                : 'Project must be in "Draft" status to create an invoice.'}
+              An invoice already exists for this project.
             </p>
           )}
         </CardFooter>

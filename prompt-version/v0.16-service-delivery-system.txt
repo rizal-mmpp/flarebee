@@ -1,3 +1,4 @@
+
 # Plan for B2B Service Delivery System (v0.16) - ERPNext-First Approach
 
 This document outlines an ERPNext-first implementation plan for a system allowing admins to create projects for clients, send invoices, and deliver the final service via email. This approach ensures all data lives in ERPNext from the start.
@@ -14,13 +15,13 @@ Instead of a manual migration, the application's server actions will be built to
 - [✅] **Programmatically Add Custom Fields to "Project" DocType**
   - A helper function `ensureProjectCustomFieldsExist()` adds required fields (`service_item`, `status`, `sales_invoice`, etc.) to the standard ERPNext "Project" DocType.
 
-- [✅] **Admin UI: Project List Page (`/admin/projects`)**
-  - A data table that fetches and displays all "Project" documents from ERPNext.
-
 - [✅] **Admin UI: Project Creation Form (`/admin/projects/new`)**
   - A form for creating a new project.
   - Ability to select existing customers from ERPNext.
   - Ability to create a new customer in ERPNext via a dialog if they don't exist.
+
+- [✅] **Admin UI: Project List Page (`/admin/projects`)**
+  - A data table that fetches and displays all "Project" documents from ERPNext.
 
 - [✅] **Admin UI: Project Detail Page (`/admin/projects/[id]`)**
   - Displays all data for a single "Project" document in a read-only view.
@@ -32,7 +33,7 @@ Instead of a manual migration, the application's server actions will be built to
 
 - [✅] **Action: Create & Send Invoice**
   - **Goal**: Implement the logic for the "Create & Send Invoice" button on the Project Detail Page.
-  - **Workflow Logic**: This button is only enabled when the Project `status` is "Draft". This is a business rule to prevent creating multiple invoices for a single project. Once an invoice is created, the project's state changes, disabling this action. This ensures a clean, one-project-one-invoice flow.
+  - **Workflow Logic**: This button is only enabled when the project's `sales_invoice` field is empty. This prevents creating multiple invoices for a single project. Once an invoice is created and linked, the project's state changes, disabling this action. This ensures a clean, one-project-one-invoice flow.
   - **Implementation Steps**:
     - Create a new `Sales Invoice` document in ERPNext linked to the project's customer and service item.
     - Set the `Sales Invoice` status to `Unpaid`.
@@ -70,4 +71,3 @@ Instead of a manual migration, the application's server actions will be built to
   - It fetches all "Project" documents linked to the current user.
   - Displays a list of their projects (e.g., "Website for PT Jaya Abadi").
   - For `Completed` projects, it shows a link to the `final_service_url` and a link to manage their service within the dashboard.
-

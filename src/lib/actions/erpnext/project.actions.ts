@@ -178,9 +178,6 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
     }
     const project = projectResult.data;
 
-    if (project.status !== 'Draft') {
-      return { success: false, error: `Project status must be 'Draft' to create an invoice. Current status: ${project.status}` };
-    }
     if (project.sales_invoice) {
         return { success: false, error: `An invoice (${project.sales_invoice}) already exists for this project.` };
     }
