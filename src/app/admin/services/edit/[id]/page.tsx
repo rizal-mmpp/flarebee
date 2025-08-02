@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
@@ -99,7 +100,7 @@ export default function EditServicePage() {
             </div>
           ),
           variant: "destructive",
-          duration: Infinity, 
+          duration: 15000, 
         });
       } else {
         toast({

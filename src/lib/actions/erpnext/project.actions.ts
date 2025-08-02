@@ -78,7 +78,7 @@ export async function createProject({ sid, projectData }: { sid: string, project
 
     const dataToPost = {
       ...projectData,
-      status: 'Draft', 
+      status: 'Open', // ERPNext defaults to open, we'll set it explicitly
     };
 
     await postRequest('/api/resource/Project', dataToPost, sid);
@@ -94,6 +94,7 @@ function transformErpProject(erpProject: any): Project {
   return {
     name: erpProject.name,
     customer: erpProject.customer,
+    company: erpProject.company, // Include company
     service_item: erpProject.service_item,
     project_name: erpProject.project_name,
     status: erpProject.status,
@@ -198,13 +199,13 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
     // 2. Create Sales Invoice
     const invoicePayload = {
       customer: project.customer,
+      company: project.company, // Add the company field
       items: [{
         item_code: item.name,
         qty: 1,
         rate: item.standard_rate || 0,
       }],
-      // Other fields as needed, e.g., due_date
-      due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], // 7 days from now
+      due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0],
     };
     
     const invoiceCreationResponse = await postRequest('/api/resource/Sales Invoice', invoicePayload, sid);

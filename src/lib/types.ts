@@ -353,6 +353,7 @@ export interface ContactFormValues {
 export interface Project {
     name: string; // doc name
     customer: string;
+    company: string; // Add company
     service_item: string;
     project_name: string;
     status: 'Draft' | 'Awaiting Payment' | 'In Progress' | 'Awaiting Delivery' | 'Completed' | 'Cancelled';

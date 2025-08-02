@@ -245,7 +245,7 @@ export default function ProjectDetailPage() {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-xl">Customer Details</CardTitle>
-                    <Button variant="ghost" size="icon" disabled>
+                    <Button variant="outline" size="icon" disabled>
                         <Edit className="h-4 w-4" />
                         <span className="sr-only">Edit Customer</span>
                     </Button>
