@@ -7,12 +7,13 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, ServerCrash, Package, CalendarDays, User, Tag, Hash, CreditCard, ExternalLink, Settings, Briefcase, Mail } from 'lucide-react';
+import { ArrowLeft, Loader2, ServerCrash, Package, CalendarDays, User, Tag, Hash, CreditCard, ExternalLink, Settings, Briefcase, Mail, Phone, Building, Edit } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 import { getProjectByName, createAndSendInvoice } from '@/lib/actions/erpnext/project.actions';
-import type { Project } from '@/lib/types';
+import { getCustomerByName } from '@/lib/actions/erpnext/customer.actions';
+import type { Project, Customer } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 
@@ -55,38 +56,50 @@ export default function ProjectDetailPage() {
   const { erpSid } = useCombinedAuth();
 
   const [project, setProject] = useState<Project | null>(null);
+  const [customer, setCustomer] = useState<Customer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCreatingInvoice, startInvoiceTransition] = useTransition();
 
-  const fetchProject = async () => {
+  const fetchProjectAndCustomer = useCallback(async () => {
     if (!projectId || !erpSid) return;
     setIsLoading(true);
     setError(null);
     try {
-      const result = await getProjectByName({ sid: erpSid, projectName: projectId });
-      if (result.success && result.data) {
-        setProject(result.data);
+      const projectResult = await getProjectByName({ sid: erpSid, projectName: projectId });
+      if (projectResult.success && projectResult.data) {
+        setProject(projectResult.data);
+        // Now fetch the customer
+        const customerResult = await getCustomerByName({ sid: erpSid, customerName: projectResult.data.customer });
+         if (customerResult.success && customerResult.data) {
+            setCustomer(customerResult.data);
+        } else {
+            toast({
+                title: 'Could Not Fetch Customer',
+                description: customerResult.error || 'The linked customer could not be found.',
+                variant: 'destructive',
+            });
+        }
       } else {
-        setError(result.error || 'Project not found.');
+        setError(projectResult.error || 'Project not found.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch project details:', err);
-      setError('Failed to load project details. Please try again.');
+      setError(err.message || 'Failed to load project details. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [projectId, erpSid, toast]);
 
 
   useEffect(() => {
     if (projectId && erpSid) {
-      fetchProject();
+      fetchProjectAndCustomer();
     } else if (!erpSid) {
         setError('Not authenticated with ERPNext.');
         setIsLoading(false);
     }
-  }, [projectId, erpSid]);
+  }, [projectId, erpSid, fetchProjectAndCustomer]);
 
   const handleCreateInvoice = () => {
     if (!project || !erpSid) return;
@@ -98,7 +111,7 @@ export default function ProjectDetailPage() {
           title: 'Invoice Created & Sent',
           description: `Invoice ${result.invoiceName} has been created and an email has been sent.`,
         });
-        await fetchProject(); // Re-fetch project to update its status and invoice link
+        await fetchProjectAndCustomer(); 
       } else {
         toast({
           title: 'Error',
@@ -168,55 +181,84 @@ export default function ProjectDetailPage() {
           Back to Projects
         </Button>
       </div>
-
-       <Card>
-        <CardHeader>
-          <CardTitle className="text-xl">Project Summary</CardTitle>
-           <CardDescription>
-            Created on {format(new Date(project.creation), "PPp")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <InfoRow label="Status" icon={Tag} value={<Badge variant="outline" className={cn("capitalize text-sm", getStatusBadgeVariant(project.status || 'open'))}>{project.status || 'Open'}</Badge>} />
-            <InfoRow label="Customer" icon={User} value={project.customer} />
-            <InfoRow label="Service Item" icon={Briefcase} value={project.service_item} />
-        </CardContent>
-      </Card>
       
-       <Card>
-        <CardHeader>
-          <CardTitle className="text-xl">Invoicing & Delivery</CardTitle>
-          <CardDescription>Manage the billing and delivery process for this project.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <InfoRow label="Sales Invoice" icon={CreditCard}>
-               {project.sales_invoice ? (
-                  <Button variant="link" asChild className="p-0 h-auto font-medium">
-                      <Link href={`/admin/orders/${project.sales_invoice}`} target="_blank" rel="noopener noreferrer">
-                         {project.sales_invoice} <ExternalLink className="ml-2 h-3.5 w-3.5" />
-                      </Link>
-                  </Button>
-              ) : (
-                <p className="text-sm text-muted-foreground italic">No invoice created yet.</p>
-              )}
-            </InfoRow>
+       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="lg:col-span-2 space-y-6">
+            <Card>
+                <CardHeader>
+                <CardTitle className="text-xl">Project Summary</CardTitle>
+                <CardDescription>
+                    Created on {format(new Date(project.creation), "PPp")}
+                </CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <InfoRow label="Status" icon={Tag} value={<Badge variant="outline" className={cn("capitalize text-sm", getStatusBadgeVariant(project.status || 'open'))}>{project.status || 'Open'}</Badge>} />
+                    <InfoRow label="Customer" icon={User} value={project.customer} />
+                    <InfoRow label="Service Item" icon={Briefcase} value={project.service_item} />
+                </CardContent>
+            </Card>
+            
+            <Card>
+                <CardHeader>
+                <CardTitle className="text-xl">Invoicing & Delivery</CardTitle>
+                <CardDescription>Manage the billing and delivery process for this project.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <InfoRow label="Sales Invoice" icon={CreditCard}>
+                    {project.sales_invoice ? (
+                        <Button variant="link" asChild className="p-0 h-auto font-medium">
+                            <Link href={`/admin/orders/${project.sales_invoice}`} target="_blank" rel="noopener noreferrer">
+                                {project.sales_invoice} <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                            </Link>
+                        </Button>
+                    ) : (
+                        <p className="text-sm text-muted-foreground italic">No invoice created yet.</p>
+                    )}
+                    </InfoRow>
 
-             <InfoRow label="Service Management URL" icon={Settings} value={project.service_management_url || <span className="text-sm text-muted-foreground italic">Not set</span>} />
-             <InfoRow label="Final Service URL" icon={ExternalLink} value={project.final_service_url || <span className="text-sm text-muted-foreground italic">Not set</span>} />
-             <InfoRow label="Delivery Date" icon={CalendarDays} value={project.delivery_date ? format(new Date(project.delivery_date), "PPp") : <span className="text-sm text-muted-foreground italic">Not delivered</span>} />
-        </CardContent>
-         <CardFooter className="flex items-center gap-4 bg-muted/50 p-4 rounded-b-xl">
-          <Button onClick={handleCreateInvoice} disabled={!canCreateInvoice || isCreatingInvoice} className="bg-primary/90 text-primary-foreground hover:bg-primary">
-            {isCreatingInvoice ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
-            Create & Send Invoice
-          </Button>
-           {!canCreateInvoice && (
-            <p className="text-xs text-muted-foreground">
-              An invoice already exists for this project.
-            </p>
-          )}
-        </CardFooter>
-      </Card>
+                    <InfoRow label="Service Management URL" icon={Settings} value={project.service_management_url || <span className="text-sm text-muted-foreground italic">Not set</span>} />
+                    <InfoRow label="Final Service URL" icon={ExternalLink} value={project.final_service_url || <span className="text-sm text-muted-foreground italic">Not set</span>} />
+                    <InfoRow label="Delivery Date" icon={CalendarDays} value={project.delivery_date ? format(new Date(project.delivery_date), "PPp") : <span className="text-sm text-muted-foreground italic">Not delivered</span>} />
+                </CardContent>
+                <CardFooter className="flex items-center gap-4 bg-muted/50 p-4 rounded-b-xl">
+                <Button onClick={handleCreateInvoice} disabled={!canCreateInvoice || isCreatingInvoice} className="bg-primary/90 text-primary-foreground hover:bg-primary">
+                    {isCreatingInvoice ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+                    Create & Send Invoice
+                </Button>
+                {!canCreateInvoice && (
+                    <p className="text-xs text-muted-foreground">
+                    An invoice already exists for this project.
+                    </p>
+                )}
+                </CardFooter>
+            </Card>
+        </div>
+        
+        <div className="lg:col-span-1">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-xl">Customer Details</CardTitle>
+                    <Button variant="ghost" size="icon" disabled>
+                        <Edit className="h-4 w-4" />
+                        <span className="sr-only">Edit Customer</span>
+                    </Button>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {customer ? (
+                        <>
+                            <InfoRow label="Name" icon={User} value={customer.customer_name} />
+                            <InfoRow label="Email" icon={Mail} value={customer.email_id || <span className="text-muted-foreground italic">Not set</span>} />
+                            <InfoRow label="Phone / WhatsApp" icon={Phone} value={customer.mobile_no || <span className="text-muted-foreground italic">Not set</span>} />
+                            <InfoRow label="Type" icon={Building} value={customer.customer_type} />
+                        </>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">Loading customer info...</p>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+
+       </div>
     </div>
   );
 }

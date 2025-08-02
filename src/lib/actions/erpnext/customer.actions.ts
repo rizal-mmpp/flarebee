@@ -83,3 +83,26 @@ export async function getCustomersFromErpNext({ sid }: { sid: string }): Promise
 
     return { success: true, data: customers };
 }
+
+
+export async function getCustomerByName({ sid, customerName }: { sid: string; customerName: string; }): Promise<{ success: boolean; data?: Customer; error?: string; }> {
+    const result = await fetchFromErpNext<any>({ 
+        sid, 
+        doctype: 'Customer', 
+        docname: customerName,
+        fields: ['name', 'customer_name', 'customer_type', 'email_id', 'mobile_no']
+    });
+    if (!result.success || !result.data) {
+        return { success: false, error: result.error || 'Failed to get Customer.' };
+    }
+    
+    const customer: Customer = {
+        name: result.data.name,
+        customer_name: result.data.customer_name,
+        customer_type: result.data.customer_type,
+        email_id: result.data.email_id,
+        mobile_no: result.data.mobile_no,
+    };
+
+    return { success: true, data: customer };
+}
