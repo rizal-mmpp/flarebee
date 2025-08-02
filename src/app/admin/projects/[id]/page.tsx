@@ -27,6 +27,7 @@ const getStatusBadgeVariant = (status?: string) => {
       return 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30';
     case 'cancelled':
       return 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30';
+    case 'open':
     case 'draft':
     default:
       return 'bg-muted text-muted-foreground border-border';
@@ -172,11 +173,11 @@ export default function ProjectDetailPage() {
         <CardHeader>
           <CardTitle className="text-xl">Project Summary</CardTitle>
            <CardDescription>
-            Created on {format(new Date(project.creation), "PPPp")}
+            Created on {format(new Date(project.creation), "PPp")}
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <InfoRow label="Status" icon={Tag} value={<Badge variant="outline" className={cn("capitalize text-sm", getStatusBadgeVariant(project.status))}>{project.status}</Badge>} />
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <InfoRow label="Status" icon={Tag} value={<Badge variant="outline" className={cn("capitalize text-sm", getStatusBadgeVariant(project.status || 'open'))}>{project.status || 'Open'}</Badge>} />
             <InfoRow label="Customer" icon={User} value={project.customer} />
             <InfoRow label="Service Item" icon={Briefcase} value={project.service_item} />
         </CardContent>
@@ -187,8 +188,7 @@ export default function ProjectDetailPage() {
           <CardTitle className="text-xl">Invoicing & Delivery</CardTitle>
           <CardDescription>Manage the billing and delivery process for this project.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <InfoRow label="Sales Invoice" icon={CreditCard}>
                {project.sales_invoice ? (
                   <Button variant="link" asChild className="p-0 h-auto font-medium">
@@ -203,16 +203,15 @@ export default function ProjectDetailPage() {
 
              <InfoRow label="Service Management URL" icon={Settings} value={project.service_management_url || <span className="text-sm text-muted-foreground italic">Not set</span>} />
              <InfoRow label="Final Service URL" icon={ExternalLink} value={project.final_service_url || <span className="text-sm text-muted-foreground italic">Not set</span>} />
-             <InfoRow label="Delivery Date" icon={CalendarDays} value={project.delivery_date ? format(new Date(project.delivery_date), "PPPp") : <span className="text-sm text-muted-foreground italic">Not delivered</span>} />
-          </div>
+             <InfoRow label="Delivery Date" icon={CalendarDays} value={project.delivery_date ? format(new Date(project.delivery_date), "PPp") : <span className="text-sm text-muted-foreground italic">Not delivered</span>} />
         </CardContent>
-         <CardFooter className="border-t pt-6">
-          <Button onClick={handleCreateInvoice} disabled={!canCreateInvoice || isCreatingInvoice}>
+         <CardFooter className="flex items-center gap-4 bg-muted/50 p-4 rounded-b-xl">
+          <Button onClick={handleCreateInvoice} disabled={!canCreateInvoice || isCreatingInvoice} className="bg-primary/90 text-primary-foreground hover:bg-primary">
             {isCreatingInvoice ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
             Create & Send Invoice
           </Button>
            {!canCreateInvoice && (
-            <p className="text-xs text-muted-foreground ml-4">
+            <p className="text-xs text-muted-foreground">
               {project.sales_invoice 
                 ? "An invoice already exists for this project." 
                 : 'Project must be in "Draft" status to create an invoice.'}
@@ -220,7 +219,6 @@ export default function ProjectDetailPage() {
           )}
         </CardFooter>
       </Card>
-
     </div>
   );
 }
