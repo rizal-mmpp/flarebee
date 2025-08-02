@@ -70,3 +70,4 @@ Instead of a manual migration, the application's server actions will be built to
   - It fetches all "Project" documents linked to the current user.
   - Displays a list of their projects (e.g., "Website for PT Jaya Abadi").
   - For `Completed` projects, it shows a link to the `final_service_url` and a link to manage their service within the dashboard.
+
