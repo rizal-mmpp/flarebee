@@ -26,22 +26,21 @@ Instead of a manual migration, the application's server actions will be built to
   - Displays all data for a single "Project" document in a read-only view.
 
 **Phase 2: Invoicing & Payment**
-- [ ] **Setup: Email Notification System**
-  - Before invoices can be sent, an email delivery system must be configured.
-  - This could involve setting up an email service (like Resend, SendGrid) or using a workflow automation tool like **n8n** to handle email triggers from ERPNext or our app.
-  - This system will be used for sending invoices, payment confirmations, and the final service delivery email.
+- [✅] **Setup: Email Notification System**
+  - **Why this is needed:** To programmatically send emails for invoices, payment confirmations, and final delivery, we need an email transaction service.
+  - **Implementation:** We've integrated the `node-mailjet` library and created an email service. API keys must be set in the `.env` file.
 
-- [⌛] **Action: Create & Send Invoice**
+- [✅] **Action: Create & Send Invoice**
   - **Goal**: Implement the logic for the "Create & Send Invoice" button on the Project Detail Page.
-  - **Workflow Logic**: This button is only enabled when the Project `status` is "Draft". This is a business rule to prevent creating multiple invoices for a single project. Once an invoice is created, the project's state changes, disabling this action.
+  - **Workflow Logic**: This button is only enabled when the Project `status` is "Draft". This is a business rule to prevent creating multiple invoices for a single project. Once an invoice is created, the project's state changes, disabling this action. This ensures a clean, one-project-one-invoice flow.
   - **Implementation Steps**:
     - Create a new `Sales Invoice` document in ERPNext linked to the project's customer and service item.
     - Set the `Sales Invoice` status to `Unpaid`.
     - Link the new `Sales Invoice` back to the `Project` document (update the `sales_invoice` field).
     - Update the `Project` status to `Awaiting Payment`.
-    - Trigger an email to the client (using the system from the step above) containing the invoice details and a payment link.
+    - Trigger an email to the client (using the system from the step above) containing the invoice details.
 
-- [ ] **Webhook for Payment Success**
+- [⌛] **Webhook for Payment Success**
   - Update the Xendit webhook to handle `Sales Invoice` payments.
   - When a `Sales Invoice` is paid, the webhook should:
     - Update the `Sales Invoice` status to `Paid`.

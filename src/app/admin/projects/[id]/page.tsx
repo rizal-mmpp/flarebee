@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -11,8 +11,9 @@ import { ArrowLeft, Loader2, ServerCrash, Package, CalendarDays, User, Tag, Hash
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
-import { getProjectByName } from '@/lib/actions/erpnext/project.actions';
+import { getProjectByName, createAndSendInvoice } from '@/lib/actions/erpnext/project.actions';
 import type { Project } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 
 const getStatusBadgeVariant = (status?: string) => {
@@ -48,38 +49,65 @@ const InfoRow = ({ label, value, icon: Icon, children }: { label: string, value?
 export default function ProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   const projectId = params.id as string;
   const { erpSid } = useCombinedAuth();
 
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isCreatingInvoice, startInvoiceTransition] = useTransition();
+
+  const fetchProject = async () => {
+    if (!projectId || !erpSid) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await getProjectByName({ sid: erpSid, projectName: projectId });
+      if (result.success && result.data) {
+        setProject(result.data);
+      } else {
+        setError(result.error || 'Project not found.');
+      }
+    } catch (err) {
+      console.error('Failed to fetch project details:', err);
+      setError('Failed to load project details. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   useEffect(() => {
     if (projectId && erpSid) {
-      setIsLoading(true);
-      setError(null);
-      getProjectByName({ sid: erpSid, projectName: projectId })
-        .then((result) => {
-          if (result.success && result.data) {
-            setProject(result.data);
-          } else {
-            setError(result.error || 'Project not found.');
-          }
-        })
-        .catch((err) => {
-          console.error('Failed to fetch project details:', err);
-          setError('Failed to load project details. Please try again.');
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
+      fetchProject();
     } else if (!erpSid) {
         setError('Not authenticated with ERPNext.');
         setIsLoading(false);
     }
   }, [projectId, erpSid]);
 
+  const handleCreateInvoice = () => {
+    if (!project || !erpSid) return;
+    
+    startInvoiceTransition(async () => {
+      const result = await createAndSendInvoice({ sid: erpSid, projectName: project.name });
+      if (result.success) {
+        toast({
+          title: 'Invoice Created & Sent',
+          description: `Invoice ${result.invoiceName} has been created and an email has been sent.`,
+        });
+        await fetchProject(); // Re-fetch project to update its status and invoice link
+      } else {
+        toast({
+          title: 'Error',
+          description: result.error || 'Failed to create and send invoice.',
+          variant: 'destructive',
+        });
+      }
+    });
+  };
+  
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-15rem)]">
@@ -179,8 +207,8 @@ export default function ProjectDetailPage() {
           </div>
         </CardContent>
          <CardFooter className="border-t pt-6">
-          <Button disabled={!canCreateInvoice}>
-            <Mail className="mr-2 h-4 w-4" />
+          <Button onClick={handleCreateInvoice} disabled={!canCreateInvoice || isCreatingInvoice}>
+            {isCreatingInvoice ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
             Create & Send Invoice
           </Button>
            {!canCreateInvoice && (
@@ -196,4 +224,3 @@ export default function ProjectDetailPage() {
     </div>
   );
 }
-

@@ -2,8 +2,9 @@
 'use server';
 
 import type { ProjectFormValues } from '@/app/admin/projects/new/page';
-import type { Project } from '@/lib/types';
+import type { Project, Customer } from '@/lib/types';
 import { fetchFromErpNext } from './utils';
+import { sendEmail } from '@/lib/services/email.service';
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
@@ -132,4 +133,86 @@ export async function getProjectByName({ sid, projectName }: { sid: string; proj
     }
     const project: Project = transformErpProject(result.data);
     return { success: true, data: project };
+}
+
+// Action to create and send invoice
+export async function createAndSendInvoice({ sid, projectName }: { sid: string; projectName: string }): Promise<{ success: boolean; invoiceName?: string; error?: string }> {
+  try {
+    // 1. Fetch Project and related Item/Customer data
+    const projectResult = await getProjectByName({ sid, projectName });
+    if (!projectResult.success || !projectResult.data) {
+      throw new Error(projectResult.error || "Project not found.");
+    }
+    const project = projectResult.data;
+
+    if (project.status !== 'Draft') {
+      return { success: false, error: `Project status must be 'Draft' to create an invoice. Current status: ${project.status}` };
+    }
+    if (project.sales_invoice) {
+        return { success: false, error: `An invoice (${project.sales_invoice}) already exists for this project.` };
+    }
+    
+    const itemResult = await fetchFromErpNext<any>({ sid, doctype: 'Item', docname: project.service_item });
+    if (!itemResult.success || !itemResult.data) {
+      throw new Error("Service item details could not be fetched.");
+    }
+
+    const customerResult = await fetchFromErpNext<Customer>({ sid, doctype: 'Customer', docname: project.customer });
+     if (!customerResult.success || !customerResult.data) {
+      throw new Error("Customer details could not be fetched.");
+    }
+
+    const item = itemResult.data;
+    const customer = customerResult.data;
+
+    // 2. Create Sales Invoice
+    const invoicePayload = {
+      customer: project.customer,
+      items: [{
+        item_code: item.name,
+        qty: 1,
+        rate: item.standard_rate || 0,
+      }],
+      // Other fields as needed, e.g., due_date
+      due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], // 7 days from now
+    };
+    
+    const invoiceCreationResponse = await postRequest('/api/resource/Sales Invoice', invoicePayload, sid);
+    const invoiceName = invoiceCreationResponse.data.name;
+
+    // 3. Update Project status and link to invoice
+    const projectUpdatePayload = {
+      status: 'Awaiting Payment',
+      sales_invoice: invoiceName,
+    };
+    await fetch(`${ERPNEXT_API_URL}/api/resource/Project/${projectName}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
+        body: JSON.stringify(projectUpdatePayload),
+    });
+
+    // 4. Send Email
+    if (customer.email_id) {
+       await sendEmail({
+        to: customer.email_id,
+        subject: `Invoice for Project: ${project.project_name}`,
+        html: `
+            <h1>Invoice for Your Project</h1>
+            <p>Dear ${customer.customer_name},</p>
+            <p>Please find the invoice for your project: <strong>${project.project_name}</strong>.</p>
+            <p>Invoice ID: ${invoiceName}</p>
+            <p>Amount: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.standard_rate || 0)}</p>
+            <p>You can view and pay your invoice through your dashboard.</p>
+            <p>Thank you!</p>
+        `,
+      });
+    } else {
+        console.warn(`Customer ${customer.customer_name} has no email ID. Invoice email was not sent.`);
+    }
+
+    return { success: true, invoiceName };
+
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
 }
