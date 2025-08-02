@@ -11,7 +11,7 @@ const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 const customFieldsForProject = [
     { fieldname: 'customer', fieldtype: 'Link', options: 'Customer', label: 'Customer', reqd: 1, insert_after: 'company' },
     { fieldname: 'service_item', fieldtype: 'Link', options: 'Item', label: 'Service Item', reqd: 1, insert_after: 'customer' },
-    { fieldname: 'status', fieldtype: 'Select', options: 'Draft\nAwaiting Payment\nIn Progress\nAwaiting Delivery\nCompleted\nCancelled', label: 'Status', reqd: 1, default: 'Draft', insert_after: 'service_item'},
+    // Status is a standard field, so we no longer define it here. We set it on creation.
     { fieldname: 'sales_invoice', fieldtype: 'Link', options: 'Sales Invoice', label: 'Sales Invoice', insert_after: 'status' },
     { fieldname: 'service_management_url', fieldtype: 'Data', label: 'Service Management URL', insert_after: 'sales_invoice' },
     { fieldname: 'final_service_url', fieldtype: 'Data', label: 'Final Service URL', insert_after: 'service_management_url' },
