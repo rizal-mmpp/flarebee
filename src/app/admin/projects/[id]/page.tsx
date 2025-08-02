@@ -176,10 +176,17 @@ export default function ProjectDetailPage() {
                 Project ID: <span className="font-mono text-foreground/80">{project.name}</span>
             </p>
         </div>
-        <Button variant="outline" onClick={() => router.push('/admin/projects')} className="w-full sm:w-auto group">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Projects
-        </Button>
+        <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => router.push('/admin/projects')} className="group">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Projects
+            </Button>
+             <Button asChild>
+                <Link href={`/admin/projects/edit/${project.name}`}>
+                    <Edit className="mr-2 h-4 w-4"/> Edit Project
+                </Link>
+            </Button>
+        </div>
       </div>
       
        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
