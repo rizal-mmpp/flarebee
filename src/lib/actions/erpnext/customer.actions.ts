@@ -106,3 +106,32 @@ export async function getCustomerByName({ sid, customerName }: { sid: string; cu
 
     return { success: true, data: customer };
 }
+
+export async function updateCustomer({ sid, customerId, customerData }: { sid: string; customerId: string; customerData: { email_id?: string; mobile_no?: string; } }): Promise<{ success: boolean; error?: string }> {
+  if (!ERPNEXT_API_URL) return { success: false, error: 'ERPNext API URL is not configured.' };
+  if (!sid) return { success: false, error: 'Session ID (sid) is required.' };
+  if (!customerId) return { success: false, error: 'Customer ID is required.' };
+
+  try {
+    const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Customer/${customerId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Cookie': `sid=${sid}`,
+      },
+      body: JSON.stringify(customerData),
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      const errorMessage = responseData.exception || responseData._server_messages?.[0] || 'Failed to update customer in ERPNext.';
+      throw new Error(errorMessage);
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

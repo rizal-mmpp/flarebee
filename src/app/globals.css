@@ -14,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 38 92% 50%; /* Vibrant orange for active text/icon */
+    --primary: 50 90% 55%; /* Vibrant orange for active text/icon */
     --primary-foreground: 240 100% 98%; /* #F8F9FF - Near White */
 
     --secondary: 222 47% 11%; /* Dark Slate Blue as Secondary */
@@ -23,7 +23,7 @@
     --muted: 220 30% 94%; /* #E8ECF2 - Light Gray */
     --muted-foreground: 222 15% 45%; /* #646C7E - Muted Slate */
 
-    --accent: 45 100% 96%; /* Very light yellow for active background */
+    --accent: 30 84% 51%; /* Very light yellow for active background */
     --accent-foreground: 38 92% 50%; /* Same as primary for consistency */
     
     --destructive: 0 84% 60%;
@@ -63,7 +63,7 @@
     --popover: 222 40% 15%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 45 95% 60%; /* Bright orange/yellow for active text/icon */
+    --primary: 50 90% 60%; /* Bright orange/yellow for active text/icon */
     --primary-foreground: 240 100% 98%;
 
     --secondary: 210 40% 98%; /* Light Foreground as Secondary */
@@ -72,7 +72,7 @@
     --muted: 222 30% 20%; /* #242E42 */
     --muted-foreground: 222 15% 65%;
 
-    --accent: 40 95% 15%; /* Dark, desaturated orange for active background */
+    --accent: 30 84% 55%; /* Dark, desaturated orange for active background */
     --accent-foreground: 0 0% 98%; 
     
     --destructive: 0 70% 55%;
