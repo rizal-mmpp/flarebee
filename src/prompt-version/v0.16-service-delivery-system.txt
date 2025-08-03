@@ -6,7 +6,7 @@ This document outlines an ERPNext-first implementation plan for a system allowin
 
 ### **Core Concept: Self-Healing ERPNext DocTypes**
 
-Instead of a manual migration, the application's server actions will be built to be "self-healing." When an action needs a custom DocType or fields, it will first check if they exist. If not, it will programmatically create them before retrying the original request.
+Instead of a manual migration, the application's server actions will be built to be "self-healing." When an action needs a custom DocType or fields, it will programmatically create them before retrying the original request.
 
 ---
 
@@ -40,14 +40,16 @@ Instead of a manual migration, the application's server actions will be built to
     - Create a new `Sales Invoice` document in ERPNext linked to the project's customer and service item.
     - Set the `Sales Invoice` status to `Unpaid`.
     - Use the project's linked `Subscription Plan` to determine the invoice item `rate`.
+    - **Integrate Xendit:** Create a Xendit invoice linked to the ERPNext `Sales Invoice` `name`.
+    - **Store Xendit URL:** Save the Xendit payment URL back to the `Sales Invoice` document in ERPNext.
     - Link the new `Sales Invoice` back to the `Project` document (update the `sales_invoice` field).
     - Update the `Project` status to `Awaiting Payment`.
-    - Trigger an email to the client (using the system from the step above) containing the invoice details.
+    - Trigger an email to the client containing the Xendit payment link.
 
-- [⌛] **Webhook for Payment Success**
-  - Update the Xendit webhook to handle `Sales Invoice` payments.
+- [✅] **Webhook for Payment Success**
+  - Update the Xendit webhook to handle `Sales Invoice` payments (`external_id` starts with `SINV-`).
   - When a `Sales Invoice` is paid, the webhook should:
-    - Update the `Sales Invoice` status to `Paid`.
+    - Update the `Sales Invoice` status in ERPNext to `Paid`.
     - Find the corresponding "Project" document.
     - Update the "Project" status to `In Progress`.
     - Send a confirmation email to the client: "Thank you for your payment. We have started working on your project."
@@ -74,4 +76,3 @@ Instead of a manual migration, the application's server actions will be built to
   - It fetches all "Project" documents linked to the current user.
   - Displays a list of their projects (e.g., "Website for PT Jaya Abadi").
   - For `Completed` projects, it shows a link to the `final_service_url` and a link to manage their service within the dashboard.
-

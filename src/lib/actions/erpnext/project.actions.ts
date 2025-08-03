@@ -6,6 +6,13 @@ import type { Project, Customer, SubscriptionPlan } from '@/lib/types';
 import { fetchFromErpNext } from './utils';
 import { sendEmail } from '@/lib/services/email.service';
 import { updateContactDetails } from './customer.actions';
+import { Xendit } from 'xendit-node';
+
+const xenditClient = new Xendit({
+  secretKey: process.env.XENDIT_SECRET_KEY || '',
+});
+
+const { Invoice } = xenditClient;
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
@@ -80,7 +87,7 @@ export async function createProject({ sid, projectData }: { sid: string, project
 
     const dataToPost = {
       ...projectData,
-      status: 'Draft', 
+      status: 'Open', 
     };
 
     await postRequest('/api/resource/Project', dataToPost, sid);
@@ -96,7 +103,7 @@ function transformErpProject(erpProject: any): Project {
   return {
     name: erpProject.name,
     customer: erpProject.customer,
-    company: erpProject.company, // Include company
+    company: erpProject.company,
     service_item: erpProject.service_item,
     subscription_plan: erpProject.subscription_plan,
     project_name: erpProject.project_name,
@@ -138,9 +145,8 @@ export async function getProjectByName({ sid, projectName }: { sid: string; proj
     return { success: true, data: project };
 }
 
-export async function updateProject({ sid, projectName, projectData, contactData }: { sid: string; projectName: string; projectData: { project_name: string }; contactData?: { contactId: string; newEmail?: string; newPhone?: string; } }): Promise<{ success: boolean; error?: string }> {
+export async function updateProject({ sid, projectName, projectData, contactData }: { sid: string; projectName: string; projectData: Partial<Project>; contactData?: { contactId: string; newEmail?: string; newPhone?: string; } }): Promise<{ success: boolean; error?: string }> {
   try {
-    // Update project details
     const projectUpdateResponse = await fetch(`${ERPNEXT_API_URL}/api/resource/Project/${projectName}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
@@ -151,7 +157,6 @@ export async function updateProject({ sid, projectName, projectData, contactData
       throw new Error(projectResponseData.exception || projectResponseData._server_messages?.[0] || 'Failed to update project in ERPNext.');
     }
 
-    // Update linked contact details if provided
     if (contactData && contactData.contactId && (contactData.newEmail || contactData.newPhone)) {
       const contactUpdateResult = await updateContactDetails({ 
         sid, 
@@ -160,7 +165,6 @@ export async function updateProject({ sid, projectName, projectData, contactData
         newPhone: contactData.newPhone,
       });
       if (!contactUpdateResult.success) {
-        // Still return overall success but maybe log a warning
         console.warn(`Project updated, but failed to update contact: ${contactUpdateResult.error}`);
       }
     }
@@ -188,11 +192,9 @@ export async function deleteProject({ sid, projectName }: { sid: string; project
   }
 }
 
-
-// Action to create and send invoice
 export async function createAndSendInvoice({ sid, projectName }: { sid: string; projectName: string }): Promise<{ success: boolean; invoiceName?: string; error?: string }> {
   try {
-    // 1. Fetch Project and related Item/Customer data
+    // 1. Fetch Project and related data
     const projectResult = await getProjectByName({ sid, projectName });
     if (!projectResult.success || !projectResult.data) {
       throw new Error(projectResult.error || "Project not found.");
@@ -211,23 +213,22 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
     if (!planResult.success || !planResult.data) {
       throw new Error("Linked Subscription Plan details could not be fetched.");
     }
+    const plan = planResult.data;
 
     const customerResult = await fetchFromErpNext<Customer>({ sid, doctype: 'Customer', docname: project.customer });
      if (!customerResult.success || !customerResult.data) {
       throw new Error("Customer details could not be fetched.");
     }
-
-    const plan = planResult.data;
     const customer = customerResult.data;
 
-    // 2. Create Sales Invoice
+    // 2. Create Sales Invoice in ERPNext
     const invoicePayload = {
       customer: project.customer,
       company: project.company,
       items: [{
-        item_code: plan.item, // Use the item from the plan
+        item_code: plan.item,
         qty: 1,
-        rate: plan.cost, // Use the cost from the plan as the rate
+        rate: plan.cost,
       }],
       due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0],
     };
@@ -235,18 +236,35 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
     const invoiceCreationResponse = await postRequest('/api/resource/Sales Invoice', invoicePayload, sid);
     const invoiceName = invoiceCreationResponse.data.name;
 
-    // 3. Update Project status and link to invoice
-    const projectUpdatePayload = {
-      status: 'Awaiting Payment',
-      sales_invoice: invoiceName,
-    };
-    await fetch(`${ERPNEXT_API_URL}/api/resource/Project/${projectName}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
-        body: JSON.stringify(projectUpdatePayload),
+    // 3. Create Xendit Invoice
+    const xenditInvoice = await Invoice.createInvoice({
+        data: {
+            externalId: invoiceName,
+            amount: plan.cost,
+            payerEmail: customer.email_id,
+            description: `Payment for Project: ${project.project_name}`,
+            currency: 'IDR',
+        }
+    });
+    
+    if (!xenditInvoice.invoiceUrl || !xenditInvoice.id) {
+        throw new Error("Failed to get payment URL from Xendit.");
+    }
+
+    // 4. Update Sales Invoice in ERPNext with Xendit details
+    await fetch(`${ERPNEXT_API_URL}/api/resource/Sales Invoice/${invoiceName}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Cookie': `sid=${sid}` },
+      body: JSON.stringify({
+        xendit_invoice_id: xenditInvoice.id,
+        xendit_invoice_url: xenditInvoice.invoiceUrl
+      }),
     });
 
-    // 4. Send Email
+    // 5. Update Project status and link to invoice
+    await updateProject({ sid, projectName, projectData: { status: 'Awaiting Payment', sales_invoice: invoiceName }});
+
+    // 6. Send Email
     if (customer.email_id) {
        await sendEmail({
         to: customer.email_id,
@@ -257,12 +275,11 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
             <p>Please find the invoice for your project: <strong>${project.project_name}</strong>.</p>
             <p>Invoice ID: ${invoiceName}</p>
             <p>Amount: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(plan.cost || 0)}</p>
-            <p>You can view and pay your invoice through your dashboard.</p>
+            <p>Click the button below to complete your payment.</p>
+            <a href="${xenditInvoice.invoiceUrl}" style="background-color: #FFC72C; color: #1A202C; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Pay Invoice</a>
             <p>Thank you!</p>
         `,
       });
-    } else {
-        console.warn(`Customer ${customer.customer_name} has no email ID. Invoice email was not sent.`);
     }
 
     return { success: true, invoiceName };
