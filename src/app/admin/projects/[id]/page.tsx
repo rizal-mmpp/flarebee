@@ -15,6 +15,7 @@ import { getProjectByName, createAndSendInvoice } from '@/lib/actions/erpnext/pr
 import { getCustomerByName } from '@/lib/actions/erpnext/customer.actions';
 import type { Project, Customer } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 const getStatusBadgeVariant = (status?: string) => {
@@ -166,108 +167,123 @@ export default function ProjectDetailPage() {
   const canCreateInvoice = !project.sales_invoice;
 
   return (
-    <div className="space-y-6">
-       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
-                {project.project_name}
-            </h1>
-             <p className="text-sm text-muted-foreground">
-                Project ID: <span className="font-mono text-foreground/80">{project.name}</span>
-            </p>
-        </div>
-        <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => router.push('/admin/projects')} className="group">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Projects
-            </Button>
-             <Button asChild>
-                <Link href={`/admin/projects/edit/${project.name}`}>
-                    <Edit className="mr-2 h-4 w-4"/> Edit Project
-                </Link>
-            </Button>
-        </div>
-      </div>
-      
-       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        <div className="lg:col-span-2 space-y-6">
-            <Card>
-                <CardHeader>
-                <CardTitle className="text-xl">Project Summary</CardTitle>
-                <CardDescription>
-                    Created on {format(new Date(project.creation), "PPp")}
-                </CardDescription>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <InfoRow label="Status" icon={Tag} value={<Badge variant="outline" className={cn("capitalize text-sm", getStatusBadgeVariant(project.status || 'open'))}>{project.status || 'Open'}</Badge>} />
-                    <InfoRow label="Customer" icon={User} value={project.customer} />
-                    <InfoRow label="Service Item" icon={Briefcase} value={project.service_item} />
-                </CardContent>
-            </Card>
-            
-            <Card>
-                <CardHeader>
-                <CardTitle className="text-xl">Invoicing & Delivery</CardTitle>
-                <CardDescription>Manage the billing and delivery process for this project.</CardDescription>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <InfoRow label="Sales Invoice" icon={CreditCard}>
-                    {project.sales_invoice ? (
-                        <Button variant="link" asChild className="p-0 h-auto font-medium">
-                            <Link href={`/admin/orders/${project.sales_invoice}`} target="_blank" rel="noopener noreferrer">
-                                {project.sales_invoice} <ExternalLink className="ml-2 h-3.5 w-3.5" />
-                            </Link>
-                        </Button>
-                    ) : (
-                        <p className="text-sm text-muted-foreground italic">No invoice created yet.</p>
-                    )}
-                    </InfoRow>
-
-                    <InfoRow label="Service Management URL" icon={Settings} value={project.service_management_url || <span className="text-sm text-muted-foreground italic">Not set</span>} />
-                    <InfoRow label="Final Service URL" icon={ExternalLink} value={project.final_service_url || <span className="text-sm text-muted-foreground italic">Not set</span>} />
-                    <InfoRow label="Delivery Date" icon={CalendarDays} value={project.delivery_date ? format(new Date(project.delivery_date), "PPp") : <span className="text-sm text-muted-foreground italic">Not delivered</span>} />
-                </CardContent>
-                <CardFooter className="flex items-center gap-4 bg-muted/50 p-4 rounded-b-xl">
-                <Button onClick={handleCreateInvoice} disabled={!canCreateInvoice || isCreatingInvoice} className="bg-primary/90 text-primary-foreground hover:bg-primary">
-                    {isCreatingInvoice ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
-                    Create & Send Invoice
+    <TooltipProvider>
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
+                  {project.project_name}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                  Project ID: <span className="font-mono text-foreground/80">{project.name}</span>
+              </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={() => router.push('/admin/projects')}>
+                  <ArrowLeft className="h-4 w-4" />
+                  <span className="sr-only">Back to Projects</span>
                 </Button>
-                {!canCreateInvoice && (
-                    <p className="text-xs text-muted-foreground">
-                    An invoice already exists for this project.
-                    </p>
-                )}
-                </CardFooter>
-            </Card>
+              </TooltipTrigger>
+              <TooltipContent><p>Back to Projects</p></TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button asChild variant="default" size="icon">
+                  <Link href={`/admin/projects/edit/${project.name}`}>
+                      <Edit className="h-4 w-4"/>
+                      <span className="sr-only">Edit Project</span>
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Edit Project</p></TooltipContent>
+            </Tooltip>
+          </div>
         </div>
         
-        <div className="lg:col-span-1">
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-xl">Customer Details</CardTitle>
-                    <Button variant="outline" size="icon" asChild>
-                         <Link href={`/admin/customers/edit/${project.customer}`}>
-                            <Edit className="h-4 w-4" />
-                            <span className="sr-only">Edit Customer</span>
-                        </Link>
-                    </Button>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {customer ? (
-                        <>
-                            <InfoRow label="Name" icon={User} value={customer.customer_name} />
-                            <InfoRow label="Email" icon={Mail} value={customer.email_id || <span className="text-muted-foreground italic">Not set</span>} />
-                            <InfoRow label="Phone / WhatsApp" icon={Phone} value={customer.mobile_no || <span className="text-muted-foreground italic">Not set</span>} />
-                            <InfoRow label="Type" icon={Building} value={customer.customer_type} />
-                        </>
-                    ) : (
-                        <p className="text-sm text-muted-foreground">Loading customer info...</p>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="lg:col-span-2 space-y-6">
+              <Card>
+                  <CardHeader>
+                  <CardTitle className="text-xl">Project Summary</CardTitle>
+                  <CardDescription>
+                      Created on {format(new Date(project.creation), "PPp")}
+                  </CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <InfoRow label="Status" icon={Tag} value={<Badge variant="outline" className={cn("capitalize text-sm", getStatusBadgeVariant(project.status || 'open'))}>{project.status || 'Open'}</Badge>} />
+                      <InfoRow label="Customer" icon={User} value={project.customer} />
+                      <InfoRow label="Service Item" icon={Briefcase} value={project.service_item} />
+                  </CardContent>
+              </Card>
+              
+              <Card>
+                  <CardHeader>
+                  <CardTitle className="text-xl">Invoicing & Delivery</CardTitle>
+                  <CardDescription>Manage the billing and delivery process for this project.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <InfoRow label="Sales Invoice" icon={CreditCard}>
+                      {project.sales_invoice ? (
+                          <Button variant="link" asChild className="p-0 h-auto font-medium">
+                              <Link href={`/admin/orders/${project.sales_invoice}`} target="_blank" rel="noopener noreferrer">
+                                  {project.sales_invoice} <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                              </Link>
+                          </Button>
+                      ) : (
+                          <p className="text-sm text-muted-foreground italic">No invoice created yet.</p>
+                      )}
+                      </InfoRow>
 
-       </div>
-    </div>
+                      <InfoRow label="Service Management URL" icon={Settings} value={project.service_management_url || <span className="text-sm text-muted-foreground italic">Not set</span>} />
+                      <InfoRow label="Final Service URL" icon={ExternalLink} value={project.final_service_url || <span className="text-sm text-muted-foreground italic">Not set</span>} />
+                      <InfoRow label="Delivery Date" icon={CalendarDays} value={project.delivery_date ? format(new Date(project.delivery_date), "PPp") : <span className="text-sm text-muted-foreground italic">Not delivered</span>} />
+                  </CardContent>
+                  <CardFooter className="flex items-center gap-4 bg-muted/50 p-4 rounded-b-xl">
+                    <Button onClick={handleCreateInvoice} disabled={!canCreateInvoice || isCreatingInvoice} className="bg-primary/90 text-primary-foreground hover:bg-primary">
+                        {isCreatingInvoice ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+                        Create & Send Invoice
+                    </Button>
+                    {!canCreateInvoice && (
+                        <p className="text-xs text-muted-foreground">
+                        An invoice already exists for this project.
+                        </p>
+                    )}
+                  </CardFooter>
+              </Card>
+          </div>
+          
+          <div className="lg:col-span-1">
+              <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                      <CardTitle className="text-xl">Customer Details</CardTitle>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                           <Button variant="outline" size="icon" disabled>
+                              <Edit className="h-4 w-4" />
+                              <span className="sr-only">Edit Customer</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Edit Customer (Coming Soon)</p></TooltipContent>
+                      </Tooltip>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                      {customer ? (
+                          <>
+                              <InfoRow label="Name" icon={User} value={customer.customer_name} />
+                              <InfoRow label="Email" icon={Mail} value={customer.email_id || <span className="text-muted-foreground italic">Not set</span>} />
+                              <InfoRow label="Phone / WhatsApp" icon={Phone} value={customer.mobile_no || <span className="text-muted-foreground italic">Not set</span>} />
+                              <InfoRow label="Type" icon={Building} value={customer.customer_type} />
+                          </>
+                      ) : (
+                          <p className="text-sm text-muted-foreground">Loading customer info...</p>
+                      )}
+                  </CardContent>
+              </Card>
+          </div>
+        </div>
+      </div>
+    </TooltipProvider>
   );
 }
