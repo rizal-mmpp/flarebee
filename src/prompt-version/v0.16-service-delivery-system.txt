@@ -1,0 +1,77 @@
+
+
+# Plan for B2B Service Delivery System (v0.16) - ERPNext-First Approach
+
+This document outlines an ERPNext-first implementation plan for a system allowing admins to create projects for clients, send invoices, and deliver the final service via email. This approach ensures all data lives in ERPNext from the start.
+
+### **Core Concept: Self-Healing ERPNext DocTypes**
+
+Instead of a manual migration, the application's server actions will be built to be "self-healing." When an action needs a custom DocType or fields, it will first check if they exist. If not, it will programmatically create them before retrying the original request.
+
+---
+
+### **Implementation Steps & Progress**
+
+**Phase 1: Admin Project Creation & Viewing**
+- [✅] **Programmatically Add Custom Fields to "Project" DocType**
+  - A helper function `ensureProjectCustomFieldsExist()` adds required fields (`service_item`, `status`, `sales_invoice`, `subscription_plan`, etc.) to the standard ERPNext "Project" DocType.
+
+- [✅] **Admin UI: Project Creation Form (`/admin/projects/new`)**
+  - A form for creating a new project.
+  - Ability to select existing customers from ERPNext.
+  - Ability to create a new customer in ERPNext via a dialog if they don't exist.
+  - Ability to select a Subscription Plan to determine the invoice amount.
+
+- [✅] **Admin UI: Project List Page (`/admin/projects`)**
+  - A data table that fetches and displays all "Project" documents from ERPNext.
+
+- [✅] **Admin UI: Project Detail Page (`/admin/projects/[id]`)**
+  - Displays all data for a single "Project" document in a read-only view.
+
+**Phase 2: Invoicing & Payment**
+- [✅] **Setup: Email Notification System**
+  - **Why this is needed:** To programmatically send emails for invoices, payment confirmations, and final delivery, we need an email transaction service.
+  - **Implementation:** We've integrated the `node-mailjet` library and created an email service. API keys must be set in the `.env` file.
+
+- [✅] **Action: Create & Send Invoice**
+  - **Goal**: Implement the logic for the "Create & Send Invoice" button on the Project Detail Page.
+  - **Workflow Logic**: This button is only enabled when the project's `sales_invoice` field is empty. This prevents creating multiple invoices for a single project. Once an invoice is created and linked, the project's state changes, disabling this action. This ensures a clean, one-project-one-invoice flow.
+  - **Implementation Steps**:
+    - Create a new `Sales Invoice` document in ERPNext linked to the project's customer and service item.
+    - Set the `Sales Invoice` status to `Unpaid`.
+    - Use the project's linked `Subscription Plan` to determine the invoice item `rate`.
+    - Link the new `Sales Invoice` back to the `Project` document (update the `sales_invoice` field).
+    - Update the `Project` status to `Awaiting Payment`.
+    - Trigger an email to the client (using the system from the step above) containing the invoice details.
+
+- [⌛] **Webhook for Payment Success**
+  - Update the Xendit webhook to handle `Sales Invoice` payments.
+  - When a `Sales Invoice` is paid, the webhook should:
+    - Update the `Sales Invoice` status to `Paid`.
+    - Find the corresponding "Project" document.
+    - Update the "Project" status to `In Progress`.
+    - Send a confirmation email to the client: "Thank you for your payment. We have started working on your project."
+    - Create a new `User` in ERPNext using the Customer's email if one doesn't already exist.
+
+**Phase 3: Service Delivery**
+- [ ] **Admin UI: Project Delivery Action**
+  - On the Project Detail page, when a project is `In Progress`, a "Deliver Project" section becomes active.
+  - Admin enters the `final_service_url` (the live website).
+  - A "Send Delivery Email" button will trigger the final step.
+  - This action will:
+    - Generate a secure, one-time `credential_setup_url` for dashboard access.
+    - Update the "Project" document with the `final_service_url`, `credential_setup_url`, `delivery_date`, and set status to `Completed`.
+    - Trigger the final delivery email.
+
+- [ ] **Client Delivery Email**
+  - The email will contain:
+    - A link to their `final_service_url`.
+    - A button/link to the `credential_setup_url` to set their password and access their Flarebee dashboard.
+
+**Phase 4: Client-Side Dashboard**
+- [ ] **Client UI: My Services / My Projects Page (`/dashboard/my-projects`)**
+  - A new page for logged-in clients.
+  - It fetches all "Project" documents linked to the current user.
+  - Displays a list of their projects (e.g., "Website for PT Jaya Abadi").
+  - For `Completed` projects, it shows a link to the `final_service_url` and a link to manage their service within the dashboard.
+

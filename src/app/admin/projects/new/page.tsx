@@ -17,10 +17,12 @@ import { Label } from '@/components/ui/label';
 import { ItemSelector } from '@/components/admin/subscriptions/ItemSelector';
 import { CustomerSelector } from '@/components/admin/projects/CustomerSelector';
 import { createProject } from '@/lib/actions/erpnext/project.actions';
+import { SubscriptionPlanSelector } from '@/components/admin/subscriptions/SubscriptionPlanSelector';
 
 export const projectFormSchema = z.object({
   customer: z.string().min(1, 'Customer is required.'),
   service_item: z.string().min(1, 'Service Item is required.'),
+  subscription_plan: z.string().min(1, 'Subscription Plan is required.'),
   project_name: z.string().min(3, 'Project name must be at least 3 characters.'),
   company: z.string().min(1, 'Company is required.'),
 });
@@ -39,6 +41,7 @@ export default function CreateProjectPage() {
     defaultValues: {
       customer: '',
       service_item: '',
+      subscription_plan: '',
       project_name: '',
       company: 'Ragam Inovasi Optima', // Default company
     }
@@ -142,6 +145,22 @@ export default function CreateProjectPage() {
                     {form.formState.errors.service_item && <p className="text-sm text-destructive mt-1">{form.formState.errors.service_item.message}</p>}
                 </div>
                  <div>
+                    <Label htmlFor="subscription_plan">Subscription Plan *</Label>
+                    <Controller
+                        name="subscription_plan"
+                        control={form.control}
+                        render={({ field }) => (
+                        <SubscriptionPlanSelector
+                            value={field.value}
+                            onChange={field.onChange}
+                            className="mt-1"
+                            hasError={!!form.formState.errors.subscription_plan}
+                        />
+                        )}
+                    />
+                    {form.formState.errors.subscription_plan && <p className="text-sm text-destructive mt-1">{form.formState.errors.subscription_plan.message}</p>}
+                </div>
+                 <div>
                     <Label htmlFor="company">Company *</Label>
                     <Input id="company" {...form.register('company')} className="mt-1" placeholder="e.g., Ragam Inovasi Optima" />
                     {form.formState.errors.company && <p className="text-sm text-destructive mt-1">{form.formState.errors.company.message}</p>}
@@ -158,4 +177,3 @@ export default function CreateProjectPage() {
     </form>
   );
 }
-

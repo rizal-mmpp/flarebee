@@ -2,7 +2,7 @@
 'use server';
 
 import type { ProjectFormValues } from '@/app/admin/projects/new/page';
-import type { Project, Customer } from '@/lib/types';
+import type { Project, Customer, SubscriptionPlan } from '@/lib/types';
 import { fetchFromErpNext } from './utils';
 import { sendEmail } from '@/lib/services/email.service';
 import { updateContactDetails } from './customer.actions';
@@ -12,6 +12,7 @@ const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 const customFieldsForProject = [
     { fieldname: 'customer', fieldtype: 'Link', options: 'Customer', label: 'Customer', reqd: 1, insert_after: 'company' },
     { fieldname: 'service_item', fieldtype: 'Link', options: 'Item', label: 'Service Item', reqd: 1, insert_after: 'customer' },
+    { fieldname: 'subscription_plan', fieldtype: 'Link', options: 'Subscription Plan', label: 'Subscription Plan', insert_after: 'service_item' },
     { fieldname: 'sales_invoice', fieldtype: 'Link', options: 'Sales Invoice', label: 'Sales Invoice', insert_after: 'status' },
     { fieldname: 'service_management_url', fieldtype: 'Data', label: 'Service Management URL', insert_after: 'sales_invoice' },
     { fieldname: 'final_service_url', fieldtype: 'Data', label: 'Final Service URL', insert_after: 'service_management_url' },
@@ -79,7 +80,7 @@ export async function createProject({ sid, projectData }: { sid: string, project
 
     const dataToPost = {
       ...projectData,
-      status: 'Open', 
+      status: 'Draft', 
     };
 
     await postRequest('/api/resource/Project', dataToPost, sid);
@@ -97,6 +98,7 @@ function transformErpProject(erpProject: any): Project {
     customer: erpProject.customer,
     company: erpProject.company, // Include company
     service_item: erpProject.service_item,
+    subscription_plan: erpProject.subscription_plan,
     project_name: erpProject.project_name,
     status: erpProject.status,
     sales_invoice: erpProject.sales_invoice,
@@ -200,10 +202,14 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
     if (project.sales_invoice) {
         return { success: false, error: `An invoice (${project.sales_invoice}) already exists for this project.` };
     }
+
+    if (!project.subscription_plan) {
+        return { success: false, error: "Project does not have a subscription plan assigned." };
+    }
     
-    const itemResult = await fetchFromErpNext<any>({ sid, doctype: 'Item', docname: project.service_item });
-    if (!itemResult.success || !itemResult.data) {
-      throw new Error("Service item details could not be fetched.");
+    const planResult = await fetchFromErpNext<SubscriptionPlan>({ sid, doctype: 'Subscription Plan', docname: project.subscription_plan });
+    if (!planResult.success || !planResult.data) {
+      throw new Error("Linked Subscription Plan details could not be fetched.");
     }
 
     const customerResult = await fetchFromErpNext<Customer>({ sid, doctype: 'Customer', docname: project.customer });
@@ -211,17 +217,17 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
       throw new Error("Customer details could not be fetched.");
     }
 
-    const item = itemResult.data;
+    const plan = planResult.data;
     const customer = customerResult.data;
 
     // 2. Create Sales Invoice
     const invoicePayload = {
       customer: project.customer,
-      company: project.company, // Add the company field
+      company: project.company,
       items: [{
-        item_code: item.name,
+        item_code: plan.item, // Use the item from the plan
         qty: 1,
-        rate: item.standard_rate || 0,
+        rate: plan.cost, // Use the cost from the plan as the rate
       }],
       due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0],
     };
@@ -250,7 +256,7 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
             <p>Dear ${customer.customer_name},</p>
             <p>Please find the invoice for your project: <strong>${project.project_name}</strong>.</p>
             <p>Invoice ID: ${invoiceName}</p>
-            <p>Amount: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.standard_rate || 0)}</p>
+            <p>Amount: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(plan.cost || 0)}</p>
             <p>You can view and pay your invoice through your dashboard.</p>
             <p>Thank you!</p>
         `,

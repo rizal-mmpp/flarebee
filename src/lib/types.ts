@@ -1,5 +1,4 @@
 
-
 import type { User as FirebaseUser } from 'firebase/auth';
 
 // A unified AuthUser interface for consistent user object structure across the app
@@ -139,7 +138,6 @@ export interface SubscriptionPlan {
   item: string;
   cost: number;
   currency: string;
-  price_determination: 'Fixed Rate' | 'Based On Price List' | 'Monthly Rate' | '';
   billing_interval: 'Day' | 'Week' | 'Month' | 'Year';
   billing_interval_count: number;
 }
@@ -357,8 +355,9 @@ export interface Project {
     customer: string;
     company: string; // Add company
     service_item: string;
+    subscription_plan: string | null;
     project_name: string;
-    status: 'Draft' | 'Awaiting Payment' | 'In Progress' | 'Awaiting Delivery' | 'Completed' | 'Cancelled';
+    status: 'Draft' | 'Open' | 'Awaiting Payment' | 'In Progress' | 'Awaiting Delivery' | 'Completed' | 'Cancelled';
     sales_invoice: string | null;
     service_management_url: string | null;
     final_service_url: string | null;
