@@ -5,7 +5,7 @@ import type { ProjectFormValues } from '@/app/admin/projects/new/page';
 import type { Project, Customer } from '@/lib/types';
 import { fetchFromErpNext } from './utils';
 import { sendEmail } from '@/lib/services/email.service';
-import { updateContact } from './customer.actions'; // Import the new action
+import { updateContactDetails } from './customer.actions';
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
@@ -136,7 +136,7 @@ export async function getProjectByName({ sid, projectName }: { sid: string; proj
     return { success: true, data: project };
 }
 
-export async function updateProject({ sid, projectName, projectData, contactData }: { sid: string; projectName: string; projectData: { project_name: string }; contactData?: { contactId: string; data: { email_id?: string; mobile_no?: string } } }): Promise<{ success: boolean; error?: string }> {
+export async function updateProject({ sid, projectName, projectData, contactData }: { sid: string; projectName: string; projectData: { project_name: string }; contactData?: { contactId: string; newEmail?: string; newPhone?: string; } }): Promise<{ success: boolean; error?: string }> {
   try {
     // Update project details
     const projectUpdateResponse = await fetch(`${ERPNEXT_API_URL}/api/resource/Project/${projectName}`, {
@@ -146,12 +146,17 @@ export async function updateProject({ sid, projectName, projectData, contactData
     });
     const projectResponseData = await projectUpdateResponse.json();
     if (!projectUpdateResponse.ok) {
-      throw new Error(projectResponseData.exception || projectResponseData._server_messages || 'Failed to update project in ERPNext.');
+      throw new Error(projectResponseData.exception || projectResponseData._server_messages?.[0] || 'Failed to update project in ERPNext.');
     }
 
     // Update linked contact details if provided
-    if (contactData && contactData.contactId) {
-      const contactUpdateResult = await updateContact({ sid, contactId: contactData.contactId, contactData: contactData.data });
+    if (contactData && contactData.contactId && (contactData.newEmail || contactData.newPhone)) {
+      const contactUpdateResult = await updateContactDetails({ 
+        sid, 
+        contactId: contactData.contactId, 
+        newEmail: contactData.newEmail, 
+        newPhone: contactData.newPhone,
+      });
       if (!contactUpdateResult.success) {
         // Still return overall success but maybe log a warning
         console.warn(`Project updated, but failed to update contact: ${contactUpdateResult.error}`);

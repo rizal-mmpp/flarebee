@@ -15,7 +15,7 @@ import { ArrowLeft, Save, Loader2, Edit3, ServerCrash, User, Mail, Phone, Buildi
 import { useToast } from '@/hooks/use-toast';
 import { getProjectByName, updateProject } from '@/lib/actions/erpnext/project.actions';
 import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
-import { getCustomerByName, getContactForCustomer } from '@/lib/actions/erpnext/customer.actions';
+import { getContactForCustomer } from '@/lib/actions/erpnext/customer.actions';
 import type { Project, Customer } from '@/lib/types';
 
 
@@ -50,7 +50,7 @@ export default function EditProjectPage() {
   const [error, setError] = useState<string | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [customer, setCustomer] = useState<Customer | null>(null);
-  const [contactId, setContactId] = useState<string | null>(null);
+  const [contact, setContact] = useState<any | null>(null);
 
   const form = useForm<EditProjectFormValues>({
     resolver: zodResolver(editProjectFormSchema),
@@ -66,27 +66,26 @@ export default function EditProjectPage() {
             const fetchedProject = result.data;
             setProject(fetchedProject);
             
-            const customerResult = await getCustomerByName({ sid: erpSid, customerName: fetchedProject.customer });
-            if (customerResult.success && customerResult.data) {
-              setCustomer(customerResult.data);
+            // Fetch the full contact document which includes child tables
+            const contactResult = await getContactForCustomer({ sid: erpSid, customerName: fetchedProject.customer });
+            if(contactResult.success && contactResult.data) {
+              const fetchedContact = contactResult.data;
+              setContact(fetchedContact);
 
-              // Fetch the associated contact to get the editable fields
-              const contactResult = await getContactForCustomer({ sid: erpSid, customerName: fetchedProject.customer });
-              if(contactResult.success && contactResult.data) {
-                setContactId(contactResult.data.name);
-                form.reset({
-                  project_name: fetchedProject.project_name,
-                  email_id: contactResult.data.email_id || '',
-                  mobile_no: contactResult.data.mobile_no || '',
-                });
-              } else {
-                 form.reset({ project_name: fetchedProject.project_name, email_id: '', mobile_no: '' });
-                 console.warn("Could not find a linked contact for this customer.");
-              }
+              // Find primary email and phone from child tables
+              const primaryEmailEntry = fetchedContact.email_ids?.find((e: any) => e.is_primary);
+              const primaryPhoneEntry = fetchedContact.phone_nos?.find((p: any) => p.is_primary_mobile);
 
+              form.reset({
+                project_name: fetchedProject.project_name,
+                email_id: primaryEmailEntry?.email_id || '',
+                mobile_no: primaryPhoneEntry?.phone || '',
+              });
             } else {
-               setError('Could not load associated customer data.');
+               form.reset({ project_name: fetchedProject.project_name, email_id: '', mobile_no: '' });
+               console.warn("Could not find a linked contact for this customer.");
             }
+
           } else {
             setError(result.error || 'Project not found.');
           }
@@ -109,13 +108,11 @@ export default function EditProjectPage() {
       const projectDataToUpdate = { project_name: data.project_name };
       
       let contactDataPayload;
-      if (contactId) {
+      if (contact?.name) {
         contactDataPayload = {
-          contactId: contactId,
-          data: {
-            email_id: data.email_id,
-            mobile_no: data.mobile_no,
-          }
+          contactId: contact.name,
+          newEmail: data.email_id,
+          newPhone: data.mobile_no,
         }
       }
 
@@ -235,12 +232,12 @@ export default function EditProjectPage() {
                         <CardDescription>Read-only customer information.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {customer ? (
+                        {contact ? (
                             <>
-                                <InfoRow label="Name" icon={User} value={customer.customer_name} />
-                                <InfoRow label="Type" icon={Building} value={customer.customer_type} />
-                                <InfoRow label="Email (Original)" icon={Mail} value={customer.email_id} />
-                                <InfoRow label="Phone (Original)" icon={Phone} value={customer.mobile_no} />
+                                <InfoRow label="Name" icon={User} value={contact.first_name} />
+                                <InfoRow label="Type" icon={Building} value={project?.customer.startsWith('CUST') ? 'Company' : 'Individual'} />
+                                <InfoRow label="Email (Primary)" icon={Mail} value={contact.email_id} />
+                                <InfoRow label="Phone (Primary)" icon={Phone} value={contact.mobile_no} />
                             </>
                         ) : (
                             <p className="text-sm text-muted-foreground">Customer info not available.</p>
