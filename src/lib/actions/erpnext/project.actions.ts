@@ -5,6 +5,7 @@ import type { ProjectFormValues } from '@/app/admin/projects/new/page';
 import type { Project, Customer } from '@/lib/types';
 import { fetchFromErpNext } from './utils';
 import { sendEmail } from '@/lib/services/email.service';
+import { updateContact } from './customer.actions'; // Import the new action
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
@@ -78,7 +79,7 @@ export async function createProject({ sid, projectData }: { sid: string, project
 
     const dataToPost = {
       ...projectData,
-      status: 'Open', // ERPNext defaults to open, we'll set it explicitly
+      status: 'Open', 
     };
 
     await postRequest('/api/resource/Project', dataToPost, sid);
@@ -135,22 +136,34 @@ export async function getProjectByName({ sid, projectName }: { sid: string; proj
     return { success: true, data: project };
 }
 
-export async function updateProject({ sid, projectName, projectData }: { sid: string; projectName: string; projectData: { project_name: string } }): Promise<{ success: boolean; error?: string }> {
+export async function updateProject({ sid, projectName, projectData, contactData }: { sid: string; projectName: string; projectData: { project_name: string }; contactData?: { contactId: string; data: { email_id?: string; mobile_no?: string } } }): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Project/${projectName}`, {
+    // Update project details
+    const projectUpdateResponse = await fetch(`${ERPNEXT_API_URL}/api/resource/Project/${projectName}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
       body: JSON.stringify(projectData),
     });
-    const responseData = await response.json();
-    if (!response.ok) {
-      throw new Error(responseData.exception || responseData._server_messages || 'Failed to update project in ERPNext.');
+    const projectResponseData = await projectUpdateResponse.json();
+    if (!projectUpdateResponse.ok) {
+      throw new Error(projectResponseData.exception || projectResponseData._server_messages || 'Failed to update project in ERPNext.');
     }
+
+    // Update linked contact details if provided
+    if (contactData && contactData.contactId) {
+      const contactUpdateResult = await updateContact({ sid, contactId: contactData.contactId, contactData: contactData.data });
+      if (!contactUpdateResult.success) {
+        // Still return overall success but maybe log a warning
+        console.warn(`Project updated, but failed to update contact: ${contactUpdateResult.error}`);
+      }
+    }
+    
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
 }
+
 
 export async function deleteProject({ sid, projectName }: { sid: string; projectName: string }): Promise<{ success: boolean; error?: string }> {
   try {

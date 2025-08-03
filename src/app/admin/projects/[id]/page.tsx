@@ -241,15 +241,17 @@ export default function ProjectDetailPage() {
                       <InfoRow label="Delivery Date" icon={CalendarDays} value={project.delivery_date ? format(new Date(project.delivery_date), "PPp") : <span className="text-sm text-muted-foreground italic">Not delivered</span>} />
                   </CardContent>
                   <CardFooter className="flex items-center gap-4 bg-muted/50 p-4 rounded-b-xl">
-                    <Button onClick={handleCreateInvoice} disabled={!canCreateInvoice || isCreatingInvoice} className="bg-primary/90 text-primary-foreground hover:bg-primary">
-                        {isCreatingInvoice ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
-                        Create & Send Invoice
-                    </Button>
-                    {!canCreateInvoice && (
-                        <p className="text-xs text-muted-foreground">
-                        An invoice already exists for this project.
-                        </p>
-                    )}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Button onClick={handleCreateInvoice} disabled={!canCreateInvoice || isCreatingInvoice} className="bg-primary/90 text-primary-foreground hover:bg-primary">
+                              {isCreatingInvoice ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+                              Create & Send Invoice
+                          </Button>
+                        </div>
+                      </TooltipTrigger>
+                      {!canCreateInvoice && <TooltipContent><p>An invoice already exists for this project.</p></TooltipContent>}
+                    </Tooltip>
                   </CardFooter>
               </Card>
           </div>
@@ -258,15 +260,6 @@ export default function ProjectDetailPage() {
               <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                       <CardTitle className="text-xl">Customer Details</CardTitle>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                           <Button variant="outline" size="icon" disabled>
-                              <Edit className="h-4 w-4" />
-                              <span className="sr-only">Edit Customer</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent><p>Edit Customer (Coming Soon)</p></TooltipContent>
-                      </Tooltip>
                   </CardHeader>
                   <CardContent className="space-y-4">
                       {customer ? (

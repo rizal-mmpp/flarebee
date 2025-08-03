@@ -90,7 +90,6 @@ export async function getCustomerByName({ sid, customerName }: { sid: string; cu
         sid, 
         doctype: 'Customer', 
         docname: customerName,
-        fields: ['name', 'customer_name', 'customer_type', 'email_id', 'mobile_no']
     });
     if (!result.success || !result.data) {
         return { success: false, error: result.error || 'Failed to get Customer.' };
@@ -106,3 +105,41 @@ export async function getCustomerByName({ sid, customerName }: { sid: string; cu
 
     return { success: true, data: customer };
 }
+
+export async function getContactForCustomer({ sid, customerName }: { sid: string; customerName: string }): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    const filters = [['Dynamic Link', 'link_doctype', '=', 'Customer'], ['Dynamic Link', 'link_name', '=', customerName]];
+    const result = await fetchFromErpNext<any[]>({
+      sid,
+      doctype: 'Contact',
+      fields: ['name', 'email_id', 'mobile_no'],
+      filters,
+      limit: 1,
+    });
+
+    if (!result.success || !result.data || result.data.length === 0) {
+      return { success: false, error: result.error || 'Contact not found for this customer.' };
+    }
+    return { success: true, data: result.data[0] };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateContact({ sid, contactId, contactData }: { sid: string; contactId: string; contactData: { email_id?: string; mobile_no?: string } }): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Contact/${contactId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
+      body: JSON.stringify(contactData),
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.exception || errorData._server_messages?.[0] || 'Failed to update Contact in ERPNext.');
+    }
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
