@@ -7,6 +7,7 @@ import { fetchFromErpNext } from './utils';
 import { sendEmail } from '@/lib/services/email.service';
 import { updateContactDetails } from './customer.actions';
 import { Xendit } from 'xendit-node';
+import { ensureSalesInvoiceCustomFieldsExist } from './sales-invoice.actions';
 
 const xenditClient = new Xendit({
   secretKey: process.env.XENDIT_SECRET_KEY || '',
@@ -194,6 +195,12 @@ export async function deleteProject({ sid, projectName }: { sid: string; project
 
 export async function createAndSendInvoice({ sid, projectName }: { sid: string; projectName: string }): Promise<{ success: boolean; invoiceName?: string; error?: string }> {
   try {
+    // 0. Ensure custom fields exist before we do anything else
+    const fieldsReady = await ensureSalesInvoiceCustomFieldsExist(sid);
+    if (!fieldsReady.success) {
+      throw new Error(`Failed to prepare ERPNext for invoicing: ${fieldsReady.error}`);
+    }
+
     // 1. Fetch Project and related data
     const projectResult = await getProjectByName({ sid, projectName });
     if (!projectResult.success || !projectResult.data) {

@@ -6,6 +6,61 @@ import { fetchFromErpNext } from './utils';
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
+async function postRequest(endpoint: string, data: any, sid: string) {
+  if (!ERPNEXT_API_URL) throw new Error('ERPNext API URL is not configured.');
+  
+  const response = await fetch(`${ERPNEXT_API_URL}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`ERPNext API Error for endpoint ${endpoint}:`, errorText);
+    try {
+        const errorData = JSON.parse(errorText);
+        throw new Error(errorData.exception || errorData._server_messages?.[0] || 'Unknown ERPNext Error');
+    } catch(e) {
+        throw new Error(`Failed with status ${response.status}: ${errorText}`);
+    }
+  }
+  return response.json();
+}
+
+const customFieldsForSalesInvoice = [
+    { fieldname: 'xendit_invoice_id', fieldtype: 'Data', label: 'Xendit Invoice ID', insert_after: 'title' },
+    { fieldname: 'xendit_invoice_url', fieldtype: 'Data', label: 'Xendit Invoice URL', insert_after: 'xendit_invoice_id' },
+    { fieldname: 'custom_payment_gateway', fieldtype: 'Data', label: 'Payment Method (Custom)', insert_after: 'xendit_invoice_url' },
+];
+
+export async function ensureSalesInvoiceCustomFieldsExist(sid: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    for (const field of customFieldsForSalesInvoice) {
+        const payload = {
+            doctype: "Custom Field",
+            dt: "Sales Invoice", 
+            ...field
+        };
+        
+        try {
+            await postRequest('/api/resource/Custom Field', payload, sid);
+            console.log(`Successfully added or verified custom field '${field.fieldname}' to 'Sales Invoice'.`);
+        } catch (error: any) {
+            if (error.message && (error.message.includes('already exists') || error.message.includes('exists'))) {
+                console.log(`Custom field '${field.fieldname}' already exists in 'Sales Invoice'. Skipping.`);
+            } else {
+                throw new Error(`Failed to add custom field '${field.fieldname}' to 'Sales Invoice': ${error.message}`);
+            }
+        }
+    }
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error in ensureSalesInvoiceCustomFieldsExist:", error);
+    return { success: false, error: error.message };
+  }
+}
+
 function transformErpSalesInvoiceToAppOrder(item: any): Order {
     let items: PurchasedTemplateItem[] = [];
     try {
@@ -29,11 +84,11 @@ function transformErpSalesInvoiceToAppOrder(item: any): Order {
         totalAmount: item.grand_total,
         currency: item.currency || 'IDR',
         status: item.status?.toLowerCase() || 'pending',
-        paymentGateway: item.payment_gateway || 'ERPNext',
+        paymentGateway: item.custom_payment_gateway || 'ERPNext',
         createdAt: item.posting_date,
         updatedAt: item.modified,
         xenditPaymentStatus: item.status, 
-        xenditInvoiceUrl: item.xendit_invoice_url, // Added
+        xenditInvoiceUrl: item.xendit_invoice_url, 
     };
 }
 
@@ -41,7 +96,7 @@ export async function getOrdersFromErpNext({ sid }: { sid: string }): Promise<{ 
      const result = await fetchFromErpNext<any[]>({ 
          sid, 
          doctype: 'Sales Invoice', 
-         fields: ['name', 'customer', 'customer_name', 'posting_date', 'grand_total', 'currency', 'status', 'xendit_invoice_url'] 
+         fields: ['name', 'customer', 'customer_name', 'posting_date', 'grand_total', 'currency', 'status', 'xendit_invoice_url', 'custom_payment_gateway'] 
     });
 
     if (!result.success || !result.data) {
