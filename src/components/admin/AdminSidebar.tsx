@@ -18,6 +18,7 @@ import {
   DatabaseZap,
   Repeat,
   Package,
+  Mail, // Added Mail icon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NextImage from 'next/image';
@@ -42,6 +43,7 @@ const adminNavItems = [
   { href: '/admin/settings', label: 'Settings', icon: Settings },
   { href: '/admin/migration', label: 'Data Migration', icon: DatabaseZap },
   { type: 'divider', key: 'div2' },
+  { href: '/admin/email-test', label: 'Email Test', icon: Mail }, // Added new test page
   { href: '/admin/xendit-test', label: 'Xendit Tests', icon: TestTube2 },
 ];
 
