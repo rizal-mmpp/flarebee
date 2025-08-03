@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { CustomDropzone } from '@/components/ui/custom-dropzone';
-import { Settings as SettingsIcon, Save, Loader2, Image as ImageIcon, Palette, Type, AlertTriangle, Moon, Sun, Contact, Webhook, SlidersHorizontal } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Loader2, Image as ImageIcon, Palette, Type, AlertTriangle, Moon, Sun, Contact, Webhook, SlidersHorizontal, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getSiteSettings, updateSiteSettings } from '@/lib/actions/settings.actions';
 import { DEFAULT_SETTINGS } from '@/lib/constants';
@@ -38,6 +38,8 @@ const settingsFormSchema = z.object({
   contactAddress: z.string().optional().nullable(),
   contactPhone: z.string().optional().nullable(),
   contactEmail: z.string().email("Invalid email format.").optional().nullable(),
+  senderName: z.string().min(2, 'Sender name must be at least 2 characters.'),
+  senderEmail: z.string().email('Invalid sender email address.'),
 });
 
 type SettingsFormValues = z.infer<typeof settingsFormSchema>;
@@ -153,6 +155,8 @@ export default function AdminSettingsPage() {
       contactAddress: DEFAULT_SETTINGS.contactAddress,
       contactPhone: DEFAULT_SETTINGS.contactPhone,
       contactEmail: DEFAULT_SETTINGS.contactEmail,
+      senderName: DEFAULT_SETTINGS.senderName,
+      senderEmail: DEFAULT_SETTINGS.senderEmail,
     },
   });
 
@@ -175,6 +179,8 @@ export default function AdminSettingsPage() {
           contactAddress: settings.contactAddress,
           contactPhone: settings.contactPhone,
           contactEmail: settings.contactEmail,
+          senderName: settings.senderName,
+          senderEmail: settings.senderEmail,
         });
         setCurrentLogoUrl(settings.logoUrl);
         setLogoPreview(settings.logoUrl);
@@ -243,6 +249,8 @@ export default function AdminSettingsPage() {
       formData.append('contactAddress', data.contactAddress || '');
       formData.append('contactPhone', data.contactPhone || '');
       formData.append('contactEmail', data.contactEmail || '');
+      formData.append('senderName', data.senderName);
+      formData.append('senderEmail', data.senderEmail);
 
       if (selectedLogoFile) {
         formData.append('logo', selectedLogoFile);
@@ -277,6 +285,8 @@ export default function AdminSettingsPage() {
             contactAddress: result.data.contactAddress,
             contactPhone: result.data.contactPhone,
             contactEmail: result.data.contactEmail,
+            senderName: result.data.senderName,
+            senderEmail: result.data.senderEmail,
         });
       } else {
         toast({
@@ -311,11 +321,11 @@ export default function AdminSettingsPage() {
       </header>
       
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 mb-6">
+        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-5 mb-6">
           <TabsTrigger value="general"><SettingsIcon className="mr-2 h-4 w-4 hidden sm:inline-block" />General</TabsTrigger>
           <TabsTrigger value="appearance"><Palette className="mr-2 h-4 w-4 hidden sm:inline-block" />Appearance</TabsTrigger>
           <TabsTrigger value="contact"><Contact className="mr-2 h-4 w-4 hidden sm:inline-block" />Contact</TabsTrigger>
-          <TabsTrigger value="integrations" disabled><Webhook className="mr-2 h-4 w-4 hidden sm:inline-block" />Integrations</TabsTrigger>
+          <TabsTrigger value="email"><Mail className="mr-2 h-4 w-4 hidden sm:inline-block" />Email</TabsTrigger>
           <TabsTrigger value="advanced" disabled><SlidersHorizontal className="mr-2 h-4 w-4 hidden sm:inline-block" />Advanced</TabsTrigger>
         </TabsList>
 
@@ -457,15 +467,24 @@ export default function AdminSettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
-        <TabsContent value="integrations">
+
+        <TabsContent value="email">
             <Card>
                 <CardHeader>
-                    <CardTitle>Integrations</CardTitle>
-                    <CardDescription>Manage third-party service integrations and API keys.</CardDescription>
+                    <CardTitle>Email Settings</CardTitle>
+                    <CardDescription>Configure the default sender details for outgoing system emails (e.g., invoices, notifications). The sender email must be a verified address in Mailjet.</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-muted-foreground">This section is not yet implemented. API key management for services like Xendit, iPaymu, etc., will be available here in the future.</p>
+                <CardContent className="space-y-6">
+                    <div>
+                        <Label htmlFor="senderName">Default Sender Name</Label>
+                        <Input id="senderName" {...control.register('senderName')} placeholder="e.g., RIO Platform" className="mt-1" />
+                        {errors.senderName && <p className="text-sm text-destructive mt-1">{errors.senderName.message}</p>}
+                    </div>
+                    <div>
+                        <Label htmlFor="senderEmail">Default Sender Email</Label>
+                        <Input id="senderEmail" type="email" {...control.register('senderEmail')} placeholder="e.g., noreply@yourdomain.com" className="mt-1" />
+                        {errors.senderEmail && <p className="text-sm text-destructive mt-1">{errors.senderEmail.message}</p>}
+                    </div>
                 </CardContent>
             </Card>
         </TabsContent>

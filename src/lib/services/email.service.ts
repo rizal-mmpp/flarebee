@@ -2,6 +2,8 @@
 'use server';
 
 import Mailjet from 'node-mailjet';
+import { getSiteSettings } from '../actions/settings.actions';
+import { DEFAULT_SETTINGS } from '../constants';
 
 interface SendEmailArgs {
     to: string;
@@ -16,20 +18,28 @@ const mailjet = new Mailjet({
 });
 
 export async function sendEmail({ to, subject, text, html }: SendEmailArgs): Promise<{ success: boolean, error?: string }> {
-    const senderEmail = process.env.MAILJET_SENDER_EMAIL;
-
-    if (!process.env.MAILJET_API_KEY || !process.env.MAILJET_API_SECRET || !senderEmail) {
-        console.error("Mailjet environment variables are not fully configured.");
+    if (!process.env.MAILJET_API_KEY || !process.env.MAILJET_API_SECRET) {
+        console.error("Mailjet API Key or Secret is not configured.");
         return { success: false, error: "Email service is not configured on the server." };
     }
 
     try {
+        const settings = await getSiteSettings();
+        const senderName = settings.senderName || DEFAULT_SETTINGS.senderName;
+        // The senderEmail from settings MUST be a verified sender in Mailjet.
+        const senderEmail = settings.senderEmail || process.env.MAILJET_SENDER_EMAIL;
+
+        if (!senderEmail) {
+            console.error("No verified sender email is configured in site settings or environment variables.");
+            return { success: false, error: "Sender email address is not configured." };
+        }
+
         const request = mailjet.post('send', { version: 'v3.1' }).request({
             Messages: [
                 {
                     From: {
                         Email: senderEmail,
-                        Name: 'Ragam Inovasi Optima',
+                        Name: senderName,
                     },
                     To: [
                         {

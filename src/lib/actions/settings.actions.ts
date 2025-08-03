@@ -42,6 +42,8 @@ export async function getSiteSettings(): Promise<SiteSettings> {
         contactAddress: data.contactAddress || DEFAULT_SETTINGS.contactAddress,
         contactPhone: data.contactPhone || DEFAULT_SETTINGS.contactPhone,
         contactEmail: data.contactEmail || DEFAULT_SETTINGS.contactEmail,
+        senderName: data.senderName || DEFAULT_SETTINGS.senderName,
+        senderEmail: data.senderEmail || DEFAULT_SETTINGS.senderEmail,
         updatedAt: updatedAtString,
       };
     }
@@ -96,6 +98,8 @@ export async function updateSiteSettings(
     const contactPhone = formData.get('contactPhone') as string || currentSettings.contactPhone;
     const contactEmail = formData.get('contactEmail') as string || currentSettings.contactEmail;
 
+    const senderName = formData.get('senderName') as string || currentSettings.senderName;
+    const senderEmail = formData.get('senderEmail') as string || currentSettings.senderEmail;
 
     const settingsDataForFirestore: Omit<SiteSettings, 'id' | 'updatedAt' | 'contactPageImageUrl'> & { updatedAt: any, contactPageImageUrl?: string | null } = {
       siteTitle,
@@ -110,6 +114,8 @@ export async function updateSiteSettings(
       contactAddress,
       contactPhone,
       contactEmail,
+      senderName,
+      senderEmail,
       updatedAt: serverTimestamp(),
     };
 

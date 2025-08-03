@@ -326,6 +326,8 @@ export interface SiteSettings {
   contactAddress?: string | null;
   contactPhone?: string | null;
   contactEmail?: string | null;
+  senderName: string;
+  senderEmail: string;
   updatedAt?: string | null;
 }
 

@@ -43,6 +43,8 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   contactAddress: "Dusun Bonto Bunga, Kec. Moncongloe, Kab. Maros, Sul-Sel Indonesia",
   contactPhone: "+62 822 3399 9510",
   contactEmail: "r124ltech@gmail.com",
+  senderName: "Ragam Inovasi Optima",
+  senderEmail: "noreply@ragaminovasi.com",
   updatedAt: null,
 };
 
