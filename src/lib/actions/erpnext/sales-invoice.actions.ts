@@ -61,15 +61,11 @@ async function postEncodedRequest(endpoint: string, body: string, sid: string | 
   return response.json();
 }
 
-async function saveDoc(doc: any, sid: string | null): Promise<any> {
-    const body = `doc=${encodeURIComponent(JSON.stringify(doc))}&action=Save`;
-    return postEncodedRequest('/api/method/frappe.desk.form.save.savedocs', body, sid);
-}
-
 async function submitDoc(doc: any, sid: string | null): Promise<any> {
   const body = `doc=${encodeURIComponent(JSON.stringify(doc))}&action=Submit`;
   return postEncodedRequest('/api/method/frappe.desk.form.save.savedocs', body, sid);
 }
+
 
 const customFieldsForSalesInvoice = [
     { fieldname: 'xendit_invoice_id', fieldtype: 'Data', label: 'Xendit Invoice ID', insert_after: 'title' },
@@ -159,11 +155,13 @@ export async function getOrderByOrderIdFromErpNext({ sid, orderId }: { sid: stri
 
 export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paymentMethod }: { sid: string | null; invoiceName: string; paymentAmount?: number; paymentMethod?: string; }): Promise<{ success: boolean; error?: string }> {
   try {
+    // 1. Fetch the Sales Invoice to get its details
     const invoiceResult = await fetchFromErpNext<any>({ sid, doctype: 'Sales Invoice', docname: invoiceName });
     if (!invoiceResult.success || !invoiceResult.data) {
       throw new Error(`Could not fetch Sales Invoice ${invoiceName}: ${invoiceResult.error}`);
     }
     const invoiceDoc = invoiceResult.data;
+
     if (invoiceDoc.status === 'Paid') {
       console.log(`Invoice ${invoiceName} is already marked as Paid. Skipping payment entry.`);
       return { success: true };
@@ -173,30 +171,41 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
       return { success: true };
     }
 
-    // Step 1: Ask ERPNext to generate the pre-filled Payment Entry document
-    const getPaymentEntryResponse = await postEncodedRequest(
-        '/api/method/erpnext.accounts.doctype.payment_entry.payment_entry.get_payment_entry',
-        `dt=Sales+Invoice&dn=${invoiceName}`,
-        sid
-    );
-    const paymentEntryDoc = getPaymentEntryResponse.message;
-    
-    // Step 2: Modify the pre-filled doc with our data
-    paymentEntryDoc.mode_of_payment = `Xendit - ${paymentMethod || 'Other'}`;
-    if (paymentAmount !== undefined) {
-      paymentEntryDoc.paid_amount = paymentAmount;
-      paymentEntryDoc.received_amount = paymentAmount;
-      if (paymentEntryDoc.references && paymentEntryDoc.references.length > 0) {
-        paymentEntryDoc.references[0].allocated_amount = paymentAmount;
-      }
+    // 2. Fetch the Company document to get the default bank account for payments
+    const companyResult = await fetchFromErpNext<any>({ sid, doctype: 'Company', docname: invoiceDoc.company });
+    if (!companyResult.success || !companyResult.data) {
+      throw new Error(`Could not fetch Company details for ${invoiceDoc.company}`);
     }
-    
-    // Step 3: Save the modified draft document
-    const savedDocResponse = await saveDoc(paymentEntryDoc, sid);
-    const savedDoc = savedDocResponse.docs[0];
+    const defaultBankAccount = companyResult.data.default_bank_account;
+    if (!defaultBankAccount) {
+      throw new Error(`No default bank account set for company ${invoiceDoc.company}.`);
+    }
 
-    // Step 4: Submit the saved document
-    await submitDoc(savedDoc, sid);
+    // 3. Manually construct the Payment Entry payload
+    const paymentEntryPayload = {
+      doctype: 'Payment Entry',
+      payment_type: 'Receive',
+      party_type: 'Customer',
+      company: invoiceDoc.company,
+      party: invoiceDoc.customer,
+      posting_date: new Date().toISOString().split('T')[0],
+      paid_amount: paymentAmount || invoiceDoc.outstanding_amount,
+      received_amount: paymentAmount || invoiceDoc.outstanding_amount,
+      paid_from: invoiceDoc.debit_to, // The customer's receivable account from the invoice
+      paid_to: defaultBankAccount,  // The company's bank/cash account
+      mode_of_payment: `Xendit - ${paymentMethod || 'Other'}`,
+      references: [
+        {
+          reference_doctype: 'Sales Invoice',
+          reference_name: invoiceName,
+          allocated_amount: paymentAmount || invoiceDoc.outstanding_amount,
+        },
+      ],
+      docstatus: 1 // 0 for Draft, 1 for Submitted
+    };
+
+    // 4. Create and Submit the Payment Entry in one go
+    await postRequest('/api/resource/Payment Entry', paymentEntryPayload, sid);
     
     return { success: true };
   } catch (error: any) {
