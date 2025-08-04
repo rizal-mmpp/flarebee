@@ -28,6 +28,30 @@ async function postRequest(endpoint: string, data: any, sid: string) {
   return response.json();
 }
 
+async function submitDoc(doctype: string, docname: string, sid: string): Promise<any> {
+  const docResult = await fetchFromErpNext<any>({ sid, doctype, docname });
+  if (!docResult.success || !docResult.data) {
+    throw new Error(`Could not fetch draft document ${docname} to submit.`);
+  }
+
+  const response = await fetch(`${ERPNEXT_API_URL}/api/method/frappe.desk.form.save.savedocs`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      'Accept': 'application/json',
+      'Cookie': `sid=${sid}`,
+    },
+    body: `doc=${encodeURIComponent(JSON.stringify(docResult.data))}&action=Submit`,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.exception || errorData._server_messages?.[0] || `Failed to submit ${doctype} ${docname}.`);
+  }
+  return response.json();
+}
+
+
 const customFieldsForSalesInvoice = [
     { fieldname: 'xendit_invoice_id', fieldtype: 'Data', label: 'Xendit Invoice ID', insert_after: 'title' },
     { fieldname: 'xendit_invoice_url', fieldtype: 'Data', label: 'Xendit Invoice URL', insert_after: 'xendit_invoice_id' },
@@ -137,7 +161,7 @@ export async function getSalesInvoiceByXenditId(sid: string, xenditInvoiceId: st
     return { success: true, data: result.data[0] };
 }
 
-export async function createPaymentEntry({ sid, invoiceName, paymentAmount }: { sid: string; invoiceName: string; paymentAmount?: number; }): Promise<{ success: boolean; error?: string }> {
+export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paymentMethod }: { sid: string; invoiceName: string; paymentAmount?: number; paymentMethod?: string; }): Promise<{ success: boolean; error?: string }> {
   try {
     const invoiceResult = await fetchFromErpNext<any>({ sid, doctype: 'Sales Invoice', docname: invoiceName });
     if (!invoiceResult.success || !invoiceResult.data) {
@@ -151,8 +175,6 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount }: { 
         return { success: true };
     }
     
-    // Default account can be fetched from Company Doctype or hardcoded for simplicity
-    const modeOfPayment = 'Xendit'; // Needs to be an existing Mode of Payment in ERPNext
     const company = invoiceDoc.company;
     
     // Fetch company details to get the default bank account
@@ -165,10 +187,11 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount }: { 
         throw new Error(`Default bank account is not set for company ${company}.`);
     }
 
+    // 1. Create the Payment Entry as a Draft (docstatus: 0)
     const paymentPayload = {
       doctype: 'Payment Entry',
       payment_type: 'Receive',
-      mode_of_payment: modeOfPayment,
+      mode_of_payment: paymentMethod || 'Xendit',
       party_type: 'Customer',
       party: invoiceDoc.customer,
       paid_amount: paymentAmount ?? invoiceDoc.outstanding_amount,
@@ -180,10 +203,14 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount }: { 
         reference_name: invoiceName,
         allocated_amount: paymentAmount ?? invoiceDoc.outstanding_amount,
       }],
-      docstatus: 1, // Submit the payment entry to make it active
+      docstatus: 0, // IMPORTANT: Create as Draft first
     };
 
-    await postRequest('/api/resource/Payment Entry', paymentPayload, sid);
+    const draftResult = await postRequest('/api/resource/Payment Entry', paymentPayload, sid);
+    const paymentEntryName = draftResult.data.name;
+
+    // 2. Submit the newly created Payment Entry
+    await submitDoc('Payment Entry', paymentEntryName, sid);
 
     return { success: true };
   } catch (error: any) {

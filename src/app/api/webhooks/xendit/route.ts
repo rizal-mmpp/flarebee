@@ -132,6 +132,7 @@ async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentM
     sid: ERPNEXT_ADMIN_SID,
     invoiceName: invoiceName,
     paymentAmount: paidAmount,
+    paymentMethod: paymentMethod, // Pass the payment method from Xendit
   });
 
   if (!paymentResult.success) {
@@ -139,7 +140,7 @@ async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentM
     // We stop here because the core financial transaction failed in ERPNext.
     return;
   }
-  console.log(`Successfully created Payment Entry for Sales Invoice ${invoiceName}. Invoice is now Paid.`);
+  console.log(`Successfully created and submitted Payment Entry for Sales Invoice ${invoiceName}. Invoice should now be Paid.`);
 
 
   // 2. Find the associated Project
