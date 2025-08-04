@@ -248,7 +248,7 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
         data: {
             externalId: invoiceName,
             amount: plan.cost,
-            payerEmail: customer.email_id,
+            payerEmail: customer.email_id || undefined,
             description: `Payment for Project: ${project.project_name}`,
             currency: 'IDR',
         }
