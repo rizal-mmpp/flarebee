@@ -155,61 +155,43 @@ export async function getOrderByOrderIdFromErpNext({ sid, orderId }: { sid: stri
 
 export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paymentMethod }: { sid: string | null; invoiceName: string; paymentAmount?: number; paymentMethod?: string; }): Promise<{ success: boolean; error?: string }> {
   try {
-    // 1. Fetch the Sales Invoice to get its details
-    const invoiceResult = await fetchFromErpNext<any>({ sid, doctype: 'Sales Invoice', docname: invoiceName });
-    if (!invoiceResult.success || !invoiceResult.data) {
-      throw new Error(`Could not fetch Sales Invoice ${invoiceName}: ${invoiceResult.error}`);
-    }
-    const invoiceDoc = invoiceResult.data;
+    // Step 1: Call ERPNext to get a pre-filled Payment Entry document
+    const getPaymentEntryBody = `dt=Sales+Invoice&dn=${encodeURIComponent(invoiceName)}`;
+    const prefilledPaymentEntryResponse = await postEncodedRequest(
+        '/api/method/erpnext.accounts.doctype.payment_entry.payment_entry.get_payment_entry',
+        getPaymentEntryBody,
+        sid
+    );
 
-    if (invoiceDoc.status === 'Paid') {
-      console.log(`Invoice ${invoiceName} is already marked as Paid. Skipping payment entry.`);
-      return { success: true };
+    if (!prefilledPaymentEntryResponse.message) {
+      throw new Error("Failed to get pre-filled payment entry from ERPNext.");
     }
-    if (invoiceDoc.outstanding_amount === 0) {
-      console.log(`Invoice ${invoiceName} has no outstanding amount. Skipping payment entry.`);
-      return { success: true };
-    }
+    const paymentEntryDoc = prefilledPaymentEntryResponse.message;
 
-    // 2. Fetch the Company document to get the default bank account for payments
-    const companyResult = await fetchFromErpNext<any>({ sid, doctype: 'Company', docname: invoiceDoc.company });
-    if (!companyResult.success || !companyResult.data) {
-      throw new Error(`Could not fetch Company details for ${invoiceDoc.company}`);
+    // Step 2: Modify the pre-filled document with webhook data
+    paymentEntryDoc.mode_of_payment = `Xendit - ${paymentMethod || 'Other'}`;
+    if (paymentAmount) {
+        paymentEntryDoc.paid_amount = paymentAmount;
+        paymentEntryDoc.received_amount = paymentAmount;
+        if (paymentEntryDoc.references && paymentEntryDoc.references[0]) {
+            paymentEntryDoc.references[0].allocated_amount = paymentAmount;
+        }
     }
-    const defaultBankAccount = companyResult.data.default_bank_account;
-    if (!defaultBankAccount) {
-      throw new Error(`No default bank account set for company ${invoiceDoc.company}.`);
-    }
-
-    // 3. Manually construct the Payment Entry payload
-    const paymentEntryPayload = {
-      doctype: 'Payment Entry',
-      payment_type: 'Receive',
-      party_type: 'Customer',
-      company: invoiceDoc.company,
-      party: invoiceDoc.customer,
-      posting_date: new Date().toISOString().split('T')[0],
-      paid_amount: paymentAmount || invoiceDoc.outstanding_amount,
-      received_amount: paymentAmount || invoiceDoc.outstanding_amount,
-      paid_from: invoiceDoc.debit_to, // The customer's receivable account from the invoice
-      paid_to: defaultBankAccount,  // The company's bank/cash account
-      mode_of_payment: `Xendit - ${paymentMethod || 'Other'}`,
-      references: [
-        {
-          reference_doctype: 'Sales Invoice',
-          reference_name: invoiceName,
-          allocated_amount: paymentAmount || invoiceDoc.outstanding_amount,
-        },
-      ],
-      docstatus: 1 // 0 for Draft, 1 for Submitted
-    };
-
-    // 4. Create and Submit the Payment Entry in one go
-    await postRequest('/api/resource/Payment Entry', paymentEntryPayload, sid);
     
+    // Step 3: Save the draft Payment Entry
+    const savedDocResponse = await postRequest('/api/resource/Payment Entry', paymentEntryDoc, sid);
+    const savedDoc = savedDocResponse.data;
+
+    if (!savedDoc || !savedDoc.name) {
+        throw new Error("Failed to save draft Payment Entry.");
+    }
+    
+    // Step 4: Submit the saved Payment Entry
+    await submitDoc(savedDoc, sid);
+
     return { success: true };
   } catch (error: any) {
-    console.error("Error creating Payment Entry:", error);
+    console.error("Error creating and submitting Payment Entry:", error);
     return { success: false, error: error.message };
   }
 }
