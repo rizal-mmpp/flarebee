@@ -2,7 +2,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getOrderByOrderIdFromFirestore, updateOrderStatusInFirestore } from '@/lib/firebase/firestoreOrders';
-import { getSalesInvoiceByXenditId, updateSalesInvoiceStatus } from '@/lib/actions/erpnext/sales-invoice.actions';
+import { getSalesInvoiceByXenditId, createPaymentEntry } from '@/lib/actions/erpnext/sales-invoice.actions';
 import { getProjectByInvoiceId, updateProject } from '@/lib/actions/erpnext/project.actions';
 import { sendEmail } from '@/lib/services/email.service';
 import type { Order } from '@/lib/types';
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     const payload = (await request.json()) as XenditWebhookPayload;
     console.log('Xendit webhook payload received:', JSON.stringify(payload, null, 2));
 
-    const { id: xenditInvoiceId, external_id, status: xenditStatus, payment_channel } = payload;
+    const { id: xenditInvoiceId, external_id, status: xenditStatus, payment_channel, paid_amount } = payload;
 
     if (!external_id) {
       console.error('Webhook payload missing external_id.');
@@ -52,9 +52,9 @@ export async function POST(request: NextRequest) {
       // B2C Flow (from user checkout) - This is deprecated and should be migrated to ERPNext flow
       console.warn(`Received legacy B2C webhook for ${external_id}. This flow should be migrated.`);
       await handleB2CFlow(external_id, xenditStatus);
-    } else if (external_id.includes('SINV-')) { // FIX: Use .includes() to handle prefixes like ACC-SINV-
+    } else if (external_id.includes('SINV-')) { 
       // B2B Flow (from admin-created Sales Invoice)
-      await handleB2BFlow(external_id, xenditStatus, payment_channel || payload.payment_method || 'Unknown');
+      await handleB2BFlow(external_id, xenditStatus, payment_channel || payload.payment_method || 'Unknown', paid_amount);
     } else {
       console.warn(`Webhook for unrecognized external_id format: ${external_id}`);
     }
@@ -116,7 +116,7 @@ async function handleB2CFlow(orderId: string, xenditStatus: string) {
   }
 }
 
-async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentMethod: string) {
+async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentMethod: string, paidAmount?: number) {
   if (xenditStatus.toUpperCase() !== 'PAID') {
     console.log(`Ignoring non-PAID status "${xenditStatus}" for B2B invoice ${invoiceName}.`);
     return;
@@ -124,13 +124,23 @@ async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentM
 
   if (!ERPNEXT_ADMIN_SID) {
     console.error("ERPNEXT_ADMIN_SID is not configured. Cannot process B2B webhook.");
-    // Do not throw, as Xendit would retry. Log the error.
     return;
   }
+  
+  // 1. Create a Payment Entry in ERPNext to mark the invoice as paid
+  const paymentResult = await createPaymentEntry({
+    sid: ERPNEXT_ADMIN_SID,
+    invoiceName: invoiceName,
+    paymentAmount: paidAmount,
+  });
 
-  // 1. Update Sales Invoice status in ERPNext
-  await updateSalesInvoiceStatus(ERPNEXT_ADMIN_SID, invoiceName, 'Paid', paymentMethod);
-  console.log(`ERPNext Sales Invoice ${invoiceName} status updated to 'Paid'.`);
+  if (!paymentResult.success) {
+    console.error(`Failed to create Payment Entry for Sales Invoice ${invoiceName}. Error: ${paymentResult.error}`);
+    // We stop here because the core financial transaction failed in ERPNext.
+    return;
+  }
+  console.log(`Successfully created Payment Entry for Sales Invoice ${invoiceName}. Invoice is now Paid.`);
+
 
   // 2. Find the associated Project
   const projectResult = await getProjectByInvoiceId(ERPNEXT_ADMIN_SID, invoiceName);
