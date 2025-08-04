@@ -295,3 +295,26 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
     return { success: false, error: error.message };
   }
 }
+
+export async function getProjectByInvoiceId(sid: string, invoiceId: string): Promise<{ success: boolean; data?: { name: string, project_name: string, customer: string, customer_email?: string }; error?: string }> {
+  const filters = [['sales_invoice', '=', invoiceId]];
+  const result = await fetchFromErpNext<{ name: string; project_name: string; customer: string; }[]>({
+    sid,
+    doctype: 'Project',
+    fields: ['name', 'project_name', 'customer'],
+    filters,
+    limit: 1,
+  });
+
+  if (!result.success || !result.data || result.data.length === 0) {
+    return { success: false, error: result.error || 'Project not found for this Sales Invoice ID.' };
+  }
+  
+  const project = result.data[0];
+
+  // Fetch customer email
+  const customerResult = await fetchFromErpNext<any>({ sid, doctype: 'Customer', docname: project.customer, fields: ['email_id'] });
+  const customerEmail = customerResult.success ? customerResult.data.email_id : undefined;
+
+  return { success: true, data: { ...project, customer_email: customerEmail } };
+}

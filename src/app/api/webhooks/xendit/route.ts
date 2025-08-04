@@ -5,7 +5,6 @@ import { getOrderByOrderIdFromFirestore, updateOrderStatusInFirestore } from '@/
 import { getSalesInvoiceByXenditId, updateSalesInvoiceStatus } from '@/lib/actions/erpnext/sales-invoice.actions';
 import { getProjectByInvoiceId, updateProject } from '@/lib/actions/erpnext/project.actions';
 import { sendEmail } from '@/lib/services/email.service';
-import { fetchFromErpNext } from '@/lib/actions/erpnext/utils';
 import type { Order } from '@/lib/types';
 
 interface XenditWebhookPayload {
