@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       // B2C Flow (from user checkout) - This is deprecated and should be migrated to ERPNext flow
       console.warn(`Received legacy B2C webhook for ${external_id}. This flow should be migrated.`);
       await handleB2CFlow(external_id, xenditStatus);
-    } else if (external_id.startsWith('SINV-')) {
+    } else if (external_id.includes('SINV-')) { // FIX: Use .includes() to handle prefixes like ACC-SINV-
       // B2B Flow (from admin-created Sales Invoice)
       await handleB2BFlow(external_id, xenditStatus, payment_channel || payload.payment_method || 'Unknown');
     } else {
@@ -66,6 +66,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
   }
 }
+
+// Add OPTIONS and HEAD handlers to satisfy potential preflight checks
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Allow': 'POST, OPTIONS, HEAD',
+    },
+  });
+}
+
+export async function HEAD() {
+   return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Allow': 'POST, OPTIONS, HEAD',
+    },
+  });
+}
+
 
 async function handleB2CFlow(orderId: string, xenditStatus: string) {
   const order = await getOrderByOrderIdFromFirestore(orderId);
