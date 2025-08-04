@@ -2,7 +2,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getOrderByOrderIdFromFirestore, updateOrderStatusInFirestore } from '@/lib/firebase/firestoreOrders';
-import { getSalesInvoiceByXenditId, createPaymentEntry } from '@/lib/actions/erpnext/sales-invoice.actions';
+import { createPaymentEntry } from '@/lib/actions/erpnext/sales-invoice.actions';
 import { getProjectByInvoiceId, updateProject } from '@/lib/actions/erpnext/project.actions';
 import { sendEmail } from '@/lib/services/email.service';
 import type { Order } from '@/lib/types';

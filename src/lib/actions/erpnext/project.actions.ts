@@ -220,6 +220,30 @@ export async function deleteProject({ sid, projectName }: { sid: string; project
   }
 }
 
+async function submitDoc(doctype: string, docname: string, sid: string): Promise<any> {
+  const docResult = await fetchFromErpNext<any>({ sid, doctype, docname });
+  if (!docResult.success || !docResult.data) {
+    throw new Error(`Could not fetch draft document ${docname} to submit.`);
+  }
+
+  const response = await fetch(`${ERPNEXT_API_URL}/api/method/frappe.desk.form.save.savedocs`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      'Accept': 'application/json',
+      'Cookie': `sid=${sid}`,
+    },
+    body: `doc=${encodeURIComponent(JSON.stringify(docResult.data))}&action=Submit`,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.exception || errorData._server_messages || `Failed to submit ${doctype} ${docname}.`);
+  }
+  return response.json();
+}
+
+
 export async function createAndSendInvoice({ sid, projectName }: { sid: string; projectName: string }): Promise<{ success: boolean; invoiceName?: string; error?: string }> {
   try {
     // 0. Ensure custom fields exist before we do anything else
@@ -255,7 +279,7 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
     }
     const customer = customerResult.data;
 
-    // 2. Create and SUBMIT Sales Invoice in ERPNext
+    // 2. Create Sales Invoice in DRAFT status
     const invoicePayload = {
       customer: project.customer,
       company: project.company,
@@ -265,11 +289,14 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
         rate: plan.cost,
       }],
       due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0],
-      docstatus: 1, // This is the key change: 1 means SUBMIT
+      // docstatus: 0 is default for new doc, creating a DRAFT
     };
     
     const invoiceCreationResponse = await postRequest('/api/resource/Sales Invoice', invoicePayload, sid);
     const invoiceName = invoiceCreationResponse.data.name;
+    
+    // 2a. SUBMIT the newly created Sales Invoice
+    await submitDoc('Sales Invoice', invoiceName, sid);
 
     // 3. Create Xendit Invoice
     const xenditInvoice = await Invoice.createInvoice({
