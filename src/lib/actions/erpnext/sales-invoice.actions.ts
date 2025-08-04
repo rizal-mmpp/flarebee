@@ -162,12 +162,12 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
 
     if (!getPaymentEntryResponse.ok) {
         const errorData = await getPaymentEntryResponse.json();
-        throw new Error(errorData.exception || errorData._server_messages || 'Failed to get pre-filled payment entry.');
+        throw new Error(errorData.exception || errorData._server_messages?.[0]?._error_message || 'Failed to get pre-filled payment entry.');
     }
     const paymentEntryDoc = (await getPaymentEntryResponse.json()).message;
     
     // Step 2: Modify the pre-filled doc with our data
-    paymentEntryDoc.mode_of_payment = paymentMethod || 'Xendit';
+    paymentEntryDoc.mode_of_payment = `Xendit - ${paymentMethod || 'Other'}`;
     if (paymentAmount !== undefined) {
       paymentEntryDoc.paid_amount = paymentAmount;
       paymentEntryDoc.received_amount = paymentAmount;
@@ -185,7 +185,7 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
     
     if (!saveResponse.ok) {
         const errorData = await saveResponse.json();
-        throw new Error(errorData.exception || errorData._server_messages || 'Failed to save draft payment entry.');
+        throw new Error(errorData.exception || errorData._server_messages?.[0]?._error_message || 'Failed to save draft payment entry.');
     }
     const savedDoc = (await saveResponse.json()).docs[0];
 
@@ -198,3 +198,5 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
     return { success: false, error: error.message };
   }
 }
+
+    
