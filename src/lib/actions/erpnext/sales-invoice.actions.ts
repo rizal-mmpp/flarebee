@@ -137,24 +137,57 @@ export async function getSalesInvoiceByXenditId(sid: string, xenditInvoiceId: st
     return { success: true, data: result.data[0] };
 }
 
-export async function updateSalesInvoiceStatus(sid: string, invoiceName: string, status: string, xenditPaymentMethod: string): Promise<{ success: boolean; error?: string }> {
-    try {
-        const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Sales Invoice/${invoiceName}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
-            body: JSON.stringify({ 
-                status,
-                custom_payment_gateway: xenditPaymentMethod // Update custom field for payment method
-            }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.exception || errorData._server_messages?.[0] || 'Failed to update Sales Invoice status.');
-        }
-
-        return { success: true };
-    } catch (error: any) {
-        return { success: false, error: error.message };
+export async function createPaymentEntry({ sid, invoiceName, paymentAmount }: { sid: string; invoiceName: string; paymentAmount?: number; }): Promise<{ success: boolean; error?: string }> {
+  try {
+    const invoiceResult = await fetchFromErpNext<any>({ sid, doctype: 'Sales Invoice', docname: invoiceName });
+    if (!invoiceResult.success || !invoiceResult.data) {
+      throw new Error(`Could not fetch Sales Invoice ${invoiceName}: ${invoiceResult.error}`);
     }
+    const invoiceDoc = invoiceResult.data;
+
+    // Check if the invoice is already paid to prevent duplicate payment entries
+    if (invoiceDoc.status === 'Paid') {
+        console.log(`Invoice ${invoiceName} is already marked as Paid. Skipping payment entry.`);
+        return { success: true };
+    }
+    
+    // Default account can be fetched from Company Doctype or hardcoded for simplicity
+    const modeOfPayment = 'Xendit'; // Needs to be an existing Mode of Payment in ERPNext
+    const company = invoiceDoc.company;
+    
+    // Fetch company details to get the default bank account
+    const companyResult = await fetchFromErpNext<any>({ sid, doctype: 'Company', docname: company });
+    if (!companyResult.success || !companyResult.data) {
+      throw new Error(`Could not fetch company details for ${company}`);
+    }
+    const defaultBankAccount = companyResult.data.default_bank_account;
+    if (!defaultBankAccount) {
+        throw new Error(`Default bank account is not set for company ${company}.`);
+    }
+
+    const paymentPayload = {
+      doctype: 'Payment Entry',
+      payment_type: 'Receive',
+      mode_of_payment: modeOfPayment,
+      party_type: 'Customer',
+      party: invoiceDoc.customer,
+      paid_amount: paymentAmount ?? invoiceDoc.outstanding_amount,
+      received_amount: paymentAmount ?? invoiceDoc.outstanding_amount,
+      company: company,
+      bank_account: defaultBankAccount, 
+      references: [{
+        reference_doctype: 'Sales Invoice',
+        reference_name: invoiceName,
+        allocated_amount: paymentAmount ?? invoiceDoc.outstanding_amount,
+      }],
+      docstatus: 1, // Submit the payment entry
+    };
+
+    await postRequest('/api/resource/Payment Entry', paymentPayload, sid);
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error creating Payment Entry:", error);
+    return { success: false, error: error.message };
+  }
 }
