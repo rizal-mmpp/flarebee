@@ -106,7 +106,7 @@ export async function getCustomerByName({ sid, customerName }: { sid: string; cu
     return { success: true, data: customer };
 }
 
-export async function getContactForCustomer({ sid, customerName }: { sid: string; customerName: string }): Promise<{ success: boolean; data?: any; error?: string }> {
+export async function getContactForCustomer({ sid, customerName }: { sid: string | null; customerName: string }): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
     const filters = [['Dynamic Link', 'link_doctype', '=', 'Customer'], ['Dynamic Link', 'link_name', '=', customerName]];
     const result = await fetchFromErpNext<any[]>({
@@ -126,8 +126,8 @@ export async function getContactForCustomer({ sid, customerName }: { sid: string
   }
 }
 
-export async function updateContactDetails({ sid, contactId, newEmail, newPhone }: { sid: string; contactId: string; newEmail?: string; newPhone?: string; }): Promise<{ success: boolean; error?: string }> {
-  if (!sid || !contactId) return { success: false, error: 'Session ID and Contact ID are required.' };
+export async function updateContactDetails({ sid, contactId, newEmail, newPhone }: { sid: string | null; contactId: string; newEmail?: string; newPhone?: string; }): Promise<{ success: boolean; error?: string }> {
+  if (!contactId) return { success: false, error: 'Contact ID is required.' };
   
   try {
     // 1. Fetch the full existing contact document
@@ -175,10 +175,16 @@ export async function updateContactDetails({ sid, contactId, newEmail, newPhone 
       contactDoc.mobile_no = newPhone;
     }
 
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+    if (sid) {
+      headers['Cookie'] = `sid=${sid}`;
+    } else {
+      headers['Authorization'] = `token ${process.env.ERPNEXT_ADMIN_API_KEY}:${process.env.ERPNEXT_ADMIN_API_SECRET}`;
+    }
     // 4. Update the entire document
     const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Contact/${contactId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
+      headers: headers,
       body: JSON.stringify(contactDoc),
     });
 

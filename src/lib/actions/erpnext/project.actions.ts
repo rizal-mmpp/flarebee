@@ -153,7 +153,7 @@ export async function updateProject({
   projectData,
   contactData,
 }: {
-  sid: string;
+  sid: string | null;
   projectName: string;
   projectData: Partial<Project> & { status?: string }; // Allow status to be part of the update
   contactData?: { contactId: string; newEmail?: string; newPhone?: string };
@@ -161,11 +161,18 @@ export async function updateProject({
   try {
     const { status, ...otherProjectData } = projectData;
 
+    const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (sid) {
+      authHeaders['Cookie'] = `sid=${sid}`;
+    } else {
+      authHeaders['Authorization'] = `token ${process.env.ERPNEXT_ADMIN_API_KEY}:${process.env.ERPNEXT_ADMIN_API_SECRET}`;
+    }
+
     // Update standard fields first
     if (Object.keys(otherProjectData).length > 0) {
       await fetch(`${ERPNEXT_API_URL}/api/resource/Project/${projectName}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Cookie': `sid=${sid}` },
+        headers: authHeaders,
         body: JSON.stringify(otherProjectData),
       });
     }
@@ -177,9 +184,10 @@ export async function updateProject({
         docname: projectName,
         status: status,
       });
+      const rpcAuthHeaders = { ...authHeaders, 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' };
       await fetch(`${ERPNEXT_API_URL}/api/method/frappe.desk.form.utils.set_status`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Cookie': `sid=${sid}` },
+        headers: rpcAuthHeaders,
         body: statusUpdateData,
       });
     }
@@ -238,7 +246,7 @@ async function submitDoc(doctype: string, docname: string, sid: string): Promise
 
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.exception || errorData._server_messages || `Failed to submit ${doctype} ${docname}.`);
+    throw new Error(errorData.exception || errorData._server_messages?.[0] || `Failed to submit ${doctype} ${docname}.`);
   }
   return response.json();
 }
@@ -351,7 +359,7 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
   }
 }
 
-export async function getProjectByInvoiceId(sid: string, invoiceId: string): Promise<{ success: boolean; data?: { name: string, project_name: string, customer: string, customer_email?: string }; error?: string }> {
+export async function getProjectByInvoiceId(sid: string | null, invoiceId: string): Promise<{ success: boolean; data?: { name: string, project_name: string, customer: string, customer_email?: string }; error?: string }> {
   const filters = [['sales_invoice', '=', invoiceId]];
   const result = await fetchFromErpNext<{ name: string; project_name: string; customer: string; }[]>({
     sid,

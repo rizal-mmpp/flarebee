@@ -6,12 +6,19 @@ import { fetchFromErpNext } from './utils';
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
-async function postRequest(endpoint: string, data: any, sid: string) {
+async function postRequest(endpoint: string, data: any, sid: string | null) {
   if (!ERPNEXT_API_URL) throw new Error('ERPNext API URL is not configured.');
   
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+  if (sid) {
+    headers['Cookie'] = `sid=${sid}`;
+  } else {
+    headers['Authorization'] = `token ${process.env.ERPNEXT_ADMIN_API_KEY}:${process.env.ERPNEXT_ADMIN_API_SECRET}`;
+  }
+
   const response = await fetch(`${ERPNEXT_API_URL}${endpoint}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
+    headers: headers,
     body: JSON.stringify(data),
   });
 
@@ -28,16 +35,22 @@ async function postRequest(endpoint: string, data: any, sid: string) {
   return response.json();
 }
 
-async function postEncodedRequest(endpoint: string, body: string, sid: string) {
+async function postEncodedRequest(endpoint: string, body: string, sid: string | null) {
   if (!ERPNEXT_API_URL) throw new Error('ERPNext API URL is not configured.');
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    'Accept': 'application/json',
+  };
+  if (sid) {
+    headers['Cookie'] = `sid=${sid}`;
+  } else {
+    headers['Authorization'] = `token ${process.env.ERPNEXT_ADMIN_API_KEY}:${process.env.ERPNEXT_ADMIN_API_SECRET}`;
+  }
 
   const response = await fetch(`${ERPNEXT_API_URL}${endpoint}`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      'Accept': 'application/json',
-      'Cookie': `sid=${sid}`,
-    },
+    headers: headers,
     body: body,
   });
 
@@ -48,12 +61,12 @@ async function postEncodedRequest(endpoint: string, body: string, sid: string) {
   return response.json();
 }
 
-async function saveDoc(doc: any, sid: string): Promise<any> {
+async function saveDoc(doc: any, sid: string | null): Promise<any> {
     const body = `doc=${encodeURIComponent(JSON.stringify(doc))}&action=Save`;
     return postEncodedRequest('/api/method/frappe.desk.form.save.savedocs', body, sid);
 }
 
-async function submitDoc(doc: any, sid: string): Promise<any> {
+async function submitDoc(doc: any, sid: string | null): Promise<any> {
   const body = `doc=${encodeURIComponent(JSON.stringify(doc))}&action=Submit`;
   return postEncodedRequest('/api/method/frappe.desk.form.save.savedocs', body, sid);
 }
@@ -144,14 +157,19 @@ export async function getOrderByOrderIdFromErpNext({ sid, orderId }: { sid: stri
     return { success: true, data: order };
 }
 
-export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paymentMethod }: { sid: string; invoiceName: string; paymentAmount?: number; paymentMethod?: string; }): Promise<{ success: boolean; error?: string }> {
+export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paymentMethod }: { sid: string | null; invoiceName: string; paymentAmount?: number; paymentMethod?: string; }): Promise<{ success: boolean; error?: string }> {
   try {
     const invoiceResult = await fetchFromErpNext<any>({ sid, doctype: 'Sales Invoice', docname: invoiceName });
     if (!invoiceResult.success || !invoiceResult.data) {
       throw new Error(`Could not fetch Sales Invoice ${invoiceName}: ${invoiceResult.error}`);
     }
-    if (invoiceResult.data.status === 'Paid') {
+    const invoiceDoc = invoiceResult.data;
+    if (invoiceDoc.status === 'Paid') {
       console.log(`Invoice ${invoiceName} is already marked as Paid. Skipping payment entry.`);
+      return { success: true };
+    }
+    if (invoiceDoc.outstanding_amount === 0) {
+      console.log(`Invoice ${invoiceName} has no outstanding amount. Skipping payment entry.`);
       return { success: true };
     }
 

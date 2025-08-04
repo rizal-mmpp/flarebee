@@ -5,6 +5,8 @@
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 const GUEST_API_KEY = process.env.NEXT_PUBLIC_ERPNEXT_GUEST_API_KEY;
 const GUEST_API_SECRET = process.env.NEXT_PUBLIC_ERPNEXT_GUEST_API_SECRET;
+const ADMIN_API_KEY = process.env.ERPNEXT_ADMIN_API_KEY;
+const ADMIN_API_SECRET = process.env.ERPNEXT_ADMIN_API_SECRET;
 
 interface FetchFromErpNextArgs {
   sid?: string | null;
@@ -30,14 +32,17 @@ export async function fetchFromErpNext<T>({
   const headers: Record<string, string> = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
 
   if (sid) {
-    // Use session ID for authenticated users
+    // Priority 1: Use session ID if provided (for logged-in user actions)
     headers['Cookie'] = `sid=${sid}`;
+  } else if (ADMIN_API_KEY && ADMIN_API_SECRET) {
+    // Priority 2: Use Admin API keys if no SID (for server-to-server actions like webhooks)
+    headers['Authorization'] = `token ${ADMIN_API_KEY}:${ADMIN_API_SECRET}`;
   } else if (GUEST_API_KEY && GUEST_API_SECRET) {
-    // Use guest API keys for public requests
+    // Priority 3: Use Guest API keys for public requests
     headers['Authorization'] = `token ${GUEST_API_KEY}:${GUEST_API_SECRET}`;
   } else {
     // No authentication method available
-    return { success: false, error: 'No authentication method available (Session ID or API Key).' };
+    return { success: false, error: 'No authentication method available for ERPNext request.' };
   }
   
   let url: string;

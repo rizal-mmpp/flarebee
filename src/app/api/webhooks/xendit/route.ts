@@ -21,7 +21,6 @@ interface XenditWebhookPayload {
   // ... other fields from Xendit
 }
 
-const ERPNEXT_ADMIN_SID = process.env.ERPNEXT_ADMIN_SID; // An SID with admin rights for backend operations
 
 export async function POST(request: NextRequest) {
   const callbackToken = request.headers.get('x-callback-token');
@@ -91,16 +90,15 @@ async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentM
   if (xenditStatus.toUpperCase() !== 'PAID') {
     return { success: true, message: `Ignoring non-PAID status "${xenditStatus}".` };
   }
-
-  if (!ERPNEXT_ADMIN_SID) {
-    console.error(`${logPrefix} CRITICAL: ERPNEXT_ADMIN_SID is not configured.`);
-    return { success: false, message: 'CRITICAL: ERPNext admin session not configured on server.' };
-  }
+  
+  // Note: We no longer check for ERPNEXT_ADMIN_SID here. 
+  // The actions will use the Admin API Key/Secret if no SID is provided.
 
   // --- Step 1: Create Payment Entry ---
   console.log(`${logPrefix} Step 1: Creating Payment Entry.`);
   const paymentResult = await createPaymentEntry({
-    sid: ERPNEXT_ADMIN_SID,
+    // We pass null for sid to force the use of Admin API Keys
+    sid: null, 
     invoiceName: invoiceName,
     paymentAmount: paidAmount,
     paymentMethod: paymentMethod,
@@ -115,7 +113,7 @@ async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentM
 
   // --- Step 2: Find Associated Project ---
   console.log(`${logPrefix} Step 2: Finding associated Project.`);
-  const projectResult = await getProjectByInvoiceId(ERPNEXT_ADMIN_SID, invoiceName);
+  const projectResult = await getProjectByInvoiceId(null, invoiceName); // Pass null sid
   if (!projectResult.success || !projectResult.data) {
     const errorMsg = `Failed at Step 2: Project not found for invoice. Error: ${projectResult.error || 'Not found.'}`;
     console.error(`${logPrefix} ${errorMsg}`);
@@ -126,7 +124,7 @@ async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentM
 
   // --- Step 3: Update Project Status ---
   console.log(`${logPrefix} Step 3: Updating Project ${project.name} status to "In Progress".`);
-  const updateResult = await updateProject({ sid: ERPNEXT_ADMIN_SID, projectName: project.name, projectData: { status: 'In Progress' } });
+  const updateResult = await updateProject({ sid: null, projectName: project.name, projectData: { status: 'In Progress' } }); // Pass null sid
   if (!updateResult.success) {
       const errorMsg = `Failed at Step 3: Could not update project status. Error: ${updateResult.error}`;
       console.error(`${logPrefix} ${errorMsg}`);
