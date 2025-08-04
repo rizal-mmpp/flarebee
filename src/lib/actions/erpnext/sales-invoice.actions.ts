@@ -28,12 +28,8 @@ async function postRequest(endpoint: string, data: any, sid: string) {
   return response.json();
 }
 
-async function submitDoc(doctype: string, docname: string, sid: string): Promise<any> {
-  const docResult = await fetchFromErpNext<any>({ sid, doctype, docname });
-  if (!docResult.success || !docResult.data) {
-    throw new Error(`Could not fetch draft document ${docname} to submit.`);
-  }
-
+// Submits a document that has already been created (e.g., a draft).
+async function submitDoc(doc: any, sid: string): Promise<any> {
   const response = await fetch(`${ERPNEXT_API_URL}/api/method/frappe.desk.form.save.savedocs`, {
     method: 'POST',
     headers: {
@@ -41,16 +37,15 @@ async function submitDoc(doctype: string, docname: string, sid: string): Promise
       'Accept': 'application/json',
       'Cookie': `sid=${sid}`,
     },
-    body: `doc=${encodeURIComponent(JSON.stringify(docResult.data))}&action=Submit`,
+    body: `doc=${encodeURIComponent(JSON.stringify(doc))}&action=Submit`,
   });
 
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.exception || errorData._server_messages?.[0] || `Failed to submit ${doctype} ${docname}.`);
+    throw new Error(errorData.exception || errorData._server_messages?.[0] || `Failed to submit document.`);
   }
   return response.json();
 }
-
 
 const customFieldsForSalesInvoice = [
     { fieldname: 'xendit_invoice_id', fieldtype: 'Data', label: 'Xendit Invoice ID', insert_after: 'title' },
@@ -69,10 +64,9 @@ export async function ensureSalesInvoiceCustomFieldsExist(sid: string): Promise<
         
         try {
             await postRequest('/api/resource/Custom Field', payload, sid);
-            console.log(`Successfully added or verified custom field '${field.fieldname}' to 'Sales Invoice'.`);
         } catch (error: any) {
             if (error.message && (error.message.includes('already exists') || error.message.includes('exists'))) {
-                console.log(`Custom field '${field.fieldname}' already exists in 'Sales Invoice'. Skipping.`);
+                // Ignore if field already exists
             } else {
                 throw new Error(`Failed to add custom field '${field.fieldname}' to 'Sales Invoice': ${error.message}`);
             }
@@ -144,72 +138,60 @@ export async function getOrderByOrderIdFromErpNext({ sid, orderId }: { sid: stri
     return { success: true, data: order };
 }
 
-export async function getSalesInvoiceByXenditId(sid: string, xenditInvoiceId: string): Promise<{ success: boolean; data?: any; error?: string }> {
-    const filters = [['xendit_invoice_id', '=', xenditInvoiceId]];
-    const result = await fetchFromErpNext<any[]>({
-      sid,
-      doctype: 'Sales Invoice',
-      fields: ['name', 'customer'],
-      filters,
-      limit: 1,
-    });
-
-    if (!result.success || !result.data || result.data.length === 0) {
-      return { success: false, error: result.error || 'Sales Invoice not found for this Xendit ID.' };
-    }
-
-    return { success: true, data: result.data[0] };
-}
-
 export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paymentMethod }: { sid: string; invoiceName: string; paymentAmount?: number; paymentMethod?: string; }): Promise<{ success: boolean; error?: string }> {
   try {
     const invoiceResult = await fetchFromErpNext<any>({ sid, doctype: 'Sales Invoice', docname: invoiceName });
     if (!invoiceResult.success || !invoiceResult.data) {
       throw new Error(`Could not fetch Sales Invoice ${invoiceName}: ${invoiceResult.error}`);
     }
-    const invoiceDoc = invoiceResult.data;
+    if (invoiceResult.data.status === 'Paid') {
+      console.log(`Invoice ${invoiceName} is already marked as Paid. Skipping payment entry.`);
+      return { success: true };
+    }
 
-    if (invoiceDoc.status === 'Paid' || invoiceDoc.outstanding_amount === 0) {
-        console.log(`Invoice ${invoiceName} is already marked as Paid. Skipping payment entry.`);
-        return { success: true };
+    // Step 1: Ask ERPNext to generate the pre-filled Payment Entry document
+    const getPaymentEntryResponse = await fetch(`${ERPNEXT_API_URL}/api/method/erpnext.accounts.doctype.payment_entry.payment_entry.get_payment_entry`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'Accept': 'application/json',
+            'Cookie': `sid=${sid}`,
+        },
+        body: `dt=Sales+Invoice&dn=${invoiceName}`,
+    });
+
+    if (!getPaymentEntryResponse.ok) {
+        const errorData = await getPaymentEntryResponse.json();
+        throw new Error(errorData.exception || errorData._server_messages || 'Failed to get pre-filled payment entry.');
+    }
+    const paymentEntryDoc = (await getPaymentEntryResponse.json()).message;
+    
+    // Step 2: Modify the pre-filled doc with our data
+    paymentEntryDoc.mode_of_payment = paymentMethod || 'Xendit';
+    if (paymentAmount !== undefined) {
+      paymentEntryDoc.paid_amount = paymentAmount;
+      paymentEntryDoc.received_amount = paymentAmount;
+      if (paymentEntryDoc.references && paymentEntryDoc.references.length > 0) {
+        paymentEntryDoc.references[0].allocated_amount = paymentAmount;
+      }
     }
     
-    const company = invoiceDoc.company;
-    const companyResult = await fetchFromErpNext<any>({ sid, doctype: 'Company', docname: company, fields: ['default_cash_account'] });
-    if (!companyResult.success || !companyResult.data) {
-      throw new Error(`Could not fetch company details for ${company}`);
+    // Step 3: Save the modified draft document
+    const saveResponse = await fetch(`${ERPNEXT_API_URL}/api/method/frappe.desk.form.save.savedocs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'Accept': 'application/json', 'Cookie': `sid=${sid}`, },
+      body: `doc=${encodeURIComponent(JSON.stringify(paymentEntryDoc))}&action=Save`,
+    });
+    
+    if (!saveResponse.ok) {
+        const errorData = await saveResponse.json();
+        throw new Error(errorData.exception || errorData._server_messages || 'Failed to save draft payment entry.');
     }
-    const targetAccount = companyResult.data.default_cash_account;
-    if (!targetAccount) {
-        throw new Error(`Default cash account is not set for company ${company}.`);
-    }
+    const savedDoc = (await saveResponse.json()).docs[0];
 
-    // 1. Create the Payment Entry as a Draft
-    const paymentPayload = {
-      doctype: 'Payment Entry',
-      payment_type: 'Receive',
-      mode_of_payment: paymentMethod || 'Xendit',
-      party_type: 'Customer',
-      party: invoiceDoc.customer,
-      paid_amount: paymentAmount ?? invoiceDoc.outstanding_amount,
-      received_amount: paymentAmount ?? invoiceDoc.outstanding_amount,
-      paid_from: invoiceDoc.debit_to, // The customer's receivable account
-      paid_to: targetAccount, // The company's cash/bank account
-      company: company,
-      references: [{
-        reference_doctype: 'Sales Invoice',
-        reference_name: invoiceName,
-        allocated_amount: paymentAmount ?? invoiceDoc.outstanding_amount,
-      }],
-      docstatus: 0, 
-    };
-
-    const draftResult = await postRequest('/api/resource/Payment Entry', paymentPayload, sid);
-    const paymentEntryName = draftResult.data.name;
-
-    // 2. Submit the newly created Payment Entry
-    await submitDoc('Payment Entry', paymentEntryName, sid);
-
+    // Step 4: Submit the saved document
+    await submitDoc(savedDoc, sid);
+    
     return { success: true };
   } catch (error: any) {
     console.error("Error creating Payment Entry:", error);
