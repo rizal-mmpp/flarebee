@@ -175,13 +175,13 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
     }
     
     const company = invoiceDoc.company;
-    const companyResult = await fetchFromErpNext<any>({ sid, doctype: 'Company', docname: company, fields: ['default_bank_account'] });
+    const companyResult = await fetchFromErpNext<any>({ sid, doctype: 'Company', docname: company, fields: ['default_cash_account'] });
     if (!companyResult.success || !companyResult.data) {
       throw new Error(`Could not fetch company details for ${company}`);
     }
-    const defaultBankAccount = companyResult.data.default_bank_account;
-    if (!defaultBankAccount) {
-        throw new Error(`Default bank account is not set for company ${company}.`);
+    const targetAccount = companyResult.data.default_cash_account;
+    if (!targetAccount) {
+        throw new Error(`Default cash account is not set for company ${company}.`);
     }
 
     // 1. Create the Payment Entry as a Draft
@@ -193,8 +193,9 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
       party: invoiceDoc.customer,
       paid_amount: paymentAmount ?? invoiceDoc.outstanding_amount,
       received_amount: paymentAmount ?? invoiceDoc.outstanding_amount,
+      paid_from: invoiceDoc.debit_to, // The customer's receivable account
+      paid_to: targetAccount, // The company's cash/bank account
       company: company,
-      paid_to: defaultBankAccount,
       references: [{
         reference_doctype: 'Sales Invoice',
         reference_name: invoiceName,
