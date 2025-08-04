@@ -49,7 +49,8 @@ export async function POST(request: NextRequest) {
 
     // Differentiate flow based on external_id prefix
     if (external_id.startsWith('rio-order-')) {
-      // B2C Flow (from user checkout)
+      // B2C Flow (from user checkout) - This is deprecated and should be migrated to ERPNext flow
+      console.warn(`Received legacy B2C webhook for ${external_id}. This flow should be migrated.`);
       await handleB2CFlow(external_id, xenditStatus);
     } else if (external_id.startsWith('SINV-')) {
       // B2B Flow (from admin-created Sales Invoice)
@@ -65,6 +66,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
   }
 }
+
+// Add OPTIONS and HEAD handlers to satisfy potential preflight checks
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Allow': 'POST, OPTIONS, HEAD',
+    },
+  });
+}
+
+export async function HEAD() {
+   return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Allow': 'POST, OPTIONS, HEAD',
+    },
+  });
+}
+
 
 async function handleB2CFlow(orderId: string, xenditStatus: string) {
   const order = await getOrderByOrderIdFromFirestore(orderId);
@@ -109,6 +130,7 @@ async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentM
 
   // 1. Update Sales Invoice status in ERPNext
   await updateSalesInvoiceStatus(ERPNEXT_ADMIN_SID, invoiceName, 'Paid', paymentMethod);
+  console.log(`ERPNext Sales Invoice ${invoiceName} status updated to 'Paid'.`);
 
   // 2. Find the associated Project
   const projectResult = await getProjectByInvoiceId(ERPNEXT_ADMIN_SID, invoiceName);
@@ -125,44 +147,23 @@ async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentM
   
   // 4. Send confirmation email to customer
   if (project.customer_email) {
-    await sendEmail({
-        to: project.customer_email,
-        subject: `Payment Received for Project: ${project.project_name}`,
-        html: `
-            <h1>Thank You For Your Payment</h1>
-            <p>Dear ${project.customer},</p>
-            <p>We have successfully received your payment for project: <strong>${project.project_name}</strong>.</p>
-            <p>We have started working on it and will keep you updated on the progress.</p>
-            <p>Thank you!</p>
-        `,
-    });
-    console.log(`Payment confirmation email sent to ${project.customer_email}`);
+    try {
+      await sendEmail({
+          to: project.customer_email,
+          subject: `Payment Received for Project: ${project.project_name}`,
+          html: `
+              <h1>Thank You For Your Payment</h1>
+              <p>Dear ${project.customer},</p>
+              <p>We have successfully received your payment for project: <strong>${project.project_name}</strong>.</p>
+              <p>We have started working on it and will keep you updated on the progress.</p>
+              <p>Thank you!</p>
+          `,
+      });
+      console.log(`Payment confirmation email sent to ${project.customer_email}`);
+    } catch (emailError: any) {
+        console.error(`Failed to send confirmation email for project ${project.name}:`, emailError.message);
+    }
   } else {
     console.warn(`No email found for customer ${project.customer}. Cannot send confirmation email.`);
   }
 }
-
-// Function to find project by invoice ID (needs to be added to project.actions.ts)
-async function getProjectByInvoiceId(sid: string, invoiceId: string): Promise<{ success: boolean; data?: { name: string, project_name: string, customer: string, customer_email?: string }; error?: string }> {
-  const filters = [['sales_invoice', '=', invoiceId]];
-  const result = await fetchFromErpNext<{ name: string; project_name: string; customer: string; }[]>({
-    sid,
-    doctype: 'Project',
-    fields: ['name', 'project_name', 'customer'],
-    filters,
-    limit: 1,
-  });
-
-  if (!result.success || !result.data || result.data.length === 0) {
-    return { success: false, error: result.error || 'Project not found for this Sales Invoice ID.' };
-  }
-  
-  const project = result.data[0];
-
-  // Fetch customer email
-  const customerResult = await fetchFromErpNext<any>({ sid, doctype: 'Customer', docname: project.customer, fields: ['email_id'] });
-  const customerEmail = customerResult.success ? customerResult.data.email_id : undefined;
-
-  return { success: true, data: { ...project, customer_email: customerEmail } };
-}
-
