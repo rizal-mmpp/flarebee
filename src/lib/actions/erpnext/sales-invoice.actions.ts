@@ -28,23 +28,34 @@ async function postRequest(endpoint: string, data: any, sid: string) {
   return response.json();
 }
 
-// Submits a document that has already been created (e.g., a draft).
-async function submitDoc(doc: any, sid: string): Promise<any> {
-  const response = await fetch(`${ERPNEXT_API_URL}/api/method/frappe.desk.form.save.savedocs`, {
+async function postEncodedRequest(endpoint: string, body: string, sid: string) {
+  if (!ERPNEXT_API_URL) throw new Error('ERPNext API URL is not configured.');
+
+  const response = await fetch(`${ERPNEXT_API_URL}${endpoint}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
       'Accept': 'application/json',
       'Cookie': `sid=${sid}`,
     },
-    body: `doc=${encodeURIComponent(JSON.stringify(doc))}&action=Submit`,
+    body: body,
   });
 
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.exception || errorData._server_messages?.[0] || `Failed to submit document.`);
+    throw new Error(errorData.exception || errorData._server_messages?.[0] || `Failed to post to ${endpoint}.`);
   }
   return response.json();
+}
+
+async function saveDoc(doc: any, sid: string): Promise<any> {
+    const body = `doc=${encodeURIComponent(JSON.stringify(doc))}&action=Save`;
+    return postEncodedRequest('/api/method/frappe.desk.form.save.savedocs', body, sid);
+}
+
+async function submitDoc(doc: any, sid: string): Promise<any> {
+  const body = `doc=${encodeURIComponent(JSON.stringify(doc))}&action=Submit`;
+  return postEncodedRequest('/api/method/frappe.desk.form.save.savedocs', body, sid);
 }
 
 const customFieldsForSalesInvoice = [
@@ -56,12 +67,7 @@ const customFieldsForSalesInvoice = [
 export async function ensureSalesInvoiceCustomFieldsExist(sid: string): Promise<{ success: boolean; error?: string }> {
   try {
     for (const field of customFieldsForSalesInvoice) {
-        const payload = {
-            doctype: "Custom Field",
-            dt: "Sales Invoice", 
-            ...field
-        };
-        
+        const payload = { doctype: "Custom Field", dt: "Sales Invoice", ...field };
         try {
             await postRequest('/api/resource/Custom Field', payload, sid);
         } catch (error: any) {
@@ -150,21 +156,12 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
     }
 
     // Step 1: Ask ERPNext to generate the pre-filled Payment Entry document
-    const getPaymentEntryResponse = await fetch(`${ERPNEXT_API_URL}/api/method/erpnext.accounts.doctype.payment_entry.payment_entry.get_payment_entry`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-            'Accept': 'application/json',
-            'Cookie': `sid=${sid}`,
-        },
-        body: `dt=Sales+Invoice&dn=${invoiceName}`,
-    });
-
-    if (!getPaymentEntryResponse.ok) {
-        const errorData = await getPaymentEntryResponse.json();
-        throw new Error(errorData.exception || errorData._server_messages?.[0]?._error_message || 'Failed to get pre-filled payment entry.');
-    }
-    const paymentEntryDoc = (await getPaymentEntryResponse.json()).message;
+    const getPaymentEntryResponse = await postEncodedRequest(
+        '/api/method/erpnext.accounts.doctype.payment_entry.payment_entry.get_payment_entry',
+        `dt=Sales+Invoice&dn=${invoiceName}`,
+        sid
+    );
+    const paymentEntryDoc = getPaymentEntryResponse.message;
     
     // Step 2: Modify the pre-filled doc with our data
     paymentEntryDoc.mode_of_payment = `Xendit - ${paymentMethod || 'Other'}`;
@@ -177,17 +174,8 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
     }
     
     // Step 3: Save the modified draft document
-    const saveResponse = await fetch(`${ERPNEXT_API_URL}/api/method/frappe.desk.form.save.savedocs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'Accept': 'application/json', 'Cookie': `sid=${sid}`, },
-      body: `doc=${encodeURIComponent(JSON.stringify(paymentEntryDoc))}&action=Save`,
-    });
-    
-    if (!saveResponse.ok) {
-        const errorData = await saveResponse.json();
-        throw new Error(errorData.exception || errorData._server_messages?.[0]?._error_message || 'Failed to save draft payment entry.');
-    }
-    const savedDoc = (await saveResponse.json()).docs[0];
+    const savedDocResponse = await saveDoc(paymentEntryDoc, sid);
+    const savedDoc = savedDocResponse.docs[0];
 
     // Step 4: Submit the saved document
     await submitDoc(savedDoc, sid);
@@ -198,5 +186,3 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
     return { success: false, error: error.message };
   }
 }
-
-    
