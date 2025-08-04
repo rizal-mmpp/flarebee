@@ -146,30 +146,57 @@ export async function getProjectByName({ sid, projectName }: { sid: string; proj
     return { success: true, data: project };
 }
 
-export async function updateProject({ sid, projectName, projectData, contactData }: { sid: string; projectName: string; projectData: Partial<Project>; contactData?: { contactId: string; newEmail?: string; newPhone?: string; } }): Promise<{ success: boolean; error?: string }> {
+// This function now correctly handles status changes via the `set_status` method.
+export async function updateProject({
+  sid,
+  projectName,
+  projectData,
+  contactData,
+}: {
+  sid: string;
+  projectName: string;
+  projectData: Partial<Project> & { status?: string }; // Allow status to be part of the update
+  contactData?: { contactId: string; newEmail?: string; newPhone?: string };
+}): Promise<{ success: boolean; error?: string }> {
   try {
-    const projectUpdateResponse = await fetch(`${ERPNEXT_API_URL}/api/resource/Project/${projectName}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
-      body: JSON.stringify(projectData),
-    });
-    const projectResponseData = await projectUpdateResponse.json();
-    if (!projectUpdateResponse.ok) {
-      throw new Error(projectResponseData.exception || projectResponseData._server_messages?.[0] || 'Failed to update project in ERPNext.');
+    const { status, ...otherProjectData } = projectData;
+
+    // Update standard fields first
+    if (Object.keys(otherProjectData).length > 0) {
+      await fetch(`${ERPNEXT_API_URL}/api/resource/Project/${projectName}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Cookie': `sid=${sid}` },
+        body: JSON.stringify(otherProjectData),
+      });
     }
 
+    // If status needs to be updated, use the correct RPC method
+    if (status) {
+      const statusUpdateData = new URLSearchParams({
+        doctype: 'Project',
+        docname: projectName,
+        status: status,
+      });
+      await fetch(`${ERPNEXT_API_URL}/api/method/frappe.desk.form.utils.set_status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Cookie': `sid=${sid}` },
+        body: statusUpdateData,
+      });
+    }
+
+    // Update contact details if provided
     if (contactData && contactData.contactId && (contactData.newEmail || contactData.newPhone)) {
-      const contactUpdateResult = await updateContactDetails({ 
-        sid, 
-        contactId: contactData.contactId, 
-        newEmail: contactData.newEmail, 
+      const contactUpdateResult = await updateContactDetails({
+        sid,
+        contactId: contactData.contactId,
+        newEmail: contactData.newEmail,
         newPhone: contactData.newPhone,
       });
       if (!contactUpdateResult.success) {
         console.warn(`Project updated, but failed to update contact: ${contactUpdateResult.error}`);
       }
     }
-    
+
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -228,7 +255,7 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
     }
     const customer = customerResult.data;
 
-    // 2. Create Sales Invoice in ERPNext
+    // 2. Create and SUBMIT Sales Invoice in ERPNext
     const invoicePayload = {
       customer: project.customer,
       company: project.company,
@@ -238,6 +265,7 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
         rate: plan.cost,
       }],
       due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0],
+      docstatus: 1, // This is the key change: 1 means SUBMIT
     };
     
     const invoiceCreationResponse = await postRequest('/api/resource/Sales Invoice', invoicePayload, sid);
