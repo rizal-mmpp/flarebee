@@ -33,14 +33,8 @@ async function postEncodedRequest(endpoint: string, body: string, sid: string | 
 }
 
 async function submitDoc(doc: any, sid: string | null): Promise<any> {
-  // ERPNext requires us to fetch the full doc before submitting
-  const docToSubmit = await fetchFromErpNext<any>({ sid, doctype: doc.doctype, docname: doc.name, fields: ['*'] });
-  if (!docToSubmit.success || !docToSubmit.data) {
-    throw new Error(`Could not fetch draft document ${doc.name} to submit.`);
-  }
-
-  const body = `doc=${encodeURIComponent(JSON.stringify(docToSubmit.data))}&action=Submit`;
-  return postEncodedRequest('/api/method/frappe.desk.form.save.savedocs', body, sid);
+    const body = `doc=${encodeURIComponent(JSON.stringify(doc))}&action=Submit`;
+    return postEncodedRequest(`/api/method/frappe.desk.form.save.savedocs`, body, sid);
 }
 
 const customFieldsForSalesInvoice = [
@@ -135,49 +129,59 @@ export async function getOrderByOrderIdFromErpNext({ sid, orderId }: { sid: stri
 
 export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paymentMethod }: { sid: string | null; invoiceName: string; paymentAmount?: number; paymentMethod?: string; }): Promise<{ success: boolean; error?: string }> {
   try {
-    // Step 1: Call ERPNext to get a pre-filled Payment Entry document
-    const getPaymentEntryBody = `dt=Sales+Invoice&dn=${encodeURIComponent(invoiceName)}`;
-    const prefilledPaymentEntryResponse = await postEncodedRequest(
-        '/api/method/erpnext.accounts.doctype.payment_entry.payment_entry.get_payment_entry',
-        getPaymentEntryBody,
-        sid
-    );
-
-    if (!prefilledPaymentEntryResponse.message) {
-      throw new Error("Failed to get pre-filled payment entry from ERPNext.");
+    // Step 1: Fetch the full Sales Invoice document to get required details
+    const invoiceResult = await fetchFromErpNext<any>({ sid, doctype: 'Sales Invoice', docname: invoiceName, fields: ['*'] });
+    if (!invoiceResult.success || !invoiceResult.data) {
+        throw new Error(`Could not fetch Sales Invoice ${invoiceName} to create payment.`);
     }
-    const paymentEntryDoc = prefilledPaymentEntryResponse.message;
+    const invoiceDoc = invoiceResult.data;
 
-    // Step 2: Modify the pre-filled document with webhook data and fallbacks
-    paymentEntryDoc.mode_of_payment = `Xendit - ${paymentMethod || 'Other'}`;
+    // Step 2: Manually construct the Payment Entry payload
+    const finalPaymentAmount = paymentAmount !== undefined ? paymentAmount : invoiceDoc.outstanding_amount;
     
-    // *** FIX: Explicitly set paid_to if not provided by default ***
-    if (!paymentEntryDoc.paid_to) {
-        paymentEntryDoc.paid_to = "Cash - RIO"; // Fallback to a default Cash account
-    }
-
-    if (paymentAmount) {
-        paymentEntryDoc.paid_amount = paymentAmount;
-        paymentEntryDoc.received_amount = paymentAmount;
-        if (paymentEntryDoc.references && paymentEntryDoc.references[0]) {
-            paymentEntryDoc.references[0].allocated_amount = paymentAmount;
-        }
-    }
+    const paymentEntryPayload = {
+        doctype: 'Payment Entry',
+        payment_type: 'Receive',
+        party_type: 'Customer',
+        party: invoiceDoc.customer,
+        company: invoiceDoc.company,
+        posting_date: new Date().toISOString().split('T')[0], // Use today's date
+        paid_from: invoiceDoc.debit_to, // This is the customer's receivable account
+        paid_to: invoiceDoc.account_for_change_amount || "Cash - RIO", // Fallback to a default cash account
+        paid_amount: finalPaymentAmount,
+        received_amount: finalPaymentAmount,
+        mode_of_payment: `Xendit - ${paymentMethod || 'Other'}`,
+        references: [{
+            reference_doctype: 'Sales Invoice',
+            reference_name: invoiceName,
+            total_amount: invoiceDoc.total,
+            outstanding_amount: invoiceDoc.outstanding_amount,
+            allocated_amount: finalPaymentAmount,
+        }]
+    };
     
-    // Step 3: Save the draft Payment Entry first
-    const saveResponse = await postEncodedRequest(
-      `/api/method/frappe.desk.form.save.savedocs`,
-      `doc=${encodeURIComponent(JSON.stringify(paymentEntryDoc))}&action=Save`,
-      sid
-    );
-
-    const savedDoc = saveResponse.docs?.[0];
-    if (!savedDoc || !savedDoc.name) {
-      throw new Error("Failed to save draft Payment Entry.");
+    // Step 3: Create and Save the draft Payment Entry
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+    if (sid) {
+      headers['Cookie'] = `sid=${sid}`;
+    } else {
+      headers['Authorization'] = `token ${process.env.ERPNEXT_ADMIN_API_KEY}:${process.env.ERPNEXT_ADMIN_API_SECRET}`;
     }
 
-    // Step 4: Submit the saved Payment Entry
-    await submitDoc(savedDoc, sid);
+    const createResponse = await fetch(`${ERPNEXT_API_URL}/api/resource/Payment Entry`, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(paymentEntryPayload),
+    });
+
+    if (!createResponse.ok) {
+        const errorData = await createResponse.json();
+        throw new Error(errorData.exception || errorData._server_messages?.[0] || 'Failed to create draft Payment Entry.');
+    }
+    const savedDoc = await createResponse.json();
+
+    // Step 4: Submit the saved Payment Entry to finalize it
+    await submitDoc(savedDoc.data, sid);
 
     return { success: true };
   } catch (error: any) {
