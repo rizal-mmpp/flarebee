@@ -146,7 +146,7 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount }: { 
     const invoiceDoc = invoiceResult.data;
 
     // Check if the invoice is already paid to prevent duplicate payment entries
-    if (invoiceDoc.status === 'Paid') {
+    if (invoiceDoc.status === 'Paid' || invoiceDoc.outstanding_amount === 0) {
         console.log(`Invoice ${invoiceName} is already marked as Paid. Skipping payment entry.`);
         return { success: true };
     }
@@ -174,13 +174,13 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount }: { 
       paid_amount: paymentAmount ?? invoiceDoc.outstanding_amount,
       received_amount: paymentAmount ?? invoiceDoc.outstanding_amount,
       company: company,
-      bank_account: defaultBankAccount, 
+      paid_to: defaultBankAccount,
       references: [{
         reference_doctype: 'Sales Invoice',
         reference_name: invoiceName,
         allocated_amount: paymentAmount ?? invoiceDoc.outstanding_amount,
       }],
-      docstatus: 1, // Submit the payment entry
+      docstatus: 1, // Submit the payment entry to make it active
     };
 
     await postRequest('/api/resource/Payment Entry', paymentPayload, sid);
