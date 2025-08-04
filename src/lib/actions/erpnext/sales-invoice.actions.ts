@@ -169,16 +169,13 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
     }
     const invoiceDoc = invoiceResult.data;
 
-    // Check if the invoice is already paid to prevent duplicate payment entries
     if (invoiceDoc.status === 'Paid' || invoiceDoc.outstanding_amount === 0) {
         console.log(`Invoice ${invoiceName} is already marked as Paid. Skipping payment entry.`);
         return { success: true };
     }
     
     const company = invoiceDoc.company;
-    
-    // Fetch company details to get the default bank account
-    const companyResult = await fetchFromErpNext<any>({ sid, doctype: 'Company', docname: company });
+    const companyResult = await fetchFromErpNext<any>({ sid, doctype: 'Company', docname: company, fields: ['default_bank_account'] });
     if (!companyResult.success || !companyResult.data) {
       throw new Error(`Could not fetch company details for ${company}`);
     }
@@ -187,7 +184,7 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
         throw new Error(`Default bank account is not set for company ${company}.`);
     }
 
-    // 1. Create the Payment Entry as a Draft (docstatus: 0)
+    // 1. Create the Payment Entry as a Draft
     const paymentPayload = {
       doctype: 'Payment Entry',
       payment_type: 'Receive',
@@ -203,7 +200,7 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
         reference_name: invoiceName,
         allocated_amount: paymentAmount ?? invoiceDoc.outstanding_amount,
       }],
-      docstatus: 0, // IMPORTANT: Create as Draft first
+      docstatus: 0, 
     };
 
     const draftResult = await postRequest('/api/resource/Payment Entry', paymentPayload, sid);
