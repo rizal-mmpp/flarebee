@@ -21,69 +21,57 @@ interface XenditWebhookPayload {
   // ... other fields from Xendit
 }
 
-const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 const ERPNEXT_ADMIN_SID = process.env.ERPNEXT_ADMIN_SID; // An SID with admin rights for backend operations
 
 export async function POST(request: NextRequest) {
-  console.log('[Webhook] Received new request.');
   const callbackToken = request.headers.get('x-callback-token');
   const expectedToken = process.env.XENDIT_CALLBACK_VERIFICATION_TOKEN;
 
   if (!expectedToken) {
     console.error('[Webhook] CRITICAL: XENDIT_CALLBACK_VERIFICATION_TOKEN is not set.');
-    return NextResponse.json({ error: 'Webhook configuration error.' }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Webhook configuration error on server.' }, { status: 500 });
   }
 
   if (callbackToken !== expectedToken) {
     console.warn('[Webhook] Unauthorized: Invalid callback token received.');
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ success: false, message: 'Unauthorized: Invalid callback token.' }, { status: 401 });
   }
 
   try {
     const payload = (await request.json()) as XenditWebhookPayload;
-    console.log('[Webhook] Payload received and parsed successfully:', JSON.stringify(payload, null, 2));
+    console.log('[Webhook] Payload received and parsed:', JSON.stringify(payload, null, 2));
 
     const { external_id, status: xenditStatus, payment_channel, paid_amount } = payload;
 
     if (!external_id) {
       console.error('[Webhook] Validation Error: Payload missing external_id.');
-      return NextResponse.json({ error: 'Missing external_id' }, { status: 400 });
+      return NextResponse.json({ success: false, message: 'Missing external_id in payload.' }, { status: 400 });
     }
 
     if (external_id.startsWith('rio-order-')) {
-      console.log(`[Webhook] Handling legacy B2C flow for ${external_id}.`);
       await handleB2CFlow(external_id, xenditStatus);
-    } else if (external_id.includes('SINV-')) { 
-      console.log(`[Webhook] Handling B2B Sales Invoice flow for ${external_id}.`);
-      await handleB2BFlow(external_id, xenditStatus, payment_channel || payload.payment_method || 'Unknown', paid_amount);
+      return NextResponse.json({ success: true, message: 'Legacy B2C webhook processed.' }, { status: 200 });
+    } else if (external_id.includes('SINV-')) {
+      const result = await handleB2BFlow(external_id, xenditStatus, payment_channel || payload.payment_method || 'Unknown', paid_amount);
+      return NextResponse.json(result, { status: result.success ? 200 : 500 });
     } else {
       console.warn(`[Webhook] Unrecognized external_id format: ${external_id}`);
+      return NextResponse.json({ success: false, message: `Unrecognized external_id format: ${external_id}` }, { status: 400 });
     }
-
-    console.log(`[Webhook] Processed successfully for external_id: ${external_id}`);
-    return NextResponse.json({ message: 'Webhook processed successfully' }, { status: 200 });
 
   } catch (error: any) {
     console.error('[Webhook] Internal Server Error:', error.message);
-    return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Internal Server Error', details: error.message }, { status: 500 });
   }
 }
 
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: { 'Allow': 'POST, OPTIONS, HEAD' } });
-}
-
-export async function HEAD() {
-   return new NextResponse(null, { status: 204, headers: { 'Allow': 'POST, OPTIONS, HEAD' } });
-}
+export async function OPTIONS() { return new NextResponse(null, { status: 204, headers: { 'Allow': 'POST, OPTIONS, HEAD' } }); }
+export async function HEAD() { return new NextResponse(null, { status: 204, headers: { 'Allow': 'POST, OPTIONS, HEAD' } }); }
 
 async function handleB2CFlow(orderId: string, xenditStatus: string) {
-  // B2C flow is deprecated, minimal logging
+  // This is a legacy flow, we can keep it simple.
   const order = await getOrderByOrderIdFromFirestore(orderId);
-  if (!order) {
-    console.warn(`[Webhook-B2C] Order not found for external_id: ${orderId}`);
-    return;
-  }
+  if (!order) return;
   let newFlarebeeStatus: Order['status'];
   switch (xenditStatus.toUpperCase()) {
     case 'PAID': newFlarebeeStatus = 'completed'; break;
@@ -96,19 +84,21 @@ async function handleB2CFlow(orderId: string, xenditStatus: string) {
   }
 }
 
-async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentMethod: string, paidAmount?: number) {
-  console.log(`[B2B Flow] Starting for invoice: ${invoiceName}, Status: ${xenditStatus}`);
+async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentMethod: string, paidAmount?: number): Promise<{ success: boolean; message: string; details?: any }> {
+  const logPrefix = `[B2B Flow - ${invoiceName}]`;
+  console.log(`${logPrefix} Starting for status: ${xenditStatus}`);
+
   if (xenditStatus.toUpperCase() !== 'PAID') {
-    console.log(`[B2B Flow] Ignoring non-PAID status "${xenditStatus}" for invoice ${invoiceName}.`);
-    return;
+    return { success: true, message: `Ignoring non-PAID status "${xenditStatus}".` };
   }
 
   if (!ERPNEXT_ADMIN_SID) {
-    console.error("[B2B Flow] CRITICAL: ERPNEXT_ADMIN_SID is not configured. Cannot process webhook.");
-    return;
+    console.error(`${logPrefix} CRITICAL: ERPNEXT_ADMIN_SID is not configured.`);
+    return { success: false, message: 'CRITICAL: ERPNext admin session not configured on server.' };
   }
-  
-  console.log(`[B2B Flow] Step 1: Creating Payment Entry for invoice ${invoiceName}.`);
+
+  // --- Step 1: Create Payment Entry ---
+  console.log(`${logPrefix} Step 1: Creating Payment Entry.`);
   const paymentResult = await createPaymentEntry({
     sid: ERPNEXT_ADMIN_SID,
     invoiceName: invoiceName,
@@ -117,29 +107,37 @@ async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentM
   });
 
   if (!paymentResult.success) {
-    console.error(`[B2B Flow] FAILED Step 1: Could not create Payment Entry for ${invoiceName}. Error: ${paymentResult.error}`);
-    return;
+    const errorMsg = `Failed at Step 1: Could not create Payment Entry. Error: ${paymentResult.error}`;
+    console.error(`${logPrefix} ${errorMsg}`);
+    return { success: false, message: errorMsg };
   }
-  console.log(`[B2B Flow] SUCCESS Step 1: Payment Entry for ${invoiceName} created and submitted.`);
+  console.log(`${logPrefix} SUCCESS Step 1: Payment Entry created and submitted.`);
 
-  console.log(`[B2B Flow] Step 2: Finding associated Project for invoice ${invoiceName}.`);
+  // --- Step 2: Find Associated Project ---
+  console.log(`${logPrefix} Step 2: Finding associated Project.`);
   const projectResult = await getProjectByInvoiceId(ERPNEXT_ADMIN_SID, invoiceName);
   if (!projectResult.success || !projectResult.data) {
-    console.error(`[B2B Flow] FAILED Step 2: Project not found for invoice ${invoiceName}. Error: ${projectResult.error}`);
-    return;
+    const errorMsg = `Failed at Step 2: Project not found for invoice. Error: ${projectResult.error || 'Not found.'}`;
+    console.error(`${logPrefix} ${errorMsg}`);
+    return { success: false, message: errorMsg };
   }
   const project = projectResult.data;
-  console.log(`[B2B Flow] SUCCESS Step 2: Found Project: ${project.name}`);
+  console.log(`${logPrefix} SUCCESS Step 2: Found Project: ${project.name}`);
 
-  console.log(`[B2B Flow] Step 3: Updating Project ${project.name} status to "In Progress".`);
+  // --- Step 3: Update Project Status ---
+  console.log(`${logPrefix} Step 3: Updating Project ${project.name} status to "In Progress".`);
   const updateResult = await updateProject({ sid: ERPNEXT_ADMIN_SID, projectName: project.name, projectData: { status: 'In Progress' } });
   if (!updateResult.success) {
-      console.error(`[B2B Flow] FAILED Step 3: Could not update project status for ${project.name}. Error: ${updateResult.error}`);
+      const errorMsg = `Failed at Step 3: Could not update project status. Error: ${updateResult.error}`;
+      console.error(`${logPrefix} ${errorMsg}`);
+      // Don't hard-fail the entire webhook for this, but log it as a critical warning.
+      // The payment is recorded, which is the most important part.
   } else {
-      console.log(`[B2B Flow] SUCCESS Step 3: Project ${project.name} status updated.`);
+      console.log(`${logPrefix} SUCCESS Step 3: Project status updated.`);
   }
   
-  console.log(`[B2B Flow] Step 4: Sending confirmation email.`);
+  // --- Step 4: Send Confirmation Email ---
+  console.log(`${logPrefix} Step 4: Sending confirmation email.`);
   if (project.customer_email) {
     try {
       await sendEmail({
@@ -147,12 +145,21 @@ async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentM
           subject: `Payment Received for Project: ${project.project_name}`,
           html: `<h1>Thank You For Your Payment</h1><p>Dear ${project.customer},</p><p>We have successfully received your payment for project: <strong>${project.project_name}</strong>.</p><p>We have started working on it and will keep you updated on the progress.</p><p>Thank you!</p>`,
       });
-      console.log(`[B2B Flow] SUCCESS Step 4: Confirmation email sent to ${project.customer_email}.`);
+      console.log(`${logPrefix} SUCCESS Step 4: Confirmation email sent to ${project.customer_email}.`);
     } catch (emailError: any) {
-        console.error(`[B2B Flow] FAILED Step 4: Could not send confirmation email for project ${project.name}:`, emailError.message);
+        console.error(`${logPrefix} FAILED Step 4: Could not send confirmation email:`, emailError.message);
+        // Also not a hard failure.
     }
   } else {
-    console.warn(`[B2B Flow] SKIPPED Step 4: No email found for customer ${project.customer}. Cannot send email.`);
+    console.warn(`${logPrefix} SKIPPED Step 4: No email found for customer ${project.customer}.`);
   }
-  console.log(`[B2B Flow] Finished processing for invoice ${invoiceName}.`);
+
+  return { 
+    success: true, 
+    message: 'Success: Payment Entry created and Project status updated.',
+    details: {
+      paymentEntry: paymentResult.success,
+      projectUpdate: updateResult.success ? 'Success' : `Failed: ${updateResult.error}`
+    }
+  };
 }
