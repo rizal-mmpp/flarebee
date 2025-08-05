@@ -65,7 +65,7 @@ function transformErpSalesInvoiceToAppOrder(item: any): Order {
         totalAmount: item.grand_total,
         currency: item.currency || 'IDR',
         status: item.status?.toLowerCase() || 'pending',
-        paymentGateway: item.custom_payment_gateway, // Use the custom field
+        paymentGateway: item.custom_payment_gateway,
         createdAt: item.posting_date,
         updatedAt: item.modified,
         xenditPaymentStatus: item.status, 
@@ -94,7 +94,12 @@ export async function getOrdersFromErpNext({ sid }: { sid: string }): Promise<{ 
 }
 
 export async function getOrderByOrderIdFromErpNext({ sid, orderId }: { sid: string; orderId: string; }): Promise<{ success: boolean; data?: Order; error?: string; }> {
-    const result = await fetchFromErpNext<any>({ sid, doctype: 'Sales Invoice', docname: orderId });
+    const result = await fetchFromErpNext<any>({ 
+        sid, 
+        doctype: 'Sales Invoice', 
+        docname: orderId,
+        fields: ['*'] // Fetch all fields to get custom fields like xendit_invoice_id
+    });
     if (!result.success || !result.data) {
         return { success: false, error: result.error || 'Failed to get Sales Invoice.' };
     }

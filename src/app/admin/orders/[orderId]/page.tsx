@@ -200,7 +200,7 @@ export default function OrderDetailPage() {
                 <CardTitle className="text-xl">Payment Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {order.status.toLowerCase() === 'paid' ? (
+              {order.status === 'paid' ? (
                 <>
                    <InfoRow label="Payment Method" icon={CreditCard} value={<span className="capitalize">{order.paymentGateway}</span>}/>
                    <InfoRow label="Xendit Invoice ID" icon={Hash} value={order.xenditInvoiceId || 'N/A'} />
