@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { getOrderByOrderIdFromErpNext } from '@/lib/actions/erpnext/sales-invoice.actions';
 import type { Order, PurchasedTemplateItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Loader2, ServerCrash, Package, CalendarDays, User, Tag, Hash, CreditCard, LinkIcon, Clock, Info, ExternalLink } from 'lucide-react';
@@ -44,8 +44,8 @@ const getStatusBadgeVariant = (status?: string) => {
   }
 };
 
-const InfoRow = ({ label, value, icon: Icon, children }: { label: string, value?: React.ReactNode, icon?: React.ElementType, children?: React.ReactNode }) => (
-    <div className="space-y-1">
+const InfoRow = ({ label, value, icon: Icon, children, className }: { label: string, value?: React.ReactNode, icon?: React.ElementType, children?: React.ReactNode, className?: string }) => (
+    <div className={cn("space-y-1", className)}>
         <h4 className="font-semibold text-muted-foreground flex items-center text-xs uppercase tracking-wider">
             {Icon && <Icon className="mr-2 h-4 w-4 text-primary/80" />}
             {label}
@@ -132,6 +132,7 @@ export default function OrderDetailPage() {
     );
   }
 
+  const isPaid = order.status === 'paid' || order.status === 'completed' || order.status === 'settled';
 
   return (
     <div className="space-y-6">
@@ -200,9 +201,9 @@ export default function OrderDetailPage() {
                 <CardTitle className="text-xl">Payment Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {order.status === 'paid' ? (
+              {isPaid ? (
                 <>
-                   <InfoRow label="Payment Method" icon={CreditCard} value={<span className="capitalize">{order.paymentGateway}</span>}/>
+                   <InfoRow label="Payment Method" icon={CreditCard} value={<span className="capitalize">{order.paymentGateway || 'N/A'}</span>}/>
                    <InfoRow label="Xendit Invoice ID" icon={Hash} value={order.xenditInvoiceId || 'N/A'} />
                    <InfoRow label="Xendit URL" icon={LinkIcon}>
                      {order.xenditInvoiceUrl ? (
@@ -220,14 +221,20 @@ export default function OrderDetailPage() {
                 <div className="text-center text-sm text-muted-foreground py-4">
                   <Clock className="mx-auto h-8 w-8 mb-2" />
                   <p>This invoice is currently unpaid. Payment details will appear here once the payment is completed.</p>
+                   {order.xenditInvoiceUrl && (
+                    <Button asChild className="mt-4">
+                        <Link href={order.xenditInvoiceUrl} target="_blank" rel="noopener noreferrer">
+                            <CreditCard className="mr-2 h-4 w-4"/>
+                            Open Payment Link
+                        </Link>
+                    </Button>
+                    )}
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
-
       </div>
-
     </div>
   );
 }

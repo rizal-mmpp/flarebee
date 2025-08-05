@@ -2,35 +2,15 @@
 'use server';
 
 import type { Order, PurchasedTemplateItem } from '../../types';
-import { fetchFromErpNext } from './utils';
+import { fetchFromErpNext, postEncodedRequest } from './utils';
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
 async function submitDoc(doc: any, sid: string | null): Promise<any> {
     const body = `doc=${encodeURIComponent(JSON.stringify(doc))}&action=Submit`;
     
-    const headers: Record<string, string> = {
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        'Accept': 'application/json',
-    };
-    if (sid) {
-        headers['Cookie'] = `sid=${sid}`;
-    } else {
-        headers['Authorization'] = `token ${process.env.ERPNEXT_ADMIN_API_KEY}:${process.env.ERPNEXT_ADMIN_API_SECRET}`;
-    }
-
-    const response = await fetch(`${ERPNEXT_API_URL}/api/method/frappe.desk.form.save.savedocs`, {
-        method: 'POST',
-        headers: headers,
-        body,
-    });
-    
-    const responseData = await response.json();
-    if (!response.ok) {
-        const errorMessage = responseData.exception || (Array.isArray(responseData._server_messages) ? JSON.parse(responseData._server_messages[0]).message : 'Unknown ERPNext POST Error');
-        throw new Error(errorMessage);
-    }
-    return responseData;
+    const response = await postEncodedRequest('/api/method/frappe.desk.form.save.savedocs', body, sid);
+    return response;
 }
 
 
@@ -127,29 +107,6 @@ export async function getOrderByOrderIdFromErpNext({ sid, orderId }: { sid: stri
         return { success: false, error: result.error || 'Failed to get Sales Invoice.' };
     }
     const order: Order = transformErpSalesInvoiceToAppOrder(result.data);
-
-    if (order.status === 'paid' && !order.paymentGateway) {
-        try {
-            const paymentEntryResult = await fetchFromErpNext<any[]>({
-                sid,
-                doctype: 'Payment Entry Reference',
-                filters: [['reference_name', '=', orderId]],
-                fields: ['parent']
-            });
-
-            if (paymentEntryResult.success && paymentEntryResult.data && paymentEntryResult.data.length > 0) {
-                const paymentEntryName = paymentEntryResult.data[0].parent;
-                const paymentEntryDoc = await fetchFromErpNext<any>({ sid, doctype: 'Payment Entry', docname: paymentEntryName });
-                if (paymentEntryDoc.success && paymentEntryDoc.data?.mode_of_payment) {
-                    order.paymentGateway = paymentEntryDoc.data.mode_of_payment;
-                }
-            }
-        } catch (e) {
-            console.warn(`Could not fetch payment method for paid invoice ${orderId}:`, e);
-        }
-    }
-
-
     return { success: true, data: order };
 }
 
@@ -205,18 +162,52 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
     const savedDoc = (await createResponse.json()).data;
     
     await submitDoc(savedDoc, sid);
-    
-    // Final step: Update the sales invoice with the payment method
-    await fetch(`${ERPNEXT_API_URL}/api/resource/Sales Invoice/${invoiceName}`, {
-      method: 'PUT',
-      headers: headers,
-      body: JSON.stringify({ custom_payment_gateway: paymentMethod || 'Unknown' }),
-    });
-
 
     return { success: true };
   } catch (error: any) {
     console.error("Error creating and submitting Payment Entry:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+interface UpdatePaymentDetailsArgs {
+  sid: string | null;
+  invoiceName: string;
+  paymentDetails: {
+    xendit_invoice_id: string;
+    custom_payment_gateway?: string;
+  };
+}
+
+export async function updateSalesInvoicePaymentDetails({
+  sid,
+  invoiceName,
+  paymentDetails,
+}: UpdatePaymentDetailsArgs): Promise<{ success: boolean; error?: string }> {
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    };
+    if (sid) {
+      headers['Cookie'] = `sid=${sid}`;
+    } else {
+      headers['Authorization'] = `token ${process.env.ERPNEXT_ADMIN_API_KEY}:${process.env.ERPNEXT_ADMIN_API_SECRET}`;
+    }
+
+    const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Sales Invoice/${invoiceName}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(paymentDetails),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.exception || errorData._server_messages?.[0] || 'Failed to update Sales Invoice payment details.');
+    }
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error in updateSalesInvoicePaymentDetails:", error);
     return { success: false, error: error.message };
   }
 }

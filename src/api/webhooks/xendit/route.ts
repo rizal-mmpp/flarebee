@@ -4,7 +4,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getOrderByOrderIdFromFirestore, updateOrderStatusInFirestore } from '@/lib/firebase/firestoreOrders';
-import { createPaymentEntry } from '@/lib/actions/erpnext/sales-invoice.actions';
+import { createPaymentEntry, updateSalesInvoicePaymentDetails } from '@/lib/actions/erpnext/sales-invoice.actions';
 import { getProjectByInvoiceId, updateProject } from '@/lib/actions/erpnext/project.actions';
 import { sendEmail } from '@/lib/services/email.service';
 import type { Order } from '@/lib/types';
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     const payload = (await request.json()) as XenditWebhookPayload;
     console.log('[Webhook] Payload received and parsed:', JSON.stringify(payload, null, 2));
 
-    const { external_id, status: xenditStatus, payment_channel, paid_amount } = payload;
+    const { external_id, id: xenditInvoiceId, status: xenditStatus, payment_channel, paid_amount } = payload;
 
     if (!external_id) {
       console.error('[Webhook] Validation Error: Payload missing external_id.');
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       await handleB2CFlow(external_id, xenditStatus);
       return NextResponse.json({ success: true, message: 'Legacy B2C webhook processed.' }, { status: 200 });
     } else if (external_id.includes('SINV-')) {
-      const result = await handleB2BFlow(external_id, xenditStatus, payment_channel || payload.payment_method || 'Unknown', paid_amount);
+      const result = await handleB2BFlow(external_id, xenditInvoiceId, xenditStatus, payment_channel || payload.payment_method || 'Unknown', paid_amount);
       return NextResponse.json(result, { status: result.success ? 200 : 500 });
     } else {
       console.warn(`[Webhook] Unrecognized external_id format: ${external_id}`);
@@ -83,7 +83,7 @@ async function handleB2CFlow(orderId: string, xenditStatus: string) {
   }
 }
 
-async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentMethod: string, paidAmount?: number): Promise<{ success: boolean; message: string; details?: any }> {
+async function handleB2BFlow(invoiceName: string, xenditInvoiceId: string, xenditStatus: string, paymentMethod: string, paidAmount?: number): Promise<{ success: boolean; message: string; details?: any }> {
   const logPrefix = `[B2B Flow - ${invoiceName}]`;
   console.log(`${logPrefix} Starting for status: ${xenditStatus}`);
 
@@ -158,13 +158,32 @@ async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentM
   } else {
     console.warn(`${logPrefix} SKIPPED Step 4: No email found for customer ${project.customer}.`);
   }
+  
+  // Final Step: Update the Sales Invoice with payment details from Xendit
+  console.log(`${logPrefix} Step 5: Updating Sales Invoice with payment details.`);
+  const updateInvoiceResult = await updateSalesInvoicePaymentDetails({
+    sid: null, // Use admin keys
+    invoiceName: invoiceName,
+    paymentDetails: {
+      xendit_invoice_id: xenditInvoiceId,
+      custom_payment_gateway: paymentMethod,
+    },
+  });
+
+  if (!updateInvoiceResult.success) {
+    console.error(`${logPrefix} FAILED Step 5: Could not update Sales Invoice with Xendit details. Error: ${updateInvoiceResult.error}`);
+  } else {
+    console.log(`${logPrefix} SUCCESS Step 5: Sales Invoice payment details updated.`);
+  }
 
   return { 
     success: true, 
     message: 'Success: Payment Entry created and Project status updated.',
     details: {
       paymentEntry: paymentResult.success,
-      projectUpdate: updateResult.success ? 'Success' : `Failed: ${updateResult.error}`
+      projectUpdate: updateResult.success ? 'Success' : `Failed: ${updateResult.error}`,
+      invoiceDetailsUpdate: updateInvoiceResult.success ? 'Success' : `Failed: ${updateInvoiceResult.error}`
     }
   };
 }
+
