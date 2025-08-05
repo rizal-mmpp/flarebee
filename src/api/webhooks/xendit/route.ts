@@ -91,7 +91,27 @@ async function handleB2BFlow(invoiceName: string, xenditInvoiceId: string, xendi
     return { success: true, message: `Ignoring non-PAID status "${xenditStatus}".` };
   }
   
-  console.log(`${logPrefix} Step 1: Creating Payment Entry.`);
+  // Step 1: Update Sales Invoice with payment details BEFORE submission.
+  console.log(`${logPrefix} Step 1: Updating Sales Invoice with payment details.`);
+  const updateInvoiceResult = await updateSalesInvoicePaymentDetails({
+    sid: null, // Use admin keys
+    invoiceName: invoiceName,
+    paymentDetails: {
+      xendit_invoice_id: xenditInvoiceId,
+      custom_payment_gateway: paymentMethod,
+    },
+  });
+
+  if (!updateInvoiceResult.success) {
+    console.error(`${logPrefix} FAILED Step 1: Could not update Sales Invoice with Xendit details. Error: ${updateInvoiceResult.error}`);
+    // This is a critical failure, we should probably stop.
+    return { success: false, message: `Failed to update invoice details: ${updateInvoiceResult.error}` };
+  } else {
+    console.log(`${logPrefix} SUCCESS Step 1: Sales Invoice payment details updated.`);
+  }
+
+  // Step 2: Create the Payment Entry to mark the invoice as paid.
+  console.log(`${logPrefix} Step 2: Creating Payment Entry.`);
   const paymentResult = await createPaymentEntry({
     sid: null, 
     invoiceName: invoiceName,
@@ -100,32 +120,38 @@ async function handleB2BFlow(invoiceName: string, xenditInvoiceId: string, xendi
   });
 
   if (!paymentResult.success) {
-    const errorMsg = `Failed at Step 1: Could not create Payment Entry. Error: ${paymentResult.error}`;
+    const errorMsg = `Failed at Step 2: Could not create Payment Entry. Error: ${paymentResult.error}`;
     console.error(`${logPrefix} ${errorMsg}`);
     return { success: false, message: errorMsg };
   }
-  console.log(`${logPrefix} SUCCESS Step 1: Payment Entry created and submitted.`);
+  console.log(`${logPrefix} SUCCESS Step 2: Payment Entry created and submitted.`);
 
-  console.log(`${logPrefix} Step 2: Finding associated Project.`);
+  // Step 3: Find the associated Project.
+  console.log(`${logPrefix} Step 3: Finding associated Project.`);
   const projectResult = await getProjectByInvoiceId(null, invoiceName);
   if (!projectResult.success || !projectResult.data) {
-    const errorMsg = `Failed at Step 2: Project not found for invoice. Error: ${projectResult.error || 'Not found.'}`;
+    const errorMsg = `Failed at Step 3: Project not found for invoice. Error: ${projectResult.error || 'Not found.'}`;
     console.error(`${logPrefix} ${errorMsg}`);
-    return { success: false, message: errorMsg };
+    // Note: The payment is recorded, but the project status won't be updated.
+    // We should still return success for the webhook, but log this issue.
+    return { success: true, message: `Warning: Payment recorded, but project update failed. ${errorMsg}` };
   }
   const project = projectResult.data;
-  console.log(`${logPrefix} SUCCESS Step 2: Found Project: ${project.name}`);
+  console.log(`${logPrefix} SUCCESS Step 3: Found Project: ${project.name}`);
 
-  console.log(`${logPrefix} Step 3: Updating Project ${project.name} status to "In Progress".`);
+  // Step 4: Update the project status.
+  console.log(`${logPrefix} Step 4: Updating Project ${project.name} status to "In Progress".`);
   const updateResult = await updateProject({ sid: null, projectName: project.name, projectData: { status: 'In Progress' } });
   if (!updateResult.success) {
-      const errorMsg = `Failed at Step 3: Could not update project status. Error: ${updateResult.error}`;
+      const errorMsg = `Failed at Step 4: Could not update project status. Error: ${updateResult.error}`;
       console.error(`${logPrefix} ${errorMsg}`);
+      // Log and continue, as the payment itself was successful.
   } else {
-      console.log(`${logPrefix} SUCCESS Step 3: Project status updated.`);
+      console.log(`${logPrefix} SUCCESS Step 4: Project status updated.`);
   }
   
-  console.log(`${logPrefix} Step 4: Sending confirmation email.`);
+  // Step 5: Send the confirmation email.
+  console.log(`${logPrefix} Step 5: Sending confirmation email.`);
   if (project.customer_email) {
     try {
       await sendEmail({
@@ -151,39 +177,21 @@ async function handleB2BFlow(invoiceName: string, xenditInvoiceId: string, xendi
             </div>
         `,
       });
-      console.log(`${logPrefix} SUCCESS Step 4: Confirmation email sent to ${project.customer_email}.`);
+      console.log(`${logPrefix} SUCCESS Step 5: Confirmation email sent to ${project.customer_email}.`);
     } catch (emailError: any) {
-        console.error(`${logPrefix} FAILED Step 4: Could not send confirmation email:`, emailError.message);
+        console.error(`${logPrefix} FAILED Step 5: Could not send confirmation email:`, emailError.message);
     }
   } else {
-    console.warn(`${logPrefix} SKIPPED Step 4: No email found for customer ${project.customer}.`);
-  }
-  
-  // Final Step: Update the Sales Invoice with payment details from Xendit
-  console.log(`${logPrefix} Step 5: Updating Sales Invoice with payment details.`);
-  const updateInvoiceResult = await updateSalesInvoicePaymentDetails({
-    sid: null, // Use admin keys
-    invoiceName: invoiceName,
-    paymentDetails: {
-      xendit_invoice_id: xenditInvoiceId,
-      custom_payment_gateway: paymentMethod,
-    },
-  });
-
-  if (!updateInvoiceResult.success) {
-    console.error(`${logPrefix} FAILED Step 5: Could not update Sales Invoice with Xendit details. Error: ${updateInvoiceResult.error}`);
-  } else {
-    console.log(`${logPrefix} SUCCESS Step 5: Sales Invoice payment details updated.`);
+    console.warn(`${logPrefix} SKIPPED Step 5: No email found for customer ${project.customer}.`);
   }
 
   return { 
     success: true, 
     message: 'Success: Payment Entry created and Project status updated.',
     details: {
-      paymentEntry: paymentResult.success,
+      invoiceDetailsUpdate: updateInvoiceResult.success ? 'Success' : `Failed: ${updateInvoiceResult.error}`,
+      paymentEntry: paymentResult.success ? 'Success' : `Failed: ${paymentResult.error}`,
       projectUpdate: updateResult.success ? 'Success' : `Failed: ${updateResult.error}`,
-      invoiceDetailsUpdate: updateInvoiceResult.success ? 'Success' : `Failed: ${updateInvoiceResult.error}`
     }
   };
 }
-
