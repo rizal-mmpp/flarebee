@@ -52,9 +52,12 @@ export async function ensureSalesInvoiceCustomFieldsExist(sid: string): Promise<
            const errorData = await response.json();
            if(errorData?.exception?.includes("already exists")) {
               // Ignore if field already exists
+              console.log(`Custom field '${field.fieldname}' already exists in 'Sales Invoice'. Skipping.`);
            } else {
               throw new Error(`Failed to add custom field '${field.fieldname}' to 'Sales Invoice': ${errorData.exception}`);
            }
+        } else {
+           console.log(`Successfully added or verified custom field '${field.fieldname}' to 'Sales Invoice'.`);
         }
     }
     return { success: true };
