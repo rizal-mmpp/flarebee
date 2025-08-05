@@ -2,14 +2,37 @@
 'use server';
 
 import type { Order, PurchasedTemplateItem } from '../../types';
-import { fetchFromErpNext, postEncodedRequest } from './utils';
+import { fetchFromErpNext } from './utils';
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
 async function submitDoc(doc: any, sid: string | null): Promise<any> {
     const body = `doc=${encodeURIComponent(JSON.stringify(doc))}&action=Submit`;
-    return postEncodedRequest(`/api/method/frappe.desk.form.save.savedocs`, body, sid);
+    
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'Accept': 'application/json',
+    };
+    if (sid) {
+        headers['Cookie'] = `sid=${sid}`;
+    } else {
+        headers['Authorization'] = `token ${process.env.ERPNEXT_ADMIN_API_KEY}:${process.env.ERPNEXT_ADMIN_API_SECRET}`;
+    }
+
+    const response = await fetch(`${ERPNEXT_API_URL}/api/method/frappe.desk.form.save.savedocs`, {
+        method: 'POST',
+        headers: headers,
+        body,
+    });
+    
+    const responseData = await response.json();
+    if (!response.ok) {
+        const errorMessage = responseData.exception || (Array.isArray(responseData._server_messages) ? JSON.parse(responseData._server_messages[0]).message : 'Unknown ERPNext POST Error');
+        throw new Error(errorMessage);
+    }
+    return responseData;
 }
+
 
 const customFieldsForSalesInvoice = [
     { fieldname: 'xendit_invoice_id', fieldtype: 'Data', label: 'Xendit Invoice ID', insert_after: 'title' },
@@ -98,14 +121,13 @@ export async function getOrderByOrderIdFromErpNext({ sid, orderId }: { sid: stri
         sid, 
         doctype: 'Sales Invoice', 
         docname: orderId,
-        fields: ['*'] // Fetch all fields to get custom fields like xendit_invoice_id
+        fields: ['*']
     });
     if (!result.success || !result.data) {
         return { success: false, error: result.error || 'Failed to get Sales Invoice.' };
     }
     const order: Order = transformErpSalesInvoiceToAppOrder(result.data);
 
-    // If the order is paid and payment gateway is still empty, try to get it from linked Payment Entry
     if (order.status === 'paid' && !order.paymentGateway) {
         try {
             const paymentEntryResult = await fetchFromErpNext<any[]>({
@@ -153,7 +175,7 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
         paid_to: invoiceDoc.account_for_change_amount || "Cash - RIO",
         paid_amount: finalPaymentAmount,
         received_amount: finalPaymentAmount,
-        mode_of_payment: paymentMethod ? `Xendit - ${paymentMethod}` : 'Xendit',
+        mode_of_payment: `Xendit - ${paymentMethod || 'Unknown'}`,
         references: [{
             reference_doctype: 'Sales Invoice',
             reference_name: invoiceName,
@@ -188,7 +210,7 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
     await fetch(`${ERPNEXT_API_URL}/api/resource/Sales Invoice/${invoiceName}`, {
       method: 'PUT',
       headers: headers,
-      body: JSON.stringify({ custom_payment_gateway: paymentMethod || 'Xendit' }),
+      body: JSON.stringify({ custom_payment_gateway: paymentMethod || 'Unknown' }),
     });
 
 
