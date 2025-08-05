@@ -2,15 +2,34 @@
 'use server';
 
 import type { Order, PurchasedTemplateItem } from '../../types';
-import { fetchFromErpNext, postEncodedRequest } from './utils';
+import { fetchFromErpNext } from './utils';
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
 async function submitDoc(doc: any, sid: string | null): Promise<any> {
-    const body = `doc=${encodeURIComponent(JSON.stringify(doc))}&action=Submit`;
-    
-    const response = await postEncodedRequest('/api/method/frappe.desk.form.save.savedocs', body, sid);
-    return response;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    'Accept': 'application/json',
+  };
+  if (sid) {
+    headers['Cookie'] = `sid=${sid}`;
+  } else if (process.env.ERPNEXT_ADMIN_API_KEY && process.env.ERPNEXT_ADMIN_API_SECRET) {
+    headers['Authorization'] = `token ${process.env.ERPNEXT_ADMIN_API_KEY}:${process.env.ERPNEXT_ADMIN_API_SECRET}`;
+  } else {
+    throw new Error('No authentication method available for submitDoc.');
+  }
+
+  const response = await fetch(`${ERPNEXT_API_URL}/api/method/frappe.desk.form.save.savedocs`, {
+    method: 'POST',
+    headers,
+    body: `doc=${encodeURIComponent(JSON.stringify(doc))}&action=Submit`,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.exception || errorData._server_messages?.[0] || 'Failed to submit document.');
+  }
+  return response.json();
 }
 
 

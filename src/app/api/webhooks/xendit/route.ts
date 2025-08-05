@@ -4,7 +4,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getOrderByOrderIdFromFirestore, updateOrderStatusInFirestore } from '@/lib/firebase/firestoreOrders';
-import { createPaymentEntry } from '@/lib/actions/erpnext/sales-invoice.actions';
+import { createPaymentEntry, updateSalesInvoicePaymentDetails } from '@/lib/actions/erpnext/sales-invoice.actions';
 import { getProjectByInvoiceId, updateProject } from '@/lib/actions/erpnext/project.actions';
 import { sendEmail } from '@/lib/services/email.service';
 import type { Order } from '@/lib/types';
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     const payload = (await request.json()) as XenditWebhookPayload;
     console.log('[Webhook] Payload received and parsed:', JSON.stringify(payload, null, 2));
 
-    const { external_id, status: xenditStatus, payment_channel, paid_amount } = payload;
+    const { external_id, id: xenditInvoiceId, status: xenditStatus, payment_channel, paid_amount } = payload;
 
     if (!external_id) {
       console.error('[Webhook] Validation Error: Payload missing external_id.');
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       await handleB2CFlow(external_id, xenditStatus);
       return NextResponse.json({ success: true, message: 'Legacy B2C webhook processed.' }, { status: 200 });
     } else if (external_id.includes('SINV-')) {
-      const result = await handleB2BFlow(external_id, xenditStatus, payment_channel || payload.payment_method || 'Unknown', paid_amount);
+      const result = await handleB2BFlow(external_id, xenditInvoiceId, xenditStatus, payment_channel || payload.payment_method || 'Unknown', paid_amount);
       return NextResponse.json(result, { status: result.success ? 200 : 500 });
     } else {
       console.warn(`[Webhook] Unrecognized external_id format: ${external_id}`);
@@ -83,7 +83,7 @@ async function handleB2CFlow(orderId: string, xenditStatus: string) {
   }
 }
 
-async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentMethod: string, paidAmount?: number): Promise<{ success: boolean; message: string; details?: any }> {
+async function handleB2BFlow(invoiceName: string, xenditInvoiceId: string, xenditStatus: string, paymentMethod: string, paidAmount?: number): Promise<{ success: boolean; message: string; details?: any }> {
   const logPrefix = `[B2B Flow - ${invoiceName}]`;
   console.log(`${logPrefix} Starting for status: ${xenditStatus}`);
 
@@ -91,13 +91,8 @@ async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentM
     return { success: true, message: `Ignoring non-PAID status "${xenditStatus}".` };
   }
   
-  // Note: We no longer check for ERPNEXT_ADMIN_SID here. 
-  // The actions will use the Admin API Key/Secret if no SID is provided.
-
-  // --- Step 1: Create Payment Entry ---
   console.log(`${logPrefix} Step 1: Creating Payment Entry.`);
   const paymentResult = await createPaymentEntry({
-    // We pass null for sid to force the use of Admin API Keys
     sid: null, 
     invoiceName: invoiceName,
     paymentAmount: paidAmount,
@@ -111,9 +106,8 @@ async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentM
   }
   console.log(`${logPrefix} SUCCESS Step 1: Payment Entry created and submitted.`);
 
-  // --- Step 2: Find Associated Project ---
   console.log(`${logPrefix} Step 2: Finding associated Project.`);
-  const projectResult = await getProjectByInvoiceId(null, invoiceName); // Pass null sid
+  const projectResult = await getProjectByInvoiceId(null, invoiceName);
   if (!projectResult.success || !projectResult.data) {
     const errorMsg = `Failed at Step 2: Project not found for invoice. Error: ${projectResult.error || 'Not found.'}`;
     console.error(`${logPrefix} ${errorMsg}`);
@@ -122,34 +116,64 @@ async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentM
   const project = projectResult.data;
   console.log(`${logPrefix} SUCCESS Step 2: Found Project: ${project.name}`);
 
-  // --- Step 3: Update Project Status ---
   console.log(`${logPrefix} Step 3: Updating Project ${project.name} status to "In Progress".`);
-  const updateResult = await updateProject({ sid: null, projectName: project.name, projectData: { status: 'In Progress' } }); // Pass null sid
+  const updateResult = await updateProject({ sid: null, projectName: project.name, projectData: { status: 'In Progress' } });
   if (!updateResult.success) {
       const errorMsg = `Failed at Step 3: Could not update project status. Error: ${updateResult.error}`;
       console.error(`${logPrefix} ${errorMsg}`);
-      // Don't hard-fail the entire webhook for this, but log it as a critical warning.
-      // The payment is recorded, which is the most important part.
   } else {
       console.log(`${logPrefix} SUCCESS Step 3: Project status updated.`);
   }
   
-  // --- Step 4: Send Confirmation Email ---
   console.log(`${logPrefix} Step 4: Sending confirmation email.`);
   if (project.customer_email) {
     try {
       await sendEmail({
           to: project.customer_email,
           subject: `Payment Received for Project: ${project.project_name}`,
-          html: `<h1>Thank You For Your Payment</h1><p>Dear ${project.customer},</p><p>We have successfully received your payment for project: <strong>${project.project_name}</strong>.</p><p>We have started working on it and will keep you updated on the progress.</p><p>Thank you!</p>`,
+          html: `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
+              <div style="background-color: #f8f8f8; padding: 20px; text-align: center;">
+                <h1 style="color: #1A202C; margin: 0; font-size: 24px;">Payment Received!</h1>
+              </div>
+              <div style="padding: 20px;">
+                <p>Dear ${project.customer},</p>
+                <p>We have successfully received your payment for project: <strong>${project.project_name}</strong>.</p>
+                <p>We have started working on it and will keep you updated on the progress. You can view your project status and details in your dashboard.</p>
+                 <div style="text-align: center; margin: 30px 0;">
+                  <a href="${process.env.NEXT_PUBLIC_BASE_URL}/dashboard" style="background-color: #1A202C; color: #FFFFFF; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px; display: inline-block;">Go to Dashboard</a>
+                </div>
+                <p>Thank you!</p>
+              </div>
+              <div style="background-color: #f8f8f8; padding: 10px; text-align: center; font-size: 12px; color: #777;">
+                <p>&copy; ${new Date().getFullYear()} Ragam Inovasi Optima. All rights reserved.</p>
+              </div>
+            </div>
+        `,
       });
       console.log(`${logPrefix} SUCCESS Step 4: Confirmation email sent to ${project.customer_email}.`);
     } catch (emailError: any) {
         console.error(`${logPrefix} FAILED Step 4: Could not send confirmation email:`, emailError.message);
-        // Also not a hard failure.
     }
   } else {
     console.warn(`${logPrefix} SKIPPED Step 4: No email found for customer ${project.customer}.`);
+  }
+  
+  // Final Step: Update the Sales Invoice with payment details from Xendit
+  console.log(`${logPrefix} Step 5: Updating Sales Invoice with payment details.`);
+  const updateInvoiceResult = await updateSalesInvoicePaymentDetails({
+    sid: null, // Use admin keys
+    invoiceName: invoiceName,
+    paymentDetails: {
+      xendit_invoice_id: xenditInvoiceId,
+      custom_payment_gateway: paymentMethod,
+    },
+  });
+
+  if (!updateInvoiceResult.success) {
+    console.error(`${logPrefix} FAILED Step 5: Could not update Sales Invoice with Xendit details. Error: ${updateInvoiceResult.error}`);
+  } else {
+    console.log(`${logPrefix} SUCCESS Step 5: Sales Invoice payment details updated.`);
   }
 
   return { 
@@ -157,7 +181,8 @@ async function handleB2BFlow(invoiceName: string, xenditStatus: string, paymentM
     message: 'Success: Payment Entry created and Project status updated.',
     details: {
       paymentEntry: paymentResult.success,
-      projectUpdate: updateResult.success ? 'Success' : `Failed: ${updateResult.error}`
+      projectUpdate: updateResult.success ? 'Success' : `Failed: ${updateResult.error}`,
+      invoiceDetailsUpdate: updateInvoiceResult.success ? 'Success' : `Failed: ${updateInvoiceResult.error}`
     }
   };
 }
