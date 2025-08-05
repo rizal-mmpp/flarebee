@@ -2,35 +2,9 @@
 'use server';
 
 import type { Order, PurchasedTemplateItem } from '../../types';
-import { fetchFromErpNext } from './utils';
+import { fetchFromErpNext, postEncodedRequest } from './utils';
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
-
-async function postEncodedRequest(endpoint: string, body: string, sid: string | null) {
-  if (!ERPNEXT_API_URL) throw new Error('ERPNext API URL is not configured.');
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-    'Accept': 'application/json',
-  };
-  if (sid) {
-    headers['Cookie'] = `sid=${sid}`;
-  } else {
-    headers['Authorization'] = `token ${process.env.ERPNEXT_ADMIN_API_KEY}:${process.env.ERPNEXT_ADMIN_API_SECRET}`;
-  }
-
-  const response = await fetch(`${ERPNEXT_API_URL}${endpoint}`, {
-    method: 'POST',
-    headers: headers,
-    body: body,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.exception || errorData._server_messages?.[0] || `Failed to post to ${endpoint}.`);
-  }
-  return response.json();
-}
 
 async function submitDoc(doc: any, sid: string | null): Promise<any> {
     const body = `doc=${encodeURIComponent(JSON.stringify(doc))}&action=Submit`;
@@ -91,11 +65,12 @@ function transformErpSalesInvoiceToAppOrder(item: any): Order {
         totalAmount: item.grand_total,
         currency: item.currency || 'IDR',
         status: item.status?.toLowerCase() || 'pending',
-        paymentGateway: item.custom_payment_gateway || 'ERPNext',
+        paymentGateway: item.custom_payment_gateway, // Use the custom field
         createdAt: item.posting_date,
         updatedAt: item.modified,
         xenditPaymentStatus: item.status, 
         xenditInvoiceUrl: item.xendit_invoice_url, 
+        xenditInvoiceId: item.xendit_invoice_id,
     };
 }
 
@@ -124,19 +99,42 @@ export async function getOrderByOrderIdFromErpNext({ sid, orderId }: { sid: stri
         return { success: false, error: result.error || 'Failed to get Sales Invoice.' };
     }
     const order: Order = transformErpSalesInvoiceToAppOrder(result.data);
+
+    // If the order is paid and payment gateway is still empty, try to get it from linked Payment Entry
+    if (order.status === 'paid' && !order.paymentGateway) {
+        try {
+            const paymentEntryResult = await fetchFromErpNext<any[]>({
+                sid,
+                doctype: 'Payment Entry Reference',
+                filters: [['reference_name', '=', orderId]],
+                fields: ['parent']
+            });
+
+            if (paymentEntryResult.success && paymentEntryResult.data && paymentEntryResult.data.length > 0) {
+                const paymentEntryName = paymentEntryResult.data[0].parent;
+                const paymentEntryDoc = await fetchFromErpNext<any>({ sid, doctype: 'Payment Entry', docname: paymentEntryName });
+                if (paymentEntryDoc.success && paymentEntryDoc.data?.mode_of_payment) {
+                    order.paymentGateway = paymentEntryDoc.data.mode_of_payment;
+                }
+            }
+        } catch (e) {
+            console.warn(`Could not fetch payment method for paid invoice ${orderId}:`, e);
+        }
+    }
+
+
     return { success: true, data: order };
 }
 
+
 export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paymentMethod }: { sid: string | null; invoiceName: string; paymentAmount?: number; paymentMethod?: string; }): Promise<{ success: boolean; error?: string }> {
   try {
-    // Step 1: Fetch the full Sales Invoice document to get required details
     const invoiceResult = await fetchFromErpNext<any>({ sid, doctype: 'Sales Invoice', docname: invoiceName, fields: ['*'] });
     if (!invoiceResult.success || !invoiceResult.data) {
         throw new Error(`Could not fetch Sales Invoice ${invoiceName} to create payment.`);
     }
     const invoiceDoc = invoiceResult.data;
 
-    // Step 2: Manually construct the Payment Entry payload
     const finalPaymentAmount = paymentAmount !== undefined ? paymentAmount : invoiceDoc.outstanding_amount;
     
     const paymentEntryPayload = {
@@ -145,12 +143,12 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
         party_type: 'Customer',
         party: invoiceDoc.customer,
         company: invoiceDoc.company,
-        posting_date: new Date().toISOString().split('T')[0], // Use today's date
-        paid_from: invoiceDoc.debit_to, // This is the customer's receivable account
-        paid_to: invoiceDoc.account_for_change_amount || "Cash - RIO", // Fallback to a default cash account
+        posting_date: new Date().toISOString().split('T')[0],
+        paid_from: invoiceDoc.debit_to,
+        paid_to: invoiceDoc.account_for_change_amount || "Cash - RIO",
         paid_amount: finalPaymentAmount,
         received_amount: finalPaymentAmount,
-        mode_of_payment: `Xendit - ${paymentMethod || 'Other'}`,
+        mode_of_payment: paymentMethod ? `Xendit - ${paymentMethod}` : 'Xendit',
         references: [{
             reference_doctype: 'Sales Invoice',
             reference_name: invoiceName,
@@ -160,7 +158,6 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
         }]
     };
     
-    // Step 3: Create and Save the draft Payment Entry
     const headers: Record<string, string> = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
     if (sid) {
       headers['Cookie'] = `sid=${sid}`;
@@ -178,10 +175,17 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
         const errorData = await createResponse.json();
         throw new Error(errorData.exception || errorData._server_messages?.[0] || 'Failed to create draft Payment Entry.');
     }
-    const savedDoc = await createResponse.json();
+    const savedDoc = (await createResponse.json()).data;
+    
+    await submitDoc(savedDoc, sid);
+    
+    // Final step: Update the sales invoice with the payment method
+    await fetch(`${ERPNEXT_API_URL}/api/resource/Sales Invoice/${invoiceName}`, {
+      method: 'PUT',
+      headers: headers,
+      body: JSON.stringify({ custom_payment_gateway: paymentMethod || 'Xendit' }),
+    });
 
-    // Step 4: Submit the saved Payment Entry to finalize it
-    await submitDoc(savedDoc.data, sid);
 
     return { success: true };
   } catch (error: any) {

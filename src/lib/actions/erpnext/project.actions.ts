@@ -3,7 +3,7 @@
 
 import type { ProjectFormValues } from '@/app/admin/projects/new/page';
 import type { Project, Customer, SubscriptionPlan } from '@/lib/types';
-import { fetchFromErpNext } from './utils';
+import { fetchFromErpNext, postEncodedRequest } from './utils';
 import { sendEmail } from '@/lib/services/email.service';
 import { updateContactDetails } from './customer.actions';
 import { Xendit } from 'xendit-node';
@@ -116,6 +116,7 @@ function transformErpProject(erpProject: any): Project {
     delivery_date: erpProject.delivery_date,
     creation: erpProject.creation,
     modified: erpProject.modified,
+    customer_email: erpProject.customer_email, // Add this
   };
 }
 
@@ -254,59 +255,37 @@ async function submitDoc(doctype: string, docname: string, sid: string): Promise
 
 export async function createAndSendInvoice({ sid, projectName }: { sid: string; projectName: string }): Promise<{ success: boolean; invoiceName?: string; error?: string }> {
   try {
-    // 0. Ensure custom fields exist before we do anything else
     const fieldsReady = await ensureSalesInvoiceCustomFieldsExist(sid);
     if (!fieldsReady.success) {
       throw new Error(`Failed to prepare ERPNext for invoicing: ${fieldsReady.error}`);
     }
 
-    // 1. Fetch Project and related data
     const projectResult = await getProjectByName({ sid, projectName });
-    if (!projectResult.success || !projectResult.data) {
-      throw new Error(projectResult.error || "Project not found.");
-    }
+    if (!projectResult.success || !projectResult.data) throw new Error(projectResult.error || "Project not found.");
     const project = projectResult.data;
 
-    if (project.sales_invoice) {
-        return { success: false, error: `An invoice (${project.sales_invoice}) already exists for this project.` };
-    }
-
-    if (!project.subscription_plan) {
-        return { success: false, error: "Project does not have a subscription plan assigned." };
-    }
+    if (project.sales_invoice) return { success: false, error: `An invoice (${project.sales_invoice}) already exists for this project.` };
+    if (!project.subscription_plan) return { success: false, error: "Project does not have a subscription plan assigned." };
     
     const planResult = await fetchFromErpNext<SubscriptionPlan>({ sid, doctype: 'Subscription Plan', docname: project.subscription_plan });
-    if (!planResult.success || !planResult.data) {
-      throw new Error("Linked Subscription Plan details could not be fetched.");
-    }
+    if (!planResult.success || !planResult.data) throw new Error("Linked Subscription Plan details could not be fetched.");
     const plan = planResult.data;
 
     const customerResult = await fetchFromErpNext<Customer>({ sid, doctype: 'Customer', docname: project.customer });
-     if (!customerResult.success || !customerResult.data) {
-      throw new Error("Customer details could not be fetched.");
-    }
+    if (!customerResult.success || !customerResult.data) throw new Error("Customer details could not be fetched.");
     const customer = customerResult.data;
 
-    // 2. Create Sales Invoice in DRAFT status
     const invoicePayload = {
       customer: project.customer,
       company: project.company,
-      items: [{
-        item_code: plan.item,
-        qty: 1,
-        rate: plan.cost,
-      }],
+      items: [{ item_code: plan.item, qty: 1, rate: plan.cost, }],
       due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0],
-      // docstatus: 0 is default for new doc, creating a DRAFT
     };
     
     const invoiceCreationResponse = await postRequest('/api/resource/Sales Invoice', invoicePayload, sid);
     const invoiceName = invoiceCreationResponse.data.name;
-    
-    // 2a. SUBMIT the newly created Sales Invoice
     await submitDoc('Sales Invoice', invoiceName, sid);
 
-    // 3. Create Xendit Invoice
     const xenditInvoice = await Invoice.createInvoice({
         data: {
             externalId: invoiceName,
@@ -317,37 +296,43 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
         }
     });
     
-    if (!xenditInvoice.invoiceUrl || !xenditInvoice.id) {
-        throw new Error("Failed to get payment URL from Xendit.");
-    }
+    if (!xenditInvoice.invoiceUrl || !xenditInvoice.id) throw new Error("Failed to get payment URL from Xendit.");
 
-    // 4. Update Sales Invoice in ERPNext with Xendit details
     await fetch(`${ERPNEXT_API_URL}/api/resource/Sales Invoice/${invoiceName}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'Cookie': `sid=${sid}` },
-      body: JSON.stringify({
-        xendit_invoice_id: xenditInvoice.id,
-        xendit_invoice_url: xenditInvoice.invoiceUrl
-      }),
+      body: JSON.stringify({ xendit_invoice_id: xenditInvoice.id, xendit_invoice_url: xenditInvoice.invoiceUrl }),
     });
 
-    // 5. Update Project status and link to invoice
     await updateProject({ sid, projectName, projectData: { status: 'Awaiting Payment', sales_invoice: invoiceName }});
 
-    // 6. Send Email
     if (customer.email_id) {
        await sendEmail({
         to: customer.email_id,
-        subject: `Invoice for Project: ${project.project_name}`,
+        subject: `Invoice for Your Project: ${project.project_name}`,
         html: `
-            <h1>Invoice for Your Project</h1>
-            <p>Dear ${customer.customer_name},</p>
-            <p>Please find the invoice for your project: <strong>${project.project_name}</strong>.</p>
-            <p>Invoice ID: ${invoiceName}</p>
-            <p>Amount: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(plan.cost || 0)}</p>
-            <p>Click the button below to complete your payment.</p>
-            <a href="${xenditInvoice.invoiceUrl}" style="background-color: #FFC72C; color: #1A202C; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Pay Invoice</a>
-            <p>Thank you!</p>
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
+              <div style="background-color: #f8f8f8; padding: 20px; text-align: center;">
+                <h1 style="color: #1A202C; margin: 0; font-size: 24px;">Invoice for Your Project</h1>
+              </div>
+              <div style="padding: 20px;">
+                <p>Dear ${customer.customer_name},</p>
+                <p>Please find the invoice for your project: <strong>${project.project_name}</strong>.</p>
+                <div style="background-color: #fafafa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                  <p style="margin: 0; padding-bottom: 5px;"><strong>Invoice ID:</strong> ${invoiceName}</p>
+                  <p style="margin: 0;"><strong>Amount:</strong> ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(plan.cost || 0)}</p>
+                </div>
+                <p>Click the button below to complete your payment. The link is valid for 24 hours.</p>
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${xenditInvoice.invoiceUrl}" style="background-color: #FFC72C; color: #1A202C; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px; display: inline-block;">Pay Invoice</a>
+                </div>
+                <p>If you have any questions, please don't hesitate to contact us.</p>
+                <p>Thank you!</p>
+              </div>
+              <div style="background-color: #f8f8f8; padding: 10px; text-align: center; font-size: 12px; color: #777;">
+                <p>&copy; ${new Date().getFullYear()} Ragam Inovasi Optima. All rights reserved.</p>
+              </div>
+            </div>
         `,
       });
     }
@@ -359,12 +344,12 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
   }
 }
 
-export async function getProjectByInvoiceId(sid: string | null, invoiceId: string): Promise<{ success: boolean; data?: { name: string, project_name: string, customer: string, customer_email?: string }; error?: string }> {
+export async function getProjectByInvoiceId(sid: string | null, invoiceId: string): Promise<{ success: boolean; data?: Project; error?: string }> {
   const filters = [['sales_invoice', '=', invoiceId]];
-  const result = await fetchFromErpNext<{ name: string; project_name: string; customer: string; }[]>({
+  const result = await fetchFromErpNext<any[]>({
     sid,
     doctype: 'Project',
-    fields: ['name', 'project_name', 'customer'],
+    fields: ['name', 'project_name', 'customer', 'status', 'modified', 'creation', 'company'],
     filters,
     limit: 1,
   });
@@ -373,11 +358,16 @@ export async function getProjectByInvoiceId(sid: string | null, invoiceId: strin
     return { success: false, error: result.error || 'Project not found for this Sales Invoice ID.' };
   }
   
-  const project = result.data[0];
+  const projectData = result.data[0];
 
   // Fetch customer email
-  const customerResult = await fetchFromErpNext<any>({ sid, doctype: 'Customer', docname: project.customer, fields: ['email_id'] });
-  const customerEmail = customerResult.success ? customerResult.data.email_id : undefined;
+  const customerResult = await fetchFromErpNext<any>({ sid, doctype: 'Customer', docname: projectData.customer, fields: ['email_id', 'customer_name'] });
+  if (customerResult.success && customerResult.data) {
+      projectData.customer_email = customerResult.data.email_id;
+      // Overwrite the customer ID with the customer's full name for display purposes.
+      projectData.customer = customerResult.data.customer_name || projectData.customer;
+  }
 
-  return { success: true, data: { ...project, customer_email: customerEmail } };
+  const project: Project = transformErpProject(projectData);
+  return { success: true, data: project };
 }

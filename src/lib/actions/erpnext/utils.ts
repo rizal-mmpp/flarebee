@@ -70,3 +70,38 @@ export async function fetchFromErpNext<T>({
     return { success: false, error: `An unexpected error occurred: ${error.message}` };
   }
 }
+
+/**
+ * Utility function to make a POST request with x-www-form-urlencoded data,
+ * which is required for some Frappe RPC calls like `savedocs`.
+ */
+export async function postEncodedRequest(endpoint: string, body: string, sid: string | null): Promise<any> {
+    if (!ERPNEXT_API_URL) throw new Error('ERPNext API URL is not configured.');
+    
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'Accept': 'application/json',
+    };
+
+    if (sid) {
+        headers['Cookie'] = `sid=${sid}`;
+    } else if (ADMIN_API_KEY && ADMIN_API_SECRET) {
+        headers['Authorization'] = `token ${ADMIN_API_KEY}:${ADMIN_API_SECRET}`;
+    } else {
+        throw new Error('No authentication method available for this ERPNext request.');
+    }
+
+    const response = await fetch(`${ERPNEXT_API_URL}${endpoint}`, {
+        method: 'POST',
+        headers,
+        body,
+    });
+    
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        const errorMessage = responseData.exception || (Array.isArray(responseData._server_messages) ? JSON.parse(responseData._server_messages[0]).message : 'Unknown ERPNext POST Error');
+        throw new Error(errorMessage);
+    }
+    return responseData;
+}

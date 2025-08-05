@@ -30,19 +30,30 @@ const getStatusBadgeVariant = (status?: string) => {
     case 'paid':
     case 'completed':
     case 'settled':
-      return 'bg-green-500/20 text-green-400 border-green-500/30';
-    case 'pending':
+      return 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30';
     case 'unpaid':
+    case 'pending':
     case 'draft':
-      return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+      return 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30';
     case 'failed':
     case 'expired':
     case 'cancelled':
-      return 'bg-red-500/20 text-red-400 border-red-500/30';
+      return 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30';
     default:
       return 'bg-muted text-muted-foreground border-border';
   }
 };
+
+const InfoRow = ({ label, value, icon: Icon, children }: { label: string, value?: React.ReactNode, icon?: React.ElementType, children?: React.ReactNode }) => (
+    <div className="space-y-1">
+        <h4 className="font-semibold text-muted-foreground flex items-center text-xs uppercase tracking-wider">
+            {Icon && <Icon className="mr-2 h-4 w-4 text-primary/80" />}
+            {label}
+        </h4>
+        <div className="text-foreground text-sm font-medium">{value || <span className="italic text-muted-foreground">Not set</span>}</div>
+        {children}
+    </div>
+);
 
 
 export default function OrderDetailPage() {
@@ -97,7 +108,7 @@ export default function OrderDetailPage() {
         <p className="text-muted-foreground mb-6">{error}</p>
         <Button variant="outline" asChild className="group">
           <Link href="/admin/orders">
-            <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Invoices
           </Link>
         </Button>
@@ -113,7 +124,7 @@ export default function OrderDetailPage() {
         <p className="text-muted-foreground mb-6">The requested invoice could not be found.</p>
         <Button variant="outline" asChild className="group">
           <Link href="/admin/orders">
-            <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Invoices
           </Link>
         </Button>
@@ -123,80 +134,100 @@ export default function OrderDetailPage() {
 
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
-          <Package className="mr-3 h-8 w-8 text-primary" />
-          Sales Invoice
-        </h1>
+        <div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
+                Invoice Details
+            </h1>
+            <p className="text-sm text-muted-foreground">
+                ID: <span className="font-mono text-foreground/80">{order.orderId}</span>
+            </p>
+        </div>
         <Button variant="outline" onClick={() => router.push('/admin/orders')} className="w-full sm:w-auto group">
-          <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
+          <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Invoices
         </Button>
       </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="lg:col-span-2 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl">Invoice Summary</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <InfoRow label="Status" icon={Tag} value={<Badge variant="outline" className={cn("capitalize text-sm", getStatusBadgeVariant(order.status))}>{order.status}</Badge>} />
+                <InfoRow label="Customer" icon={User} value={order.userEmail} />
+                <InfoRow label="Posting Date" icon={CalendarDays} value={format(new Date(order.createdAt), "PPP")} />
+            </CardContent>
+          </Card>
 
-      <Card> 
-        <CardHeader>
-          <CardTitle className="text-2xl">ID: {order.orderId}</CardTitle>
-          <CardDescription>
-            Details for invoice created on {format(new Date(order.createdAt), "PPPp")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 text-sm">
-            <div className="space-y-1">
-              <h4 className="font-semibold text-muted-foreground flex items-center"><User className="mr-2 h-4 w-4 text-primary" />Customer</h4>
-              <p className="text-foreground">{order.userEmail || 'N/A'}</p>
-            </div>
-            <div className="space-y-1">
-              <h4 className="font-semibold text-muted-foreground flex items-center"><CalendarDays className="mr-2 h-4 w-4 text-primary" />Posting Date</h4>
-              <p className="text-foreground">{format(new Date(order.createdAt), "PPP")}</p>
-            </div>
-            <div className="space-y-1">
-              <h4 className="font-semibold text-muted-foreground flex items-center"><Tag className="mr-2 h-4 w-4 text-primary" />Total Amount</h4>
-              <p className="text-foreground font-semibold text-lg">{formatIDR(order.totalAmount)} ({order.currency})</p>
-            </div>
-             <div className="space-y-1">
-              <h4 className="font-semibold text-muted-foreground flex items-center"><Hash className="mr-2 h-4 w-4 text-primary" />Status</h4>
-              <Badge variant="outline" className={cn("capitalize", getStatusBadgeVariant(order.status))}>
-                {order.status}
-              </Badge>
-            </div>
-            <div className="space-y-1">
-              <h4 className="font-semibold text-muted-foreground flex items-center"><CreditCard className="mr-2 h-4 w-4 text-primary" />Payment Gateway</h4>
-              <p className="text-foreground capitalize">{order.paymentGateway.replace('_', ' ')}</p>
-            </div>
-          </div>
+           <Card>
+              <CardHeader>
+                  <CardTitle className="text-xl">Purchased Items ({order.items.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                  <div className="rounded-md border">
+                    <Table>
+                        <TableHeader>
+                        <TableRow>
+                            <TableHead>Item Name</TableHead>
+                            <TableHead className="text-right">Price</TableHead>
+                        </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                        {order.items.map((item, index) => (
+                            <TableRow key={`${item.id}-${index}`}>
+                            <TableCell className="font-medium text-foreground">{item.title}</TableCell>
+                            <TableCell className="text-right text-foreground">{formatIDR(item.price)}</TableCell>
+                            </TableRow>
+                        ))}
+                        <TableRow className="font-bold bg-muted/50 hover:bg-muted/50">
+                            <TableCell>Grand Total</TableCell>
+                            <TableCell className="text-right">{formatIDR(order.totalAmount)}</TableCell>
+                        </TableRow>
+                        </TableBody>
+                    </Table>
+                  </div>
+              </CardContent>
+          </Card>
+        </div>
 
-          <div>
-            <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Purchased Items ({order.items.length})</h3>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Item Name</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {order.items.map((item, index) => (
-                    <TableRow key={`${item.id}-${index}`}>
-                      <TableCell className="font-medium text-foreground">{item.title}</TableCell>
-                      <TableCell className="text-right text-foreground">{formatIDR(item.price)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-end">
-           <Button variant="outline" onClick={() => router.push('/admin/orders')} className="group">
-             <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 ease-in-out group-hover:-translate-x-1" />
-             Back to Invoices
-           </Button>
-        </CardFooter>
-      </Card>
+        <div className="lg:col-span-1 space-y-6">
+          <Card>
+            <CardHeader>
+                <CardTitle className="text-xl">Payment Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {order.status.toLowerCase() === 'paid' ? (
+                <>
+                   <InfoRow label="Payment Method" icon={CreditCard} value={<span className="capitalize">{order.paymentGateway}</span>}/>
+                   <InfoRow label="Xendit Invoice ID" icon={Hash} value={order.xenditInvoiceId || 'N/A'} />
+                   <InfoRow label="Xendit URL" icon={LinkIcon}>
+                     {order.xenditInvoiceUrl ? (
+                         <Button variant="link" asChild className="p-0 h-auto font-medium">
+                             <Link href={order.xenditInvoiceUrl} target="_blank" rel="noopener noreferrer">
+                                 View on Xendit <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                             </Link>
+                         </Button>
+                     ) : (
+                         <p className="text-sm text-muted-foreground italic">Not available</p>
+                     )}
+                   </InfoRow>
+                </>
+              ) : (
+                <div className="text-center text-sm text-muted-foreground py-4">
+                  <Clock className="mx-auto h-8 w-8 mb-2" />
+                  <p>This invoice is currently unpaid. Payment details will appear here once the payment is completed.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+      </div>
+
     </div>
   );
 }

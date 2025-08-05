@@ -182,7 +182,7 @@ export interface Order {
   items: PurchasedTemplateItem[];
   totalAmount: number;
   currency: 'IDR';
-  status: 'completed' | 'pending' | 'failed' | 'expired';
+  status: 'completed' | 'pending' | 'failed' | 'expired' | 'paid' | 'unpaid' | 'draft' | 'cancelled' | 'settled';
   paymentGateway: string;
   createdAt: string;
   updatedAt?: string;
@@ -365,4 +365,5 @@ export interface Project {
     delivery_date: string | null;
     creation: string;
     modified: string;
+    customer_email?: string;
 }
