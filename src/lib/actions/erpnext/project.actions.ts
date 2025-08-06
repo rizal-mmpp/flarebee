@@ -275,17 +275,19 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
     if (!customerResult.success || !customerResult.data) throw new Error("Customer details could not be fetched.");
     const customer = customerResult.data;
 
+    // Create the Sales Invoice as a Draft first
     const invoicePayload = {
       customer: project.customer,
       company: project.company,
       items: [{ item_code: plan.item, qty: 1, rate: plan.cost, }],
       due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0],
+      docstatus: 0, // Explicitly create as a draft
     };
     
     const invoiceCreationResponse = await postRequest('/api/resource/Sales Invoice', invoicePayload, sid);
     const invoiceName = invoiceCreationResponse.data.name;
-    await submitDoc('Sales Invoice', invoiceName, sid);
-
+    
+    // Create the Xendit Invoice
     const xenditInvoice = await Invoice.createInvoice({
         data: {
             externalId: invoiceName,
@@ -298,11 +300,15 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
     
     if (!xenditInvoice.invoiceUrl || !xenditInvoice.id) throw new Error("Failed to get payment URL from Xendit.");
 
+    // Update the Draft Sales Invoice with Xendit details
     await fetch(`${ERPNEXT_API_URL}/api/resource/Sales Invoice/${invoiceName}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'Cookie': `sid=${sid}` },
       body: JSON.stringify({ xendit_invoice_id: xenditInvoice.id, xendit_invoice_url: xenditInvoice.invoiceUrl }),
     });
+
+    // Now, Submit the Sales Invoice
+    await submitDoc('Sales Invoice', invoiceName, sid);
 
     await updateProject({ sid, projectName, projectData: { status: 'Awaiting Payment', sales_invoice: invoiceName }});
 
