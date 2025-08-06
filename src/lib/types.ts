@@ -190,6 +190,7 @@ export interface Order {
   xenditInvoiceUrl?: string;
   xenditExpiryDate?: string;
   xenditPaymentStatus?: string;
+  modeOfPayment?: string;
 }
 
 export type OrderInputData = Omit<Order, 'id' | 'createdAt' | 'updatedAt'> & {

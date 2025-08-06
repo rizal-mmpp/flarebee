@@ -203,7 +203,7 @@ export default function OrderDetailPage() {
             <CardContent className="space-y-4">
               {isPaid ? (
                 <>
-                   <InfoRow label="Payment Method" icon={CreditCard} value={<span className="capitalize">{order.paymentGateway || 'N/A'}</span>}/>
+                   <InfoRow label="Payment Method" icon={CreditCard} value={<span className="capitalize">{order.modeOfPayment || 'N/A'}</span>}/>
                    <InfoRow label="Xendit Invoice ID" icon={Hash} value={order.xenditInvoiceId || 'N/A'} />
                    <InfoRow label="Xendit URL" icon={LinkIcon}>
                      {order.xenditInvoiceUrl ? (

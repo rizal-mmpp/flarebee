@@ -120,6 +120,7 @@ function transformErpSalesInvoiceToAppOrder(item: any): Order {
         xenditPaymentStatus: item.status, 
         xenditInvoiceUrl: item.xendit_invoice_url, 
         xenditInvoiceId: item.xendit_invoice_id,
+        modeOfPayment: item.mode_of_payment,
     };
 }
 
@@ -152,7 +153,36 @@ export async function getOrderByOrderIdFromErpNext({ sid, orderId }: { sid: stri
     if (!result.success || !result.data) {
         return { success: false, error: result.error || 'Failed to get Sales Invoice.' };
     }
-    const order: Order = transformErpSalesInvoiceToAppOrder(result.data);
+
+    const orderData = result.data;
+    
+    // Fetch related payment entry to get the mode of payment
+    if (orderData.status?.toLowerCase() === 'paid') {
+      const paymentEntryResult = await fetchFromErpNext<any[]>({
+        sid,
+        doctype: 'Payment Entry Reference',
+        fields: ['parent'],
+        filters: [['reference_doctype', '=', 'Sales Invoice'], ['reference_name', '=', orderId]],
+        limit: 1,
+      });
+
+      if (paymentEntryResult.success && paymentEntryResult.data && paymentEntryResult.data.length > 0) {
+        const paymentEntryName = paymentEntryResult.data[0].parent;
+        const paymentEntryDoc = await fetchFromErpNext<any>({
+          sid,
+          doctype: 'Payment Entry',
+          docname: paymentEntryName,
+          fields: ['mode_of_payment']
+        });
+
+        if (paymentEntryDoc.success && paymentEntryDoc.data) {
+          orderData.mode_of_payment = paymentEntryDoc.data.mode_of_payment;
+        }
+      }
+    }
+
+
+    const order: Order = transformErpSalesInvoiceToAppOrder(orderData);
     return { success: true, data: order };
 }
 
