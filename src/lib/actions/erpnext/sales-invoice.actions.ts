@@ -55,7 +55,7 @@ async function ensureCustomFieldsExist(sid: string | null, doctype: 'Sales Invoi
     } else if (process.env.ERPNEXT_ADMIN_API_KEY && process.env.ERPNEXT_ADMIN_API_SECRET) {
         headers['Authorization'] = `token ${process.env.ERPNEXT_ADMIN_API_KEY}:${process.env.ERPNEXT_ADMIN_API_SECRET}`;
     } else {
-        return { success: false, error: `No authentication provided for ensuring custom fields on ${doctype}.` };
+        return { success: false, error: `No SID available for ensuring ${doctype} custom fields.` };
     }
 
     for (const field of fields) {
@@ -159,7 +159,6 @@ export async function getOrderByOrderIdFromErpNext({ sid, orderId }: { sid: stri
 
 export async function createDraftPaymentEntry({ sid, invoiceName, xenditPayload }: { sid: string | null; invoiceName: string; xenditPayload: any; }): Promise<{ success: boolean; doc?: any; error?: string }> {
   try {
-    // 1. Ensure custom fields exist on Payment Entry doctype
     const fieldsReady = await ensurePaymentEntryCustomFieldsExist(sid);
     if (!fieldsReady.success) {
       throw new Error(`Failed to prepare ERPNext for payment entry: ${fieldsReady.error}`);
@@ -171,8 +170,43 @@ export async function createDraftPaymentEntry({ sid, invoiceName, xenditPayload 
     }
     const invoiceDoc = invoiceResult.data;
     
-    // Combine payment method and channel from Xendit payload
     const paymentMethod = `${xenditPayload.payment_method || 'Unknown'} - ${xenditPayload.payment_channel || 'Unknown'}`;
+
+    // Self-healing for Mode of Payment
+    const modeOfPaymentExistsResult = await fetchFromErpNext({ sid, doctype: 'Mode of Payment', docname: paymentMethod, fields: ['name'] });
+    if (!modeOfPaymentExistsResult.success && modeOfPaymentExistsResult.error?.includes('was not found')) {
+      console.log(`Mode of Payment "${paymentMethod}" not found. Creating it...`);
+      const mopPayload = {
+        doctype: 'Mode of Payment',
+        mode_of_payment: paymentMethod,
+        type: 'General',
+        company: invoiceDoc.company,
+        accounts: [{
+            company: invoiceDoc.company,
+            default_account: invoiceDoc.account_for_change_amount || "Cash - RIO",
+        }]
+      };
+      
+      const headers: Record<string, string> = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        if (sid) {
+          headers['Cookie'] = `sid=${sid}`;
+        } else {
+          headers['Authorization'] = `token ${process.env.ERPNEXT_ADMIN_API_KEY}:${process.env.ERPNEXT_ADMIN_API_SECRET}`;
+        }
+
+      const createMopResponse = await fetch(`${ERPNEXT_API_URL}/api/resource/Mode of Payment`, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(mopPayload),
+      });
+
+      if (!createMopResponse.ok) {
+        const errorData = await createMopResponse.json();
+        throw new Error(`Failed to auto-create Mode of Payment: ${errorData.exception || errorData._server_messages}`);
+      }
+      console.log(`Successfully created Mode of Payment "${paymentMethod}".`);
+    }
+
 
     const paymentEntryPayload = {
         doctype: 'Payment Entry',
@@ -271,3 +305,5 @@ export async function updateSalesInvoicePaymentDetails({
 }
 
 export { submitDoc };
+
+    
