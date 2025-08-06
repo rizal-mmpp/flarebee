@@ -4,10 +4,11 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getOrderByOrderIdFromFirestore, updateOrderStatusInFirestore } from '@/lib/firebase/firestoreOrders';
-import { createDraftPaymentEntry, updateSalesInvoicePaymentDetails, submitDoc, fetchFromErpNext } from '@/lib/actions/erpnext/sales-invoice.actions';
+import { createDraftPaymentEntry, updateSalesInvoicePaymentDetails, submitDoc } from '@/lib/actions/erpnext/sales-invoice.actions';
 import { getProjectByInvoiceId, updateProject } from '@/lib/actions/erpnext/project.actions';
 import { sendEmail } from '@/lib/services/email.service';
 import type { Order } from '@/lib/types';
+import { fetchFromErpNext } from '@/lib/actions/erpnext/utils';
 
 interface XenditWebhookPayload {
   id: string; // Xendit Invoice ID
