@@ -2,7 +2,7 @@
 'use server';
 
 import type { Order, PurchasedTemplateItem } from '../../types';
-import { fetchFromErpNext } from './utils';
+import { fetchFromErpNext, postEncodedRequest } from './utils';
 
 const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
@@ -133,7 +133,7 @@ export async function getOrderByOrderIdFromErpNext({ sid, orderId }: { sid: stri
 }
 
 
-export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paymentMethod }: { sid: string | null; invoiceName: string; paymentAmount?: number; paymentMethod?: string; }): Promise<{ success: boolean; error?: string }> {
+export async function createDraftPaymentEntry({ sid, invoiceName, paymentAmount, paymentMethod }: { sid: string | null; invoiceName: string; paymentAmount?: number; paymentMethod?: string; }): Promise<{ success: boolean; doc?: any; error?: string }> {
   try {
     const invoiceResult = await fetchFromErpNext<any>({ sid, doctype: 'Sales Invoice', docname: invoiceName, fields: ['*'] });
     if (!invoiceResult.success || !invoiceResult.data) {
@@ -183,11 +183,9 @@ export async function createPaymentEntry({ sid, invoiceName, paymentAmount, paym
     }
     const savedDoc = (await createResponse.json()).data;
     
-    await submitDoc(savedDoc, sid);
-
-    return { success: true };
+    return { success: true, doc: savedDoc };
   } catch (error: any) {
-    console.error("Error creating and submitting Payment Entry:", error);
+    console.error("Error creating draft Payment Entry:", error);
     return { success: false, error: error.message };
   }
 }
@@ -233,3 +231,5 @@ export async function updateSalesInvoicePaymentDetails({
     return { success: false, error: error.message };
   }
 }
+
+export { submitDoc };
