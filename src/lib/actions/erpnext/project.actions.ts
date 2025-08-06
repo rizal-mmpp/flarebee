@@ -254,50 +254,44 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
     if (!customerResult.success || !customerResult.data) throw new Error("Customer details could not be fetched.");
     const customer = customerResult.data;
 
-    // 3. Create the Sales Invoice as a DRAFT first
-    const invoicePayload = {
-      customer: project.customer,
-      company: project.company,
-      items: [{ item_code: plan.item, qty: 1, rate: plan.cost, }],
-      due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0],
-      docstatus: 0, // DRAFT
-    };
-    
-    const invoiceCreationResponse = await postRequest('/api/resource/Sales Invoice', invoicePayload, sid);
-    const invoiceName = invoiceCreationResponse.data.name;
-    const draftInvoice = invoiceCreationResponse.data;
-    
-    // 4. Create the Xendit Invoice
+    // 3. Create the Xendit Invoice FIRST to get the URL
+    const xenditExternalId = `SINV-${new Date().getTime()}`; // Create a unique ID
     const xenditInvoice = await Invoice.createInvoice({
         data: {
-            externalId: invoiceName,
+            externalId: xenditExternalId, // Use this for Xendit
             amount: plan.cost,
             payerEmail: customer.email_id || undefined,
             description: `Payment for Project: ${project.project_name}`,
             currency: 'IDR',
         }
     });
+
+    if (!xenditInvoice.invoiceUrl || !xenditInvoice.id) {
+        throw new Error("Failed to get payment URL from Xendit.");
+    }
     
-    if (!xenditInvoice.invoiceUrl || !xenditInvoice.id) throw new Error("Failed to get payment URL from Xendit.");
-
-    // 5. Update the DRAFT Sales Invoice with Xendit details
-    draftInvoice.xendit_invoice_id = xenditInvoice.id;
-    draftInvoice.xendit_invoice_url = xenditInvoice.invoiceUrl;
+    // 4. Create the Sales Invoice as a DRAFT with all data at once
+    const invoicePayload = {
+      customer: project.customer,
+      company: project.company,
+      items: [{ item_code: plan.item, qty: 1, rate: plan.cost }],
+      due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0],
+      xendit_invoice_id: xenditInvoice.id,
+      xendit_invoice_url: xenditInvoice.invoiceUrl,
+      docstatus: 0, // DRAFT
+    };
     
-    // Use PUT to update the draft document before submission
-    await fetch(`${ERPNEXT_API_URL}/api/resource/Sales Invoice/${invoiceName}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'Cookie': `sid=${sid}` },
-      body: JSON.stringify(draftInvoice),
-    });
+    const invoiceCreationResponse = await postRequest('/api/resource/Sales Invoice', invoicePayload, sid);
+    const draftInvoice = invoiceCreationResponse.data;
 
-    // 6. NOW Submit the Sales Invoice
-    await submitDoc(draftInvoice, sid);
+    // 5. Submit the DRAFT Sales Invoice
+    const submittedInvoiceResult = await submitDoc(draftInvoice, sid);
+    const finalInvoiceName = submittedInvoiceResult.docs[0].name;
 
-    // 7. Update the project status and link the invoice
-    await updateProject({ sid, projectName, projectData: { status: 'Awaiting Payment', sales_invoice: invoiceName }});
+    // 6. Update the project status and link the final invoice name
+    await updateProject({ sid, projectName, projectData: { status: 'Awaiting Payment', sales_invoice: finalInvoiceName }});
 
-    // 8. Send the email with the payment link
+    // 7. Send the email with the payment link
     if (customer.email_id) {
        await sendEmail({
         to: customer.email_id,
@@ -311,7 +305,7 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
                 <p>Dear ${customer.customer_name},</p>
                 <p>Please find the invoice for your project: <strong>${project.project_name}</strong>.</p>
                 <div style="background-color: #fafafa; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                  <p style="margin: 0; padding-bottom: 5px;"><strong>Invoice ID:</strong> ${invoiceName}</p>
+                  <p style="margin: 0; padding-bottom: 5px;"><strong>Invoice ID:</strong> ${finalInvoiceName}</p>
                   <p style="margin: 0;"><strong>Amount:</strong> ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(plan.cost || 0)}</p>
                 </div>
                 <p>Click the button below to complete your payment. The link is valid for 24 hours.</p>
@@ -329,7 +323,7 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
       });
     }
 
-    return { success: true, invoiceName };
+    return { success: true, invoiceName: finalInvoiceName };
 
   } catch (error: any) {
     return { success: false, error: error.message };
