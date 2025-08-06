@@ -47,13 +47,22 @@ const customFieldsForPaymentEntry = [
     { fieldname: 'xendit_payment_method', fieldtype: 'Data', label: 'Xendit Payment Method', insert_after: 'xendit_payment_channel' },
 ];
 
-async function ensureCustomFieldsExist(sid: string, doctype: 'Sales Invoice' | 'Payment Entry', fields: any[]): Promise<{ success: boolean; error?: string }> {
+async function ensureCustomFieldsExist(sid: string | null, doctype: 'Sales Invoice' | 'Payment Entry', fields: any[]): Promise<{ success: boolean; error?: string }> {
   try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+    if (sid) {
+        headers['Cookie'] = `sid=${sid}`;
+    } else if (process.env.ERPNEXT_ADMIN_API_KEY && process.env.ERPNEXT_ADMIN_API_SECRET) {
+        headers['Authorization'] = `token ${process.env.ERPNEXT_ADMIN_API_KEY}:${process.env.ERPNEXT_ADMIN_API_SECRET}`;
+    } else {
+        return { success: false, error: `No authentication provided for ensuring custom fields on ${doctype}.` };
+    }
+
     for (const field of fields) {
         const payload = { doctype: "Custom Field", dt: doctype, ...field };
         const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Custom Field`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
+            headers: headers,
             body: JSON.stringify(payload),
         });
         if (!response.ok) {
@@ -78,9 +87,7 @@ export async function ensureSalesInvoiceCustomFieldsExist(sid: string): Promise<
     return ensureCustomFieldsExist(sid, 'Sales Invoice', customFieldsForSalesInvoice);
 }
 export async function ensurePaymentEntryCustomFieldsExist(sid: string | null): Promise<{ success: boolean; error?: string }> {
-  const authSid = sid || process.env.ERPNEXT_ADMIN_SID; // Use admin SID if regular SID not provided
-  if (!authSid) return { success: false, error: "No SID available for ensuring Payment Entry custom fields." };
-  return ensureCustomFieldsExist(authSid, 'Payment Entry', customFieldsForPaymentEntry);
+  return ensureCustomFieldsExist(sid, 'Payment Entry', customFieldsForPaymentEntry);
 }
 
 
