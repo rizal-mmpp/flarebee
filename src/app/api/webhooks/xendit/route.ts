@@ -10,6 +10,8 @@ import { sendEmail } from '@/lib/services/email.service';
 import type { Order } from '@/lib/types';
 import { fetchFromErpNext } from '@/lib/actions/erpnext/utils';
 
+const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
+
 interface XenditWebhookPayload {
   id: string; // Xendit Invoice ID
   external_id: string; // Our orderId (e.g., rio-order-..., SINV-...)
@@ -92,60 +94,96 @@ async function handleB2BFlow(invoiceName: string, xenditStatus: string, xenditPa
     return { success: true, message: `Ignoring non-PAID status "${xenditStatus}".` };
   }
   
-  let paymentEntryResult;
-
   try {
-    // Step 1: Create the DRAFT Payment Entry with all Xendit details.
-    console.log(`${logPrefix} Step 1: Creating Draft Payment Entry.`);
-    paymentEntryResult = await createDraftPaymentEntry({
+    // Step 1: Self-heal the Mode of Payment if it doesn't exist
+    const paymentMethodName = `${xenditPayload.payment_method || 'Unknown'} - ${xenditPayload.payment_channel || 'Unknown'}`;
+    const mopExistsResult = await fetchFromErpNext({ sid: null, doctype: 'Mode of Payment', docname: paymentMethodName, fields: ['name'] });
+
+    if (!mopExistsResult.success && mopExistsResult.error?.includes('was not found')) {
+      console.log(`${logPrefix} Mode of Payment "${paymentMethodName}" not found. Creating it...`);
+      const invoiceDocResult = await fetchFromErpNext<any>({ sid: null, doctype: 'Sales Invoice', docname: invoiceName, fields: ['company', 'account_for_change_amount'] });
+      if (!invoiceDocResult.success || !invoiceDocResult.data) {
+        throw new Error(`Could not fetch Sales Invoice details to create Mode of Payment.`);
+      }
+
+      const mopPayload = {
+        doctype: 'Mode of Payment',
+        mode_of_payment: paymentMethodName,
+        type: 'General',
+        company: invoiceDocResult.data.company,
+        accounts: [{
+            company: invoiceDocResult.data.company,
+            default_account: invoiceDocResult.data.account_for_change_amount || "Cash - RIO",
+        }]
+      };
+
+      const createMopResponse = await fetch(`${ERPNEXT_API_URL}/api/resource/Mode of Payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `token ${process.env.ERPNEXT_ADMIN_API_KEY}:${process.env.ERPNEXT_ADMIN_API_SECRET}`,
+        },
+        body: JSON.stringify(mopPayload),
+      });
+
+      if (!createMopResponse.ok) {
+        const errorData = await createMopResponse.json();
+        throw new Error(`Failed to auto-create Mode of Payment: ${errorData.exception || errorData._server_messages}`);
+      }
+      console.log(`${logPrefix} Successfully created Mode of Payment "${paymentMethodName}".`);
+    } else if (!mopExistsResult.success) {
+      throw new Error(`Could not verify Mode of Payment existence: ${mopExistsResult.error}`);
+    }
+
+    // Step 2: Create the DRAFT Payment Entry with all Xendit details.
+    console.log(`${logPrefix} Step 2: Creating Draft Payment Entry.`);
+    const paymentEntryResult = await createDraftPaymentEntry({
       sid: null,
       invoiceName: invoiceName,
       xenditPayload: xenditPayload,
     });
 
     if (!paymentEntryResult.success || !paymentEntryResult.doc) {
-      throw new Error(`Failed at Step 1: Could not create Draft Payment Entry. Error: ${paymentEntryResult.error}`);
+      throw new Error(`Failed at Step 2: Could not create Draft Payment Entry. Error: ${paymentEntryResult.error}`);
     }
-    console.log(`${logPrefix} SUCCESS Step 1: Draft Payment Entry created.`);
+    console.log(`${logPrefix} SUCCESS Step 2: Draft Payment Entry created.`);
 
-    // Step 2: Submit the Payment Entry. This will automatically update the Sales Invoice status.
-    console.log(`${logPrefix} Step 2: Submitting Payment Entry.`);
+    // Step 3: Submit the Payment Entry. This will automatically update the Sales Invoice status.
+    console.log(`${logPrefix} Step 3: Submitting Payment Entry.`);
     await submitDoc(paymentEntryResult.doc, null);
-    console.log(`${logPrefix} SUCCESS Step 2: Payment Entry submitted.`);
+    console.log(`${logPrefix} SUCCESS Step 3: Payment Entry submitted.`);
 
   } catch (error: any) {
     console.error(`${logPrefix} Critical error during payment processing:`, error.message);
     return { 
       success: false, 
       message: `Critical error: ${error.message}`,
-      details: {
-        paymentEntry: paymentEntryResult?.success ? 'Success' : `Failed: ${paymentEntryResult?.error}`
-      }
     };
   }
 
   // --- Post-Payment Actions (non-critical if they fail) ---
 
   // Find the associated Project.
-  console.log(`${logPrefix} Step 3: Finding associated Project.`);
+  console.log(`${logPrefix} Step 4: Finding associated Project.`);
   const projectResult = await getProjectByInvoiceId(null, invoiceName);
   if (!projectResult.success || !projectResult.data) {
     console.warn(`${logPrefix} SKIPPED post-payment actions: Project not found for invoice.`);
   } else {
     const project = projectResult.data;
-    console.log(`${logPrefix} SUCCESS Step 3: Found Project: ${project.name}`);
+    console.log(`${logPrefix} SUCCESS Step 4: Found Project: ${project.name}`);
 
     // Update the project status.
-    console.log(`${logPrefix} Step 4: Updating Project ${project.name} status to "In Progress".`);
+    console.log(`${logPrefix} Step 5: Updating Project ${project.name} status to "In Progress".`);
     const updateResult = await updateProject({ sid: null, projectName: project.name, projectData: { status: 'In Progress' } });
     if (!updateResult.success) {
-        console.error(`${logPrefix} FAILED Step 4: Could not update project status. Error: ${updateResult.error}`);
+        console.error(`${logPrefix} FAILED Step 5: Could not update project status. Error: ${updateResult.error}`);
     } else {
-        console.log(`${logPrefix} SUCCESS Step 4: Project status updated.`);
+        console.log(`${logPrefix} SUCCESS Step 5: Project status updated.`);
     }
     
     // Send the confirmation email.
-    console.log(`${logPrefix} Step 5: Sending confirmation email.`);
+    console.log(`${logPrefix} Step 6: Sending confirmation email.`);
     if (project.customer_email) {
       try {
         await sendEmail({
@@ -171,12 +209,12 @@ async function handleB2BFlow(invoiceName: string, xenditStatus: string, xenditPa
               </div>
           `,
         });
-        console.log(`${logPrefix} SUCCESS Step 5: Confirmation email sent to ${project.customer_email}.`);
+        console.log(`${logPrefix} SUCCESS Step 6: Confirmation email sent to ${project.customer_email}.`);
       } catch (emailError: any) {
-          console.error(`${logPrefix} FAILED Step 5: Could not send confirmation email:`, emailError.message);
+          console.error(`${logPrefix} FAILED Step 6: Could not send confirmation email:`, emailError.message);
       }
     } else {
-      console.warn(`${logPrefix} SKIPPED Step 5: No email found for customer ${project.customer}.`);
+      console.warn(`${logPrefix} SKIPPED Step 6: No email found for customer ${project.customer}.`);
     }
   }
 
