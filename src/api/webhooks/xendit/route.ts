@@ -4,10 +4,13 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getOrderByOrderIdFromFirestore, updateOrderStatusInFirestore } from '@/lib/firebase/firestoreOrders';
-import { createDraftPaymentEntry, updateSalesInvoicePaymentDetails, submitDoc, fetchFromErpNext } from '@/lib/actions/erpnext/sales-invoice.actions';
+import { createDraftPaymentEntry, submitDoc } from '@/lib/actions/erpnext/sales-invoice.actions';
 import { getProjectByInvoiceId, updateProject } from '@/lib/actions/erpnext/project.actions';
 import { sendEmail } from '@/lib/services/email.service';
 import type { Order } from '@/lib/types';
+import { fetchFromErpNext } from '@/lib/actions/erpnext/utils';
+
+const ERPNEXT_API_URL = process.env.NEXT_PUBLIC_ERPNEXT_API_URL;
 
 interface XenditWebhookPayload {
   id: string; // Xendit Invoice ID
@@ -18,7 +21,7 @@ interface XenditWebhookPayload {
   payment_destination?: string;
   paid_amount?: number;
   paid_at?: string;
-  // ... other fields from Xendit
+  // ... other fields from Xendit payload
 }
 
 
@@ -40,7 +43,7 @@ export async function POST(request: NextRequest) {
     const payload = (await request.json()) as XenditWebhookPayload;
     console.log('[Webhook] Payload received and parsed:', JSON.stringify(payload, null, 2));
 
-    const { external_id, id: xenditInvoiceId, status: xenditStatus, payment_channel, paid_amount } = payload;
+    const { external_id, status: xenditStatus } = payload;
 
     if (!external_id) {
       console.error('[Webhook] Validation Error: Payload missing external_id.');
@@ -51,7 +54,7 @@ export async function POST(request: NextRequest) {
       await handleB2CFlow(external_id, xenditStatus);
       return NextResponse.json({ success: true, message: 'Legacy B2C webhook processed.' }, { status: 200 });
     } else if (external_id.includes('SINV-')) {
-      const result = await handleB2BFlow(external_id, xenditInvoiceId, xenditStatus, payment_channel || payload.payment_method || 'Unknown', paid_amount);
+      const result = await handleB2BFlow(external_id, xenditStatus, payload);
       return NextResponse.json(result, { status: result.success ? 200 : 500 });
     } else {
       console.warn(`[Webhook] Unrecognized external_id format: ${external_id}`);
@@ -83,7 +86,7 @@ async function handleB2CFlow(orderId: string, xenditStatus: string) {
   }
 }
 
-async function handleB2BFlow(invoiceName: string, xenditInvoiceId: string, xenditStatus: string, paymentMethod: string, paidAmount?: number): Promise<{ success: boolean; message: string; details?: any }> {
+async function handleB2BFlow(invoiceName: string, xenditStatus: string, xenditPayload: XenditWebhookPayload): Promise<{ success: boolean; message: string; details?: any }> {
   const logPrefix = `[B2B Flow - ${invoiceName}]`;
   console.log(`${logPrefix} Starting for status: ${xenditStatus}`);
 
@@ -91,30 +94,54 @@ async function handleB2BFlow(invoiceName: string, xenditInvoiceId: string, xendi
     return { success: true, message: `Ignoring non-PAID status "${xenditStatus}".` };
   }
   
-  let detailsUpdateResult, paymentEntryResult;
-
   try {
-    // Step 1: Update the Sales Invoice with payment details from Xendit FIRST
-    console.log(`${logPrefix} Step 1: Updating Sales Invoice with payment details.`);
-    detailsUpdateResult = await updateSalesInvoicePaymentDetails({
-      sid: null, // Use admin keys
-      invoiceName: invoiceName,
-      paymentDetails: { xendit_invoice_id: xenditInvoiceId, custom_payment_gateway: paymentMethod },
-    });
+    // Step 1: Self-heal the Mode of Payment if it doesn't exist
+    const paymentMethodName = `${xenditPayload.payment_method || 'Unknown'} - ${xenditPayload.payment_channel || 'Unknown'}`;
+    const mopExistsResult = await fetchFromErpNext({ sid: null, doctype: 'Mode of Payment', docname: paymentMethodName, fields: ['name'] });
 
-    if (!detailsUpdateResult.success) {
-      throw new Error(`Failed at Step 1: Could not update Sales Invoice. Error: ${detailsUpdateResult.error}`);
+    if (!mopExistsResult.success && mopExistsResult.error?.includes('not found')) {
+      console.log(`${logPrefix} Mode of Payment "${paymentMethodName}" not found. Creating it...`);
+      const invoiceDocResult = await fetchFromErpNext<any>({ sid: null, doctype: 'Sales Invoice', docname: invoiceName, fields: ['company', 'account_for_change_amount'] });
+      if (!invoiceDocResult.success || !invoiceDocResult.data) {
+        throw new Error(`Could not fetch Sales Invoice details to create Mode of Payment.`);
+      }
+
+      const mopPayload = {
+        doctype: 'Mode of Payment',
+        mode_of_payment: paymentMethodName,
+        type: 'General',
+        company: invoiceDocResult.data.company,
+        accounts: [{
+            company: invoiceDocResult.data.company,
+            default_account: invoiceDocResult.data.account_for_change_amount || "Cash - RIO",
+        }]
+      };
+
+      const createMopResponse = await fetch(`${ERPNEXT_API_URL}/api/resource/Mode of Payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `token ${process.env.ERPNEXT_ADMIN_API_KEY}:${process.env.ERPNEXT_ADMIN_API_SECRET}`,
+        },
+        body: JSON.stringify(mopPayload),
+      });
+
+      if (!createMopResponse.ok) {
+        const errorData = await createMopResponse.json();
+        throw new Error(`Failed to auto-create Mode of Payment: ${errorData.exception || errorData._server_messages}`);
+      }
+      console.log(`${logPrefix} Successfully created Mode of Payment "${paymentMethodName}".`);
+    } else if (!mopExistsResult.success) {
+      throw new Error(`Could not verify Mode of Payment existence: ${mopExistsResult.error}`);
     }
-    console.log(`${logPrefix} SUCCESS Step 1: Sales Invoice payment details updated.`);
 
-
-    // Step 2: Create the DRAFT Payment Entry.
+    // Step 2: Create the DRAFT Payment Entry with all Xendit details.
     console.log(`${logPrefix} Step 2: Creating Draft Payment Entry.`);
-    paymentEntryResult = await createDraftPaymentEntry({
+    const paymentEntryResult = await createDraftPaymentEntry({
       sid: null,
       invoiceName: invoiceName,
-      paymentAmount: paidAmount,
-      paymentMethod: paymentMethod,
+      xenditPayload: xenditPayload,
     });
 
     if (!paymentEntryResult.success || !paymentEntryResult.doc) {
@@ -122,24 +149,16 @@ async function handleB2BFlow(invoiceName: string, xenditInvoiceId: string, xendi
     }
     console.log(`${logPrefix} SUCCESS Step 2: Draft Payment Entry created.`);
 
-    // Step 3: Submit both the Payment Entry and the Sales Invoice to finalize.
-    console.log(`${logPrefix} Step 3: Submitting documents.`);
-    const salesInvoiceDoc = await fetchFromErpNext<any>({ sid: null, doctype: 'Sales Invoice', docname: invoiceName });
-    if (!salesInvoiceDoc.success || !salesInvoiceDoc.data) throw new Error('Could not fetch SI to submit.');
-
+    // Step 3: Submit the Payment Entry. This will automatically update the Sales Invoice status.
+    console.log(`${logPrefix} Step 3: Submitting Payment Entry.`);
     await submitDoc(paymentEntryResult.doc, null);
-    await submitDoc(salesInvoiceDoc.data, null);
-    console.log(`${logPrefix} SUCCESS Step 3: Payment Entry and Sales Invoice submitted.`);
+    console.log(`${logPrefix} SUCCESS Step 3: Payment Entry submitted.`);
 
   } catch (error: any) {
     console.error(`${logPrefix} Critical error during payment processing:`, error.message);
     return { 
       success: false, 
       message: `Critical error: ${error.message}`,
-      details: {
-        invoiceDetailsUpdate: detailsUpdateResult?.success ? 'Success' : `Failed: ${detailsUpdateResult?.error}`,
-        paymentEntry: paymentEntryResult?.success ? 'Success' : `Failed: ${paymentEntryResult?.error}`
-      }
     };
   }
 
