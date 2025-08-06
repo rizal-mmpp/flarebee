@@ -53,8 +53,7 @@ export async function POST(request: NextRequest) {
     if (external_id.startsWith('rio-order-')) {
       await handleB2CFlow(external_id, xenditStatus);
       return NextResponse.json({ success: true, message: 'Legacy B2C webhook processed.' }, { status: 200 });
-    } else if (external_id.includes('SINV-')) {
-      // B2B Flow now correctly uses external_id from Xendit which is what we need to find the SI
+    } else if (external_id.startsWith('ACC-SINV-')) { // Changed to match ERPNext naming series
       const result = await handleB2BFlow(external_id, xenditStatus, payload);
       return NextResponse.json(result, { status: result.success ? 200 : 500 });
     } else {

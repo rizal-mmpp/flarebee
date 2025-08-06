@@ -3,11 +3,11 @@
 
 import type { ProjectFormValues } from '@/app/admin/projects/new/page';
 import type { Project, Customer, SubscriptionPlan } from '@/lib/types';
-import { fetchFromErpNext } from './utils';
+import { fetchFromErpNext, postEncodedRequest } from './utils';
 import { sendEmail } from '@/lib/services/email.service';
 import { updateContactDetails } from './customer.actions';
 import { Xendit } from 'xendit-node';
-import { ensureSalesInvoiceCustomFieldsExist, submitDoc } from './sales-invoice.actions';
+import { ensureSalesInvoiceCustomFieldsExist, submitDoc, updateSalesInvoicePaymentDetails } from './sales-invoice.actions';
 
 const xenditClient = new Xendit({
   secretKey: process.env.XENDIT_SECRET_KEY || '',
@@ -254,11 +254,25 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
     if (!customerResult.success || !customerResult.data) throw new Error("Customer details could not be fetched.");
     const customer = customerResult.data;
 
-    // 3. Create the Xendit Invoice FIRST to get the URL
-    const xenditExternalId = `SINV-${new Date().getTime()}`; // Create a unique ID
+    // 3. Create the DRAFT Sales Invoice
+    const invoiceDraftPayload = {
+      customer: project.customer,
+      company: project.company,
+      items: [{ item_code: plan.item, qty: 1, rate: plan.cost }],
+      due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0],
+      docstatus: 0,
+    };
+    const draftCreationResponse = await postRequest('/api/resource/Sales Invoice', invoiceDraftPayload, sid);
+    const draftInvoice = draftCreationResponse.data;
+
+    // 4. SUBMIT the draft to get the final name (e.g., ACC-SINV-2025-00018)
+    const submittedInvoiceResult = await submitDoc(draftInvoice, sid);
+    const finalInvoiceName = submittedInvoiceResult.docs[0].name;
+
+    // 5. Create the Xendit Invoice using the FINAL invoice name
     const xenditInvoice = await Invoice.createInvoice({
         data: {
-            externalId: xenditExternalId, // Use this for Xendit
+            externalId: finalInvoiceName, // CRITICAL FIX: Use the final submitted ID
             amount: plan.cost,
             payerEmail: customer.email_id || undefined,
             description: `Payment for Project: ${project.project_name}`,
@@ -267,31 +281,23 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
     });
 
     if (!xenditInvoice.invoiceUrl || !xenditInvoice.id) {
-        throw new Error("Failed to get payment URL from Xendit.");
+        throw new Error("Failed to get payment URL from Xendit after creating ERPNext invoice.");
     }
     
-    // 4. Create the Sales Invoice as a DRAFT with all data at once
-    const invoicePayload = {
-      customer: project.customer,
-      company: project.company,
-      items: [{ item_code: plan.item, qty: 1, rate: plan.cost }],
-      due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0],
-      xendit_invoice_id: xenditInvoice.id,
-      xendit_invoice_url: xenditInvoice.invoiceUrl,
-      docstatus: 0, // DRAFT
-    };
-    
-    const invoiceCreationResponse = await postRequest('/api/resource/Sales Invoice', invoicePayload, sid);
-    const draftInvoice = invoiceCreationResponse.data;
+    // 6. Update the (now submitted) Sales Invoice with Xendit details using ADMIN credentials
+    await updateSalesInvoicePaymentDetails({
+      sid: null, // Use admin credentials
+      invoiceName: finalInvoiceName,
+      paymentDetails: {
+        xendit_invoice_id: xenditInvoice.id,
+        xendit_invoice_url: xenditInvoice.invoiceUrl,
+      },
+    });
 
-    // 5. Submit the DRAFT Sales Invoice
-    const submittedInvoiceResult = await submitDoc(draftInvoice, sid);
-    const finalInvoiceName = submittedInvoiceResult.docs[0].name;
-
-    // 6. Update the project status and link the final invoice name
+    // 7. Update the project status and link the final invoice name
     await updateProject({ sid, projectName, projectData: { status: 'Awaiting Payment', sales_invoice: finalInvoiceName }});
 
-    // 7. Send the email with the payment link
+    // 8. Send the email with the payment link
     if (customer.email_id) {
        await sendEmail({
         to: customer.email_id,
