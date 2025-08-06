@@ -39,10 +39,18 @@ const customFieldsForSalesInvoice = [
     { fieldname: 'custom_payment_gateway', fieldtype: 'Data', label: 'Payment Method (Custom)', insert_after: 'xendit_invoice_url' },
 ];
 
-export async function ensureSalesInvoiceCustomFieldsExist(sid: string): Promise<{ success: boolean; error?: string }> {
+const customFieldsForPaymentEntry = [
+    { fieldname: 'xendit_payment_id', fieldtype: 'Data', label: 'Xendit Payment ID', insert_after: 'mode_of_payment' },
+    { fieldname: 'xendit_invoice_id', fieldtype: 'Data', label: 'Xendit Invoice ID', insert_after: 'xendit_payment_id' },
+    { fieldname: 'xendit_ewallet_type', fieldtype: 'Data', label: 'Xendit E-Wallet Type', insert_after: 'xendit_invoice_id' },
+    { fieldname: 'xendit_payment_channel', fieldtype: 'Data', label: 'Xendit Payment Channel', insert_after: 'xendit_ewallet_type' },
+    { fieldname: 'xendit_payment_method', fieldtype: 'Data', label: 'Xendit Payment Method', insert_after: 'xendit_payment_channel' },
+];
+
+async function ensureCustomFieldsExist(sid: string, doctype: 'Sales Invoice' | 'Payment Entry', fields: any[]): Promise<{ success: boolean; error?: string }> {
   try {
-    for (const field of customFieldsForSalesInvoice) {
-        const payload = { doctype: "Custom Field", dt: "Sales Invoice", ...field };
+    for (const field of fields) {
+        const payload = { doctype: "Custom Field", dt: doctype, ...field };
         const response = await fetch(`${ERPNEXT_API_URL}/api/resource/Custom Field`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': `sid=${sid}` },
@@ -51,21 +59,30 @@ export async function ensureSalesInvoiceCustomFieldsExist(sid: string): Promise<
         if (!response.ok) {
            const errorData = await response.json();
            if(errorData?.exception?.includes("already exists")) {
-              // Ignore if field already exists
-              console.log(`Custom field '${field.fieldname}' already exists in 'Sales Invoice'. Skipping.`);
+              console.log(`Custom field '${field.fieldname}' already exists in '${doctype}'. Skipping.`);
            } else {
-              throw new Error(`Failed to add custom field '${field.fieldname}' to 'Sales Invoice': ${errorData.exception}`);
+              throw new Error(`Failed to add custom field '${field.fieldname}' to '${doctype}': ${errorData.exception}`);
            }
         } else {
-           console.log(`Successfully added or verified custom field '${field.fieldname}' to 'Sales Invoice'.`);
+           console.log(`Successfully added or verified custom field '${field.fieldname}' to '${doctype}'.`);
         }
     }
     return { success: true };
   } catch (error: any) {
-    console.error("Error in ensureSalesInvoiceCustomFieldsExist:", error);
+    console.error(`Error in ensureCustomFieldsExist for ${doctype}:`, error);
     return { success: false, error: error.message };
   }
 }
+
+export async function ensureSalesInvoiceCustomFieldsExist(sid: string): Promise<{ success: boolean; error?: string }> {
+    return ensureCustomFieldsExist(sid, 'Sales Invoice', customFieldsForSalesInvoice);
+}
+export async function ensurePaymentEntryCustomFieldsExist(sid: string | null): Promise<{ success: boolean; error?: string }> {
+  const authSid = sid || process.env.ERPNEXT_ADMIN_SID; // Use admin SID if regular SID not provided
+  if (!authSid) return { success: false, error: "No SID available for ensuring Payment Entry custom fields." };
+  return ensureCustomFieldsExist(authSid, 'Payment Entry', customFieldsForPaymentEntry);
+}
+
 
 function transformErpSalesInvoiceToAppOrder(item: any): Order {
     let items: PurchasedTemplateItem[] = [];
@@ -133,16 +150,23 @@ export async function getOrderByOrderIdFromErpNext({ sid, orderId }: { sid: stri
 }
 
 
-export async function createDraftPaymentEntry({ sid, invoiceName, paymentAmount, paymentMethod }: { sid: string | null; invoiceName: string; paymentAmount?: number; paymentMethod?: string; }): Promise<{ success: boolean; doc?: any; error?: string }> {
+export async function createDraftPaymentEntry({ sid, invoiceName, xenditPayload }: { sid: string | null; invoiceName: string; xenditPayload: any; }): Promise<{ success: boolean; doc?: any; error?: string }> {
   try {
+    // 1. Ensure custom fields exist on Payment Entry doctype
+    const fieldsReady = await ensurePaymentEntryCustomFieldsExist(sid);
+    if (!fieldsReady.success) {
+      throw new Error(`Failed to prepare ERPNext for payment entry: ${fieldsReady.error}`);
+    }
+
     const invoiceResult = await fetchFromErpNext<any>({ sid, doctype: 'Sales Invoice', docname: invoiceName, fields: ['*'] });
     if (!invoiceResult.success || !invoiceResult.data) {
         throw new Error(`Could not fetch Sales Invoice ${invoiceName} to create payment.`);
     }
     const invoiceDoc = invoiceResult.data;
-
-    const finalPaymentAmount = paymentAmount !== undefined ? paymentAmount : invoiceDoc.outstanding_amount;
     
+    // Combine payment method and channel from Xendit payload
+    const paymentMethod = `${xenditPayload.payment_method || 'Unknown'} - ${xenditPayload.payment_channel || 'Unknown'}`;
+
     const paymentEntryPayload = {
         doctype: 'Payment Entry',
         payment_type: 'Receive',
@@ -152,16 +176,22 @@ export async function createDraftPaymentEntry({ sid, invoiceName, paymentAmount,
         posting_date: new Date().toISOString().split('T')[0],
         paid_from: invoiceDoc.debit_to,
         paid_to: invoiceDoc.account_for_change_amount || "Cash - RIO",
-        paid_amount: finalPaymentAmount,
-        received_amount: finalPaymentAmount,
-        mode_of_payment: `Xendit - ${paymentMethod || 'Unknown'}`,
+        paid_amount: xenditPayload.paid_amount,
+        received_amount: xenditPayload.paid_amount,
+        mode_of_payment: paymentMethod,
+        xendit_payment_id: xenditPayload.payment_id,
+        xendit_invoice_id: xenditPayload.id,
+        xendit_ewallet_type: xenditPayload.ewallet_type,
+        xendit_payment_channel: xenditPayload.payment_channel,
+        xendit_payment_method: xenditPayload.payment_method,
         references: [{
             reference_doctype: 'Sales Invoice',
             reference_name: invoiceName,
             total_amount: invoiceDoc.total,
             outstanding_amount: invoiceDoc.outstanding_amount,
-            allocated_amount: finalPaymentAmount,
-        }]
+            allocated_amount: xenditPayload.paid_amount,
+        }],
+        docstatus: 0, // Create as DRAFT
     };
     
     const headers: Record<string, string> = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
@@ -194,7 +224,8 @@ interface UpdatePaymentDetailsArgs {
   sid: string | null;
   invoiceName: string;
   paymentDetails: {
-    xendit_invoice_id: string;
+    xendit_invoice_id?: string;
+    xendit_invoice_url?: string;
     custom_payment_gateway?: string;
   };
 }

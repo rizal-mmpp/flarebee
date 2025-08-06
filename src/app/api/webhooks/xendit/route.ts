@@ -4,7 +4,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getOrderByOrderIdFromFirestore, updateOrderStatusInFirestore } from '@/lib/firebase/firestoreOrders';
-import { createDraftPaymentEntry, updateSalesInvoicePaymentDetails, submitDoc } from '@/lib/actions/erpnext/sales-invoice.actions';
+import { createDraftPaymentEntry, submitDoc } from '@/lib/actions/erpnext/sales-invoice.actions';
 import { getProjectByInvoiceId, updateProject } from '@/lib/actions/erpnext/project.actions';
 import { sendEmail } from '@/lib/services/email.service';
 import type { Order } from '@/lib/types';
@@ -19,7 +19,7 @@ interface XenditWebhookPayload {
   payment_destination?: string;
   paid_amount?: number;
   paid_at?: string;
-  // ... other fields from Xendit
+  // ... other fields from Xendit payload
 }
 
 
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const payload = (await request.json()) as XenditWebhookPayload;
     console.log('[Webhook] Payload received and parsed:', JSON.stringify(payload, null, 2));
 
-    const { external_id, id: xenditInvoiceId, status: xenditStatus, payment_channel, paid_amount } = payload;
+    const { external_id, status: xenditStatus } = payload;
 
     if (!external_id) {
       console.error('[Webhook] Validation Error: Payload missing external_id.');
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       await handleB2CFlow(external_id, xenditStatus);
       return NextResponse.json({ success: true, message: 'Legacy B2C webhook processed.' }, { status: 200 });
     } else if (external_id.includes('SINV-')) {
-      const result = await handleB2BFlow(external_id, xenditInvoiceId, xenditStatus, payment_channel || payload.payment_method || 'Unknown', paid_amount);
+      const result = await handleB2BFlow(external_id, xenditStatus, payload);
       return NextResponse.json(result, { status: result.success ? 200 : 500 });
     } else {
       console.warn(`[Webhook] Unrecognized external_id format: ${external_id}`);
@@ -84,7 +84,7 @@ async function handleB2CFlow(orderId: string, xenditStatus: string) {
   }
 }
 
-async function handleB2BFlow(invoiceName: string, xenditInvoiceId: string, xenditStatus: string, paymentMethod: string, paidAmount?: number): Promise<{ success: boolean; message: string; details?: any }> {
+async function handleB2BFlow(invoiceName: string, xenditStatus: string, xenditPayload: XenditWebhookPayload): Promise<{ success: boolean; message: string; details?: any }> {
   const logPrefix = `[B2B Flow - ${invoiceName}]`;
   console.log(`${logPrefix} Starting for status: ${xenditStatus}`);
 
@@ -92,47 +92,26 @@ async function handleB2BFlow(invoiceName: string, xenditInvoiceId: string, xendi
     return { success: true, message: `Ignoring non-PAID status "${xenditStatus}".` };
   }
   
-  let detailsUpdateResult, paymentEntryResult;
+  let paymentEntryResult;
 
   try {
-    // Step 1: Update the Sales Invoice with the final payment method.
-    // The Invoice ID and URL should already be there from the creation step.
-    console.log(`${logPrefix} Step 1: Updating Sales Invoice with payment method.`);
-    detailsUpdateResult = await updateSalesInvoicePaymentDetails({
-      sid: null, // Use admin keys
-      invoiceName: invoiceName,
-      paymentDetails: { custom_payment_gateway: paymentMethod },
-    });
-
-    if (!detailsUpdateResult.success) {
-      throw new Error(`Failed at Step 1: Could not update Sales Invoice. Error: ${detailsUpdateResult.error}`);
-    }
-    console.log(`${logPrefix} SUCCESS Step 1: Sales Invoice payment method updated.`);
-
-
-    // Step 2: Create the DRAFT Payment Entry.
-    console.log(`${logPrefix} Step 2: Creating Draft Payment Entry.`);
+    // Step 1: Create the DRAFT Payment Entry with all Xendit details.
+    console.log(`${logPrefix} Step 1: Creating Draft Payment Entry.`);
     paymentEntryResult = await createDraftPaymentEntry({
       sid: null,
       invoiceName: invoiceName,
-      paymentAmount: paidAmount,
-      paymentMethod: paymentMethod,
+      xenditPayload: xenditPayload,
     });
 
     if (!paymentEntryResult.success || !paymentEntryResult.doc) {
-      throw new Error(`Failed at Step 2: Could not create Draft Payment Entry. Error: ${paymentEntryResult.error}`);
+      throw new Error(`Failed at Step 1: Could not create Draft Payment Entry. Error: ${paymentEntryResult.error}`);
     }
-    console.log(`${logPrefix} SUCCESS Step 2: Draft Payment Entry created.`);
+    console.log(`${logPrefix} SUCCESS Step 1: Draft Payment Entry created.`);
 
-    // Step 3: Submit both the Payment Entry and the Sales Invoice to finalize.
-    console.log(`${logPrefix} Step 3: Submitting documents.`);
-    const salesInvoiceDoc = await fetchFromErpNext<any>({ sid: null, doctype: 'Sales Invoice', docname: invoiceName });
-    if (!salesInvoiceDoc.success || !salesInvoiceDoc.data) throw new Error('Could not fetch SI to submit.');
-
-    // We submit the draft Payment Entry document we just created.
+    // Step 2: Submit the Payment Entry. This will automatically update the Sales Invoice status.
+    console.log(`${logPrefix} Step 2: Submitting Payment Entry.`);
     await submitDoc(paymentEntryResult.doc, null);
-    
-    console.log(`${logPrefix} SUCCESS Step 3: Payment Entry and Sales Invoice submitted.`);
+    console.log(`${logPrefix} SUCCESS Step 2: Payment Entry submitted.`);
 
   } catch (error: any) {
     console.error(`${logPrefix} Critical error during payment processing:`, error.message);
@@ -140,7 +119,6 @@ async function handleB2BFlow(invoiceName: string, xenditInvoiceId: string, xendi
       success: false, 
       message: `Critical error: ${error.message}`,
       details: {
-        invoiceDetailsUpdate: detailsUpdateResult?.success ? 'Success' : `Failed: ${detailsUpdateResult?.error}`,
         paymentEntry: paymentEntryResult?.success ? 'Success' : `Failed: ${paymentEntryResult?.error}`
       }
     };
@@ -149,25 +127,25 @@ async function handleB2BFlow(invoiceName: string, xenditInvoiceId: string, xendi
   // --- Post-Payment Actions (non-critical if they fail) ---
 
   // Find the associated Project.
-  console.log(`${logPrefix} Step 4: Finding associated Project.`);
+  console.log(`${logPrefix} Step 3: Finding associated Project.`);
   const projectResult = await getProjectByInvoiceId(null, invoiceName);
   if (!projectResult.success || !projectResult.data) {
     console.warn(`${logPrefix} SKIPPED post-payment actions: Project not found for invoice.`);
   } else {
     const project = projectResult.data;
-    console.log(`${logPrefix} SUCCESS Step 4: Found Project: ${project.name}`);
+    console.log(`${logPrefix} SUCCESS Step 3: Found Project: ${project.name}`);
 
     // Update the project status.
-    console.log(`${logPrefix} Step 5: Updating Project ${project.name} status to "In Progress".`);
+    console.log(`${logPrefix} Step 4: Updating Project ${project.name} status to "In Progress".`);
     const updateResult = await updateProject({ sid: null, projectName: project.name, projectData: { status: 'In Progress' } });
     if (!updateResult.success) {
-        console.error(`${logPrefix} FAILED Step 5: Could not update project status. Error: ${updateResult.error}`);
+        console.error(`${logPrefix} FAILED Step 4: Could not update project status. Error: ${updateResult.error}`);
     } else {
-        console.log(`${logPrefix} SUCCESS Step 5: Project status updated.`);
+        console.log(`${logPrefix} SUCCESS Step 4: Project status updated.`);
     }
     
     // Send the confirmation email.
-    console.log(`${logPrefix} Step 6: Sending confirmation email.`);
+    console.log(`${logPrefix} Step 5: Sending confirmation email.`);
     if (project.customer_email) {
       try {
         await sendEmail({
@@ -193,16 +171,14 @@ async function handleB2BFlow(invoiceName: string, xenditInvoiceId: string, xendi
               </div>
           `,
         });
-        console.log(`${logPrefix} SUCCESS Step 6: Confirmation email sent to ${project.customer_email}.`);
+        console.log(`${logPrefix} SUCCESS Step 5: Confirmation email sent to ${project.customer_email}.`);
       } catch (emailError: any) {
-          console.error(`${logPrefix} FAILED Step 6: Could not send confirmation email:`, emailError.message);
+          console.error(`${logPrefix} FAILED Step 5: Could not send confirmation email:`, emailError.message);
       }
     } else {
-      console.warn(`${logPrefix} SKIPPED Step 6: No email found for customer ${project.customer}.`);
+      console.warn(`${logPrefix} SKIPPED Step 5: No email found for customer ${project.customer}.`);
     }
   }
 
   return { success: true, message: 'Success: Payment processed and project status updated.' };
 }
-
-    
