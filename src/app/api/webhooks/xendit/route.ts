@@ -99,41 +99,47 @@ async function handleB2BFlow(invoiceName: string, xenditStatus: string, xenditPa
     const paymentMethodName = `${xenditPayload.payment_method || 'Unknown'} - ${xenditPayload.payment_channel || 'Unknown'}`;
     const mopExistsResult = await fetchFromErpNext({ sid: null, doctype: 'Mode of Payment', docname: paymentMethodName, fields: ['name'] });
 
-    if (!mopExistsResult.success && mopExistsResult.error?.includes('was not found')) {
+    if (!mopExistsResult.success && mopExistsResult.error?.includes('not found')) {
       console.log(`${logPrefix} Mode of Payment "${paymentMethodName}" not found. Creating it...`);
-      const invoiceDocResult = await fetchFromErpNext<any>({ sid: null, doctype: 'Sales Invoice', docname: invoiceName, fields: ['company', 'account_for_change_amount'] });
-      if (!invoiceDocResult.success || !invoiceDocResult.data) {
-        throw new Error(`Could not fetch Sales Invoice details to create Mode of Payment.`);
+      try {
+        const invoiceDocResult = await fetchFromErpNext<any>({ sid: null, doctype: 'Sales Invoice', docname: invoiceName, fields: ['company', 'account_for_change_amount'] });
+        if (!invoiceDocResult.success || !invoiceDocResult.data) {
+          throw new Error(`Could not fetch Sales Invoice details to create Mode of Payment.`);
+        }
+
+        const mopPayload = {
+          doctype: 'Mode of Payment',
+          mode_of_payment: paymentMethodName,
+          type: 'General',
+          company: invoiceDocResult.data.company,
+          accounts: [{
+              company: invoiceDocResult.data.company,
+              default_account: invoiceDocResult.data.account_for_change_amount || "Cash - RIO",
+          }]
+        };
+
+        const createMopResponse = await fetch(`${ERPNEXT_API_URL}/api/resource/Mode of Payment`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': `token ${process.env.ERPNEXT_ADMIN_API_KEY}:${process.env.ERPNEXT_ADMIN_API_SECRET}`,
+          },
+          body: JSON.stringify(mopPayload),
+        });
+
+        if (!createMopResponse.ok) {
+          const errorData = await createMopResponse.json();
+          const serverMessages = errorData._server_messages ? JSON.parse(errorData._server_messages[0]).message : 'Unknown error during creation.';
+          throw new Error(`Failed to auto-create Mode of Payment: ${errorData.exception || serverMessages}`);
+        }
+        console.log(`${logPrefix} Successfully created Mode of Payment "${paymentMethodName}".`);
+      } catch (creationError: any) {
+        return { success: false, message: `Critical error: Failed during self-healing of Mode of Payment.`, details: { modeOfPaymentCreation: creationError.message }};
       }
-
-      const mopPayload = {
-        doctype: 'Mode of Payment',
-        mode_of_payment: paymentMethodName,
-        type: 'General',
-        company: invoiceDocResult.data.company,
-        accounts: [{
-            company: invoiceDocResult.data.company,
-            default_account: invoiceDocResult.data.account_for_change_amount || "Cash - RIO",
-        }]
-      };
-
-      const createMopResponse = await fetch(`${ERPNEXT_API_URL}/api/resource/Mode of Payment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `token ${process.env.ERPNEXT_ADMIN_API_KEY}:${process.env.ERPNEXT_ADMIN_API_SECRET}`,
-        },
-        body: JSON.stringify(mopPayload),
-      });
-
-      if (!createMopResponse.ok) {
-        const errorData = await createMopResponse.json();
-        throw new Error(`Failed to auto-create Mode of Payment: ${errorData.exception || errorData._server_messages}`);
-      }
-      console.log(`${logPrefix} Successfully created Mode of Payment "${paymentMethodName}".`);
     } else if (!mopExistsResult.success) {
-      throw new Error(`Could not verify Mode of Payment existence: ${mopExistsResult.error}`);
+      // Handle other errors during the check
+      return { success: false, message: 'Critical error: Could not verify Mode of Payment existence.', details: { modeOfPaymentCheck: mopExistsResult.error } };
     }
 
     // Step 2: Create the DRAFT Payment Entry with all Xendit details.
