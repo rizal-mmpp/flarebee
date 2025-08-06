@@ -3,11 +3,11 @@
 
 import type { ProjectFormValues } from '@/app/admin/projects/new/page';
 import type { Project, Customer, SubscriptionPlan } from '@/lib/types';
-import { fetchFromErpNext, postEncodedRequest } from './utils';
+import { fetchFromErpNext } from './utils';
 import { sendEmail } from '@/lib/services/email.service';
 import { updateContactDetails } from './customer.actions';
 import { Xendit } from 'xendit-node';
-import { ensureSalesInvoiceCustomFieldsExist } from './sales-invoice.actions';
+import { ensureSalesInvoiceCustomFieldsExist, submitDoc } from './sales-invoice.actions';
 
 const xenditClient = new Xendit({
   secretKey: process.env.XENDIT_SECRET_KEY || '',
@@ -229,37 +229,16 @@ export async function deleteProject({ sid, projectName }: { sid: string; project
   }
 }
 
-async function submitDoc(doctype: string, docname: string, sid: string): Promise<any> {
-  const docResult = await fetchFromErpNext<any>({ sid, doctype, docname });
-  if (!docResult.success || !docResult.data) {
-    throw new Error(`Could not fetch draft document ${docname} to submit.`);
-  }
-
-  const response = await fetch(`${ERPNEXT_API_URL}/api/method/frappe.desk.form.save.savedocs`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      'Accept': 'application/json',
-      'Cookie': `sid=${sid}`,
-    },
-    body: `doc=${encodeURIComponent(JSON.stringify(docResult.data))}&action=Submit`,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.exception || errorData._server_messages?.[0] || `Failed to submit ${doctype} ${docname}.`);
-  }
-  return response.json();
-}
-
 
 export async function createAndSendInvoice({ sid, projectName }: { sid: string; projectName: string }): Promise<{ success: boolean; invoiceName?: string; error?: string }> {
   try {
+    // 1. Ensure custom fields exist on Sales Invoice doctype
     const fieldsReady = await ensureSalesInvoiceCustomFieldsExist(sid);
     if (!fieldsReady.success) {
       throw new Error(`Failed to prepare ERPNext for invoicing: ${fieldsReady.error}`);
     }
 
+    // 2. Fetch all necessary documents
     const projectResult = await getProjectByName({ sid, projectName });
     if (!projectResult.success || !projectResult.data) throw new Error(projectResult.error || "Project not found.");
     const project = projectResult.data;
@@ -275,19 +254,20 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
     if (!customerResult.success || !customerResult.data) throw new Error("Customer details could not be fetched.");
     const customer = customerResult.data;
 
-    // Create the Sales Invoice as a Draft first
+    // 3. Create the Sales Invoice as a DRAFT first
     const invoicePayload = {
       customer: project.customer,
       company: project.company,
       items: [{ item_code: plan.item, qty: 1, rate: plan.cost, }],
       due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0],
-      docstatus: 0, // Explicitly create as a draft
+      docstatus: 0, // DRAFT
     };
     
     const invoiceCreationResponse = await postRequest('/api/resource/Sales Invoice', invoicePayload, sid);
     const invoiceName = invoiceCreationResponse.data.name;
+    const draftInvoice = invoiceCreationResponse.data;
     
-    // Create the Xendit Invoice
+    // 4. Create the Xendit Invoice
     const xenditInvoice = await Invoice.createInvoice({
         data: {
             externalId: invoiceName,
@@ -300,18 +280,24 @@ export async function createAndSendInvoice({ sid, projectName }: { sid: string; 
     
     if (!xenditInvoice.invoiceUrl || !xenditInvoice.id) throw new Error("Failed to get payment URL from Xendit.");
 
-    // Update the Draft Sales Invoice with Xendit details
+    // 5. Update the DRAFT Sales Invoice with Xendit details
+    draftInvoice.xendit_invoice_id = xenditInvoice.id;
+    draftInvoice.xendit_invoice_url = xenditInvoice.invoiceUrl;
+    
+    // Use PUT to update the draft document before submission
     await fetch(`${ERPNEXT_API_URL}/api/resource/Sales Invoice/${invoiceName}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'Cookie': `sid=${sid}` },
-      body: JSON.stringify({ xendit_invoice_id: xenditInvoice.id, xendit_invoice_url: xenditInvoice.invoiceUrl }),
+      body: JSON.stringify(draftInvoice),
     });
 
-    // Now, Submit the Sales Invoice
-    await submitDoc('Sales Invoice', invoiceName, sid);
+    // 6. NOW Submit the Sales Invoice
+    await submitDoc(draftInvoice, sid);
 
+    // 7. Update the project status and link the invoice
     await updateProject({ sid, projectName, projectData: { status: 'Awaiting Payment', sales_invoice: invoiceName }});
 
+    // 8. Send the email with the payment link
     if (customer.email_id) {
        await sendEmail({
         to: customer.email_id,
@@ -377,3 +363,6 @@ export async function getProjectByInvoiceId(sid: string | null, invoiceId: strin
   const project: Project = transformErpProject(projectData);
   return { success: true, data: project };
 }
+
+
+    

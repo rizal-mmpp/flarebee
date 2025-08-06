@@ -95,18 +95,19 @@ async function handleB2BFlow(invoiceName: string, xenditInvoiceId: string, xendi
   let detailsUpdateResult, paymentEntryResult;
 
   try {
-    // Step 1: Update the Sales Invoice with payment details from Xendit FIRST
-    console.log(`${logPrefix} Step 1: Updating Sales Invoice with payment details.`);
+    // Step 1: Update the Sales Invoice with the final payment method.
+    // The Invoice ID and URL should already be there from the creation step.
+    console.log(`${logPrefix} Step 1: Updating Sales Invoice with payment method.`);
     detailsUpdateResult = await updateSalesInvoicePaymentDetails({
       sid: null, // Use admin keys
       invoiceName: invoiceName,
-      paymentDetails: { xendit_invoice_id: xenditInvoiceId, custom_payment_gateway: paymentMethod },
+      paymentDetails: { custom_payment_gateway: paymentMethod },
     });
 
     if (!detailsUpdateResult.success) {
       throw new Error(`Failed at Step 1: Could not update Sales Invoice. Error: ${detailsUpdateResult.error}`);
     }
-    console.log(`${logPrefix} SUCCESS Step 1: Sales Invoice payment details updated.`);
+    console.log(`${logPrefix} SUCCESS Step 1: Sales Invoice payment method updated.`);
 
 
     // Step 2: Create the DRAFT Payment Entry.
@@ -128,8 +129,9 @@ async function handleB2BFlow(invoiceName: string, xenditInvoiceId: string, xendi
     const salesInvoiceDoc = await fetchFromErpNext<any>({ sid: null, doctype: 'Sales Invoice', docname: invoiceName });
     if (!salesInvoiceDoc.success || !salesInvoiceDoc.data) throw new Error('Could not fetch SI to submit.');
 
+    // We submit the draft Payment Entry document we just created.
     await submitDoc(paymentEntryResult.doc, null);
-    await submitDoc(salesInvoiceDoc.data, null);
+    
     console.log(`${logPrefix} SUCCESS Step 3: Payment Entry and Sales Invoice submitted.`);
 
   } catch (error: any) {
@@ -202,3 +204,5 @@ async function handleB2BFlow(invoiceName: string, xenditInvoiceId: string, xendi
 
   return { success: true, message: 'Success: Payment processed and project status updated.' };
 }
+
+    
