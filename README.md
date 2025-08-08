@@ -1,98 +1,57 @@
-# Flarebee
+# Flarebee SaaS Platform
 
-Flarebee is a comprehensive SaaS platform that provides cutting-edge technology solutions, including web builder services, automation tools, and AI-powered applications. Our platform enables businesses to discover, purchase, and manage various technology services through an intuitive interface.
+Flarebee is a comprehensive SaaS platform providing technology solutions including web builder services, automation tools, and AI-powered applications. It is built with an **ERPNext-First** architecture, where ERPNext serves as the core backend for all business operations.
 
 ## Features
 
-### For Users
-- 🔍 **Service Discovery** - Browse and explore our technology solutions
-- 🛒 **Easy Purchase Flow** - Streamlined cart and checkout experience
-- 📊 **User Dashboard** - Manage services, billing, and integrations
-- 📱 **Responsive Design** - Seamless experience across all devices
-- 🔐 **Secure Authentication** - Protected access to your services
+### Admin Panel
+-   **Project Management**: Create, track, and manage client projects directly linked to ERPNext `Project` documents.
+-   **B2B Invoicing**: Generate and send client invoices with integrated Xendit payment links.
+-   **Customer Management**: View and manage customer data sourced from ERPNext.
+-   **Service Management**: Define service offerings as `Item` documents in ERPNext.
+-   **Content Management**: Edit content for key informational pages on the website.
 
-### For Administrators
-- 🎛️ **Service Management** - Create and manage service offerings
-- 👥 **Customer Management** - Track customer profiles and orders
-- 📝 **Content Management** - Edit website content and documentation
-- ⚙️ **System Settings** - Configure platform and integrations
+### User / Client Features
+-   **Service Marketplace**: Browse and explore available technology solutions.
+-   **Secure Payments**: Pay invoices through a secure Xendit payment portal.
+-   **Client Dashboard (Future)**: A dedicated portal for clients to track project status and access completed services.
 
-## Tech Stack
+## Core Architecture
 
-- **Framework**: Next.js 15.2 with TypeScript
-- **UI Components**: Radix UI with custom styling
-- **Styling**: Tailwind CSS
-- **Authentication**: Dual system supporting Firebase and ERPNext
-- **Database**: Firebase
-- **Payment Processing**: Multiple providers (Stripe, Xendit)
-- **State Management**: TanStack Query
+-   **Framework**: Next.js 15+ with TypeScript (App Router)
+-   **UI**: ShadCN UI & Radix UI
+-   **Styling**: Tailwind CSS
+-   **Backend of Choice**: **ERPNext**. All business data (Customers, Items, Projects, Invoices) is stored and managed in ERPNext.
+-   **Authentication**:
+    -   **ERPNext Login**: For all administrative access.
+    -   **Firebase Auth**: For public-facing user accounts (legacy).
+-   **Payment Processing**: **Xendit** (for B2B invoicing).
+-   **Email Service**: **Mailjet** for transactional emails.
 
 ## Getting Started
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Set up environment variables (see `.env.example`)
-4. Configure authentication:
-   - For Firebase: Set up a Firebase project and add credentials
-   - For ERPNext: Configure your ERPNext instance URL
-5. Run the development server:
-   ```bash
-   npm run dev
-   ```
-   The app will be available at http://localhost:9002
+1.  Clone the repository.
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+3.  Set up your `.env` file with credentials for **ERPNext, Xendit, and Mailjet**. See `/docs/blueprint.md` for a full list of required variables.
+4.  Run the development server:
+    ```bash
+    npm run dev
+    ```
+    The app will be available at `http://localhost:9002`.
 
-## Development Scripts
+## B2B Service Delivery Workflow
 
-- `npm run dev` - Start development server with Turbopack
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run typecheck` - Run TypeScript type checking
+The platform's primary function is a B2B service delivery system:
+1.  **Admin creates a Project** in the Flarebee UI, which creates a `Project` in ERPNext.
+2.  Admin **sends an invoice**, which creates a `Sales Invoice` in ERPNext and a corresponding payment link in Xendit.
+3.  Client **pays the invoice** via the Xendit link.
+4.  A **webhook from Xendit** updates the `Sales Invoice` in ERPNext to "Paid" by creating a `Payment Entry`.
+5.  The `Project` status is updated to "In Progress", and work can begin.
 
-## Project Structure
-
-```
-src/
-├── app/                # Next.js app directory
-│   ├── admin/          # Admin panel pages
-│   ├── dashboard/      # User dashboard pages
-│   └── auth/           # Authentication pages
-├── components/         # Reusable components
-├── lib/               # Utilities and configurations
-└── types/             # TypeScript type definitions
-```
-
-## Design System
-
-- **Primary Color**: #FFC72C (Warm Yellow)
-- **Background**: #1A202C (Dark Blue)
-- **Accent**: #FF9100 (Golden Orange)
-
-## Authentication
-
-Flarebee supports two authentication methods:
-
-### Firebase Authentication
-- Email/Password sign-in
-- Password reset functionality
-- Secure token management
-
-### ERPNext Authentication
-- Direct integration with ERPNext instance
-- Session-based authentication
-- Unified password reset system
-
-Users can choose their preferred authentication method during login.
-
-## Future Roadmap
-
-- Enhanced ERPNext integration features
-- Enhanced AI capabilities
-- Additional automation tools
-- Expanded payment options
+For more detailed architectural information, please see `/docs/blueprint.md`.
 
 ## License
 
