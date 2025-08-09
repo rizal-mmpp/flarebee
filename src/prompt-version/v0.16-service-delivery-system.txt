@@ -29,9 +29,9 @@ Instead of a manual migration, the application's server actions will be built to
   - Displays all data for a single "Project" document in a read-only view.
 
 **Phase 2: Invoicing & Payment**
-- [✅] **Setup: Email Notification System**
+- [✅] **Setup: Email Notification System via n8n**
   - **Why this is needed:** To programmatically send emails for invoices, payment confirmations, and final delivery, we need an email transaction service.
-  - **Implementation:** We've integrated the `node-mailjet` library and created an email service. API keys must be set in the `.env` file.
+  - **Implementation:** We've created an email service that sends a POST request to a secure n8n webhook. `N8N_EMAIL_WEBHOOK_URL` and `N8N_EMAIL_WEBHOOK_AUTH` must be set in the `.env` file.
 
 - [✅] **Action: Create & Send Invoice**
   - **Goal**: Implement the logic for the "Create & Send Invoice" button on the Project Detail Page.
@@ -44,12 +44,13 @@ Instead of a manual migration, the application's server actions will be built to
     - **Store Xendit URL:** Save the Xendit payment URL back to the `Sales Invoice` document in ERPNext.
     - Link the new `Sales Invoice` back to the `Project` document (update the `sales_invoice` field).
     - Update the `Project` status to `Awaiting Payment`.
-    - Trigger an email to the client containing the Xendit payment link.
+    - Trigger an email to the client containing the Xendit payment link via the n8n webhook.
 
 - [✅] **Webhook for Payment Success**
   - Update the Xendit webhook to handle `Sales Invoice` payments (`external_id` starts with `SINV-`).
   - When a `Sales Invoice` is paid, the webhook should:
-    - Update the `Sales Invoice` status in ERPNext to `Paid`.
+    - Update the `Sales Invoice` status in ERPNext to `Paid` by creating and submitting a `Payment Entry`.
+    - **Self-Heal**: Automatically create the `Mode of Payment` (e.g., "EWALLET - DANA") if it doesn't exist before creating the payment entry.
     - Find the corresponding "Project" document.
     - Update the "Project" status to `In Progress`.
     - Send a confirmation email to the client: "Thank you for your payment. We have started working on your project."

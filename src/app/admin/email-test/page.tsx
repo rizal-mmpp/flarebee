@@ -31,7 +31,7 @@ export default function EmailTestPage() {
     defaultValues: {
       to: '',
       subject: 'Test Email from RIO Platform',
-      html: `<h1>Test Email</h1><p>This is a test email sent from the RIO admin panel to verify the Mailjet service is working.</p>`,
+      html: `<h1>Test Email</h1><p>This is a test email sent from the RIO admin panel to verify the n8n email webhook is working.</p>`,
     },
   });
 
@@ -59,10 +59,10 @@ export default function EmailTestPage() {
       <header>
         <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
           <Mail className="mr-3 h-8 w-8 text-primary" />
-          Mailjet Email Service Test
+          n8n Email Webhook Test
         </h1>
         <p className="text-muted-foreground mt-1">
-          Send a test email to verify that your Mailjet credentials and setup are correct.
+          Send a test email to verify that your n8n webhook setup is correct.
         </p>
       </header>
 
@@ -71,7 +71,7 @@ export default function EmailTestPage() {
           <CardHeader>
             <CardTitle>Send Test Email</CardTitle>
             <CardDescription>
-              Fill in the details below and click send. Check the recipient's inbox (and spam folder).
+              Fill in the details below and click send. This will send a POST request to your configured n8n webhook.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
