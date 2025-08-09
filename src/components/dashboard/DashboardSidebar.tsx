@@ -34,9 +34,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-
 interface DashboardSidebarProps {
-  onLinkClick?: () => void; 
+  onLinkClick?: () => void;
   logoUrl?: string | null;
   siteTitle?: string | null;
 }
@@ -53,7 +52,6 @@ const exploreNavItems = [
   { href: '/dashboard/browse-services', label: 'Browse Store', icon: Compass },
   { href: '/', label: 'Back to Homepage', icon: Home },
 ];
-
 
 export function DashboardSidebar({ onLinkClick, logoUrl, siteTitle }: DashboardSidebarProps) {
   const pathname = usePathname();
@@ -85,15 +83,15 @@ export function DashboardSidebar({ onLinkClick, logoUrl, siteTitle }: DashboardS
     return initials || <UserCircle className="h-6 w-6" />;
   };
 
-  const navLinkClasses = "flex items-center gap-3 rounded-lg px-3 py-2.5 text-muted-foreground transition-all hover:text-primary";
-  const activeNavLinkClasses = 'bg-muted text-primary font-semibold';
+  const navLinkClasses = "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sidebar-muted-foreground transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground";
+  const activeNavLinkClasses = 'bg-sidebar-active text-sidebar-active-foreground font-semibold';
 
   return (
-    <div className="flex h-full max-h-screen flex-col gap-2">
-      <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-        <Link href="/" className="flex items-center gap-2 font-semibold text-foreground group" onClick={onLinkClick}>
+    <div className="flex h-full max-h-screen flex-col gap-2 bg-sidebar text-sidebar-foreground">
+      <div className="flex h-14 items-center border-b border-sidebar-border px-4 lg:h-[60px] lg:px-6">
+        <Link href="/" className="flex items-center gap-2 font-semibold text-sidebar-foreground group" onClick={onLinkClick}>
            {logoUrl ? (
-            <NextImage src={logoUrl} alt={`${siteTitle} Logo`} width={28} height={28} className="h-7 w-7 object-contain" />
+            <NextImage src={logoUrl} alt={`${siteTitle} Logo`} width={32} height={32} className="h-8 w-8 object-contain" />
           ) : null }
           <span className="text-lg">{siteTitle}</span>
         </Link>
@@ -101,7 +99,7 @@ export function DashboardSidebar({ onLinkClick, logoUrl, siteTitle }: DashboardS
       <div className="flex-1 overflow-y-auto">
         <nav className="grid items-start px-2 text-sm font-medium lg:px-4 gap-1">
           <div className="px-3 py-2">
-            <h2 className="mb-2 px-1 text-lg font-semibold tracking-tight">Overview</h2>
+            <h2 className="mb-2 px-1 text-lg font-semibold tracking-tight text-sidebar-foreground">Overview</h2>
             {overviewNavItems.map((item) => (
               <Link
                 key={item.href}
@@ -112,12 +110,12 @@ export function DashboardSidebar({ onLinkClick, logoUrl, siteTitle }: DashboardS
                 <item.icon className="h-5 w-5" />
                 <span>{item.label}</span>
                  {item.href === '/dashboard/orders' && pendingOrdersCount > 0 && (
-                    <Badge className="ml-auto h-5 w-5 shrink-0 items-center justify-center rounded-full p-0">
+                    <Badge className="ml-auto h-5 w-5 shrink-0 items-center justify-center rounded-full p-0 bg-destructive text-destructive-foreground">
                       {pendingOrdersCount}
                     </Badge>
                   )}
                  {item.href === '/dashboard/billing' && totalNotifications > 0 && (
-                    <Badge className="ml-auto h-5 w-5 shrink-0 items-center justify-center rounded-full p-0">
+                    <Badge className="ml-auto h-5 w-5 shrink-0 items-center justify-center rounded-full p-0 bg-destructive text-destructive-foreground">
                       {totalNotifications}
                     </Badge>
                   )}
@@ -125,10 +123,10 @@ export function DashboardSidebar({ onLinkClick, logoUrl, siteTitle }: DashboardS
             ))}
           </div>
 
-          <Separator className="my-2" />
+          <Separator className="my-2 bg-sidebar-border" />
 
           <div className="px-3 py-2">
-             <h2 className="mb-2 px-1 text-lg font-semibold tracking-tight">Explore</h2>
+             <h2 className="mb-2 px-1 text-lg font-semibold tracking-tight text-sidebar-foreground">Explore</h2>
              {exploreNavItems.map((item) => (
               <Link
                 key={item.href}
@@ -143,17 +141,17 @@ export function DashboardSidebar({ onLinkClick, logoUrl, siteTitle }: DashboardS
           </div>
         </nav>
       </div>
-      <div className="mt-auto p-4 border-t">
+      <div className="mt-auto p-4 border-t border-sidebar-border">
          <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="w-full justify-start items-center h-auto p-0 gap-3">
-                     <Avatar className="h-10 w-10">
+                <Button variant="ghost" className="w-full justify-start items-center h-auto p-0 gap-3 hover:bg-sidebar-accent">
+                     <Avatar className="h-10 w-10 border-2 border-sidebar-accent">
                         <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || 'User'} />
-                        <AvatarFallback>{getAvatarFallback(user?.displayName)}</AvatarFallback>
+                        <AvatarFallback className="bg-sidebar-muted">{getAvatarFallback(user?.displayName)}</AvatarFallback>
                     </Avatar>
                     <div className="text-left overflow-hidden">
-                        <p className="text-sm font-semibold leading-tight text-foreground truncate">{user?.displayName || 'User'}</p>
-                        <p className="text-xs leading-tight text-muted-foreground truncate">{user?.email}</p>
+                        <p className="text-sm font-semibold leading-tight text-sidebar-foreground truncate">{user?.displayName || 'User'}</p>
+                        <p className="text-xs leading-tight text-sidebar-muted-foreground truncate">{user?.email}</p>
                     </div>
                 </Button>
             </DropdownMenuTrigger>

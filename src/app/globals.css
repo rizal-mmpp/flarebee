@@ -33,8 +33,6 @@
     --input: 220 30% 96%; /* #F2F5F9 */
     --ring: 38 92% 50%; /* Primary color for rings */
 
-    --radius: 1.25rem; /* Larger radius for modern look */
-
     /* Charts */
     --chart-1: 244 80% 65%;
     --chart-2: 280 85% 65%;
@@ -43,14 +41,18 @@
     --chart-5: 358 91% 69%;
 
     /* Sidebar Specific Variables */
-    --sidebar-background: 228 100% 99%; /* Even lighter grey, almost white */
-    --sidebar-foreground: 222 15% 45%; /* Muted slate for non-active text */
-    --sidebar-primary: 38 92% 50%; /* Vibrant orange for active text/icon */
-    --sidebar-primary-foreground: 240 100% 98%;
-    --sidebar-accent: 45 100% 96%; /* Very light yellow for active background */
-    --sidebar-accent-foreground: 38 92% 50%; /* Same as primary for consistency */
-    --sidebar-border: 220 20% 88%;
-    --sidebar-ring: 38 92% 50%;
+    --sidebar-background: hsl(var(--primary));
+    --sidebar-foreground: hsl(var(--primary-foreground));
+    --sidebar-border: hsl(var(--primary) / 0.1);
+
+    --sidebar-muted: hsl(var(--primary-foreground) / 0.15);
+    --sidebar-muted-foreground: hsl(var(--primary-foreground) / 0.8);
+
+    --sidebar-accent: hsl(var(--primary-foreground) / 0.1);
+    --sidebar-accent-foreground: hsl(var(--primary-foreground));
+    
+    --sidebar-active: hsl(var(--primary-foreground) / 0.15);
+    --sidebar-active-foreground: hsl(var(--primary-foreground));
   }
 
   .dark {
@@ -90,14 +92,18 @@
     --chart-5: 358 91% 72%;
 
     /* Sidebar Specific Variables for Dark Mode */
-    --sidebar-background: 222 40% 12%; /* Slightly lighter dark */
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 45 95% 60%; /* Bright orange/yellow for active text/icon */
-    --sidebar-primary-foreground: 240 100% 98%;
-    --sidebar-accent: 40 95% 15%; /* Dark, desaturated orange for active background */
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 222 25% 25%;
-    --sidebar-ring: 45 95% 60%;
+    --sidebar-background: hsl(var(--primary));
+    --sidebar-foreground: hsl(var(--primary-foreground));
+    --sidebar-border: hsl(var(--primary) / 0.1);
+
+    --sidebar-muted: hsl(var(--primary-foreground) / 0.15);
+    --sidebar-muted-foreground: hsl(var(--primary-foreground) / 0.8);
+
+    --sidebar-accent: hsl(var(--primary-foreground) / 0.1);
+    --sidebar-accent-foreground: hsl(var(--primary-foreground));
+    
+    --sidebar-active: hsl(var(--primary-foreground) / 0.15);
+    --sidebar-active-foreground: hsl(var(--primary-foreground));
   }
 }
 
@@ -109,3 +115,4 @@
     @apply bg-background text-foreground;
   }
 }
+
