@@ -8,9 +8,7 @@ import {
   LayoutDashboard,
   ShoppingCart,
   Settings,
-  LogOut,
   Home,
-  UserCircle,
   Package,
   CreditCard,
   Puzzle,
@@ -18,21 +16,10 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Separator } from '../ui/separator';
 import { useState, useEffect } from 'react';
 import { getOrdersByUserIdFromFirestore } from '@/lib/firebase/firestoreOrders';
 import { Badge } from '@/components/ui/badge';
 import { useCart } from '@/context/CartContext';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 
 interface DashboardSidebarProps {
@@ -105,31 +92,34 @@ export function DashboardSidebar({ onLinkClick, logoUrl, siteTitle }: DashboardS
               </AccordionTrigger>
               <AccordionContent className="pt-1 pb-0">
                 <nav className="grid items-start text-sm font-medium gap-1">
-                  {group.items.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={onLinkClick}
-                      className={cn(
-                        'flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-muted-foreground transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                        (pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))) &&
-                          'bg-sidebar-active text-sidebar-active-foreground font-semibold'
-                      )}
-                    >
-                      <item.icon className="h-5 w-5" />
-                       <span>{item.label}</span>
-                       {item.href === '/dashboard/orders' && pendingOrdersCount > 0 && (
-                          <Badge className="ml-auto h-5 w-5 shrink-0 items-center justify-center rounded-full p-0 bg-destructive text-destructive-foreground">
-                            {pendingOrdersCount}
-                          </Badge>
+                  {group.items.map((item) => {
+                    const isActive = (item.href === '/dashboard' && pathname === item.href) ||
+                                     (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={onLinkClick}
+                        className={cn(
+                          'flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-muted-foreground transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                          isActive && 'bg-sidebar-active text-sidebar-active-foreground font-semibold'
                         )}
-                       {item.href === '/dashboard/billing' && totalNotifications > 0 && (
-                          <Badge className="ml-auto h-5 w-5 shrink-0 items-center justify-center rounded-full p-0 bg-destructive text-destructive-foreground">
-                            {totalNotifications}
-                          </Badge>
-                        )}
-                    </Link>
-                  ))}
+                      >
+                        <item.icon className="h-5 w-5" />
+                         <span>{item.label}</span>
+                         {item.href === '/dashboard/orders' && pendingOrdersCount > 0 && (
+                            <Badge className="ml-auto h-5 w-5 shrink-0 items-center justify-center rounded-full p-0 bg-destructive text-destructive-foreground">
+                              {pendingOrdersCount}
+                            </Badge>
+                          )}
+                         {item.href === '/dashboard/billing' && totalNotifications > 0 && (
+                            <Badge className="ml-auto h-5 w-5 shrink-0 items-center justify-center rounded-full p-0 bg-destructive text-destructive-foreground">
+                              {totalNotifications}
+                            </Badge>
+                          )}
+                      </Link>
+                    );
+                  })}
                 </nav>
               </AccordionContent>
             </AccordionItem>

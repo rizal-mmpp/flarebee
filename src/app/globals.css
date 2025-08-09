@@ -43,15 +43,12 @@
     --chart-5: 0 84% 60%;
 
     /* Sidebar Specific Variables - Light Theme */
-    --sidebar-background: 40 30% 96%; /* Slightly darker than main bg */
+    --sidebar-background: 40 30% 96%;
     --sidebar-foreground: hsl(var(--foreground) / 0.8);
-
     --sidebar-muted-foreground: hsl(var(--foreground) / 0.6);
-
     --sidebar-accent: hsl(var(--background));
     --sidebar-accent-foreground: hsl(var(--primary));
-    
-    --sidebar-active: hsl(var(--primary) / 0.15);
+    --sidebar-active: hsl(var(--primary) / 0.1);
     --sidebar-active-foreground: hsl(var(--primary));
   }
 
