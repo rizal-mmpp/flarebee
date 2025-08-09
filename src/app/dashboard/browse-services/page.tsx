@@ -2,7 +2,7 @@
 'use client'; 
 
 import { useState, useMemo, useEffect, Suspense, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { SERVICE_CATEGORIES } from '@/lib/constants';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { useCombinedAuth } from '@/lib/context/CombinedAuthContext';
 
 function ServicesGrid() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -51,6 +52,16 @@ function ServicesGrid() {
       return titleMatch || descriptionMatch || categoryNameMatch || tagsMatch;
     });
   }, [searchTerm, services]);
+  
+  const handleCategoryChange = (newCategorySlug: string | null) => {
+    const params = new URLSearchParams(window.location.search);
+    if (newCategorySlug) {
+      params.set('category', newCategorySlug);
+    } else {
+      params.delete('category');
+    }
+    router.push(`/dashboard/browse-services?${params.toString()}`);
+  };
 
   return (
     <div className="space-y-8">
@@ -113,7 +124,7 @@ function ServicesGrid() {
 
 export default function BrowseServicesPage() {
   return (
-    <div className="space-y-6 p-4 md:p-6 lg:p-8">
+    <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
           <Compass className="mr-3 h-8 w-8 text-primary" />

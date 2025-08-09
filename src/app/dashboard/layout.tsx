@@ -31,7 +31,7 @@ export default function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
-  const { user, signOut, loading } = useCombinedAuth();
+  const { user, signOut, loading } from useCombinedAuth();
   const router = useRouter();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
@@ -75,7 +75,7 @@ export default function DashboardLayout({
 
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-muted/40">
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-72 flex-col bg-sidebar text-sidebar-foreground sm:flex">
         <DashboardSidebar 
             onLinkClick={() => {}} 
