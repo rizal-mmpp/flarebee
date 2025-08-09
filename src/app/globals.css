@@ -5,105 +5,100 @@
 
 @layer base {
   :root {
-    --background: 228 100% 98%; /* #EEF3FA - Very Light Cool Gray */
-    --foreground: 222 47% 11%; /* #111827 - Dark Slate Blue */
+    --background: 40 50% 98%; /* Warm, very light gray */
+    --foreground: 20 14% 4%; /* Near-black */
 
     --card: 0 0% 100%; /* White */
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 20 14% 4%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 20 14% 4%;
 
-    --primary: 50 90% 55%; /* Vibrant orange for active text/icon */
-    --primary-foreground: 240 100% 98%; /* #F8F9FF - Near White */
+    --primary: 40 90% 60%; /* Warm Orange/Yellow */
+    --primary-foreground: 24 10% 10%;
 
-    --secondary: 222 47% 11%; /* Dark Slate Blue as Secondary */
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 40 10% 94%; /* Light gray for secondary elements */
+    --secondary-foreground: 20 14% 4%;
 
-    --muted: 220 30% 94%; /* #E8ECF2 - Light Gray */
-    --muted-foreground: 222 15% 45%; /* #646C7E - Muted Slate */
+    --muted: 40 10% 94%;
+    --muted-foreground: 20 5% 45%;
 
-    --accent: 30 84% 51%; /* Very light yellow for active background */
-    --accent-foreground: 38 92% 50%; /* Same as primary for consistency */
+    --accent: 40 90% 60%; /* Same as primary */
+    --accent-foreground: 24 10% 10%;
     
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 220 20% 90%; /* #DFE4EB */
-    --input: 220 30% 96%; /* #F2F5F9 */
-    --ring: 38 92% 50%; /* Primary color for rings */
+    --border: 40 20% 90%;
+    --input: 40 20% 94%;
+    --ring: 40 90% 60%;
+
+    --radius: 0.75rem; /* Increased border radius for softer look */
 
     /* Charts */
-    --chart-1: 244 80% 65%;
-    --chart-2: 280 85% 65%;
-    --chart-3: 198 93% 60%;
-    --chart-4: 48 96% 61%;
-    --chart-5: 358 91% 69%;
+    --chart-1: 220 80% 65%;
+    --chart-2: 160 75% 45%;
+    --chart-3: 40 90% 60%;
+    --chart-4: 280 85% 65%;
+    --chart-5: 0 84% 60%;
 
-    /* Sidebar Specific Variables */
-    --sidebar-background: hsl(var(--primary));
-    --sidebar-foreground: hsl(var(--primary-foreground));
-    --sidebar-border: hsl(var(--primary) / 0.1);
+    /* Sidebar Specific Variables - Light Theme */
+    --sidebar-background: 40 30% 96%; /* Slightly darker than main bg */
+    --sidebar-foreground: hsl(var(--foreground) / 0.8);
 
-    --sidebar-muted: hsl(var(--primary-foreground) / 0.15);
-    --sidebar-muted-foreground: hsl(var(--primary-foreground) / 0.8);
+    --sidebar-muted-foreground: hsl(var(--foreground) / 0.6);
 
-    --sidebar-accent: hsl(var(--primary-foreground) / 0.1);
-    --sidebar-accent-foreground: hsl(var(--primary-foreground));
+    --sidebar-accent: hsl(var(--background));
+    --sidebar-accent-foreground: hsl(var(--primary));
     
-    --sidebar-active: hsl(var(--primary-foreground) / 0.15);
-    --sidebar-active-foreground: hsl(var(--primary-foreground));
+    --sidebar-active: hsl(var(--primary) / 0.15);
+    --sidebar-active-foreground: hsl(var(--primary));
   }
 
   .dark {
-    --background: 210 70% 18%; /* #111827 - Dark Slate Blue */
-    --foreground: 210 40% 98%; /* Near White */
+    --background: 20 14% 4%; /* Near-black */
+    --foreground: 0 0% 98%;
 
-    --card: 222 40% 15%; /* #1B2439 - Darker Card BG */
-    --card-foreground: 210 40% 98%;
+    --card: 24 10% 10%; /* Dark brown-gray */
+    --card-foreground: 0 0% 98%;
 
-    --popover: 222 40% 15%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 20 14% 4%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 50 90% 60%; /* Bright orange/yellow for active text/icon */
-    --primary-foreground: 240 100% 98%;
+    --primary: 40 90% 60%; /* Warm Orange/Yellow */
+    --primary-foreground: 24 10% 10%;
 
-    --secondary: 210 40% 98%; /* Light Foreground as Secondary */
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 24 10% 15%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 222 30% 20%; /* #242E42 */
-    --muted-foreground: 222 15% 65%;
+    --muted: 24 10% 15%;
+    --muted-foreground: 0 0% 63%;
 
-    --accent: 30 84% 55%; /* Dark, desaturated orange for active background */
-    --accent-foreground: 0 0% 98%; 
+    --accent: 40 90% 60%;
+    --accent-foreground: 24 10% 10%;
     
-    --destructive: 0 70% 55%;
+    --destructive: 0 63% 31%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 222 25% 25%; /* #2F3B54 */
-    --input: 222 30% 22%; /* #283246 */
-    --ring: 45 95% 60%;
+    --border: 24 10% 15%;
+    --input: 24 10% 15%;
+    --ring: 40 90% 60%;
     
     /* Charts */
-    --chart-1: 244 80% 70%;
-    --chart-2: 280 85% 70%;
-    --chart-3: 198 93% 65%;
-    --chart-4: 48 96% 65%;
-    --chart-5: 358 91% 72%;
+    --chart-1: 220 80% 65%;
+    --chart-2: 160 75% 45%;
+    --chart-3: 40 90% 60%;
+    --chart-4: 280 85% 65%;
+    --chart-5: 0 84% 60%;
 
     /* Sidebar Specific Variables for Dark Mode */
-    --sidebar-background: hsl(var(--primary));
-    --sidebar-foreground: hsl(var(--primary-foreground));
-    --sidebar-border: hsl(var(--primary) / 0.1);
-
-    --sidebar-muted: hsl(var(--primary-foreground) / 0.15);
-    --sidebar-muted-foreground: hsl(var(--primary-foreground) / 0.8);
-
-    --sidebar-accent: hsl(var(--primary-foreground) / 0.1);
-    --sidebar-accent-foreground: hsl(var(--primary-foreground));
-    
-    --sidebar-active: hsl(var(--primary-foreground) / 0.15);
-    --sidebar-active-foreground: hsl(var(--primary-foreground));
+    --sidebar-background: 20 14% 6%;
+    --sidebar-foreground: hsl(var(--foreground) / 0.8);
+    --sidebar-muted-foreground: hsl(var(--foreground) / 0.6);
+    --sidebar-accent: hsl(var(--background));
+    --sidebar-accent-foreground: hsl(var(--primary));
+    --sidebar-active: hsl(var(--primary) / 0.15);
+    --sidebar-active-foreground: hsl(var(--primary));
   }
 }
 
@@ -115,4 +110,3 @@
     @apply bg-background text-foreground;
   }
 }
-

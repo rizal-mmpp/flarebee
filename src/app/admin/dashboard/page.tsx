@@ -107,7 +107,6 @@ export default function AdminDashboardPage() {
     <div className="space-y-8">
       <header className="mb-2">
         <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
-          <LayoutDashboard className="mr-3 h-8 w-8 text-primary" />
           Admin Overview
         </h1>
         <p className="text-muted-foreground">
@@ -115,11 +114,6 @@ export default function AdminDashboardPage() {
         </p>
       </header>
       
-      <Button onClick={fetchData} disabled={isLoadingOverall} className="mb-6">
-          {isLoadingOverall ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Activity className="mr-2 h-4 w-4"/>}
-          Refresh All Stats
-      </Button>
-
       <section>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card>
