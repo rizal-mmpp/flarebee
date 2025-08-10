@@ -45,7 +45,12 @@ export async function generateMetadata(
       icons: {
         icon: faviconUrl || DEFAULT_SETTINGS.faviconUrl || "",
         apple: faviconUrl || DEFAULT_SETTINGS.faviconUrl || ""
-      }
+      },
+      verification: {
+        other: {
+          'facebook-domain-verification': 'ogqwm3nmnd6dvy0oheor2u0cw8accu',
+        },
+      },
     };
   } catch (error) {
     console.error("Error fetching settings for metadata, using defaults:", error);
@@ -58,7 +63,12 @@ export async function generateMetadata(
       icons: {
         icon: DEFAULT_SETTINGS.faviconUrl || "",
         apple: DEFAULT_SETTINGS.faviconUrl || ""
-      }
+      },
+       verification: {
+        other: {
+          'facebook-domain-verification': 'ogqwm3nmnd6dvy0oheor2u0cw8accu',
+        },
+      },
     };
   }
 }
