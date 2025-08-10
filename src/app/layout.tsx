@@ -31,11 +31,8 @@ export async function generateMetadata(
   try {
     const settings = await getSiteSettings();
     const siteTitle = settings.siteTitle || DEFAULT_SETTINGS.siteTitle;
-    // Use favicon if available, fallback to logo, then default favicon
     const faviconUrl = settings.faviconUrl || settings.logoUrl || DEFAULT_SETTINGS.faviconUrl;
     
-    // Configure multiple icon types for better device compatibility
-
     return {
       title: {
         default: siteTitle,
@@ -48,7 +45,7 @@ export async function generateMetadata(
       },
       verification: {
         other: {
-          'facebook-domain-verification': 'ogqwm3nmnd6dvy0oheor2u0cw8accu',
+          'facebook-domain-verification': process.env.FACEBOOK_DOMAIN_VERIFICATION || '',
         },
       },
     };
@@ -66,7 +63,7 @@ export async function generateMetadata(
       },
        verification: {
         other: {
-          'facebook-domain-verification': 'ogqwm3nmnd6dvy0oheor2u0cw8accu',
+          'facebook-domain-verification': process.env.FACEBOOK_DOMAIN_VERIFICATION || '',
         },
       },
     };
