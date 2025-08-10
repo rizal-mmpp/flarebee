@@ -31,7 +31,7 @@ export default function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
-  const { user, signOut, loading } from useCombinedAuth();
+  const { user, signOut, loading } = useCombinedAuth();
   const router = useRouter();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
