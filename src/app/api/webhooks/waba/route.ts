@@ -32,10 +32,10 @@ export async function GET(request: NextRequest) {
  * forwards them to an n8n webhook, and returns n8n's response.
  */
 export async function POST(request: NextRequest) {
-  const n8nWebhookUrl = process.env.N8N_EMAIL_WEBHOOK_URL; // Using the provided ENV var for the n8n webhook
+  const n8nWebhookUrl = process.env.N8N_WABA_WEBHOOK_URL; 
 
   if (!n8nWebhookUrl) {
-    console.error('[WABA Webhook] N8N_EMAIL_WEBHOOK_URL is not configured.');
+    console.error('[WABA Webhook] N8N_WABA_WEBHOOK_URL is not configured.');
     // It's important to still send a 200 OK, otherwise Meta may retry and disable the webhook.
     return NextResponse.json({ status: 'error', message: 'Internal server configuration error.' }, { status: 200 });
   }
@@ -69,4 +69,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: 'error', message: 'Internal server error while processing webhook.' }, { status: 200 });
   }
 }
-
