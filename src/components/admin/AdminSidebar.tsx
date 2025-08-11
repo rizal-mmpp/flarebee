@@ -19,6 +19,7 @@ import {
   Repeat,
   Briefcase,
   DatabaseZap,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -54,6 +55,7 @@ const navGroups = [
     items: [
       { href: '/admin/settings', label: 'Settings', icon: Settings },
       { href: '/admin/migration', label: 'Data Migration', icon: DatabaseZap },
+      { href: '/admin/whatsapp-test', label: 'WhatsApp Test', icon: MessageSquare },
       { href: '/admin/xendit-test', label: 'Xendit Tests', icon: TestTube2 },
       { href: '/admin/email-test', label: 'Email Test', icon: Mail },
     ],
