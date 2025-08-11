@@ -118,7 +118,7 @@ export default function WhatsAppTestPage() {
             <CardHeader>
               <CardTitle>2. Create Message Template</CardTitle>
               <CardDescription>
-                Submit a new message template for review. Use double curly braces for variables, e.g., `{{1}}`.
+                Submit a new message template for review. Use double curly braces for variables, e.g.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
