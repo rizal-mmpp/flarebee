@@ -49,7 +49,7 @@
     "embla-carousel-react": "^8.1.8",
     "firebase": "^11.8.1",
     "lucide-react": "^0.475.0",
-    "next": "15.2.3",
+    "next": "15.2.8",
     "node-mailjet": "^6.0.5",
     "patch-package": "^8.0.0",
     "react": "^18.3.1",
