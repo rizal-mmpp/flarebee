@@ -5,14 +5,14 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   experimental: {
     serverActions: {
       bodySizeLimit: '5mb', // Increased limit for file uploads
     },
   },
+  // Add empty turbopack config to silence the webpack migration warning
+  // The webpack config below is for fallback/compatibility
+  turbopack: {},
   images: {
     remotePatterns: [
       {
@@ -84,15 +84,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
-// Enable Turbopack for development
-if (process.env.NODE_ENV === 'development') {
-  nextConfig.experimental = {
-    ...nextConfig.experimental,
-    turbo: {
-      rules: {
-        // Configure any specific rules for Turbopack here
-      },
-    },
-  };
-}
